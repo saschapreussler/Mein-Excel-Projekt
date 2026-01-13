@@ -16,7 +16,6 @@ Public Sub Aktualisiere_Parzellen_Mapping_Final()
     Dim currentIBAN As Variant, currentKontoName As String, tempIBAN As String
     Dim foundZuordnung As String, foundParzellenRange As Range
     Dim ktonames As String, fuzzyResultCode As Long
-    Dim entityID As Long
 
     Application.ScreenUpdating = False
     Application.EnableEvents = False
@@ -64,21 +63,23 @@ Public Sub Aktualisiere_Parzellen_Mapping_Final()
     Next r
 
     ' ------------------------------------------------
-    ' SCHRITT 3: Neue IBANs anhängen
+    ' SCHRITT 3: Neue IBANs anhï¿½ngen (STRING-BASIERTE BANK-IDs)
     ' ------------------------------------------------
-    entityID = 1
-    If lastRowD >= DATA_START_ROW Then
-        entityID = Application.Max(wsD.Columns(DATA_MAP_COL_ENTITYKEY)) + 1
-    End If
+    Dim bankIDCounter As Long
+    Dim newBankID As String
+    bankIDCounter = 1
 
     rD = IIf(lastRowD < DATA_START_ROW, DATA_START_ROW, lastRowD + 1)
 
     For Each currentIBAN In dictIBANsBank.Keys
         If Not dictIBANsMapping.exists(currentIBAN) Then
-            wsD.Cells(rD, DATA_MAP_COL_ENTITYKEY).Value = entityID
+            ' Generate string-based BANK-ID instead of numeric
+            newBankID = Generate_BankID_String(bankIDCounter)
+            
+            wsD.Cells(rD, DATA_MAP_COL_ENTITYKEY).Value = newBankID
             wsD.Cells(rD, DATA_MAP_COL_IBAN_OLD).Value = currentIBAN
             wsD.Cells(rD, DATA_MAP_COL_KTONAME).Value = dictIBANsBank(currentIBAN)
-            entityID = entityID + 1
+            bankIDCounter = bankIDCounter + 1
             rD = rD + 1
         End If
     Next currentIBAN
@@ -103,7 +104,7 @@ Public Sub Aktualisiere_Parzellen_Mapping_Final()
 
         ' --- MANUELL HAT VORRANG ---
         If Trim(wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG).Value) <> "" Then
-            wsD.Cells(rD, DATA_MAP_COL_DEBUG).Value = "Manuell zugeordnet oder bestätigt"
+            wsD.Cells(rD, DATA_MAP_COL_DEBUG).Value = "Manuell zugeordnet oder bestï¿½tigt"
             wsD.Range(wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG), wsD.Cells(rD, DATA_MAP_COL_DEBUG)).Interior.color = COLOR_GREEN
             GoTo NextRow
         End If
@@ -157,7 +158,7 @@ Public Sub Aktualisiere_Parzellen_Mapping_Final()
                 wsD.Range(wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG), wsD.Cells(rD, DATA_MAP_COL_DEBUG)).Interior.color = COLOR_YELLOW
 
             Case Else
-                wsD.Cells(rD, DATA_MAP_COL_DEBUG).Value = "Kein Treffer – manuelle Zuordnung erforderlich"
+                wsD.Cells(rD, DATA_MAP_COL_DEBUG).Value = "Kein Treffer ï¿½ manuelle Zuordnung erforderlich"
                 wsD.Range(wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG), wsD.Cells(rD, DATA_MAP_COL_DEBUG)).Interior.color = COLOR_RED
         End Select
 
@@ -215,15 +216,15 @@ Private Sub ApplyMappingTableFormatting(ByVal ws As Worksheet, ByVal lastDataRow
     ' 2. HORIZONTALE AUSRICHTUNG
     ' ============================================================
 
-    ' Spalte S – EntityKey
+    ' Spalte S ï¿½ EntityKey
     ws.Range(ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYKEY), _
              ws.Cells(lastDataRow, DATA_MAP_COL_ENTITYKEY)).HorizontalAlignment = xlCenter
 
-    ' Spalte W – Parzelle(n)
+    ' Spalte W ï¿½ Parzelle(n)
     ws.Range(ws.Cells(DATA_START_ROW, DATA_MAP_COL_PARZELLE), _
              ws.Cells(lastDataRow, DATA_MAP_COL_PARZELLE)).HorizontalAlignment = xlCenter
 
-    ' Restliche Spalten linksbündig
+    ' Restliche Spalten linksbï¿½ndig
     ws.Range(ws.Cells(DATA_START_ROW, DATA_MAP_COL_IBAN_OLD), _
              ws.Cells(lastDataRow, DATA_MAP_COL_KTONAME)).HorizontalAlignment = xlLeft
 
@@ -231,20 +232,20 @@ Private Sub ApplyMappingTableFormatting(ByVal ws As Worksheet, ByVal lastDataRow
              ws.Cells(lastDataRow, DATA_MAP_COL_DEBUG)).HorizontalAlignment = xlLeft
 
     ' ============================================================
-    ' 3. AUTOFIT – REIHENFOLGE ENTSCHEIDEND
+    ' 3. AUTOFIT ï¿½ REIHENFOLGE ENTSCHEIDEND
     ' ============================================================
 
     ' Erst Spaltenbreite
     ws.Range(ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYKEY), _
              ws.Cells(lastDataRow, DATA_MAP_COL_LAST)).EntireColumn.AutoFit
 
-    ' Dann Zeilenhöhe
+    ' Dann Zeilenhï¿½he
     ws.Rows(DATA_START_ROW & ":" & lastDataRow).AutoFit
 
     ' ============================================================
     ' 4. SPEZIALBEHANDLUNG SPALTE U (Kontoname)
     ' ============================================================
-    ' Links, vertikal zentriert, mehrzeilig – stabil gegen AutoFit-Bug
+    ' Links, vertikal zentriert, mehrzeilig ï¿½ stabil gegen AutoFit-Bug
     With ws.Range(ws.Cells(DATA_START_ROW, DATA_MAP_COL_KTONAME), _
                   ws.Cells(lastDataRow, DATA_MAP_COL_KTONAME))
         .HorizontalAlignment = xlLeft
@@ -252,7 +253,7 @@ Private Sub ApplyMappingTableFormatting(ByVal ws As Worksheet, ByVal lastDataRow
         .WrapText = True
     End With
 
-    ' Zeilenhöhe NACH Spalte-U-Korrektur nochmals sauber setzen
+    ' Zeilenhï¿½he NACH Spalte-U-Korrektur nochmals sauber setzen
     ws.Rows(DATA_START_ROW & ":" & lastDataRow).AutoFit
 
     ' ============================================================
@@ -262,7 +263,7 @@ Private Sub ApplyMappingTableFormatting(ByVal ws As Worksheet, ByVal lastDataRow
              ws.Cells(lastDataRow, DATA_MAP_COL_KTONAME)).Interior.color = COLOR_WHITE
 
     ' ============================================================
-    ' 6. DROPDOWN – SPALTE X (EntityRole) BIS ZEILE 504+
+    ' 6. DROPDOWN ï¿½ SPALTE X (EntityRole) BIS ZEILE 504+
     ' ============================================================
     Set ddRange = ws.Range( _
         ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYROLE), _
@@ -280,9 +281,9 @@ Private Sub ApplyMappingTableFormatting(ByVal ws As Worksheet, ByVal lastDataRow
              Formula1:="=Daten!$AF$4:$AF$8"
         .IgnoreBlank = True
         .InCellDropdown = True
-        .InputTitle = "Rolle wählen"
-        .ErrorTitle = "Ungültige Rolle"
-        .ErrorMessage = "Bitte wählen Sie eine gültige Rolle aus der Liste."
+        .InputTitle = "Rolle wï¿½hlen"
+        .ErrorTitle = "Ungï¿½ltige Rolle"
+        .ErrorMessage = "Bitte wï¿½hlen Sie eine gï¿½ltige Rolle aus der Liste."
     End With
 
 End Sub
@@ -334,7 +335,7 @@ Public Sub Importiere_Kontoauszug()
     ThisWorkbook.Worksheets(tempSheetName).Delete
     On Error GoTo 0
     
-    ' 1. Datei auswählen
+    ' 1. Datei auswï¿½hlen
     strFile = Application.GetOpenFilename("CSV (*.csv), *.csv")
     If strFile = False Then
         Application.ScreenUpdating = True
@@ -342,19 +343,19 @@ Public Sub Importiere_Kontoauszug()
         Exit Sub
     End If
     
-    ' --- Vorhandene Umsätze indexieren ---
+    ' --- Vorhandene Umsï¿½tze indexieren ---
     lRowZiel = wsZiel.Cells(wsZiel.Rows.Count, BK_COL_BETRAG).End(xlUp).Row
     If lRowZiel < BK_START_ROW Then lRowZiel = BK_START_ROW - 1
     
     For i = BK_START_ROW To lRowZiel
         If wsZiel.Cells(i, BK_COL_BETRAG).Value <> "" Then
-            ' Schlüssel: Datum | Betrag | IBAN | Verwendungszweck
+            ' Schlï¿½ssel: Datum | Betrag | IBAN | Verwendungszweck
             sKey = Format(wsZiel.Cells(i, BK_COL_DATUM).Value, "YYYYMMDD") & "|" & CStr(wsZiel.Cells(i, BK_COL_BETRAG).Value) & "|" & Replace(CStr(wsZiel.Cells(i, BK_COL_IBAN).Value), " ", "") & "|" & CStr(wsZiel.Cells(i, BK_COL_VERWENDUNGSZWECK).Value)
             dictUmsaetze(sKey) = True
         End If
     Next i
     
-    ' 2. Temporäres Blatt erstellen
+    ' 2. Temporï¿½res Blatt erstellen
     On Error GoTo ImportFehler
 
     Set wsTemp = ThisWorkbook.Worksheets.Add(After:=wsZiel)
@@ -388,12 +389,12 @@ Public Sub Importiere_Kontoauszug()
         
         betragString = CStr(wsTemp.Cells(lRowTemp, CSV_COL_BETRAG).Value)
         
-        ' Zahlensäuberung
+        ' Zahlensï¿½uberung
         betragString = Replace(betragString, " EUR", "")
         betragString = Replace(betragString, "EUR", "")
         betragString = Trim(betragString)
         
-        ' --- Betragsprüfung (Filterlogik) ---
+        ' --- Betragsprï¿½fung (Filterlogik) ---
         If betragString = "" Or Not IsNumeric(Replace(betragString, ",", ".")) Then
              rowsIgnoredFilter = rowsIgnoredFilter + 1
              GoTo NextRow
@@ -423,7 +424,7 @@ Public Sub Importiere_Kontoauszug()
         sVZ = Trim(wsTemp.Cells(lRowTemp, CSV_COL_VERWENDUNGSZWECK).Value)
         sText = Trim(wsTemp.Cells(lRowTemp, CSV_COL_STATUS).Value)
         
-        ' Duplikatsprüfung mit dem stabilen Schlüssel
+        ' Duplikatsprï¿½fung mit dem stabilen Schlï¿½ssel
         sKey = Format(dDatum, "YYYYMMDD") & "|" & dBetrag & "|" & sIBAN & "|" & sVZ
 
         If dictUmsaetze.exists(sKey) Then
@@ -439,7 +440,7 @@ Public Sub Importiere_Kontoauszug()
         wsZiel.Cells(lRowZiel, BK_COL_DATUM).NumberFormat = "DD.MM.YYYY"
 
         wsZiel.Cells(lRowZiel, BK_COL_BETRAG).Value = dBetrag
-        wsZiel.Cells(lRowZiel, BK_COL_BETRAG).NumberFormat = "#,##0.00 [$€-de-DE]"
+        wsZiel.Cells(lRowZiel, BK_COL_BETRAG).NumberFormat = "#,##0.00 [$ï¿½-de-DE]"
 
         wsZiel.Cells(lRowZiel, BK_COL_NAME).Value = sName
         wsZiel.Cells(lRowZiel, BK_COL_IBAN).Value = sIBAN
@@ -454,19 +455,19 @@ NextRow:
 
 ImportEnde:
     
-    ' Die Filtereinträge werden als Fehler im Protokoll gewertet
+    ' Die Filtereintrï¿½ge werden als Fehler im Protokoll gewertet
     rowsFailedImport = rowsIgnoredFilter
     
     ' 6. Protokollierung in ListBox-Historie
     Call Update_ImportReport_ListBox(rowsTotalInFile, rowsProcessed, rowsIgnoredDupe, rowsFailedImport)
     
-    ' 7. Temporäres Blatt löschen
+    ' 7. Temporï¿½res Blatt lï¿½schen
     If Not wsTemp Is Nothing Then
         wsTemp.Delete
         Set wsTemp = Nothing
     End If
     
-    ' 8. Sortieren und Oberfläche aktualisieren
+    ' 8. Sortieren und Oberflï¿½che aktualisieren
     Call Sortiere_Bankkonto_nach_Datum
     
     wsZiel.Activate
@@ -476,9 +477,9 @@ ImportEnde:
     
     ' Erfolgsmeldung
     If rowsTotalInFile > 0 And rowsProcessed = 0 And rowsIgnoredDupe = rowsTotalInFile And rowsFailedImport = 0 Then
-          MsgBox "Achtung: Die ausgewählte CSV-Datei enthält ausschließlich Einträge, die bereits in der Datenbank vorhanden sind (" & rowsIgnoredDupe & " Duplikate). Es wurden keine neuen Datensätze importiert.", vbExclamation, "100% Duplikate erkannt"
+          MsgBox "Achtung: Die ausgewï¿½hlte CSV-Datei enthï¿½lt ausschlieï¿½lich Eintrï¿½ge, die bereits in der Datenbank vorhanden sind (" & rowsIgnoredDupe & " Duplikate). Es wurden keine neuen Datensï¿½tze importiert.", vbExclamation, "100% Duplikate erkannt"
     ElseIf rowsProcessed > 0 Then
-        MsgBox "Import abgeschlossen! (" & rowsProcessed & " neue Zeilen hinzugefügt)", vbInformation
+        MsgBox "Import abgeschlossen! (" & rowsProcessed & " neue Zeilen hinzugefï¿½gt)", vbInformation
     End If
     
     Exit Sub
@@ -488,7 +489,7 @@ ImportFehler:
     Application.DisplayAlerts = True
     Application.ScreenUpdating = True
     
-    ' Fehlerzähler setzen
+    ' Fehlerzï¿½hler setzen
     If rowsTotalInFile = 0 Then
         rowsFailedImport = 1
     Else
@@ -539,7 +540,7 @@ Public Sub Sortiere_Bankkonto_nach_Datum()
     Exit Sub
 
 SortError:
-    MsgBox "Achtung: Die automatische Sortierung konnte nicht durchgeführt werden! Bitte prüfen Sie das Tabellenblatt '" & WS_BANKKONTO & "' manuell auf ungültige Datumswerte. Fehler: " & Err.Description, vbCritical
+    MsgBox "Achtung: Die automatische Sortierung konnte nicht durchgefï¿½hrt werden! Bitte prï¿½fen Sie das Tabellenblatt '" & WS_BANKKONTO & "' manuell auf ungï¿½ltige Datumswerte. Fehler: " & Err.Description, vbCritical
     
 End Sub
 
@@ -590,7 +591,7 @@ End Sub
 ' 4. HILFSPROZEDUREN ZUR PROTOKOLLIERUNG
 ' ***************************************************************
 
-' Stellt sicher, dass das temporäre Protokoll-Blatt existiert und gibt es zurück
+' Stellt sicher, dass das temporï¿½re Protokoll-Blatt existiert und gibt es zurï¿½ck
 Private Function Get_Protocol_Temp_Sheet() As Worksheet
     
     On Error Resume Next
@@ -598,7 +599,7 @@ Private Function Get_Protocol_Temp_Sheet() As Worksheet
     On Error GoTo 0
     
     If Get_Protocol_Temp_Sheet Is Nothing Then
-        ' Fügt das Blatt nach dem letzten Blatt ein
+        ' Fï¿½gt das Blatt nach dem letzten Blatt ein
         Set Get_Protocol_Temp_Sheet = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.Count))
         Get_Protocol_Temp_Sheet.Name = WS_PROTOCOL_TEMP
         Get_Protocol_Temp_Sheet.Visible = xlSheetVeryHidden ' Versteckt das Hilfsblatt
@@ -623,19 +624,19 @@ Public Sub Initialize_ImportReport_ListBox()
 
     Application.ScreenUpdating = False
     
-    ' Nur initialisieren, wenn die Historie leer ist (d.h. noch kein Import durchgeführt)
+    ' Nur initialisieren, wenn die Historie leer ist (d.h. noch kein Import durchgefï¿½hrt)
     If CStr(wsDaten.Range(CELL_IMPORT_PROTOKOLL).Value) = "" Then
         
-        ' 1. Temporären Bereich leeren
+        ' 1. Temporï¿½ren Bereich leeren
         wsTemp.Cells.ClearContents
         
-        ' 2. Standardtext in den temporären Bereich schreiben
+        ' 2. Standardtext in den temporï¿½ren Bereich schreiben
         wsTemp.Range(PROTOCOL_RANGE_START).Value = "--------------------------------------------------------"
-        wsTemp.Range(PROTOCOL_RANGE_START).Offset(1, 0).Value = " Kein Import-Bericht verfügbar."
-        wsTemp.Range(PROTOCOL_RANGE_START).Offset(2, 0).Value = " Führen Sie einen CSV-Import durch, um den Bericht hier anzuzeigen."
+        wsTemp.Range(PROTOCOL_RANGE_START).Offset(1, 0).Value = " Kein Import-Bericht verfï¿½gbar."
+        wsTemp.Range(PROTOCOL_RANGE_START).Offset(2, 0).Value = " Fï¿½hren Sie einen CSV-Import durch, um den Bericht hier anzuzeigen."
         wsTemp.Range(PROTOCOL_RANGE_START).Offset(3, 0).Value = "--------------------------------------------------------"
         
-        ' 3. ListBox mit dem temporären Bereich verknüpfen
+        ' 3. ListBox mit dem temporï¿½ren Bereich verknï¿½pfen
         On Error Resume Next
         ' Nutzt FORM_LISTBOX_NAME und den Range A1:A4 des Temp-Blatts
         wsZiel.Shapes(FORM_LISTBOX_NAME).ControlFormat.ListFillRange = "'" & WS_PROTOCOL_TEMP & "'!" & wsTemp.Range("A1:A4").Address(External:=False)
@@ -653,7 +654,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalEntries As Long, ByVal importe
     Dim wsZiel As Worksheet
     Dim wsDaten As Worksheet
     Dim wsTemp As Worksheet
-    Dim protocolRange As String ' Der Bereich, der die ListBox füllt
+    Dim protocolRange As String ' Der Bereich, der die ListBox fï¿½llt
     
     Dim strDateTime As String
     Dim currentHistory() As String
@@ -661,7 +662,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalEntries As Long, ByVal importe
     Dim newHistoryString As String
     Dim i As Long, k As Long
     
-    ' Konfiguration für die Speicherung der Historie
+    ' Konfiguration fï¿½r die Speicherung der Historie
     Const HISTORY_DELIMITER As String = "|REPORT_DELIMITER|"
     Const PART_DELIMITER As String = "|PART|"
     Const MAX_REPORTS As Long = 12
@@ -675,9 +676,9 @@ Public Sub Update_ImportReport_ListBox(ByVal totalEntries As Long, ByVal importe
     
     Application.ScreenUpdating = False
     
-    ' --- I. Historie Speichern und Kürzen ---
+    ' --- I. Historie Speichern und Kï¿½rzen ---
     
-    ' BERICHTSTEILE FÜR DIE SPEICHERUNG
+    ' BERICHTSTEILE Fï¿½R DIE SPEICHERUNG
     Dim part1 As String: part1 = strDateTime
     Dim part2 As String: part2 = importedEntries & " / " & totalEntries & " importiert"
     Dim part3 As String: part3 = "Duplikate: " & duplicateEntries
@@ -690,7 +691,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalEntries As Long, ByVal importe
     historyString = CStr(wsDaten.Range(CELL_IMPORT_PROTOKOLL).Value)
     newHistoryString = newReportEntry & IIf(historyString <> "", HISTORY_DELIMITER & historyString, "")
     
-    ' Historie auf maximale Größe trimmen und speichern
+    ' Historie auf maximale Grï¿½ï¿½e trimmen und speichern
     currentHistory = Split(newHistoryString, HISTORY_DELIMITER)
     
     newHistoryString = ""
@@ -705,10 +706,10 @@ Public Sub Update_ImportReport_ListBox(ByVal totalEntries As Long, ByVal importe
     
     wsDaten.Range(CELL_IMPORT_PROTOKOLL).Value = newHistoryString
 
-    ' --- II. Anzeige im Temporären Blatt und Verknüpfung ---
+    ' --- II. Anzeige im Temporï¿½ren Blatt und Verknï¿½pfung ---
     
-    wsTemp.Cells.ClearContents ' Vorherige Anzeige löschen
-    k = 1 ' Zeilenzähler für das temporäre Blatt
+    wsTemp.Cells.ClearContents ' Vorherige Anzeige lï¿½schen
+    k = 1 ' Zeilenzï¿½hler fï¿½r das temporï¿½re Blatt
     
     ' Wir durchlaufen die Historie und schreiben die Zeilen in das Temp-Blatt
     For i = 0 To UBound(currentHistory)
@@ -718,7 +719,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalEntries As Long, ByVal importe
         
         ' 1. Zeile: Datum/Uhrzeit
         If UBound(reportParts) >= 0 Then wsTemp.Cells(k, 1).Value = Trim(reportParts(0)): k = k + 1
-        ' 2. Zeile: Importierte Einträge
+        ' 2. Zeile: Importierte Eintrï¿½ge
         If UBound(reportParts) >= 1 Then wsTemp.Cells(k, 1).Value = " * " & Trim(reportParts(1)): k = k + 1
         ' 3. Zeile: Duplikate
         If UBound(reportParts) >= 2 Then wsTemp.Cells(k, 1).Value = " * " & Trim(reportParts(2)): k = k + 1
@@ -731,13 +732,13 @@ Public Sub Update_ImportReport_ListBox(ByVal totalEntries As Long, ByVal importe
             k = k + 1
         End If
         
-        ' Begrenzung der Zeilen für die ListBox (aus Performancegründen)
+        ' Begrenzung der Zeilen fï¿½r die ListBox (aus Performancegrï¿½nden)
         If k >= MAX_LISTBOX_LINES Then Exit For
     Next i
     
-    ' 3. ListBox verknüpfen
+    ' 3. ListBox verknï¿½pfen
     On Error Resume Next
-    ' Prüft, ob das Form Control existiert und verknüpft es mit dem gefüllten Range
+    ' Prï¿½ft, ob das Form Control existiert und verknï¿½pft es mit dem gefï¿½llten Range
     If Not wsZiel.Shapes(FORM_LISTBOX_NAME) Is Nothing Then
         protocolRange = wsTemp.Range(wsTemp.Cells(1, 1), wsTemp.Cells(k - 1, 1)).Address(External:=False)
         wsZiel.Shapes(FORM_LISTBOX_NAME).ControlFormat.ListFillRange = "'" & WS_PROTOCOL_TEMP & "'!" & protocolRange
@@ -794,5 +795,22 @@ CategorizationError:
         GoTo ExitClean
     End If
 End Sub
+
+
+' ===============================================================
+' 6. HILFSFUNKTION: Generate BANK-ID (STRING-BASIERT)
+' ***************************************************************
+
+' Generates a string-based BANK-ID with format: BANK-yyyymmddhhnnss-nnn
+Private Function Generate_BankID_String(ByVal counter As Long) As String
+    Dim timestamp As String
+    Dim counterStr As String
+    
+    timestamp = Format(Now, "yyyymmddhhnnss")
+    counterStr = Format(counter, "000")
+    
+    Generate_BankID_String = "BANK-" & timestamp & "-" & counterStr
+End Function
+
 
 

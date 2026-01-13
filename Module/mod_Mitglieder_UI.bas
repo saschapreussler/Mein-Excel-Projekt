@@ -20,10 +20,36 @@ Public Sub ProtectSheet(ByRef ws As Worksheet)
     End If
 End Sub
 
+' ***************************************************************
+' HILFSFUNKTION: Sichere Spalten-Sichtbarkeit (Protected Sheets)
+' ***************************************************************
+Public Function SafeSetColumnHidden(ByRef ws As Worksheet, ByVal colIndex As Long, ByVal isHidden As Boolean) As Boolean
+    ' Returns True if successful, False otherwise
+    SafeSetColumnHidden = False
+    
+    If ws Is Nothing Then Exit Function
+    If ThisWorkbook.ProtectStructure Then Exit Function
+    
+    Dim wasProtected As Boolean
+    wasProtected = ws.ProtectContents
+    
+    On Error Resume Next
+    If wasProtected Then Call UnprotectSheet(ws)
+    
+    ws.Columns(colIndex).Hidden = isHidden
+    
+    If Err.Number = 0 Then
+        SafeSetColumnHidden = True
+    End If
+    
+    If wasProtected Then Call ProtectSheet(ws)
+    On Error GoTo 0
+End Function
+
 Public Sub RefreshAllLists()
     ' Aktualisiert alle Dropdowns und sortiert neu (zentraler Aufruf)
     Call Sortiere_Mitgliederliste_Nach_Parzelle
-    ' Füge hier weitere Aktualisierungsfunktionen hinzu, falls nötig
+    ' Fï¿½ge hier weitere Aktualisierungsfunktionen hinzu, falls nï¿½tig
 End Sub
 
 ' ***************************************************************
@@ -48,7 +74,7 @@ Public Sub AktualisiereDatenstand()
 End Sub
 
 ' ***************************************************************
-' PROZEDUR: Fuelle_MemberIDs_Wenn_Fehlend (NEU: Fügt die eindeutige MemberID in Spalte A hinzu)
+' PROZEDUR: Fuelle_MemberIDs_Wenn_Fehlend (NEU: Fï¿½gt die eindeutige MemberID in Spalte A hinzu)
 ' ***************************************************************
 Public Sub Fuelle_MemberIDs_Wenn_Fehlend()
 
@@ -76,7 +102,7 @@ Public Sub Fuelle_MemberIDs_Wenn_Fehlend()
     
     ' Schleife durch alle Zeilen ab M_START_ROW
     For lRow = M_START_ROW To lastRow
-        ' Prüfen, ob eine MemberID fehlt und ob der Datensatz nicht leer ist (Nachname gefüllt)
+        ' Prï¿½fen, ob eine MemberID fehlt und ob der Datensatz nicht leer ist (Nachname gefï¿½llt)
         If wsM.Cells(lRow, M_COL_MEMBER_ID).Value = "" And _
            wsM.Cells(lRow, M_COL_NACHNAME).Value <> "" Then
             
@@ -85,8 +111,8 @@ Public Sub Fuelle_MemberIDs_Wenn_Fehlend()
         End If
     Next lRow
     
-    ' *** ZELLSPERRUNG FÜR SPALTE A ***
-    ' Spalte A sperren, damit die ID nicht manuell verändert wird.
+    ' *** ZELLSPERRUNG Fï¿½R SPALTE A ***
+    ' Spalte A sperren, damit die ID nicht manuell verï¿½ndert wird.
     With wsM.Range(wsM.Cells(M_START_ROW, M_COL_MEMBER_ID), wsM.Cells(lastRow + 1000, M_COL_MEMBER_ID))
         .Locked = True
         .FormulaHidden = True
@@ -98,28 +124,28 @@ Cleanup:
     Exit Sub
     
 ErrorHandler:
-    MsgBox "Fehler beim Füllen der MemberIDs: " & Err.Description, vbCritical
+    MsgBox "Fehler beim Fï¿½llen der MemberIDs: " & Err.Description, vbCritical
     Resume Cleanup
 End Sub
 
 ' ***************************************************************
-' HILFSFUNKTION: GUID (Globally Unique Identifier) erstellen (NEU) (KORRIGIERT: On Error GoTo 0 hinzugefügt)
+' HILFSFUNKTION: GUID (Globally Unique Identifier) erstellen (NEU) (KORRIGIERT: On Error GoTo 0 hinzugefï¿½gt)
 ' ***************************************************************
 Public Function CreateGUID() As String
-    ' Benötigt KEINEN Verweis, nutzt das Scriptlet.TypeLib-Objekt zur Laufzeit.
+    ' Benï¿½tigt KEINEN Verweis, nutzt das Scriptlet.TypeLib-Objekt zur Laufzeit.
     
     Dim TypeLib As Object
     ' Versuch 1: GUID per Scripting Runtime
-    On Error Resume Next ' Nur für diesen Aufruf
+    On Error Resume Next ' Nur fï¿½r diesen Aufruf
     Set TypeLib = CreateObject("Scriptlet.TypeLib")
-    On Error GoTo 0      ' Fehlerbehandlung zurücksetzen
+    On Error GoTo 0      ' Fehlerbehandlung zurï¿½cksetzen
     
     If Not TypeLib Is Nothing Then
-        CreateGUID = Mid(TypeLib.GUID, 2, 36) ' Entfernt die Klammern und gibt die reine GUID zurück
+        CreateGUID = Mid(TypeLib.GUID, 2, 36) ' Entfernt die Klammern und gibt die reine GUID zurï¿½ck
     End If
     
     If CreateGUID = "" Then
-        ' Versuch 2: Notfall-GUID (falls TypeLib blockiert/nicht verfügbar)
+        ' Versuch 2: Notfall-GUID (falls TypeLib blockiert/nicht verfï¿½gbar)
         Randomize
         CreateGUID = Format(Now, "yyyymmddhhmmss") & "-" & Int((99999 - 10000 + 1) * Rnd + 10000)
     End If
@@ -140,20 +166,20 @@ Public Sub ApplyMitgliederDropdowns()
     ' KORREKTUR DER SPERRUNGEN (Locked = False)
     ' ***************************************************************
     
-    ' Spalte B (Parzelle): Muss entsperrt werden, damit der Benutzer Parzelle wählen kann.
+    ' Spalte B (Parzelle): Muss entsperrt werden, damit der Benutzer Parzelle wï¿½hlen kann.
     ws.Range(ws.Cells(M_START_ROW, M_COL_PARZELLE), ws.Cells(1000, M_COL_PARZELLE)).Locked = False
     
-    ' Spalte D (Anrede): Entsperren für Dropdown-Auswahl.
+    ' Spalte D (Anrede): Entsperren fï¿½r Dropdown-Auswahl.
     ws.Range(ws.Cells(M_START_ROW, M_COL_ANREDE), ws.Cells(1000, M_COL_ANREDE)).Locked = False
     
-    ' Spalte O (Funktion): Entsperren für Dropdown-Auswahl.
+    ' Spalte O (Funktion): Entsperren fï¿½r Dropdown-Auswahl.
     ws.Range(ws.Cells(M_START_ROW, M_COL_FUNKTION), ws.Cells(1000, M_COL_FUNKTION)).Locked = False
 
     ' Dropdowns anwenden
-    ' Dropdown für Parzelle (B) wieder aktivieren! (Entsperrte Zelle braucht die Liste)
+    ' Dropdown fï¿½r Parzelle (B) wieder aktivieren! (Entsperrte Zelle braucht die Liste)
     Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_PARZELLE), ws.Cells(1000, M_COL_PARZELLE)), "=Daten!$F$4:$F$18", True)
     
-    ' Dropdown für Seite (C) aktivieren! (Gesperrte Zelle braucht die Liste für UserInterfaceOnly)
+    ' Dropdown fï¿½r Seite (C) aktivieren! (Gesperrte Zelle braucht die Liste fï¿½r UserInterfaceOnly)
     Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_SEITE), ws.Cells(1000, M_COL_SEITE)), "=Daten!$H$4:$H$6", True)
     
     Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_ANREDE), ws.Cells(1000, M_COL_ANREDE)), "=Daten!$D$4:$D$9", True)
@@ -176,14 +202,14 @@ Private Sub ApplyDropdown(ByVal targetRange As Range, ByVal sourceFormula As Str
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:=sourceFormula
         .IgnoreBlank = allowBlanks
         .InCellDropdown = True
-        .ErrorTitle = "Ungültiger Wert"
-        .ErrorMessage = "Bitte wählen Sie einen Wert aus der Liste."
+        .ErrorTitle = "Ungï¿½ltiger Wert"
+        .ErrorMessage = "Bitte wï¿½hlen Sie einen Wert aus der Liste."
     End With
 End Sub
 
 
 ' ***************************************************************
-' PROZEDUR: Anwende_Zebra_Formatierung (Universelle BF mit Prüfspalte)
+' PROZEDUR: Anwende_Zebra_Formatierung (Universelle BF mit Prï¿½fspalte)
 ' ***************************************************************
 Public Sub Anwende_Zebra_Formatierung(ByVal ws As Worksheet, ByVal startCol As Long, ByVal endCol As Long, ByVal startRow As Long, ByVal dataCheckCol As Long)
     
@@ -197,15 +223,15 @@ Public Sub Anwende_Zebra_Formatierung(ByVal ws As Worksheet, ByVal startCol As L
     ' 1. Zielbereich definieren
     Set rngFullData = ws.Range(ws.Cells(startRow, startCol), ws.Cells(1000, endCol))
     
-    ' 2. Bestehende Regeln im BF-Bereich LÖSCHEN
+    ' 2. Bestehende Regeln im BF-Bereich Lï¿½SCHEN
     On Error Resume Next
     rngFullData.FormatConditions.Delete
     On Error GoTo 0
     
-    ' 3. Explizites Entfernen aller manuellen Zellfüllungen im Bereich
+    ' 3. Explizites Entfernen aller manuellen Zellfï¿½llungen im Bereich
     rngFullData.Interior.color = xlNone
     
-    ' 4. Formel erstellen: =UND(NICHT(ISTLEER($[Prüfspalte][Startzeile])); REST(ZEILE();2)=0)
+    ' 4. Formel erstellen: =UND(NICHT(ISTLEER($[Prï¿½fspalte][Startzeile])); REST(ZEILE();2)=0)
     Dim checkColLetter As String
     checkColLetter = Split(ws.Columns(dataCheckCol).Address(False, False), ":")(0)
     
@@ -230,12 +256,12 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
     Dim wasProtectedM As Boolean
     Dim wasProtectedD As Boolean
     
-    ' --- ZUSÄTZLICHE KONSTANTEN FÜR DIESE PROZEDUR (Spalten Hardcoded zur Stabilität) ---
+    ' --- ZUSï¿½TZLICHE KONSTANTEN Fï¿½R DIESE PROZEDUR (Spalten Hardcoded zur Stabilitï¿½t) ---
     Const DATA_START_ROW As Long = 4
     Const M_START_COL As Long = 1      ' KORRIGIERT: Startet jetzt in Spalte A (MemberID)
-    Const M_CHECK_COL As Long = 5      ' Spalte E (Nachname) - Prüfspalte Mitglieder
+    Const M_CHECK_COL As Long = 5      ' Spalte E (Nachname) - Prï¿½fspalte Mitglieder
     Const D_ENTITYKEY_END_COL As Long = 21 ' Spalte U - Endspalte EntityKey
-    ' --- ENDE ZUSÄTZLICHE KONSTANTEN ---
+    ' --- ENDE ZUSï¿½TZLICHE KONSTANTEN ---
 
     Application.ScreenUpdating = False
     Application.EnableEvents = False
@@ -248,7 +274,7 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         wasProtectedM = wsM.ProtectContents
         If wasProtectedM Then Call UnprotectSheet(wsM)
         
-        ' BF: Start A (1), Ende P (M_COL_PACHTENDE), Startzeile 6, Prüfspalte E (5)
+        ' BF: Start A (1), Ende P (M_COL_PACHTENDE), Startzeile 6, Prï¿½fspalte E (5)
         Call Anwende_Zebra_Formatierung(wsM, M_START_COL, M_COL_PACHTENDE, M_START_ROW, M_CHECK_COL)
         
         If wasProtectedM Then Call ProtectSheet(wsM)
@@ -260,10 +286,10 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         wasProtectedD = wsD.ProtectContents
         If wasProtectedD Then Call UnprotectSheet(wsD)
         
-        ' BF 1: Kategorie-Regeln (J bis Q, Startzeile 4, Prüfspalte J)
+        ' BF 1: Kategorie-Regeln (J bis Q, Startzeile 4, Prï¿½fspalte J)
         Call Anwende_Zebra_Formatierung(wsD, DATA_CAT_COL_START, DATA_CAT_COL_END, DATA_START_ROW, DATA_CAT_COL_START)
         
-        ' BF 2: EntityKey/Mapping-Tabelle (S bis U (21), Startzeile 4, Prüfspalte S)
+        ' BF 2: EntityKey/Mapping-Tabelle (S bis U (21), Startzeile 4, Prï¿½fspalte S)
         Call Anwende_Zebra_Formatierung(wsD, DATA_MAP_COL_ENTITYKEY, D_ENTITYKEY_END_COL, DATA_START_ROW, DATA_MAP_COL_ENTITYKEY)
         
         If wasProtectedD Then Call ProtectSheet(wsD)
@@ -311,7 +337,7 @@ Public Sub Sortiere_Mitgliederliste_Nach_Parzelle()
         .SortFields.Add Key:=ws.Columns(M_COL_PACHTENDE), SortOn:=xlSortOnValues, Order:=xlAscending
         ' 2. Sortierkriterium: Parzelle (B) - Hauptsortierung
         .SortFields.Add Key:=ws.Columns(M_COL_PARZELLE), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortTextAsNumbers
-        ' 3. Sortierkriterium: Anrede (D) - sekundäre Sortierung
+        ' 3. Sortierkriterium: Anrede (D) - sekundï¿½re Sortierung
         .SortFields.Add Key:=ws.Columns(M_COL_ANREDE), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
         .SetRange rngSort
         .Header = xlNo
@@ -376,8 +402,8 @@ End Sub
 ' Sucht den EntityKey im Blatt "Daten" basierend auf der Parzellennummer.
 ' *********************************************************************************
 Public Function GetEntityKeyByParzelle(ByVal ParzelleNr As String) As String
-    ' WICHTIG: Sie wird beibehalten, da sie für das *Banking-Mapping* relevant sein kann,
-    ' aber für die Mitglieder-UI ist sie unsicher bei Doppelbelegung!
+    ' WICHTIG: Sie wird beibehalten, da sie fï¿½r das *Banking-Mapping* relevant sein kann,
+    ' aber fï¿½r die Mitglieder-UI ist sie unsicher bei Doppelbelegung!
     Dim wsD As Worksheet
     Dim lastRow As Long
     Dim rngFind As Range
@@ -395,11 +421,11 @@ Public Function GetEntityKeyByParzelle(ByVal ParzelleNr As String) As String
     lastRow = wsD.Cells(wsD.Rows.Count, DATA_MAP_COL_PARZELLE).End(xlUp).Row
     Set rngFind = wsD.Range(wsD.Cells(DATA_START_ROW, DATA_MAP_COL_PARZELLE), wsD.Cells(lastRow, DATA_MAP_COL_PARZELLE))
     
-    ' Führt die Suche durch
+    ' Fï¿½hrt die Suche durch
     Set rngFind = rngFind.Find(What:=ParzelleNr, LookIn:=xlValues, LookAt:=xlWhole)
     
     If Not rngFind Is Nothing Then
-        ' Wenn gefunden, geben wir den Wert aus Spalte DATA_MAP_COL_ENTITYKEY (S) in der gleichen Zeile zurück
+        ' Wenn gefunden, geben wir den Wert aus Spalte DATA_MAP_COL_ENTITYKEY (S) in der gleichen Zeile zurï¿½ck
         GetEntityKeyByParzelle = wsD.Cells(rngFind.Row, DATA_MAP_COL_ENTITYKEY).Value
     Else
         GetEntityKeyByParzelle = ""
@@ -413,60 +439,97 @@ ErrorHandler:
 End Function
 
 
-Private Function FindeRowByMemberID(ByVal MemberID As String) As Long
-
+Private Function FindeRowByMemberID(ByVal memberID As String) As Long
+    ' Robuste, zeilenweise Suche nach MemberID
+    ' Verwendet VarToSafeString und CleanMemberID fÃ¼r maximale StabilitÃ¤t
+    
     Dim wsM As Worksheet
-    Dim rngSearch As Range
-    Dim rngFind As Range
     Dim lastRow As Long
+    Dim r As Long
+    Dim cellValue As Variant
+    Dim cleanCellValue As String
+    Dim cleanSearchID As String
     Dim bWasProtected As Boolean
-
+    
     FindeRowByMemberID = 0
-    If Trim(MemberID) = "" Then Exit Function
-
+    
+    ' Eingabe bereinigen und validieren
+    cleanSearchID = CleanMemberID(memberID)
+    If cleanSearchID = "" Then Exit Function
+    
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
-
+    
     ' ------------------------------------------------------------
     ' Blattschutz merken und ggf. aufheben
     ' ------------------------------------------------------------
     bWasProtected = wsM.ProtectContents
     If bWasProtected Then
-        mod_Mitglieder_UI.UnprotectSheet wsM
+        Call UnprotectSheet(wsM)
     End If
-
+    
     ' ------------------------------------------------------------
-    ' Filter zuverlässig entfernen
+    ' Filter zuverlÃ¤ssig entfernen
     ' ------------------------------------------------------------
+    On Error Resume Next
     If wsM.AutoFilterMode Then
         If wsM.FilterMode Then wsM.ShowAllData
     End If
-
+    On Error GoTo 0
+    
+    ' ------------------------------------------------------------
+    ' Zeilenweise Suche (Variant-robust)
+    ' ------------------------------------------------------------
     lastRow = wsM.Cells(wsM.Rows.Count, M_COL_MEMBER_ID).End(xlUp).Row
+    
     If lastRow < M_START_ROW Then GoTo CleanExit
-
-    Set rngSearch = wsM.Range( _
-        wsM.Cells(M_START_ROW, M_COL_MEMBER_ID), _
-        wsM.Cells(lastRow, M_COL_MEMBER_ID) _
-    )
-
-    Set rngFind = rngSearch.Find( _
-        What:=MemberID, _
-        LookIn:=xlValues, _
-        LookAt:=xlWhole, _
-        MatchCase:=False _
-    )
-
-    If Not rngFind Is Nothing Then
-        FindeRowByMemberID = rngFind.Row
-    End If
-
+    
+    For r = M_START_ROW To lastRow
+        ' Variant sicher lesen
+        cellValue = wsM.Cells(r, M_COL_MEMBER_ID).Value
+        
+        ' In String konvertieren und bereinigen
+        cleanCellValue = CleanMemberID(VarToSafeString(cellValue))
+        
+        ' Vergleichen (case-insensitive)
+        If StrComp(cleanCellValue, cleanSearchID, vbTextCompare) = 0 Then
+            FindeRowByMemberID = r
+            Exit For
+        End If
+    Next r
+    
 CleanExit:
     ' ------------------------------------------------------------
     ' Blattschutz wiederherstellen
     ' ------------------------------------------------------------
     If bWasProtected Then
-        mod_Mitglieder_UI.ProtectSheet wsM
+        Call ProtectSheet(wsM)
     End If
+End Function
+
+' ***************************************************************
+' HILFSFUNKTION: Variant sicher in String konvertieren
+' ***************************************************************
+Private Function VarToSafeString(ByVal v As Variant) As String
+    VarToSafeString = ""
+    
+    On Error Resume Next
+    If IsEmpty(v) Then Exit Function
+    If IsNull(v) Then Exit Function
+    If IsError(v) Then Exit Function
+    
+    VarToSafeString = CStr(v)
+    On Error GoTo 0
+End Function
+
+' ***************************************************************
+' HILFSFUNKTION: MemberID bereinigen (Trim + Normalisierung)
+' ***************************************************************
+Private Function CleanMemberID(ByVal memberID As String) As String
+    CleanMemberID = Trim(CStr(memberID))
+    ' Weitere Normalisierung falls nÃ¶tig (z.B. Leerzeichen entfernen)
+    CleanMemberID = Replace(CleanMemberID, " ", "")
+End Function
+
 
 End Function
 
@@ -474,7 +537,7 @@ End Function
 
 ' ***************************************************************
 ' PROZEDUR: Speichere_Historie_und_Aktualisiere_Mitgliederliste (KORRIGIERT & ERWEITERT)
-' DIESE PROZEDUR WIRD NACHHER AUS DER USERFORM AUSGELÖST!
+' DIESE PROZEDUR WIRD NACHHER AUS DER USERFORM AUSGELï¿½ST!
 ' ***************************************************************
 Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ByVal selectedRow As Long, _
@@ -509,7 +572,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     wsH.Cells(NextRow, H_COL_MITGL_ID).Value = OldMemberID
     wsH.Cells(NextRow, H_COL_NACHNAME).Value = Nachname
     wsH.Cells(NextRow, H_COL_AUST_DATUM).Value = AustrittsDatum
-    wsH.Cells(NextRow, H_COL_NEUER_PAECHTER_ID).Value = NewMemberID ' ID des Nachpächters/Übernehmers
+    wsH.Cells(NextRow, H_COL_NEUER_PAECHTER_ID).Value = NewMemberID ' ID des Nachpï¿½chters/ï¿½bernehmers
     wsH.Cells(NextRow, H_COL_GRUND).Value = ChangeReason
     wsH.Cells(NextRow, H_COL_SYSTEMZEIT).Value = Now
     
@@ -525,15 +588,15 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ' *** 2a. AUSSCHEIDENDES MITGLIED AKTUALISIEREN (selectedRow) ***
     
     If ChangeReason = "Parzellenwechsel" And NewParzelleNr <> "" Then
-        ' Parzellenwechsel: Parzellennummer des Mitglieds in der Mitgliederliste ändern
+        ' Parzellenwechsel: Parzellennummer des Mitglieds in der Mitgliederliste ï¿½ndern
         wsM.Cells(selectedRow, M_COL_PARZELLE).Value = NewParzelleNr
         ' Das Pachtende muss hier *nicht* gesetzt werden, da das Mitglied aktiv bleibt
         
-    ElseIf ChangeReason = "Austritt aus Parzelle" Or ChangeReason = "Austritt mit Pachtübernahme" Then
+    ElseIf ChangeReason = "Austritt aus Parzelle" Or ChangeReason = "Austritt mit Pachtï¿½bernahme" Then
         
-        ' Bei Austritt oder Übernahme muss das ausscheidende Mitglied immer auf "Ehemalig" gesetzt werden.
+        ' Bei Austritt oder ï¿½bernahme muss das ausscheidende Mitglied immer auf "Ehemalig" gesetzt werden.
         
-        ' Parzellennummer des Mitglieds in der Mitgliederliste leeren (für Austretenden)
+        ' Parzellennummer des Mitglieds in der Mitgliederliste leeren (fï¿½r Austretenden)
         wsM.Cells(selectedRow, M_COL_PARZELLE).Value = ""
         
         ' WICHTIG: Pachtende setzen
@@ -544,41 +607,41 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
         wsM.Cells(selectedRow, M_COL_FUNKTION).Value = AUSTRITT_STATUS_DISPLAY
     End If
     
-    ' *** 2b. NEUES/ÜBERNEHMENDES MITGLIED AKTUALISIEREN (falls vorhanden) ***
+    ' *** 2b. NEUES/ï¿½BERNEHMENDES MITGLIED AKTUALISIEREN (falls vorhanden) ***
     
-    If ChangeReason = "Austritt mit Pachtübernahme" And NewMemberID <> "" Then
+    If ChangeReason = "Austritt mit Pachtï¿½bernahme" And NewMemberID <> "" Then
         
-        ' Zeile des Übernehmers anhand der ID finden
+        ' Zeile des ï¿½bernehmers anhand der ID finden
         UebernehmerRow = FindeRowByMemberID(NewMemberID)
         
         If UebernehmerRow > 0 Then
-            ' Funktion auf PÄCHTER_STATUS setzen
+            ' Funktion auf Pï¿½CHTER_STATUS setzen
             wsM.Cells(UebernehmerRow, M_COL_FUNKTION).Value = PAECHTER_STATUS
-            ' Hinweis: Die Parzelle des Übernehmers (die OldParzelle) wird NICHT geändert,
-            ' da Sekundärmitglieder bereits die richtige Parzelle eingetragen haben.
+            ' Hinweis: Die Parzelle des ï¿½bernehmers (die OldParzelle) wird NICHT geï¿½ndert,
+            ' da Sekundï¿½rmitglieder bereits die richtige Parzelle eingetragen haben.
             
-            MsgBox "Pachtvertrag für Parzelle " & OldParzelle & " erfolgreich auf " & wsM.Cells(UebernehmerRow, M_COL_NACHNAME).Value & " übertragen.", vbInformation
+            MsgBox "Pachtvertrag fï¿½r Parzelle " & OldParzelle & " erfolgreich auf " & wsM.Cells(UebernehmerRow, M_COL_NACHNAME).Value & " ï¿½bertragen.", vbInformation
             
         Else
             ' Fehlerfall
-            MsgBox "FEHLER: MemberID des Übernehmers '" & NewMemberID & "' konnte in der Mitgliederliste nicht gefunden werden.", vbCritical
+            MsgBox "FEHLER: MemberID des ï¿½bernehmers '" & NewMemberID & "' konnte in der Mitgliederliste nicht gefunden werden.", vbCritical
         End If
     End If
     
-    ' Aktualisiere das Datum der letzten Änderung in D2
+    ' Aktualisiere das Datum der letzten ï¿½nderung in D2
     Call AktualisiereDatenstand
     
     Call ProtectSheet(wsM)
     
-    ' --- 3. ÜBERGREIFENDE AUFRÄUM- UND AKTUALISIERUNGS-LOGIK (UpdateAllDependencies) ---
+    ' --- 3. ï¿½BERGREIFENDE AUFRï¿½UM- UND AKTUALISIERUNGS-LOGIK (UpdateAllDependencies) ---
     
-    ' 3a) Named Range für Nachpächter-Dropdown aktualisieren (KORRIGIERT)
+    ' 3a) Named Range fï¿½r Nachpï¿½chter-Dropdown aktualisieren (KORRIGIERT)
     Call AktualisiereNamedRange_MitgliederNamen
     
-    ' 3b) Sortieren der Mitgliederliste (enthält Formatierung/Validation)
+    ' 3b) Sortieren der Mitgliederliste (enthï¿½lt Formatierung/Validation)
     Call Sortiere_Mitgliederliste_Nach_Parzelle
     
-    ' 3c) Aktualisierung der nachgelagerten Abhängigkeiten (Banking, Zähler, etc.)
+    ' 3c) Aktualisierung der nachgelagerten Abhï¿½ngigkeiten (Banking, Zï¿½hler, etc.)
     On Error Resume Next
     
     ' Annahme: Diese Module existieren und die Prozeduren sind Public
@@ -598,8 +661,8 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     
     On Error GoTo 0
     
-    ' Zeige nur die generische Meldung, wenn keine spezielle Übernahme-Meldung kam
-    If ChangeReason <> "Austritt mit Pachtübernahme" Then
+    ' Zeige nur die generische Meldung, wenn keine spezielle ï¿½bernahme-Meldung kam
+    If ChangeReason <> "Austritt mit Pachtï¿½bernahme" Then
         MsgBox "Historien-Eintrag erfolgreich gespeichert und Mitgliederliste aktualisiert.", vbInformation
     End If
     
@@ -614,13 +677,13 @@ ErrorHandler:
 End Sub
 
 ' ***************************************************************
-' HILFSFUNKTION: Prüfen, ob eine UserForm geladen ist (KORRIGIERT)
+' HILFSFUNKTION: Prï¿½fen, ob eine UserForm geladen ist (KORRIGIERT)
 ' ***************************************************************
 Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     
     Dim f As Object
     
-    ' Durchläuft die UserForms-Collection des VBA-Projekts (Korrekt für Excel)
+    ' Durchlï¿½uft die UserForms-Collection des VBA-Projekts (Korrekt fï¿½r Excel)
     For Each f In VBA.UserForms
         ' Vergleicht den Namen (Case-insensitive)
         If StrComp(f.Name, FormName, vbTextCompare) = 0 Then
@@ -635,7 +698,7 @@ End Function
 
 
 ' ***************************************************************
-' PRÜFFUNKTION: Ist das angegebene Mitglied der letzte aktive Pächter?
+' PRï¿½FFUNKTION: Ist das angegebene Mitglied der letzte aktive Pï¿½chter?
 ' ***************************************************************
 Public Function CheckIfLastPaechter(ByVal PaeffelParzelle As String, ByVal MemberIDToExclude As String) As Boolean
     
@@ -647,7 +710,7 @@ Public Function CheckIfLastPaechter(ByVal PaeffelParzelle As String, ByVal Membe
     Dim currentMemberID As String
     Dim currentFunktion As String
     
-    ' Standardmäßig annehmen, es gibt noch andere Pächter
+    ' Standardmï¿½ï¿½ig annehmen, es gibt noch andere Pï¿½chter
     CheckIfLastPaechter = False
     PachterCount = 0
     
@@ -657,7 +720,7 @@ Public Function CheckIfLastPaechter(ByVal PaeffelParzelle As String, ByVal Membe
     lastRowM = wsM.Cells(wsM.Rows.Count, M_COL_PARZELLE).End(xlUp).Row
     
     If lastRowM < M_START_ROW Then
-        ' Wenn die Liste leer ist, kann es keinen letzten Pächter geben
+        ' Wenn die Liste leer ist, kann es keinen letzten Pï¿½chter geben
         Exit Function
     End If
     
@@ -666,18 +729,18 @@ Public Function CheckIfLastPaechter(ByVal PaeffelParzelle As String, ByVal Membe
         currentMemberID = Trim(CStr(wsM.Cells(lRow, M_COL_MEMBER_ID).Value))
         currentFunktion = Trim(CStr(wsM.Cells(lRow, M_COL_FUNKTION).Value))
         
-        ' 1. Prüfe, ob es die relevante Parzelle ist
+        ' 1. Prï¿½fe, ob es die relevante Parzelle ist
         If UCase(currentParzelle) = UCase(PaeffelParzelle) Then
             
-            ' 2. Prüfe, ob das Mitglied aktiv und ein Pächter ist
+            ' 2. Prï¿½fe, ob das Mitglied aktiv und ein Pï¿½chter ist
             If UCase(currentFunktion) = UCase(PAECHTER_STATUS) Then
             
-                ' 3. Schließe das Mitglied aus, das gerade bearbeitet wird (es ist das potenziell austretende)
+                ' 3. Schlieï¿½e das Mitglied aus, das gerade bearbeitet wird (es ist das potenziell austretende)
                 If UCase(currentMemberID) <> UCase(MemberIDToExclude) Then
                     PachterCount = PachterCount + 1
-                    ' Wenn wir einen weiteren Pächter gefunden haben, brechen wir die Schleife ab (Performance-Optimierung)
+                    ' Wenn wir einen weiteren Pï¿½chter gefunden haben, brechen wir die Schleife ab (Performance-Optimierung)
                     If PachterCount > 0 Then
-                        CheckIfLastPaechter = False ' Es gibt noch einen anderen Pächter
+                        CheckIfLastPaechter = False ' Es gibt noch einen anderen Pï¿½chter
                         Exit Function
                     End If
                 End If
@@ -686,7 +749,7 @@ Public Function CheckIfLastPaechter(ByVal PaeffelParzelle As String, ByVal Membe
     Next lRow
     
     ' Wenn die Schleife durchgelaufen ist und PachterCount 0 ist:
-    ' bedeutet Count 0, dass der MemberIDToExclude der einzige Pächter ist.
+    ' bedeutet Count 0, dass der MemberIDToExclude der einzige Pï¿½chter ist.
     CheckIfLastPaechter = True
     Exit Function
     
@@ -697,9 +760,9 @@ End Function
 
 
 ' ***************************************************************
-' HILFSFUNKTION: Sucht Sekundärmitglieder auf einer Parzelle
+' HILFSFUNKTION: Sucht Sekundï¿½rmitglieder auf einer Parzelle
 ' ***************************************************************
-' Gibt ein Array von Strings zurück (z.B. "Nachname, Vorname|MemberID")
+' Gibt ein Array von Strings zurï¿½ck (z.B. "Nachname, Vorname|MemberID")
 Public Function GetSekundaerMitgliederAufParzelle(ByVal ParzelleNr As String) As Variant
     
     Dim wsM As Worksheet
@@ -719,7 +782,7 @@ Public Function GetSekundaerMitgliederAufParzelle(ByVal ParzelleNr As String) As
     End If
     
     For lRow = M_START_ROW To lastRowM
-        ' Prüfe Parzelle, Funktion und Pachtende
+        ' Prï¿½fe Parzelle, Funktion und Pachtende
         If UCase(Trim(CStr(wsM.Cells(lRow, M_COL_PARZELLE).Value))) = UCase(ParzelleNr) And _
            UCase(Trim(CStr(wsM.Cells(lRow, M_COL_FUNKTION).Value))) = UCase(SEKUNDAER_STATUS) And _
            IsDate(wsM.Cells(lRow, M_COL_PACHTENDE).Value) = False Then ' Nur aktive Mitglieder
@@ -749,8 +812,8 @@ End Function
 
 
 ' ***************************************************************
-' NEUE PRÜFFUNKTION: Check_Vorstand_Eindeutigkeit
-' Prüft, ob bereits ein Mitglied den Status "Vorstand" hat,
+' NEUE PRï¿½FFUNKTION: Check_Vorstand_Eindeutigkeit
+' Prï¿½ft, ob bereits ein Mitglied den Status "Vorstand" hat,
 ' unter Ausschluss des aktuell zu speichernden Mitglieds (anhand der MemberID).
 ' Wird von frm_Mitgliedsdaten zur Validierung vor dem Speichern aufgerufen.
 ' ***************************************************************
@@ -762,7 +825,7 @@ Public Function Check_Vorstand_Eindeutigkeit(ByVal CheckMemberID As String) As B
     Dim currentMemberID As String
     Dim currentFunktion As String
     
-    ' Standardmäßig annehmen, dass die Eindeutigkeit gegeben ist (True)
+    ' Standardmï¿½ï¿½ig annehmen, dass die Eindeutigkeit gegeben ist (True)
     Check_Vorstand_Eindeutigkeit = True
     
     On Error GoTo ErrorHandler
@@ -778,10 +841,10 @@ Public Function Check_Vorstand_Eindeutigkeit(ByVal CheckMemberID As String) As B
         currentFunktion = Trim(CStr(wsM.Cells(lRow, M_COL_FUNKTION).Value))
         currentMemberID = Trim(CStr(wsM.Cells(lRow, M_COL_MEMBER_ID).Value))
         
-        ' 1. Prüfen, ob die Funktion "Vorstand" ist (Gross-/Kleinschreibung ignorieren)
+        ' 1. Prï¿½fen, ob die Funktion "Vorstand" ist (Gross-/Kleinschreibung ignorieren)
         If UCase(currentFunktion) = UCase(VORSTAND_STATUS) Then
             
-            ' 2. Prüfen, ob dies NICHT die ID des aktuell zu speichernden/bearbeitenden Mitglieds ist
+            ' 2. Prï¿½fen, ob dies NICHT die ID des aktuell zu speichernden/bearbeitenden Mitglieds ist
             If UCase(currentMemberID) <> UCase(CheckMemberID) Then
                 ' Ein aktives Mitglied mit der Funktion "Vorstand" wurde gefunden, das nicht das aktuelle ist.
                 Check_Vorstand_Eindeutigkeit = False
@@ -794,7 +857,7 @@ Public Function Check_Vorstand_Eindeutigkeit(ByVal CheckMemberID As String) As B
     
 ErrorHandler:
     MsgBox "Fehler in Check_Vorstand_Eindeutigkeit: " & Err.Description, vbCritical
-    Check_Vorstand_Eindeutigkeit = False ' Im Fehlerfall lieber False zurückgeben (Eindeutigkeit nicht garantiert)
+    Check_Vorstand_Eindeutigkeit = False ' Im Fehlerfall lieber False zurï¿½ckgeben (Eindeutigkeit nicht garantiert)
 End Function
 
 
