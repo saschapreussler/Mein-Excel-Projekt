@@ -1,0 +1,17 @@
+# Temporäre Excel-Dateien
+*.xlsb
+*.xlk
+~*.xlsm
+
+# Backup-Dateien
+*_BACKUP_*.xlsm
+*_backup_*.xlsm
+
+# Windows Systemdateien
+Thumbs.db
+.DS_Store
+
+# VBA temporäre Dateien
+*.frx~
+*.bas~
+*.cls~
