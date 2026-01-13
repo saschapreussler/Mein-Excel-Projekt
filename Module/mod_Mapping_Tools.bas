@@ -3,17 +3,17 @@ Option Explicit
 
 ' ==========================================================
 ' MODUL: mod_Mapping_Tools (FINAL KORRIGIERT)
-' Zweck: Bereitstellung von Hilfsfunktionen für Normalisierung und Fuzzy-Suche
+' Zweck: Bereitstellung von Hilfsfunktionen fï¿½r Normalisierung und Fuzzy-Suche
 ' **********************************************************
 
-' Definitionen für Match-Typen (Intern)
+' Definitionen fï¿½r Match-Typen (Intern)
 Private Const MATCH_NONE As Long = 0
 Private Const MATCH_PARTIAL As Long = 1 ' Nur Vor- ODER Nachname gefunden (Gelb)
-Private Const MATCH_FULL As Long = 2 ' Vor- UND Nachname gefunden (Grün)
+Private Const MATCH_FULL As Long = 2 ' Vor- UND Nachname gefunden (Grï¿½n)
 
 
-Private Function NormalizeString(ByVal inputStr As String) As String
-    ' Normalisiert Strings für tolerante Vergleiche (Umlaute, Groß-/Kleinschreibung, ß)
+Public Function NormalizeString(ByVal inputStr As String) As String
+    ' Normalisiert Strings fï¿½r tolerante Vergleiche (Umlaute, Groï¿½-/Kleinschreibung, ï¿½)
     
     Dim tempStr As String
     tempStr = LCase(Trim(inputStr))
@@ -24,30 +24,30 @@ Private Function NormalizeString(ByVal inputStr As String) As String
     tempStr = Replace(tempStr, "ue", "u")
     
     ' Ersetzung der Umlaute (einfache Schreibweise)
-    tempStr = Replace(tempStr, "ä", "a")
-    tempStr = Replace(tempStr, "ö", "o")
-    tempStr = Replace(tempStr, "ü", "u")
+    tempStr = Replace(tempStr, "ï¿½", "a")
+    tempStr = Replace(tempStr, "ï¿½", "o")
+    tempStr = Replace(tempStr, "ï¿½", "u")
     
     ' Ersetzung von scharfem S
-    tempStr = Replace(tempStr, "ß", "ss")
+    tempStr = Replace(tempStr, "ï¿½", "ss")
     
-    ' Entfernen von Interpunktion und unnötigen Leerzeichen
+    ' Entfernen von Interpunktion und unnï¿½tigen Leerzeichen
     tempStr = Replace(tempStr, ",", "")
     tempStr = Replace(tempStr, ".", "")
     tempStr = Replace(tempStr, "-", "")
     tempStr = Replace(tempStr, "/", "")
     
     ' Mehrere Leerzeichen durch eines ersetzen
-    Do While InStr(tempStr, "  ") > 0
-        tempStr = Replace(tempStr, "  ", " ")
+    Do While InStr(tempStr, "ï¿½ ") > 0
+        tempStr = Replace(tempStr, "ï¿½ ", " ")
     Loop
     
     NormalizeString = tempStr
 End Function
 
 Public Function FuzzyMemberSearch(ByVal nameToSearch As String, ByVal wsMembers As Worksheet, ByRef parzelleRange As Range) As String
-    ' Sucht nach einem Mitglied und gibt den besten Match zurück.
-    ' Rückgabe: String mit nur den besten, einzigartigen Treffern (mit vbLf getrennt).
+    ' Sucht nach einem Mitglied und gibt den besten Match zurï¿½ck.
+    ' Rï¿½ckgabe: String mit nur den besten, einzigartigen Treffern (mit vbLf getrennt).
     
     Dim lastRowM As Long
     Dim r As Long
@@ -102,41 +102,41 @@ Public Function FuzzyMemberSearch(ByVal nameToSearch As String, ByVal wsMembers 
         ' LOGIK: STATUS BESTIMMEN
         ' -------------------------------------------------------------
         
-        ' --- PRÜFUNG: Voll-Match (Vor- UND Nachname enthalten) ---
+        ' --- PRï¿½FUNG: Voll-Match (Vor- UND Nachname enthalten) ---
         If InStr(normSearchName, normMemberLast) > 0 And normMemberLast <> "" And _
            InStr(normSearchName, normMemberFirst) > 0 And normMemberFirst <> "" Then
             
             currentMatchStatus = MATCH_FULL
-            matchFoundName = currentMemberFullnameString ' Rückgabe des kompletten Originalnamens
+            matchFoundName = currentMemberFullnameString ' Rï¿½ckgabe des kompletten Originalnamens
             
-        ' --- PRÜFUNG: Teil-Match (Nur Vor- ODER Nachname enthalten) ---
+        ' --- PRï¿½FUNG: Teil-Match (Nur Vor- ODER Nachname enthalten) ---
         ElseIf InStr(normSearchName, normMemberLast) > 0 And normMemberLast <> "" Then
             ' Nur Nachname gefunden
             currentMatchStatus = MATCH_PARTIAL
-            matchFoundName = memberLastName ' Rückgabe des Original-Nachnamens
+            matchFoundName = memberLastName ' Rï¿½ckgabe des Original-Nachnamens
         
         ElseIf InStr(normSearchName, normMemberFirst) > 0 And normMemberFirst <> "" Then
             ' Nur Vorname gefunden
             currentMatchStatus = MATCH_PARTIAL
-            matchFoundName = memberFirstName ' Rückgabe des Original-Vornamens
+            matchFoundName = memberFirstName ' Rï¿½ckgabe des Original-Vornamens
         End If
         
         
         If currentMatchStatus > MATCH_NONE Then
             
-            ' Führt den besten Match-Status nach
+            ' Fï¿½hrt den besten Match-Status nach
             If currentMatchStatus > bestMatchStatus Then
                 bestMatchStatus = currentMatchStatus
             End If
             
-            ' Alle Matches speichern, damit wir später nur die besten aggregieren können
+            ' Alle Matches speichern, damit wir spï¿½ter nur die besten aggregieren kï¿½nnen
             If Not dictAllMatches.exists(matchFoundName) Then
                 dictAllMatches.Add matchFoundName, currentMatchStatus
             End If
             
-            ' Parzelle(n) zum Mitglied hinzufügen (für Spalte W)
+            ' Parzelle(n) zum Mitglied hinzufï¿½gen (fï¿½r Spalte W)
             If dictParzellenMap.exists(matchFoundName) Then
-                 ' Wenn bereits ein Eintrag existiert, Parzelle mit Komma/vbLf anhängen
+                 ' Wenn bereits ein Eintrag existiert, Parzelle mit Komma/vbLf anhï¿½ngen
                 If InStr(dictParzellenMap.Item(matchFoundName), Parzelle) = 0 Then
                     dictParzellenMap.Item(matchFoundName) = dictParzellenMap.Item(matchFoundName) & vbLf & Parzelle
                 End If
@@ -152,7 +152,7 @@ NextMember:
     
 EndSearch:
     ' ------------------------------------------------------------------
-    ' ERGEBNISFILTERUNG: Nur die Treffer mit dem höchsten Status zählen
+    ' ERGEBNISFILTERUNG: Nur die Treffer mit dem hï¿½chsten Status zï¿½hlen
     ' ------------------------------------------------------------------
     Dim finalZuordnung As String
     Dim finalParzellen As String
@@ -179,7 +179,7 @@ EndSearch:
                 listUniqueNames.Add memberName, True
             End If
             
-            ' Parzellen für W sammeln (aus dem Parzellen-Dictionary)
+            ' Parzellen fï¿½r W sammeln (aus dem Parzellen-Dictionary)
             If dictParzellenMap.exists(memberName) Then
                  Dim parts() As String
                  parts = Split(dictParzellenMap.Item(memberName), vbLf)
