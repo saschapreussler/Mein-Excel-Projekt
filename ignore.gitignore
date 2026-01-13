@@ -1,0 +1,9 @@
+# Temporäre Excel-Dateien
+*.xlsb
+*.xlk
+~*.xlsm
+
+
+# Windows Systemdateien
+Thumbs.db
+.DS_Store
