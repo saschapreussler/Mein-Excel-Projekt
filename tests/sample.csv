@@ -1,0 +1,6 @@
+Buchungstag;Wertstellung;Buchungstext;Verwendungszweck;Beguenstigter/Zahlungspflichtiger;Kontonummer;BLZ;Betrag;Waehrung
+15.01.2024;15.01.2024;SEPA-Überweisung;Mitgliedsbeitrag Januar 2024;Müller Hans;DE89370400440532013000;;50,00;EUR
+16.01.2024;16.01.2024;SEPA-Überweisung;Pacht Parzelle 12;Schmidt Maria;DE89370400440532013001;;120,00;EUR
+17.01.2024;17.01.2024;SEPA-Lastschrift;Wasser und Strom Rechnung;Stadtwerke GmbH;DE89370400440532013002;;-45,50;EUR
+18.01.2024;18.01.2024;SEPA-Überweisung;Spende;Weber Klaus;DE89370400440532013003;;25,00;EUR
+19.01.2024;19.01.2024;SEPA-Überweisung;Mitgliedsbeitrag Januar 2024;Fischer Anna;DE89370400440532013004;;50,00;EUR
