@@ -1,8 +1,8 @@
 # Temporäre Excel-Dateien
+*.xlsm
 *.xlsb
-*.xlk
-~*.xlsm
-
+*.xlsx
+project_exports/*.frx
 
 # Windows Systemdateien
 Thumbs.db

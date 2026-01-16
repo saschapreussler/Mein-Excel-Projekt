@@ -23,4 +23,5 @@ Private Sub Workbook_Open()
 
     Call ApplyMitgliederDropdowns ' <<< DAS fehlte (Annahme: Diese Prozedur existiert)
 
+    
 End Sub
