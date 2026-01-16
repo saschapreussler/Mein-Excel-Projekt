@@ -1,0 +1,5 @@
+Auftragskonto;Buchungstag;Valutadatum;Buchungstext;Verwendungszweck;Glaeubiger ID;Mandatsreferenz;Kundenreferenz (End-to-End);Sammlerreferenz;Lastschrift Ursprungsbetrag;Auslagenersatz Ruecklastschrift;Beguenstigter/Zahlungspflichtiger;Kontonummer/IBAN;BIC (SWIFT-Code);Betrag;Waehrung;Info
+500012345;15.01.2024;15.01.2024;Lastschrift;Mitgliedsbeitrag 2024;;;;;;;Mueller, Hans;DE12500105170123456789;INGDDEFFXXX;-50,00;EUR;Gebucht
+500012345;16.01.2024;16.01.2024;Gutschrift;Spende Vereinsfest;;;;;;;Schmidt, Anna;DE98765432109876543210;BYLADEM1001;100,50;EUR;Gebucht
+500012345;17.01.2024;17.01.2024;Lastschrift;Wasserkosten Q4 2023;;;;;;;Weber, Thomas;DE11223344556677889900;COBADEFFXXX;-35,75;EUR;Gebucht
+500012345;18.01.2024;18.01.2024;Gutschrift;Pachteinnahmen Januar;;;;;;;Fischer, Maria;DE00998877665544332211;SOGEDEFF;120,00;EUR;Gebucht

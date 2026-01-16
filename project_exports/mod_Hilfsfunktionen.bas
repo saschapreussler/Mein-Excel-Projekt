@@ -205,3 +205,38 @@ End Sub
 
 
 
+
+' **********************************************************
+' TEIL 4: MEMBER LOOKUP HELPERS
+' **********************************************************
+
+' FUNCTION: FindMemberRowByID
+' Finds a member row by MemberID in column A using Find method
+' Returns the row number, or 0 if not found
+' This function is not affected by hidden columns
+Public Function FindMemberRowByID(ws As Worksheet, memberID As Variant) As Long
+    
+    Dim foundCell As Range
+    
+    On Error Resume Next
+    
+    ' Use Find method on column A to locate the MemberID
+    ' Find is not affected by hidden columns or rows
+    Set foundCell = ws.Columns("A").Find( _
+        What:=memberID, _
+        LookIn:=xlValues, _
+        LookAt:=xlWhole, _
+        SearchOrder:=xlByRows, _
+        SearchDirection:=xlNext, _
+        MatchCase:=False _
+    )
+    
+    If Not foundCell Is Nothing Then
+        FindMemberRowByID = foundCell.Row
+    Else
+        FindMemberRowByID = 0
+    End If
+    
+    On Error GoTo 0
+    
+End Function

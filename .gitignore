@@ -1,0 +1,17 @@
+# Excel workbook binaries
+*.xlsm
+*.xlsb
+*.xlsx
+~$*.xlsm
+~$*.xlsx
+
+# Excel form binary files (keep .frm text but not .frx binary)
+project_exports/*.frx
+
+# Windows and Mac system files
+Thumbs.db
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
