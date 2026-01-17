@@ -34,7 +34,7 @@ Public Const DATA_TEMP_COL_IBAN As Long = 29      ' AC
 Public Const M_HEADER_ROW As Long = 5
 Public Const M_START_ROW As Long = 6
 
-Public Const M_COL_MEMBER_ID As Long = 1   ' NEU: Spalte A (Eindeutiger Schlüssel des Mitglieds)
+Public Const M_COL_MEMBER_ID As Long = 1   ' Spalte A (Eindeutiger Schlüssel des Mitglieds)
 Public Const M_COL_PARZELLE As Long = 2    ' Spalte B
 Public Const M_COL_SEITE As Long = 3       ' Spalte C
 Public Const M_COL_ANREDE As Long = 4      ' Spalte D
@@ -50,16 +50,18 @@ Public Const M_COL_MOBIL As Long = 12      ' Spalte L
 Public Const M_COL_GEBURTSTAG As Long = 13 ' Spalte M
 Public Const M_COL_EMAIL As Long = 14      ' Spalte N
 Public Const M_COL_FUNKTION As Long = 15   ' Spalte O
+Public Const M_COL_PACHTANFANG As Long = 16 ' Spalte P (Datum des Pachtanfangs)
+Public Const M_COL_PACHTENDE As Long = 17  ' Spalte Q (Datum des Pachtendes)
 
 ' --- NEU FÜR DEN DATENSTAND (Stand: 23.12.2025 in D2) ---
 Public Const M_STAND_ROW As Long = 2       ' Zeile 2
 Public Const M_STAND_COL As Long = 4       ' Spalte D (Zelle D2)
 
 ' --- NEU FÜR MITGLIEDSSTATUS / AUSTRETEN ---
-Public Const M_COL_PACHTENDE As Long = 16  ' Spalte P (Neu: Datum des Pachtendes)
-Public Const M_COL_ENTITY_KEY As Long = 17 ' Spalte Q (Neu: Eindeutiger Schlüssel des Mitglieds)
+Public Const M_COL_ENTITY_KEY As Long = 18 ' Spalte R (Eindeutiger Schlüssel des Mitglieds)
+
 ' ACHTUNG: Die Konstante M_COL_MAX muss mindestens so hoch sein wie die letzte genutzte Spalte.
-Public Const M_COL_MAX As Long = 17
+Public Const M_COL_MAX As Long = 18
 
 Public Const M_UPDATE_ROW As Long = M_STAND_ROW
 Public Const M_UPDATE_COL As Long = M_STAND_COL
@@ -161,18 +163,21 @@ Public Const CELL_IMPORT_PROTOKOLL As String = "Z100"
 Public Const ROLE_RANGE As String = "AE4:AE8"
 
 ' ===============================================================
-' M. MITGLIEDERHISTORIE – STRUKTUR (NEU)
+' M. MITGLIEDERHISTORIE – STRUKTUR (NEU - ERWEITERT)
 ' ===============================================================
 Public Const H_HEADER_ROW As Long = 3
 Public Const H_START_ROW As Long = 4
 
 Public Const H_COL_PARZELLE As Long = 1        ' A: Abgegebene Parzelle
-Public Const H_COL_MITGL_ID As Long = 2        ' B: ID des ausscheidenden Mitglieds (EntityKey)
+Public Const H_COL_MITGL_ID As Long = 2        ' B: Member ID (alt) - ID des ausscheidenden Mitglieds
 Public Const H_COL_NACHNAME As Long = 3        ' C: Nachname (Lesbarkeit)
-Public Const H_COL_AUST_DATUM As Long = 4      ' D: Stichtag der Endabrechnung
-Public Const H_COL_NEUER_PAECHTER_ID As Long = 5 ' E: ID des Nachpächters
-Public Const H_COL_GRUND As Long = 6           ' F: Grund (Austritt/Wechsel)
-Public Const H_COL_SYSTEMZEIT As Long = 7      ' G: Eintragungszeitpunkt
+Public Const H_COL_VORNAME As Long = 4         ' D: Vorname (Lesbarkeit)
+Public Const H_COL_AUST_DATUM As Long = 5      ' E: Austrittsdatum (Stichtag der Endabrechnung)
+Public Const H_COL_ENDABRECHNUNG As Long = 6   ' F: Endabrechnung (Datum der Endabrechnung)
+Public Const H_COL_GRUND As Long = 7           ' G: Grund (Parzellenwechsel, Kündigung, Tod)
+Public Const H_COL_KOMMENTAR As Long = 8       ' H: Kommentar (frei wählbar)
+Public Const H_COL_NEUER_PAECHTER_ID As Long = 9 ' I: ID des Nachpächters (falls Parzellenwechsel)
+Public Const H_COL_SYSTEMZEIT As Long = 10     ' J: Eintragungszeitpunkt (System)
 
 ' ===============================================================
 ' N. SICHERHEIT & SONSTIGES
@@ -182,5 +187,22 @@ Public Const PARZELLE_VEREIN As String = "Verein"
 Public Const ANREDE_KGA As String = "KGA"
 Public Const AUSTRITT_STATUS As String = "Ehemaliges Mitglied"
 
+' ===============================================================
+' O. ERLAUBTE FUNKTIONEN FÜR PARZELLENPACHT
+' ===============================================================
+Public Const FUNKTION_MITGLIED_MIT_PACHT As String = "Mitglied mit Pacht"
+Public Const FUNKTION_1_VORSITZENDER As String = "1. Vorsitzende(r)"
+Public Const FUNKTION_2_VORSITZENDER As String = "2. Vorsitzende(r)"
+Public Const FUNKTION_KASSIERER As String = "Kassierer"
+Public Const FUNKTION_SCHRIFTFUEHRER As String = "Schriftführer"
 
+' Array von erlaubten Funktionen für Parzellenpacht (nicht "Mitglied ohne Pacht")
+Public Function GetErlaubteFunktionenFuerParzelle() As Variant
+    GetErlaubteFunktionenFuerParzelle = Array( _
+        FUNKTION_MITGLIED_MIT_PACHT, _
+        FUNKTION_1_VORSITZENDER, _
+        FUNKTION_2_VORSITZENDER, _
+        FUNKTION_KASSIERER, _
+        FUNKTION_SCHRIFTFUEHRER)
+End Function
 

@@ -16,7 +16,7 @@ Attribute VB_Exposed = False
 Option Explicit
 
 ' ==========================================================
-' Prozedur: cmd_MitgliedEdit_Click (KORRIGIERT: Ruft OeffneMitgliedsDetails auf)
+' Prozedur: cmd_MitgliedEdit_Click
 ' Ruft die DblClick-Logik auf, wenn ein Element ausgewählt ist
 ' ==========================================================
 Private Sub cmd_MitgliedEdit_Click()
@@ -28,7 +28,7 @@ Private Sub cmd_MitgliedEdit_Click()
 End Sub
 
 ' ==========================================================
-' Prozedur: cmd_NeuesMitglied_Click (FINAL KORRIGIERT: Nutzt InputBox statt gelöschtem Form)
+' Prozedur: cmd_NeuesMitglied_Click
 ' Erstellt ein neues Mitglied und übergibt Vorbelegungen an frm_Mitgliedsdaten
 ' ==========================================================
 Private Sub cmd_NeuesMitglied_Click()
@@ -43,7 +43,7 @@ Private Sub cmd_NeuesMitglied_Click()
     
     Set ws = ThisWorkbook.Worksheets("Mitgliederliste")
     
-    ' 1) Parzellenauswahl (ersetzt frm_ParzelleAuswahl durch InputBox)
+    ' 1) Parzellenauswahl
     parzelle = InputBox("Bitte geben Sie die Parzellennummer für das neue Mitglied ein (z.B. 1, 12a, 35b):", "Parzellenauswahl")
     
     parzelle = Trim(parzelle)
@@ -63,30 +63,30 @@ Private Sub cmd_NeuesMitglied_Click()
             foundCount = foundCount + 1
             If vorhandeneListe <> "" Then vorhandeneListe = vorhandeneListe & vbCrLf
             vorhandeneListe = vorhandeneListe & " - " & Trim(ws.Cells(r, 6).Value) & " " & Trim(ws.Cells(r, 5).Value) ' Vorname Nachname
-            If ersteZeile = 0 Then ersteZeile = r ' Zeile des ersten gefundenen Mitglieds merken (für Adressübernahme)
+            If ersteZeile = 0 Then ersteZeile = r ' Zeile des ersten gefundenen Mitglieds merken
         End If
     Next r
     
     ' 3) Falls bereits Mitglieder auf dieser Parzelle: Liste anzeigen & Entscheidung erfragen
     If foundCount > 0 Then
-        Dim Antwort As VbMsgBoxResult
-        Antwort = MsgBox("Auf Parzelle " & parzelle & " sind bereits " & foundCount & " Mitglied(er) eingetragen:" & vbCrLf & vbCrLf & _
+        Dim antwort As VbMsgBoxResult
+        antwort = MsgBox("Auf Parzelle " & parzelle & " sind bereits " & foundCount & " Mitglied(er) eingetragen:" & vbCrLf & vbCrLf & _
                              vorhandeneListe & vbCrLf & vbCrLf & "Möchten Sie trotzdem ein weiteres Mitglied anlegen?", vbYesNo + vbQuestion, "Parzelle belegt")
-        If Antwort = vbNo Then Exit Sub
+        If antwort = vbNo Then Exit Sub
         
         ' Frage: Adresse von vorhandenem übernehmen?
         uebernahme = MsgBox("Sollen die Adressdaten (Straße, Nr., PLZ, Ort, Telefon etc.) des ersten vorhandenen Mitglieds übernommen werden?", vbYesNo + vbQuestion, "Adresse übernehmen")
     End If
     
-    ' 4) Jetzt vorbereitetes Formular öffnen und Felder vorbelegen:
+    ' 4) Formular öffnen und Felder vorbelegen
     With frm_Mitgliedsdaten
-        ' Marker für den Anlege-Modus:
-        .Tag = "NEU" ' Setze Tag auf "NEU"
+        ' Marker für den Anlage-Modus
+        .Tag = "NEU"
         
-        ' Alle Felder als ComboBox/TextBox sichtbar machen (Eingabemodus)
-        Call .SetMode(True, foundCount > 0 And uebernahme = vbYes) ' Ruft die neue Prozedur in frm_Mitgliedsdaten auf
+        ' Alle Felder als TextBox/ComboBox sichtbar machen (Eingabemodus)
+        Call .SetMode(True, foundCount > 0 And uebernahme = vbYes)
 
-        ' Die vorhandenen Adressdaten übernehmen, falls gewünscht (wie im Originalcode)
+        ' Die vorhandenen Adressdaten übernehmen, falls gewünscht
         If foundCount > 0 And uebernahme = vbYes Then
             ' Adressübernahme (Spalten G bis J)
             .txt_Strasse.Value = ws.Cells(ersteZeile, 7).Value
@@ -96,12 +96,8 @@ Private Sub cmd_NeuesMitglied_Click()
 
             ' Telefon (Spalte K)
             .txt_Telefon.Value = ws.Cells(ersteZeile, 11).Value
-
-            ' Seite (Spalte C)
-            .cbo_Seite.Value = ws.Cells(ersteZeile, 3).Value
         Else
-            ' Alle nicht vorbelegten Felder müssen geleert werden, wenn keine Übernahme.
-            .cbo_Seite.Value = ""
+            ' Alle nicht vorbelegten Felder müssen geleert werden, wenn keine Übernahme
             .txt_Strasse.Value = ""
             .txt_Nummer.Value = ""
             .txt_PLZ.Value = ""
@@ -109,7 +105,7 @@ Private Sub cmd_NeuesMitglied_Click()
             .txt_Telefon.Value = ""
         End If
         
-        ' Parzelle, Mobil, E-Mail immer setzen, da sie oben nicht übernommen werden
+        ' Parzelle, Mobil, E-Mail immer setzen
         .cbo_Parzelle.Value = parzelle
         .txt_Mobil.Value = ""
         .txt_Email.Value = ""
@@ -120,9 +116,8 @@ Private Sub cmd_NeuesMitglied_Click()
 
 End Sub
 
-
 ' ==========================================================
-' Prozedur: lst_Mitgliederliste_DblClick (KORRIGIERT: Ruft OeffneMitgliedsDetails auf)
+' Prozedur: lst_Mitgliederliste_DblClick
 ' Öffnet die Detailansicht
 ' ==========================================================
 Private Sub lst_Mitgliederliste_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
@@ -130,7 +125,7 @@ Private Sub lst_Mitgliederliste_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
 End Sub
  
 ' ***************************************************************
-' NEUE PROZEDUR: Oeffnet die Details des ausgewaehlten Mitglieds (Logik hier eingefügt)
+' PROZEDUR: Öffnet die Details des ausgewählten Mitglieds
 ' ***************************************************************
 Public Sub OeffneMitgliedsDetails()
 
@@ -148,13 +143,13 @@ Public Sub OeffneMitgliedsDetails()
     NachnameToFind = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 4)
     lRow = 0
     
-    ' Suche die korrekte Zeile: Suche nach Parzelle (Spalte B) und Nachname (Spalte E)
+    ' Suche die korrekte Zeile: Nach Parzelle (Spalte B) und Nachname (Spalte E)
     Dim r As Long
     For r = 6 To ws.Cells(ws.Rows.Count, 2).End(xlUp).Row
         If StrComp(Trim(ws.Cells(r, 2).Value), ParzelleToFind, vbTextCompare) = 0 And _
            StrComp(Trim(ws.Cells(r, 5).Value), NachnameToFind, vbTextCompare) = 0 Then
              lRow = r
-             Exit For ' Zeile gefunden
+             Exit For
         End If
     Next r
 
@@ -164,15 +159,14 @@ Public Sub OeffneMitgliedsDetails()
     End If
 
     With frm_Mitgliedsdaten
-        ' 1. Speichere die Tabellen-Zeile (wichtig für Bearbeiten/Löschen!)
-        .Tag = lRow ' Zeilennummer in der Mitgliederliste
+        ' 1. Speichere die Tabellen-Zeile (wichtig für Bearbeiten/Löschen)
+        .Tag = lRow
         
-        ' 2. Setze den Modus auf ANZEIGEN (Alle Label sichtbar, Buttons Ändern/Entfernen sichtbar)
-        Call .SetMode(False) ' Ruft die neue Prozedur in frm_Mitgliedsdaten auf
+        ' 2. Setze den Modus auf ANZEIGEN
+        Call .SetMode(False)
         
         ' 3. Beschrifte alle Labels (Anzeigemodus)
         .lbl_Parzelle.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 0)
-        .lbl_Seite.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 1)
         .lbl_Anrede.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 2)
         .lbl_Vorname.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 3)
         .lbl_Nachname.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 4)
@@ -188,7 +182,6 @@ Public Sub OeffneMitgliedsDetails()
         
         ' 4. Fülle die ComboBoxen/TextBoxen (Bearbeitungsmodus)
         .cbo_Parzelle.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 0)
-        .cbo_Seite.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 1)
         .cbo_Anrede.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 2)
         .txt_Vorname.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 3)
         .txt_Nachname.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 4)
@@ -208,13 +201,10 @@ Public Sub OeffneMitgliedsDetails()
     
 End Sub
 
-
 ' ==========================================================
-' NEUE PRIVATE PROZEDUR: Befüllt die ListBox (UNVERÄNDERT)
+' PROZEDUR: Befüllt die ListBox mit Mitgliederdaten
 ' ==========================================================
 Private Sub LoadListBoxData()
-    ' (Der Code von LoadListBoxData bleibt unverändert)
-    ' ...
     Dim iZeile As Long
     Dim AnzArr As Long
     Dim arr() As Variant
@@ -244,19 +234,19 @@ Private Sub LoadListBoxData()
             If Trim(.Cells(iZeile, 2).Value) <> "" And StrComp(Trim(.Cells(iZeile, 2).Value), "Verein", vbTextCompare) <> 0 Then
                 
                 arr(AnzArr, 0) = .Cells(iZeile, 2).Value    ' B: Parzelle
-                arr(AnzArr, 1) = .Cells(iZeile, 3).Value    ' C: Seite
+                arr(AnzArr, 1) = .Cells(iZeile, 3).Value    ' C: Seite (wird nur angezeigt, nicht bearbeitet)
                 arr(AnzArr, 2) = .Cells(iZeile, 4).Value    ' D: Anrede
                 arr(AnzArr, 3) = .Cells(iZeile, 6).Value    ' F: Vorname
                 arr(AnzArr, 4) = .Cells(iZeile, 5).Value    ' E: Nachname
                 arr(AnzArr, 5) = .Cells(iZeile, 7).Value    ' G: Strasse
                 arr(AnzArr, 6) = .Cells(iZeile, 8).Value    ' H: Nummer
                 arr(AnzArr, 7) = .Cells(iZeile, 9).Value    ' I: PLZ
-                arr(AnzArr, 8) = .Cells(iZeile, 10).Value ' J: Wohnort
-                arr(AnzArr, 9) = .Cells(iZeile, 11).Value ' K: Telefon
-                arr(AnzArr, 10) = .Cells(iZeile, 12).Value ' L: Mobil
-                arr(AnzArr, 11) = .Cells(iZeile, 13).Value ' M: Geburtstag
-                arr(AnzArr, 12) = .Cells(iZeile, 14).Value ' N: Email
-                arr(AnzArr, 13) = .Cells(iZeile, 15).Value ' O: Funktion
+                arr(AnzArr, 8) = .Cells(iZeile, 10).Value   ' J: Wohnort
+                arr(AnzArr, 9) = .Cells(iZeile, 11).Value   ' K: Telefon
+                arr(AnzArr, 10) = .Cells(iZeile, 12).Value  ' L: Mobil
+                arr(AnzArr, 11) = .Cells(iZeile, 13).Value  ' M: Geburtstag
+                arr(AnzArr, 12) = .Cells(iZeile, 14).Value  ' N: Email
+                arr(AnzArr, 13) = .Cells(iZeile, 15).Value  ' O: Funktion
                 
                 AnzArr = AnzArr + 1
             End If
@@ -267,7 +257,7 @@ Private Sub LoadListBoxData()
 End Sub
 
 ' ==========================================================
-' Prozedur: UserForm_Initialize (UNVERÄNDERT)
+' Prozedur: UserForm_Initialize
 ' ==========================================================
 Private Sub UserForm_Initialize()
     Me.StartUpPosition = 1
@@ -278,7 +268,7 @@ Private Sub UserForm_Initialize()
 End Sub
 
 ' ==========================================================
-' Prozedur: RefreshMitgliederListe (UNVERÄNDERT)
+' Prozedur: RefreshMitgliederListe
 ' ==========================================================
 Public Sub RefreshMitgliederListe()
     Call LoadListBoxData
