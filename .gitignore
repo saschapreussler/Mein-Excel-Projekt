@@ -1,0 +1,15 @@
+# Excel temporäre Dateien (sehr wichtig!)
+~$*.xlsx
+~$*.xlsm
+~$*.xlsb
+~$*.xls
+
+# Excel Backup-Dateien
+*.xlk
+
+# Windows Systemdateien
+Thumbs.db
+Desktop.ini
+
+# Falls du VS Code nutzt
+.vscode/
