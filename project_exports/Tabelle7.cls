@@ -46,7 +46,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     If Not Intersect(Target, Me.Columns(M_COL_PARZELLE)) Is Nothing Then
 
         Dim rCell As Range
-        Dim Parzelle As String
+        Dim parzelle As String
         Dim seite As String
         Dim nr As Long
 
@@ -54,18 +54,18 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 
             If rCell.Row >= M_START_ROW Then
 
-                Parzelle = Trim(CStr(rCell.Value))
+                parzelle = Trim(CStr(rCell.Value))
                 seite = ""
                 
                 ' NEUE LOGIK: Wenn Parzelle "Verein", setze Anrede auf "KGA" (Spalte D)
                 ' Verwendung von StrComp für robuste, fallunabhängige Prüfung
-                If StrComp(Parzelle, PARZELLE_VEREIN, vbTextCompare) = 0 Then
+                If StrComp(parzelle, PARZELLE_VEREIN, vbTextCompare) = 0 Then
                     Me.Cells(rCell.Row, M_COL_ANREDE).Value = ANREDE_KGA
                 End If
 
                 ' Logik zur Füllung Spalte C (Seite)
-                If IsNumeric(Parzelle) Then
-                    nr = CLng(Parzelle)
+                If IsNumeric(parzelle) Then
+                    nr = CLng(parzelle)
 
                     If nr >= 1 And nr <= 9 Then
                         seite = "rechts"
@@ -74,7 +74,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                     End If
 
                 ' Verwendung von StrComp für robuste, fallunabhängige Prüfung
-                ElseIf StrComp(Parzelle, PARZELLE_VEREIN, vbTextCompare) = 0 Then
+                ElseIf StrComp(parzelle, PARZELLE_VEREIN, vbTextCompare) = 0 Then
                     seite = "mitte"
                 End If
 

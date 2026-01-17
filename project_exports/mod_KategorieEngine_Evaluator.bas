@@ -135,7 +135,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
             If (einAus = "E" And ctx("IsAusgabe")) Or _
                (einAus = "A" And ctx("IsEinnahme")) Then GoTo NextRule
 
-            If Not hitCategories.exists(category) Then
+            If Not hitCategories.Exists(category) Then
                 hitCategories.Add category, True
             End If
 

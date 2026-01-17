@@ -785,7 +785,7 @@ End Sub
 
 ' Historie schreiben
 Public Sub SchreibeHistorie( _
-    ByVal Parzelle As String, _
+    ByVal parzelle As String, _
     ByVal DatumW As Date, _
     ByVal AltEnde As Double, _
     ByVal neuStart As Double, _
@@ -817,7 +817,7 @@ Public Sub SchreibeHistorie( _
             Exit Sub
     End Select
     
-    targetRow = GetTargetRow(Parzelle, Medium)
+    targetRow = GetTargetRow(parzelle, Medium)
     
     On Error GoTo Fehler_Handler
     
@@ -871,7 +871,7 @@ Public Sub SchreibeHistorie( _
     With newRow.Range
         .Cells(1, COL_HIST_ID).Value = lo.ListRows.Count
         .Cells(1, COL_HIST_DATUM).Value = DatumW
-        .Cells(1, COL_HIST_PARZELLE).Value = Parzelle
+        .Cells(1, COL_HIST_PARZELLE).Value = parzelle
         .Cells(1, COL_HIST_MEDIUM).Value = Medium
         
         .Cells(1, COL_HIST_ZAEHLER_ALT).Value = snAlt

@@ -52,7 +52,7 @@ Public Function FuzzyMemberSearch(ByVal nameToSearch As String, ByVal wsMembers 
     Dim lastRowM As Long
     Dim r As Long
     Dim memberLastName As String, memberFirstName As String
-    Dim Parzelle As String
+    Dim parzelle As String
     
     Dim normSearchName As String
     
@@ -82,7 +82,7 @@ Public Function FuzzyMemberSearch(ByVal nameToSearch As String, ByVal wsMembers 
         ' Konstanten M_COL_NACHNAME, M_COL_VORNAME wurden durch MEMBER_COL_... ersetzt
         memberLastName = Trim(wsMembers.Cells(r, MEMBER_COL_NACHNAME).Value)
         memberFirstName = Trim(wsMembers.Cells(r, MEMBER_COL_VORNAME).Value)
-        Parzelle = Trim(wsMembers.Cells(r, MEMBER_COL_PARZELLE).Value)
+        parzelle = Trim(wsMembers.Cells(r, MEMBER_COL_PARZELLE).Value)
         
         If memberLastName = "" And memberFirstName = "" Then GoTo NextMember
         
@@ -130,18 +130,18 @@ Public Function FuzzyMemberSearch(ByVal nameToSearch As String, ByVal wsMembers 
             End If
             
             ' Alle Matches speichern, damit wir später nur die besten aggregieren können
-            If Not dictAllMatches.exists(matchFoundName) Then
+            If Not dictAllMatches.Exists(matchFoundName) Then
                 dictAllMatches.Add matchFoundName, currentMatchStatus
             End If
             
             ' Parzelle(n) zum Mitglied hinzufügen (für Spalte W)
-            If dictParzellenMap.exists(matchFoundName) Then
+            If dictParzellenMap.Exists(matchFoundName) Then
                  ' Wenn bereits ein Eintrag existiert, Parzelle mit Komma/vbLf anhängen
-                If InStr(dictParzellenMap.Item(matchFoundName), Parzelle) = 0 Then
-                    dictParzellenMap.Item(matchFoundName) = dictParzellenMap.Item(matchFoundName) & vbLf & Parzelle
+                If InStr(dictParzellenMap.Item(matchFoundName), parzelle) = 0 Then
+                    dictParzellenMap.Item(matchFoundName) = dictParzellenMap.Item(matchFoundName) & vbLf & parzelle
                 End If
             Else
-                dictParzellenMap.Add matchFoundName, Parzelle
+                dictParzellenMap.Add matchFoundName, parzelle
             End If
             
         End If
@@ -173,20 +173,20 @@ EndSearch:
         If dictAllMatches.Item(memberName) = bestMatchStatus Then
             
             ' Nur einzigartige Namen in V sammeln
-            If Not listUniqueNames.exists(memberName) Then
+            If Not listUniqueNames.Exists(memberName) Then
                 If finalZuordnung <> "" Then finalZuordnung = finalZuordnung & vbLf
                 finalZuordnung = finalZuordnung & memberName
                 listUniqueNames.Add memberName, True
             End If
             
             ' Parzellen für W sammeln (aus dem Parzellen-Dictionary)
-            If dictParzellenMap.exists(memberName) Then
+            If dictParzellenMap.Exists(memberName) Then
                  Dim parts() As String
                  parts = Split(dictParzellenMap.Item(memberName), vbLf)
                  
                  Dim part As Variant
                  For Each part In parts
-                      If Not listUniqueParzellen.exists(part) Then
+                      If Not listUniqueParzellen.Exists(part) Then
                           If finalParzellen <> "" Then finalParzellen = finalParzellen & vbLf
                           finalParzellen = finalParzellen & part
                           listUniqueParzellen.Add part, True

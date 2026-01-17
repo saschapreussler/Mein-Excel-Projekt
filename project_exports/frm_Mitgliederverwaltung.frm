@@ -16,24 +16,25 @@ Attribute VB_Exposed = False
 Option Explicit
 
 ' ==========================================================
-' Prozedur: cmd_MitgliedEdit_Click
+' Prozedur: cmd_MitgliedEdit_Click (KORRIGIERT: Ruft OeffneMitgliedsDetails auf)
+' Ruft die DblClick-Logik auf, wenn ein Element ausgewählt ist
 ' ==========================================================
 Private Sub cmd_MitgliedEdit_Click()
     If Me.lst_Mitgliederliste.ListIndex >= 0 Then
-        Call OeffneMitgliedsDetails
+        Call OeffneMitgliedsDetails ' Ruft die ausgelagerte Logik auf
     Else
         MsgBox "Bitte wählen Sie zuerst ein Mitglied aus der Liste aus.", vbExclamation
     End If
 End Sub
 
 ' ==========================================================
-' Prozedur: cmd_NeuesMitglied_Click
+' Prozedur: cmd_NeuesMitglied_Click (FINAL KORRIGIERT: Nutzt InputBox statt gelöschtem Form)
 ' Erstellt ein neues Mitglied und übergibt Vorbelegungen an frm_Mitgliedsdaten
 ' ==========================================================
 Private Sub cmd_NeuesMitglied_Click()
 
     Dim ws As Worksheet
-    Dim Parzelle As String
+    Dim parzelle As String
     Dim r As Long
     Dim foundCount As Long
     Dim vorhandeneListe As String
@@ -43,11 +44,11 @@ Private Sub cmd_NeuesMitglied_Click()
     Set ws = ThisWorkbook.Worksheets("Mitgliederliste")
     
     ' 1) Parzellenauswahl (ersetzt frm_ParzelleAuswahl durch InputBox)
-    Parzelle = InputBox("Bitte geben Sie die Parzellennummer für das neue Mitglied ein (z.B. 1, 12a, 35b):", "Parzellenauswahl")
+    parzelle = InputBox("Bitte geben Sie die Parzellennummer für das neue Mitglied ein (z.B. 1, 12a, 35b):", "Parzellenauswahl")
     
-    Parzelle = Trim(Parzelle)
+    parzelle = Trim(parzelle)
 
-    If Parzelle = "" Then
+    If parzelle = "" Then
         ' Abbrechen gedrückt oder keine Eingabe -> Vorgang abbrechen
         Exit Sub
     End If
@@ -57,12 +58,8 @@ Private Sub cmd_NeuesMitglied_Click()
     vorhandeneListe = ""
     ersteZeile = 0
     
-    ' ACHTUNG: Die Spalten-Indizes sind in den Konstanten in mod_Hilfsfunktionen definiert
-    ' Hier werden hartkodierte Spalten (2, 5, 6 etc.) verwendet.
-    ' Wir sollten diese im Zuge der nächsten Überarbeitung durch Konstanten ersetzen.
-    
     For r = 6 To ws.Cells(ws.Rows.Count, 2).End(xlUp).Row
-        If StrComp(Trim(ws.Cells(r, 2).Value), Parzelle, vbTextCompare) = 0 Then
+        If StrComp(Trim(ws.Cells(r, 2).Value), parzelle, vbTextCompare) = 0 Then
             foundCount = foundCount + 1
             If vorhandeneListe <> "" Then vorhandeneListe = vorhandeneListe & vbCrLf
             vorhandeneListe = vorhandeneListe & " - " & Trim(ws.Cells(r, 6).Value) & " " & Trim(ws.Cells(r, 5).Value) ' Vorname Nachname
@@ -73,7 +70,7 @@ Private Sub cmd_NeuesMitglied_Click()
     ' 3) Falls bereits Mitglieder auf dieser Parzelle: Liste anzeigen & Entscheidung erfragen
     If foundCount > 0 Then
         Dim Antwort As VbMsgBoxResult
-        Antwort = MsgBox("Auf Parzelle " & Parzelle & " sind bereits " & foundCount & " Mitglied(er) eingetragen:" & vbCrLf & vbCrLf & _
+        Antwort = MsgBox("Auf Parzelle " & parzelle & " sind bereits " & foundCount & " Mitglied(er) eingetragen:" & vbCrLf & vbCrLf & _
                              vorhandeneListe & vbCrLf & vbCrLf & "Möchten Sie trotzdem ein weiteres Mitglied anlegen?", vbYesNo + vbQuestion, "Parzelle belegt")
         If Antwort = vbNo Then Exit Sub
         
@@ -83,32 +80,28 @@ Private Sub cmd_NeuesMitglied_Click()
     
     ' 4) Jetzt vorbereitetes Formular öffnen und Felder vorbelegen:
     With frm_Mitgliedsdaten
+        ' Marker für den Anlege-Modus:
+        .Tag = "NEU" ' Setze Tag auf "NEU"
         
-        ' Ruft die Initialisierung auf (RowIndex = 0 bedeutet "NEU")
-        ' Alle Vorbelegungen geschehen nun IM Init_MemberData,
-        ' aber wir müssen die Adress-Übernahme von hier nach dort verschieben
-        ' oder die Felder hier füllen, BEVOR wir Init_MemberData aufrufen, um den Modus zu setzen.
-        ' Der sauberste Weg ist, die Übernahme-Logik HIER zu machen und dann das Formular zu zeigen.
-        
-        ' 5. Initialisierung: Setzt den Modus auf "NEU" und belegt Pachtbeginn
-        ' Wir müssen hier Init_MemberData aufrufen. Da diese Prozedur keinen Rückgabewert hat,
-        ' können wir sie nicht mit einer Zuweisung verwenden, sondern nur mit Call oder direktem Aufruf.
-        ' ACHTUNG: Init_MemberData erwartet nur einen RowIndex.
-        Call .Init_MemberData(0) ' RowIndex = 0 signalisiert Neuanlage
-        
-        ' 6. Daten, die HIER vorliegen, in die Textboxen schreiben (da sie jetzt sichtbar sind)
-        .cbo_Parzelle.Value = Parzelle ' Parzelle immer setzen
+        ' Alle Felder als ComboBox/TextBox sichtbar machen (Eingabemodus)
+        Call .SetMode(True, foundCount > 0 And uebernahme = vbYes) ' Ruft die neue Prozedur in frm_Mitgliedsdaten auf
 
+        ' Die vorhandenen Adressdaten übernehmen, falls gewünscht (wie im Originalcode)
         If foundCount > 0 And uebernahme = vbYes Then
-            ' Adressübernahme (Spalten 7 bis 11)
+            ' Adressübernahme (Spalten G bis J)
             .txt_Strasse.Value = ws.Cells(ersteZeile, 7).Value
             .txt_Nummer.Value = ws.Cells(ersteZeile, 8).Value
             .txt_PLZ.Value = ws.Cells(ersteZeile, 9).Value
             .txt_Wohnort.Value = ws.Cells(ersteZeile, 10).Value
+
+            ' Telefon (Spalte K)
             .txt_Telefon.Value = ws.Cells(ersteZeile, 11).Value
-            '.cbo_Seite.Value = ws.Cells(ersteZeile, 3).Value ' cbo_Seite entfernt
+
+            ' Seite (Spalte C)
+            .cbo_Seite.Value = ws.Cells(ersteZeile, 3).Value
         Else
-            ' Leeren der Felder, die in Init_MemberData(0) nicht geleert wurden
+            ' Alle nicht vorbelegten Felder müssen geleert werden, wenn keine Übernahme.
+            .cbo_Seite.Value = ""
             .txt_Strasse.Value = ""
             .txt_Nummer.Value = ""
             .txt_PLZ.Value = ""
@@ -116,7 +109,8 @@ Private Sub cmd_NeuesMitglied_Click()
             .txt_Telefon.Value = ""
         End If
         
-        ' Mobil und E-Mail immer setzen/leeren
+        ' Parzelle, Mobil, E-Mail immer setzen, da sie oben nicht übernommen werden
+        .cbo_Parzelle.Value = parzelle
         .txt_Mobil.Value = ""
         .txt_Email.Value = ""
         
@@ -128,15 +122,15 @@ End Sub
 
 
 ' ==========================================================
-' Prozedur: lst_Mitgliederliste_DblClick
+' Prozedur: lst_Mitgliederliste_DblClick (KORRIGIERT: Ruft OeffneMitgliedsDetails auf)
 ' Öffnet die Detailansicht
 ' ==========================================================
 Private Sub lst_Mitgliederliste_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
     Call OeffneMitgliedsDetails
 End Sub
-    
+ 
 ' ***************************************************************
-' NEUE PROZEDUR: Oeffnet die Details des ausgewaehlten Mitglieds
+' NEUE PROZEDUR: Oeffnet die Details des ausgewaehlten Mitglieds (Logik hier eingefügt)
 ' ***************************************************************
 Public Sub OeffneMitgliedsDetails()
 
@@ -168,28 +162,49 @@ Public Sub OeffneMitgliedsDetails()
         MsgBox "Fehler: Datenzeile in der Tabelle nicht gefunden.", vbCritical
         Exit Sub
     End If
-    
-    ' ***************************************************************
-    ' KORREKTUR: Verwende eine explizite Variable, um die UserForm zu instanziieren.
-    ' Dies umgeht mögliche Probleme mit der globalen Standardinstanz, die möglicherweise
-    ' nicht korrekt initialisiert wird, bevor Init_MemberData aufgerufen wird.
-    ' ***************************************************************
-    Dim Frm As frm_Mitgliedsdaten
-    Set Frm = New frm_Mitgliedsdaten
 
-    With Frm
+    With frm_Mitgliedsdaten
+        ' 1. Speichere die Tabellen-Zeile (wichtig für Bearbeiten/Löschen!)
+        .Tag = lRow ' Zeilennummer in der Mitgliederliste
         
-        ' HIER IST DIE WICHTIGE ÄNDERUNG:
-        ' Statt alle Labels und Textboxen hier manuell zu befüllen,
-        ' rufen wir nur Init_MemberData mit der gefundenen Zeilennummer auf.
-        ' Init_MemberData übernimmt das Laden, Setzen der Labels/Textboxen
-        ' und das Umschalten in den ANSICHT-Modus.
+        ' 2. Setze den Modus auf ANZEIGEN (Alle Label sichtbar, Buttons Ändern/Entfernen sichtbar)
+        Call .SetMode(False) ' Ruft die neue Prozedur in frm_Mitgliedsdaten auf
         
-        Call .Init_MemberData(lRow)
+        ' 3. Beschrifte alle Labels (Anzeigemodus)
+        .lbl_Parzelle.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 0)
+        .lbl_Seite.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 1)
+        .lbl_Anrede.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 2)
+        .lbl_Vorname.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 3)
+        .lbl_Nachname.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 4)
+        .lbl_Strasse.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 5)
+        .lbl_Nummer.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 6)
+        .lbl_PLZ.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 7)
+        .lbl_Wohnort.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 8)
+        .lbl_Telefon.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 9)
+        .lbl_Mobil.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 10)
+        .lbl_Geburtstag.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 11)
+        .lbl_Email.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 12)
+        .lbl_Funktion.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 13)
         
-        .Show
+        ' 4. Fülle die ComboBoxen/TextBoxen (Bearbeitungsmodus)
+        .cbo_Parzelle.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 0)
+        .cbo_Seite.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 1)
+        .cbo_Anrede.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 2)
+        .txt_Vorname.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 3)
+        .txt_Nachname.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 4)
+        .txt_Strasse.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 5)
+        .txt_Nummer.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 6)
+        .txt_PLZ.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 7)
+        .txt_Wohnort.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 8)
+        .txt_Telefon.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 9)
+        .txt_Mobil.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 10)
+        .txt_Geburtstag.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 11)
+        .txt_Email.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 12)
+        .cbo_Funktion.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 13)
         
     End With
+    
+    frm_Mitgliedsdaten.Show
     
 End Sub
 
@@ -257,7 +272,6 @@ End Sub
 Private Sub UserForm_Initialize()
     Me.StartUpPosition = 1
     With Me
-        ' ACHTUNG: Hier werden hartkodierte Bereiche verwendet (D2).
         .lbl_ListDatum.Caption = "Mitgliederliste vom:  " & Worksheets("Mitgliederliste").Range("D2")
     End With
     Call LoadListBoxData
@@ -269,6 +283,4 @@ End Sub
 Public Sub RefreshMitgliederListe()
     Call LoadListBoxData
 End Sub
-
-
 
