@@ -1,9 +1,0 @@
-# Temporäre Excel-Dateien
-*.xlsm
-*.xlsb
-*.xlsx
-project_exports/*.frx
-
-# Windows Systemdateien
-Thumbs.db
-.DS_Store
