@@ -17,9 +17,16 @@ Public Sub Anwende_Zebra_Formatierung(ByVal ws As Worksheet, ByVal startCol As L
 
     Dim rngFullData As Range
     Dim sFormula As String
+    Dim checkColLetter As String
+    Dim lastRow As Long
     
-    ' 1. Zielbereich definieren
-    Set rngFullData = ws.Range(ws.Cells(startRow, startCol), ws.Cells(1000, endCol))
+    ' 1. Zielbereich definieren - bis zur letzten gefüllten Zeile
+    lastRow = ws.Cells(ws.Rows.Count, dataCheckCol).End(xlUp).Row
+    If lastRow < startRow Then
+        Exit Sub ' Keine Daten vorhanden
+    End If
+    
+    Set rngFullData = ws.Range(ws.Cells(startRow, startCol), ws.Cells(lastRow, endCol))
     
     ' 2. Bestehende Regeln im BF-Bereich LÖSCHEN
     On Error Resume Next
@@ -29,17 +36,20 @@ Public Sub Anwende_Zebra_Formatierung(ByVal ws As Worksheet, ByVal startCol As L
     ' 3. Explizites Entfernen aller manuellen Zellfüllungen im Bereich
     rngFullData.Interior.color = xlNone
     
-    ' 4. Formel erstellen: =UND(NICHT(ISTLEER($[Prüfspalte][Startzeile])); REST(ZEILE();2)=0)
-    Dim checkColLetter As String
+    ' 4. Spalten-Buchstabe ermitteln für die Prüfspalte
     checkColLetter = Split(ws.Columns(dataCheckCol).Address(False, False), ":")(0)
     
-    sFormula = "=UND(NICHT(ISTLEER($" & checkColLetter & startRow & ")); REST(ZEILE();2)=0)"
+    ' 5. MOD-Formel für Zebra-Muster (mit ausgeblendeten Zeilen kompatibel)
+    sFormula = "=UND(NICHT(ISTLEER($" & checkColLetter & startRow & ")); MOD(ZEILE()-" & startRow & ";2)=1)"
     
+    ' 6. Bedingte Formatierung hinzufügen
+    On Error Resume Next
     With rngFullData.FormatConditions.Add(Type:=xlExpression, Formula1:=sFormula)
         .Interior.color = ZEBRA_COLOR
-        .StopIfTrue = True
+        .StopIfTrue = False
         .Priority = 1
     End With
+    On Error GoTo 0
 
 End Sub
 
@@ -126,14 +136,73 @@ ErrorHandler:
 End Sub
 
 ' ***************************************************************
+' PROZEDUR: Formatiere_Mitgliederhistorie (Formatierung für Historientabelle)
+' ***************************************************************
+Public Sub Formatiere_Mitgliederhistorie()
+    
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim rngData As Range
+    Dim wasProtected As Boolean
+    
+    On Error GoTo ErrorHandler
+    
+    Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
+    If ws Is Nothing Then Exit Sub
+    
+    wasProtected = ws.ProtectContents
+    If wasProtected Then ws.Unprotect PASSWORD:=PASSWORD
+    
+    lastRow = ws.Cells(ws.Rows.Count, H_COL_NACHNAME).End(xlUp).Row
+    If lastRow < H_START_ROW Then GoTo Cleanup
+    
+    ' Datenbereich für Formatierung
+    Set rngData = ws.Range(ws.Cells(H_START_ROW, H_COL_PARZELLE), ws.Cells(lastRow, H_COL_SYSTEMZEIT))
+    
+    ' --- 1. RAHMENLINIE (dünne schwarze Linien) ---
+    With rngData.Borders
+        .LineStyle = xlContinuous
+        .color = RGB(0, 0, 0)
+        .Weight = xlThin
+    End With
+    
+    ' --- 2. SPALTEN AUSRICHTUNG ---
+    With ws.Range(ws.Cells(H_START_ROW, H_COL_PARZELLE), ws.Cells(lastRow, H_COL_PARZELLE))
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+    
+    ' --- 3. DATUMSFORMATE ---
+    With ws.Range(ws.Cells(H_START_ROW, H_COL_AUST_DATUM), ws.Cells(lastRow, H_COL_AUST_DATUM))
+        .NumberFormat = "dd.mm.yyyy"
+    End With
+    
+    With ws.Range(ws.Cells(H_START_ROW, H_COL_SYSTEMZEIT), ws.Cells(lastRow, H_COL_SYSTEMZEIT))
+        .NumberFormat = "dd.mm.yyyy hh:mm:ss"
+    End With
+    
+    ' --- 4. ZEBRA-FORMATIERUNG ---
+    Call Anwende_Zebra_Formatierung(ws, H_COL_PARZELLE, H_COL_SYSTEMZEIT, H_START_ROW, H_COL_NACHNAME)
+
+Cleanup:
+    If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    Exit Sub
+ErrorHandler:
+    If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    MsgBox "Fehler beim Formatieren der Mitgliederhistorie: " & Err.Description, vbCritical
+End Sub
+
+' ***************************************************************
 ' PROZEDUR: Formatiere_Alle_Tabellen_Neu (Zentrale Formatierungs-Koordination)
 ' ***************************************************************
 Public Sub Formatiere_Alle_Tabellen_Neu()
 
     Dim wsM As Worksheet
     Dim wsD As Worksheet
+    Dim wsH As Worksheet
     Dim wasProtectedM As Boolean
     Dim wasProtectedD As Boolean
+    Dim wasProtectedH As Boolean
 
     Application.ScreenUpdating = False
     Application.EnableEvents = False
@@ -146,7 +215,7 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         wasProtectedM = wsM.ProtectContents
         If wasProtectedM Then wsM.Unprotect PASSWORD:=PASSWORD
         
-        ' Zebra-Formatierung (A bis Q)
+        ' Zebra-Formatierung (A bis Q, Prüfspalte: Nachname)
         Call Anwende_Zebra_Formatierung(wsM, M_COL_MEMBER_ID, M_COL_PACHTENDE, M_START_ROW, M_COL_NACHNAME)
         
         ' Spezielle Formatierungen (Borders, Alignment, etc.)
@@ -155,7 +224,19 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         If wasProtectedM Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     End If
     
-    ' 2. Datenblatt (WS_DATEN) - Kategorie-Regeln
+    ' 2. Mitgliederhistorie (WS_MITGLIEDER_HISTORIE)
+    Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
+    If Not wsH Is Nothing Then
+        wasProtectedH = wsH.ProtectContents
+        If wasProtectedH Then wsH.Unprotect PASSWORD:=PASSWORD
+        
+        ' Formatierung für Historientabelle
+        Call Formatiere_Mitgliederhistorie
+        
+        If wasProtectedH Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    End If
+    
+    ' 3. Datenblatt (WS_DATEN) - Kategorie-Regeln
     Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
     If Not wsD Is Nothing Then
         wasProtectedD = wsD.ProtectContents
@@ -165,7 +246,6 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         Call Anwende_Zebra_Formatierung(wsD, DATA_CAT_COL_START, DATA_CAT_COL_END, DATA_START_ROW, DATA_CAT_COL_START)
         
         ' BF 2: EntityKey/Mapping-Tabelle (S bis U, Startzeile 4, Prüfspalte S)
-        ' WICHTIG: Nur bis Spalte U (21) wegen Ampel-Logik für die Farben!
         Call Anwende_Zebra_Formatierung(wsD, DATA_MAP_COL_ENTITYKEY, 21, DATA_START_ROW, DATA_MAP_COL_ENTITYKEY)
         
         If wasProtectedD Then wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True

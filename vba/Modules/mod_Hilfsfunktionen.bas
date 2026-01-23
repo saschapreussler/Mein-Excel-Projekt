@@ -79,7 +79,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
         If tempRow > 1 Then ' Zeile 1 enthält die Header/Erste Zeile des kopierten Bereichs
             For i = 2 To tempRow
                 ' Spalte D: Nachname, Vorname (wird im Dropdown angezeigt)
-                wsTemp.Cells(i, 4).Value = wsTemp.Cells(i, 1).Value & ", " & wsTemp.Cells(i, 2).Value
+                wsTemp.Cells(i, 4).value = wsTemp.Cells(i, 1).value & ", " & wsTemp.Cells(i, 2).value
             Next i
             
             ' 4. Benannten Bereich erstellen/aktualisieren (Spalte D, ab Zeile 2)

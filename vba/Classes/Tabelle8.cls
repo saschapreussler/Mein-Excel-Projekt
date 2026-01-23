@@ -50,10 +50,10 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     ' --- 2. Kategorie und neuen Wert ermitteln ---
     
     ' Kategorie ist immer in Spalte J (10) in der gleichen Zeile wie Target
-    cat = Trim(CStr(Me.Cells(Target.Row, COL_KATEGORIE).Value))
+    cat = Trim(CStr(Me.Cells(Target.Row, COL_KATEGORIE).value))
     If cat = "" Then Exit Sub ' Keine Kategorie, keine Prüfung
     
-    targetValue = Me.Cells(Target.Row, Target.Column).Value
+    targetValue = Me.Cells(Target.Row, Target.Column).value
 
     ' --- 3. Referenzwert suchen ---
     
@@ -62,11 +62,11 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     ' Schleife durch alle Zellen in Spalte J, die Teil des Bereichs sind
     For Each r In Intersect(Me.Columns(COL_KATEGORIE), rng_KategorieRegeln).Cells
         
-        If Trim(CStr(r.Value)) = cat Then ' Gleiche Kategorie gefunden
+        If Trim(CStr(r.value)) = cat Then ' Gleiche Kategorie gefunden
             
             Dim currentValue As Variant
             ' Wert in der aktuellen Prüfspalte (Target.Column) der Zeile von r
-            currentValue = Me.Cells(r.Row, Target.Column).Value
+            currentValue = Me.Cells(r.Row, Target.Column).value
 
             ' Wenn ein nicht leerer Wert gefunden wird, der NICHT die gerade geänderte Zelle ist
             If Not IsEmpty(currentValue) And Len(Trim(CStr(currentValue))) > 0 Then

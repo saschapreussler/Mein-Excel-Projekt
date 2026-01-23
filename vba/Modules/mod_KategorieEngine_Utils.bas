@@ -13,7 +13,7 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
                            ByVal confidence As String)
 
     With targetCell
-        .Value = category
+        .value = category
         .Font.color = vbBlack
         .Interior.Pattern = xlSolid
 

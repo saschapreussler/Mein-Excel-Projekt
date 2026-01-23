@@ -80,15 +80,15 @@ Private Sub cbo_RechnungsMonat_Change()
         If Me.cbo_RechnungsMonat.ListIndex = -1 Then GoTo SafeExit
         
         ' Abrechnungsjahr lesen
-        If IsNumeric(wsStart.Range("F1").Value) Then
-            jahr = CLng(wsStart.Range("F1").Value)
+        If IsNumeric(wsStart.Range("F1").value) Then
+            jahr = CLng(wsStart.Range("F1").value)
         Else
             MsgBox "Fehler: Ungültiges Abrechnungsjahr in Startmenü!F1", vbCritical
             GoTo SafeExit
         End If
         
         ' Monatsindex bestimmen
-        Select Case Me.cbo_RechnungsMonat.Value
+        Select Case Me.cbo_RechnungsMonat.value
             Case "ganzes Jahr"
                 monatsIndex = 0
             Case "Januar": monatsIndex = 1
@@ -109,7 +109,7 @@ Private Sub cbo_RechnungsMonat_Change()
         
         ' Monat in Hilfszelle AG4 schreiben
         ' 0 = ganzes Jahr, 1-12 = jeweiliger Monat
-        wsDaten.Range("AG4").Value = monatsIndex
+        wsDaten.Range("AG4").value = monatsIndex
         
         ' Letzte Datenzeile ermitteln
         letzteDatenZeile = .Cells(.Rows.Count, "A").End(xlUp).Row
@@ -117,13 +117,13 @@ Private Sub cbo_RechnungsMonat_Change()
         If letzteDatenZeile < ersteDatenZeile Then
             MsgBox "Keine Kontoauszüge für diesen Monat vorhanden.", vbInformation
             Me.cbo_RechnungsMonat.ListIndex = 0
-            wsDaten.Range("AG4").Value = 0 ' zurück auf ganzes Jahr
+            wsDaten.Range("AG4").value = 0 ' zurück auf ganzes Jahr
             GoTo SafeExit
         End If
         
         Set rngFilterBereich = .Range("A" & ersteZeileFilterbereich & ":A" & letzteDatenZeile)
         
-        .Range("C25").Value = "Auszug: " & Me.cbo_RechnungsMonat.Value & " " & jahr
+        .Range("C25").value = "Auszug: " & Me.cbo_RechnungsMonat.value & " " & jahr
         
         ' Datumsgrenzen nur wenn nicht "ganzes Jahr"
         If monatsIndex > 0 Then
@@ -148,7 +148,7 @@ Private Sub cbo_RechnungsMonat_Change()
             MsgBox "Keine Kontoauszüge für diesen Monat vorhanden.", vbInformation
             .ShowAllData
             Me.cbo_RechnungsMonat.ListIndex = 0
-            wsDaten.Range("AG4").Value = 0
+            wsDaten.Range("AG4").value = 0
         End If
         
     End With

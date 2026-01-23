@@ -5,9 +5,9 @@ Public Function NormalizeBankkontoZeile(ByVal wsBK As Worksheet, _
                                          ByVal rowBK As Long) As String
     Dim rawText As String
     rawText = _
-        Trim(wsBK.Cells(rowBK, BK_COL_NAME).Value) & " " & _
-        Trim(wsBK.Cells(rowBK, BK_COL_VERWENDUNGSZWECK).Value) & " " & _
-        Trim(wsBK.Cells(rowBK, BK_COL_BUCHUNGSTEXT).Value)
+        Trim(wsBK.Cells(rowBK, BK_COL_NAME).value) & " " & _
+        Trim(wsBK.Cells(rowBK, BK_COL_VERWENDUNGSZWECK).value) & " " & _
+        Trim(wsBK.Cells(rowBK, BK_COL_BUCHUNGSTEXT).value)
 
     NormalizeBankkontoZeile = NormalizeText(rawText)
 End Function

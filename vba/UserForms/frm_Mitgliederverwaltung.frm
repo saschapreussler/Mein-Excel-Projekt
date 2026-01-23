@@ -15,100 +15,44 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 Option Explicit
 
-' ==========================================================
-' Prozedur: cmd_MitgliedEdit_Click
-' Ruft die DblClick-Logik auf, wenn ein Element ausgewählt ist
-' ==========================================================
 Private Sub cmd_MitgliedEdit_Click()
     If Me.lst_Mitgliederliste.ListIndex >= 0 Then
-        Call OeffneMitgliedsDetails ' Ruft die ausgelagerte Logik auf
+        Call OeffneMitgliedsDetails
     Else
         MsgBox "Bitte wählen Sie zuerst ein Mitglied aus der Liste aus.", vbExclamation
     End If
 End Sub
 
-' ==========================================================
-' Prozedur: cmd_NeuesMitglied_Click
-' Erstellt ein neues Mitglied und übergibt Vorbelegungen an frm_Mitgliedsdaten
-' ==========================================================
 Private Sub cmd_NeuesMitglied_Click()
-
-    Dim ws As Worksheet
-    Dim parzelle As String
-    Dim r As Long
-    Dim foundCount As Long
-    Dim vorhandeneListe As String
-    Dim ersteZeile As Long
-    Dim uebernahme As VbMsgBoxResult
+    ' === NEUES DESIGN: Keine InputBox mehr - Form direkt öffnen ===
+    ' Die Parzelle wird auf der frm_Mitgliedsdaten eingegeben
+    ' "Mitglied ohne Pacht" kann auch leer bleiben
     
-    Set ws = ThisWorkbook.Worksheets("Mitgliederliste")
-    
-    ' 1) Parzellenauswahl
-    parzelle = InputBox("Bitte geben Sie die Parzellennummer für das neue Mitglied ein (z.B. 1, 12a, 35b):", "Parzellenauswahl")
-    
-    parzelle = Trim(parzelle)
-
-    If parzelle = "" Then
-        ' Abbrechen gedrückt oder keine Eingabe -> Vorgang abbrechen
-        Exit Sub
-    End If
-    
-    ' 2) Mitglieder mit dieser Parzelle suchen (Spalte B)
-    foundCount = 0
-    vorhandeneListe = ""
-    ersteZeile = 0
-    
-    For r = 6 To ws.Cells(ws.Rows.Count, 2).End(xlUp).Row
-        If StrComp(Trim(ws.Cells(r, 2).Value), parzelle, vbTextCompare) = 0 Then
-            foundCount = foundCount + 1
-            If vorhandeneListe <> "" Then vorhandeneListe = vorhandeneListe & vbCrLf
-            vorhandeneListe = vorhandeneListe & " - " & Trim(ws.Cells(r, 6).Value) & " " & Trim(ws.Cells(r, 5).Value) ' Vorname Nachname
-            If ersteZeile = 0 Then ersteZeile = r ' Zeile des ersten gefundenen Mitglieds merken
-        End If
-    Next r
-    
-    ' 3) Falls bereits Mitglieder auf dieser Parzelle: Liste anzeigen & Entscheidung erfragen
-    If foundCount > 0 Then
-        Dim antwort As VbMsgBoxResult
-        antwort = MsgBox("Auf Parzelle " & parzelle & " sind bereits " & foundCount & " Mitglied(er) eingetragen:" & vbCrLf & vbCrLf & _
-                             vorhandeneListe & vbCrLf & vbCrLf & "Möchten Sie trotzdem ein weiteres Mitglied anlegen?", vbYesNo + vbQuestion, "Parzelle belegt")
-        If antwort = vbNo Then Exit Sub
-        
-        ' Frage: Adresse von vorhandenem übernehmen?
-        uebernahme = MsgBox("Sollen die Adressdaten (Straße, Nr., PLZ, Ort, Telefon etc.) des ersten vorhandenen Mitglieds übernommen werden?", vbYesNo + vbQuestion, "Adresse übernehmen")
-    End If
-    
-    ' 4) Formular öffnen und Felder vorbelegen
     With frm_Mitgliedsdaten
         ' Marker für den Anlage-Modus
         .Tag = "NEU"
         
         ' Alle Felder als TextBox/ComboBox sichtbar machen (Eingabemodus)
-        Call .SetMode(True, foundCount > 0 And uebernahme = vbYes)
-
-        ' Die vorhandenen Adressdaten übernehmen, falls gewünscht
-        If foundCount > 0 And uebernahme = vbYes Then
-            ' Adressübernahme (Spalten G bis J)
-            .txt_Strasse.Value = ws.Cells(ersteZeile, 7).Value
-            .txt_Nummer.Value = ws.Cells(ersteZeile, 8).Value
-            .txt_PLZ.Value = ws.Cells(ersteZeile, 9).Value
-            .txt_Wohnort.Value = ws.Cells(ersteZeile, 10).Value
-
-            ' Telefon (Spalte K)
-            .txt_Telefon.Value = ws.Cells(ersteZeile, 11).Value
-        Else
-            ' Alle nicht vorbelegten Felder müssen geleert werden, wenn keine Übernahme
-            .txt_Strasse.Value = ""
-            .txt_Nummer.Value = ""
-            .txt_PLZ.Value = ""
-            .txt_Wohnort.Value = ""
-            .txt_Telefon.Value = ""
-        End If
+        ' IsNewEntry=True: Pachtanfang wird mit aktuellem Datum vorgefüllt
+        Call .SetMode(True, True, False)
         
-        ' Parzelle, Mobil, E-Mail immer setzen
-        .cbo_Parzelle.Value = parzelle
-        .txt_Mobil.Value = ""
-        .txt_Email.Value = ""
+        ' Alle Felder leeren/zurücksetzen
+        .cbo_Parzelle.value = ""
+        .cbo_Anrede.value = ""
+        .txt_Vorname.value = ""
+        .txt_Nachname.value = ""
+        .txt_Strasse.value = ""
+        .txt_Nummer.value = ""
+        .txt_PLZ.value = ""
+        .txt_Wohnort.value = ""
+        .txt_Telefon.value = ""
+        .txt_Mobil.value = ""
+        .txt_Geburtstag.value = ""
+        .txt_Email.value = ""
+        .cbo_Funktion.value = ""
+        .txt_Pachtende.value = ""
+        
+        ' Pachtanfang ist bereits vorgefüllt (siehe SetMode mit IsNewEntry=True)
         
         ' Zeige Formular
         .Show
@@ -116,17 +60,10 @@ Private Sub cmd_NeuesMitglied_Click()
 
 End Sub
 
-' ==========================================================
-' Prozedur: lst_Mitgliederliste_DblClick
-' Öffnet die Detailansicht
-' ==========================================================
 Private Sub lst_Mitgliederliste_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
     Call OeffneMitgliedsDetails
 End Sub
- 
-' ***************************************************************
-' PROZEDUR: Öffnet die Details des ausgewählten Mitglieds
-' ***************************************************************
+
 Public Sub OeffneMitgliedsDetails()
 
     If Me.lst_Mitgliederliste.ListIndex < 0 Then Exit Sub
@@ -143,11 +80,10 @@ Public Sub OeffneMitgliedsDetails()
     NachnameToFind = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 4)
     lRow = 0
     
-    ' Suche die korrekte Zeile: Nach Parzelle (Spalte B) und Nachname (Spalte E)
     Dim r As Long
     For r = 6 To ws.Cells(ws.Rows.Count, 2).End(xlUp).Row
-        If StrComp(Trim(ws.Cells(r, 2).Value), ParzelleToFind, vbTextCompare) = 0 And _
-           StrComp(Trim(ws.Cells(r, 5).Value), NachnameToFind, vbTextCompare) = 0 Then
+        If StrComp(Trim(ws.Cells(r, 2).value), ParzelleToFind, vbTextCompare) = 0 And _
+           StrComp(Trim(ws.Cells(r, 5).value), NachnameToFind, vbTextCompare) = 0 Then
              lRow = r
              Exit For
         End If
@@ -159,13 +95,10 @@ Public Sub OeffneMitgliedsDetails()
     End If
 
     With frm_Mitgliedsdaten
-        ' 1. Speichere die Tabellen-Zeile (wichtig für Bearbeiten/Löschen)
         .Tag = lRow
         
-        ' 2. Setze den Modus auf ANZEIGEN
         Call .SetMode(False)
         
-        ' 3. Beschrifte alle Labels (Anzeigemodus)
         .lbl_Parzelle.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 0)
         .lbl_Anrede.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 2)
         .lbl_Vorname.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 3)
@@ -180,20 +113,19 @@ Public Sub OeffneMitgliedsDetails()
         .lbl_Email.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 12)
         .lbl_Funktion.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 13)
         
-        ' 4. Fülle die ComboBoxen/TextBoxen (Bearbeitungsmodus)
-        .cbo_Parzelle.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 0)
-        .cbo_Anrede.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 2)
-        .txt_Vorname.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 3)
-        .txt_Nachname.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 4)
-        .txt_Strasse.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 5)
-        .txt_Nummer.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 6)
-        .txt_PLZ.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 7)
-        .txt_Wohnort.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 8)
-        .txt_Telefon.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 9)
-        .txt_Mobil.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 10)
-        .txt_Geburtstag.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 11)
-        .txt_Email.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 12)
-        .cbo_Funktion.Value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 13)
+        .cbo_Parzelle.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 0)
+        .cbo_Anrede.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 2)
+        .txt_Vorname.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 3)
+        .txt_Nachname.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 4)
+        .txt_Strasse.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 5)
+        .txt_Nummer.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 6)
+        .txt_PLZ.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 7)
+        .txt_Wohnort.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 8)
+        .txt_Telefon.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 9)
+        .txt_Mobil.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 10)
+        .txt_Geburtstag.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 11)
+        .txt_Email.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 12)
+        .cbo_Funktion.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 13)
         
     End With
     
@@ -203,6 +135,7 @@ End Sub
 
 ' ==========================================================
 ' PROZEDUR: Befüllt die ListBox mit Mitgliederdaten
+' WICHTIG: Filtert ausgetretene Mitglieder aus (Pachtende nicht leer)
 ' ==========================================================
 Private Sub LoadListBoxData()
     Dim iZeile As Long
@@ -215,8 +148,15 @@ Private Sub LoadListBoxData()
     AnzArr = 0
     
     With Worksheets("Mitgliederliste")
+        ' ZÄHLE zuerst die aktiven Mitglieder (Pachtende LEER und Parzelle nicht leer/nicht "Verein")
         For iZeile = 6 To .Cells(.Rows.Count, 2).End(xlUp).Row
-            If Trim(.Cells(iZeile, 2).Value) <> "" And StrComp(Trim(.Cells(iZeile, 2).Value), "Verein", vbTextCompare) <> 0 Then
+            ' Bedingungen:
+            ' 1. Parzelle nicht leer
+            ' 2. Parzelle nicht "Verein"
+            ' 3. Pachtende LEER (= aktives Mitglied, nicht ausgetreten)
+            If Trim(.Cells(iZeile, 2).value) <> "" And _
+               StrComp(Trim(.Cells(iZeile, 2).value), "Verein", vbTextCompare) <> 0 And _
+               Trim(.Cells(iZeile, M_COL_PACHTENDE).value) = "" Then
                 AnzArr = AnzArr + 1
             End If
         Next iZeile
@@ -230,23 +170,26 @@ Private Sub LoadListBoxData()
         
         AnzArr = 0
         
+        ' FÜLLE die aktiven Mitglieder in das Array
         For iZeile = 6 To .Cells(.Rows.Count, 2).End(xlUp).Row
-            If Trim(.Cells(iZeile, 2).Value) <> "" And StrComp(Trim(.Cells(iZeile, 2).Value), "Verein", vbTextCompare) <> 0 Then
+            If Trim(.Cells(iZeile, 2).value) <> "" And _
+               StrComp(Trim(.Cells(iZeile, 2).value), "Verein", vbTextCompare) <> 0 And _
+               Trim(.Cells(iZeile, M_COL_PACHTENDE).value) = "" Then
                 
-                arr(AnzArr, 0) = .Cells(iZeile, 2).Value    ' B: Parzelle
-                arr(AnzArr, 1) = .Cells(iZeile, 3).Value    ' C: Seite (wird nur angezeigt, nicht bearbeitet)
-                arr(AnzArr, 2) = .Cells(iZeile, 4).Value    ' D: Anrede
-                arr(AnzArr, 3) = .Cells(iZeile, 6).Value    ' F: Vorname
-                arr(AnzArr, 4) = .Cells(iZeile, 5).Value    ' E: Nachname
-                arr(AnzArr, 5) = .Cells(iZeile, 7).Value    ' G: Strasse
-                arr(AnzArr, 6) = .Cells(iZeile, 8).Value    ' H: Nummer
-                arr(AnzArr, 7) = .Cells(iZeile, 9).Value    ' I: PLZ
-                arr(AnzArr, 8) = .Cells(iZeile, 10).Value   ' J: Wohnort
-                arr(AnzArr, 9) = .Cells(iZeile, 11).Value   ' K: Telefon
-                arr(AnzArr, 10) = .Cells(iZeile, 12).Value  ' L: Mobil
-                arr(AnzArr, 11) = .Cells(iZeile, 13).Value  ' M: Geburtstag
-                arr(AnzArr, 12) = .Cells(iZeile, 14).Value  ' N: Email
-                arr(AnzArr, 13) = .Cells(iZeile, 15).Value  ' O: Funktion
+                arr(AnzArr, 0) = .Cells(iZeile, 2).value    ' B: Parzelle
+                arr(AnzArr, 1) = .Cells(iZeile, 3).value    ' C: Seite (wird nur angezeigt, nicht bearbeitet)
+                arr(AnzArr, 2) = .Cells(iZeile, 4).value    ' D: Anrede
+                arr(AnzArr, 3) = .Cells(iZeile, 6).value    ' F: Vorname
+                arr(AnzArr, 4) = .Cells(iZeile, 5).value    ' E: Nachname
+                arr(AnzArr, 5) = .Cells(iZeile, 7).value    ' G: Strasse
+                arr(AnzArr, 6) = .Cells(iZeile, 8).value    ' H: Nummer
+                arr(AnzArr, 7) = .Cells(iZeile, 9).value    ' I: PLZ
+                arr(AnzArr, 8) = .Cells(iZeile, 10).value   ' J: Wohnort
+                arr(AnzArr, 9) = .Cells(iZeile, 11).value   ' K: Telefon
+                arr(AnzArr, 10) = .Cells(iZeile, 12).value  ' L: Mobil
+                arr(AnzArr, 11) = .Cells(iZeile, 13).value  ' M: Geburtstag
+                arr(AnzArr, 12) = .Cells(iZeile, 14).value  ' N: Email
+                arr(AnzArr, 13) = .Cells(iZeile, 15).value  ' O: Funktion
                 
                 AnzArr = AnzArr + 1
             End If
@@ -255,10 +198,6 @@ Private Sub LoadListBoxData()
         lst_Mitgliederliste.List = arr
     End With
 End Sub
-
-' ==========================================================
-' Prozedur: UserForm_Initialize
-' ==========================================================
 Private Sub UserForm_Initialize()
     Me.StartUpPosition = 1
     With Me
@@ -267,9 +206,6 @@ Private Sub UserForm_Initialize()
     Call LoadListBoxData
 End Sub
 
-' ==========================================================
-' Prozedur: RefreshMitgliederListe
-' ==========================================================
 Public Sub RefreshMitgliederListe()
     Call LoadListBoxData
 End Sub

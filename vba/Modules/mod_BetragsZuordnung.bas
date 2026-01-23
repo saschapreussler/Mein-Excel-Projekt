@@ -12,11 +12,11 @@ Public Sub ApplyBetragsZuordnung(ByVal wsBK As Worksheet, _
                                  ByVal rowBK As Long)
 
     Dim betrag As Double
-    betrag = wsBK.Cells(rowBK, BK_COL_BETRAG).Value
+    betrag = wsBK.Cells(rowBK, BK_COL_BETRAG).value
     If betrag = 0 Then Exit Sub
 
     Dim category As String
-    category = Trim(wsBK.Cells(rowBK, BK_COL_KATEGORIE).Value)
+    category = Trim(wsBK.Cells(rowBK, BK_COL_KATEGORIE).value)
     If category = "" Then Exit Sub
 
     ' ROT = manuelle Nacharbeit ? keine Automatik
@@ -27,7 +27,7 @@ Public Sub ApplyBetragsZuordnung(ByVal wsBK As Worksheet, _
     targetHeader = GetTargetHeaderByCategory(category)
 
     If targetHeader = "" Then
-        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).Value = _
+        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
             "Keine Zielspalte für Kategorie definiert"
         MarkKategorieRed wsBK, rowBK
         Exit Sub
@@ -44,14 +44,14 @@ Public Sub ApplyBetragsZuordnung(ByVal wsBK As Worksheet, _
     End If
 
     If targetCol = 0 Then
-        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).Value = _
+        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
             "Zielspalte '" & targetHeader & "' nicht im passenden Bereich gefunden"
         MarkKategorieRed wsBK, rowBK
         Exit Sub
     End If
 
     ' Betrag eintragen
-    wsBK.Cells(rowBK, targetCol).Value = betrag
+    wsBK.Cells(rowBK, targetCol).value = betrag
 
 End Sub
 
@@ -68,8 +68,8 @@ Private Function GetTargetHeaderByCategory(ByVal category As String) As String
 
     Dim r As Long
     For r = DATA_START_ROW To lastRow
-        If Trim(wsRules.Cells(r, 10).Value) = category Then
-            GetTargetHeaderByCategory = Trim(wsRules.Cells(r, 14).Value) ' Spalte N
+        If Trim(wsRules.Cells(r, 10).value) = category Then
+            GetTargetHeaderByCategory = Trim(wsRules.Cells(r, 14).value) ' Spalte N
             Exit Function
         End If
     Next r
@@ -86,7 +86,7 @@ Private Function FindBankkontoColumnByHeader(ByVal wsBK As Worksheet, _
                                              ByVal lastCol As Long) As Long
     Dim c As Long
     For c = firstCol To lastCol
-        If Trim(wsBK.Cells(27, c).Value) = headerText Then
+        If Trim(wsBK.Cells(27, c).value) = headerText Then
             FindBankkontoColumnByHeader = c
             Exit Function
         End If

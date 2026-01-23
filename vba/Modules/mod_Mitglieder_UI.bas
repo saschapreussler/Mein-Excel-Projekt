@@ -14,7 +14,7 @@ Public Sub AktualisiereDatenstand()
     If Not ws Is Nothing Then
         ws.Unprotect PASSWORD:=PASSWORD
         With ws.Cells(M_STAND_ROW, M_STAND_COL)
-            .Value = Now
+            .value = Now
         End With
         ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Else
@@ -47,16 +47,16 @@ Public Sub Fuelle_MemberIDs_Wenn_Fehlend()
     Application.ScreenUpdating = False
     
     ' Header setzen
-    wsM.Cells(M_HEADER_ROW, M_COL_MEMBER_ID).Value = "Member ID"
+    wsM.Cells(M_HEADER_ROW, M_COL_MEMBER_ID).value = "Member ID"
     
     ' Schleife durch alle Zeilen ab M_START_ROW
     For lRow = M_START_ROW To lastRow
         ' Prüfen, ob eine MemberID fehlt und ob der Datensatz nicht leer ist
-        If wsM.Cells(lRow, M_COL_MEMBER_ID).Value = "" And _
-           wsM.Cells(lRow, M_COL_NACHNAME).Value <> "" Then
+        If wsM.Cells(lRow, M_COL_MEMBER_ID).value = "" And _
+           wsM.Cells(lRow, M_COL_NACHNAME).value <> "" Then
             
             ' GUID generieren und eintragen
-            wsM.Cells(lRow, M_COL_MEMBER_ID).Value = CreateGUID_Public()
+            wsM.Cells(lRow, M_COL_MEMBER_ID).value = CreateGUID_Public()
         End If
     Next lRow
     
@@ -110,7 +110,7 @@ Public Sub ApplyMitgliederDropdowns()
     Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_PARZELLE), ws.Cells(1000, M_COL_PARZELLE)), "=Daten!$F$4:$F$18", True)
     Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_SEITE), ws.Cells(1000, M_COL_SEITE)), "=Daten!$H$4:$H$6", True)
     Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_ANREDE), ws.Cells(1000, M_COL_ANREDE)), "=Daten!$D$4:$D$9", True)
-    Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_FUNKTION), ws.Cells(1000, M_COL_FUNKTION)), "=Daten!$B$4:$B$11", True)
+    Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_FUNKTION), ws.Cells(1000, M_COL_FUNKTION)), "=Daten!$B$4:$B$12", True)
 
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Exit Sub
@@ -211,7 +211,7 @@ Public Function GetEntityKeyByParzelle(ByVal ParzelleNr As String) As String
     Set rngFind = rngFind.Find(What:=ParzelleNr, LookIn:=xlValues, LookAt:=xlWhole)
     
     If Not rngFind Is Nothing Then
-        GetEntityKeyByParzelle = wsD.Cells(rngFind.Row, DATA_MAP_COL_ENTITYKEY).Value
+        GetEntityKeyByParzelle = wsD.Cells(rngFind.Row, DATA_MAP_COL_ENTITYKEY).value
     Else
         GetEntityKeyByParzelle = ""
     End If
@@ -226,6 +226,8 @@ End Function
 ' ***************************************************************
 ' PROZEDUR: Speichere_Historie_und_Aktualisiere_Mitgliederliste
 ' ***************************************************************
+' SICHERHEITSKRITISCH: Schützt die Verein-Parzelle vor Datenüberschreibung
+' ***************************************************************
 Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ByVal selectedRow As Long, _
     ByVal OldParzelle As String, _
@@ -239,6 +241,8 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     Dim wsM As Worksheet
     Dim wsH As Worksheet
     Dim NextRow As Long
+    Dim lastRow As Long
+    Dim iRow As Long
     
     Application.ScreenUpdating = False
     Application.EnableEvents = False
@@ -248,18 +252,26 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
     
+    ' === SICHERHEITSCHECK 1: selectedRow darf nicht die Verein-Parzelle sein ===
+    If selectedRow >= M_START_ROW Then
+        If Trim(wsM.Cells(selectedRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
+            MsgBox "FEHLER: Die Verein-Parzelle darf nicht geändert werden!", vbCritical
+            GoTo Cleanup
+        End If
+    End If
+    
     ' --- 1. HISTORIE SPEICHERN ---
     wsH.Unprotect PASSWORD:=PASSWORD
     NextRow = wsH.Cells(wsH.Rows.Count, H_COL_PARZELLE).End(xlUp).Row + 1
     If NextRow < H_START_ROW Then NextRow = H_START_ROW
     
-    wsH.Cells(NextRow, H_COL_PARZELLE).Value = OldParzelle
-    wsH.Cells(NextRow, H_COL_MITGL_ID).Value = OldMemberID
-    wsH.Cells(NextRow, H_COL_NACHNAME).Value = Nachname
-    wsH.Cells(NextRow, H_COL_AUST_DATUM).Value = AustrittsDatum
-    wsH.Cells(NextRow, H_COL_NEUER_PAECHTER_ID).Value = NewMemberID
-    wsH.Cells(NextRow, H_COL_GRUND).Value = ChangeReason
-    wsH.Cells(NextRow, H_COL_SYSTEMZEIT).Value = Now
+    wsH.Cells(NextRow, H_COL_PARZELLE).value = OldParzelle
+    wsH.Cells(NextRow, H_COL_MITGL_ID).value = OldMemberID
+    wsH.Cells(NextRow, H_COL_NACHNAME).value = Nachname
+    wsH.Cells(NextRow, H_COL_AUST_DATUM).value = AustrittsDatum
+    wsH.Cells(NextRow, H_COL_NEUER_PAECHTER_ID).value = NewMemberID
+    wsH.Cells(NextRow, H_COL_GRUND).value = ChangeReason
+    wsH.Cells(NextRow, H_COL_SYSTEMZEIT).value = Now
     
     wsH.Cells(NextRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
     wsH.Cells(NextRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
@@ -269,16 +281,35 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     wsM.Unprotect PASSWORD:=PASSWORD
     
     If ChangeReason = "Parzellenwechsel" And NewParzelleNr <> "" Then
-        wsM.Cells(selectedRow, M_COL_PARZELLE).Value = NewParzelleNr
+        ' === SICHERHEITSCHECK 2: NewParzelleNr darf nicht "Verein" sein ===
+        If Trim(NewParzelleNr) = PARZELLE_VEREIN Then
+            MsgBox "FEHLER: Austretende Mitglieder dürfen nicht zur Verein-Parzelle wechseln!", vbCritical
+            wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+            GoTo Cleanup
+        End If
+        
+        wsM.Cells(selectedRow, M_COL_PARZELLE).value = NewParzelleNr
+        
     ElseIf ChangeReason = "Austritt aus Parzelle" Then
-        wsM.Cells(selectedRow, M_COL_PARZELLE).Value = ""
-        wsM.Cells(selectedRow, M_COL_PACHTENDE).Value = AustrittsDatum
+        ' === SICHERHEITSCHECK 3: Stelle sicher, dass wir nicht die Verein-Parzelle antasten ===
+        If Trim(wsM.Cells(selectedRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
+            MsgBox "FEHLER: Die Verein-Parzelle kann nicht aufgelöst werden!", vbCritical
+            wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+            GoTo Cleanup
+        End If
+        
+        ' Setze Parzelle auf leer (Member ist ausgetreten)
+        wsM.Cells(selectedRow, M_COL_PARZELLE).value = ""
+        wsM.Cells(selectedRow, M_COL_PACHTENDE).value = AustrittsDatum
         wsM.Cells(selectedRow, M_COL_PACHTENDE).NumberFormat = "dd.mm.yyyy"
-        wsM.Cells(selectedRow, M_COL_FUNKTION).Value = AUSTRITT_STATUS
+        wsM.Cells(selectedRow, M_COL_FUNKTION).value = AUSTRITT_STATUS
     End If
     
     Call AktualisiereDatenstand
     wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    ' === SICHERHEITSCHECK 4: Verifikation vor Sortierung ===
+    Call VerifikationVereinsParzelleIntakt
     
     ' --- 3. AUFRÄUMEN & AKTUALISIERUNG ---
     On Error Resume Next
@@ -299,13 +330,54 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     MsgBox "Historien-Eintrag erfolgreich gespeichert und Mitgliederliste aktualisiert.", vbInformation
     
     Exit Sub
+    
+Cleanup:
+    If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    If Not wsH Is Nothing Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    Application.ScreenUpdating = True
+    Application.EnableEvents = True
+    Exit Sub
+    
 ErrorHandler:
     If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     If Not wsH Is Nothing Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     MsgBox "FEHLER BEI DER DATENVERARBEITUNG: " & Err.Description, vbCritical
-    
     Application.ScreenUpdating = True
     Application.EnableEvents = True
+End Sub
+
+' ***************************************************************
+' HILFSFUNKTION: Verifikation dass Verein-Parzelle intakt ist
+' ***************************************************************
+Private Sub VerifikationVereinsParzelleIntakt()
+    Dim ws As Worksheet
+    Dim lRow As Long
+    Dim vereinParzelleRow As Long
+    Dim vereinRowNachname As String
+    
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    
+    If ws Is Nothing Then Exit Sub
+    
+    vereinParzelleRow = 0
+    
+    ' Finde die Zeile mit "Verein"-Parzelle
+    For lRow = M_START_ROW To ws.Cells(ws.Rows.Count, M_COL_PARZELLE).End(xlUp).Row
+        If Trim(ws.Cells(lRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
+            vereinParzelleRow = lRow
+            vereinRowNachname = Trim(ws.Cells(lRow, M_COL_NACHNAME).value)
+            
+            ' SICHERHEITSPRÜFUNG: Die Verein-Zeile sollte leer sein oder nur spezielle Marker enthalten
+            ' Falls Nachname leer: OK
+            ' Falls Nachname nicht leer: Warnung (zeigt manuell übernommene Daten an)
+            If vereinRowNachname <> "" Then
+                ' Die Zeile hat Mitgliederdaten - dies sollte nicht passieren!
+                Debug.Print "WARNUNG: Verein-Parzelle-Zeile (" & vereinParzelleRow & ") enthält Mitgliederdaten: " & vereinRowNachname
+            End If
+            Exit For
+        End If
+    Next lRow
 End Sub
 
 ' ***************************************************************
@@ -325,4 +397,5 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False
     
 End Function
+
 

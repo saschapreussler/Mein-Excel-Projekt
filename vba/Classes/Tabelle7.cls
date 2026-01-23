@@ -54,13 +54,13 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 
             If rCell.Row >= M_START_ROW Then
 
-                parzelle = Trim(CStr(rCell.Value))
+                parzelle = Trim(CStr(rCell.value))
                 seite = ""
                 
                 ' NEUE LOGIK: Wenn Parzelle "Verein", setze Anrede auf "KGA" (Spalte D)
                 ' Verwendung von StrComp für robuste, fallunabhängige Prüfung
                 If StrComp(parzelle, PARZELLE_VEREIN, vbTextCompare) = 0 Then
-                    Me.Cells(rCell.Row, M_COL_ANREDE).Value = ANREDE_KGA
+                    Me.Cells(rCell.Row, M_COL_ANREDE).value = ANREDE_KGA
                 End If
 
                 ' Logik zur Füllung Spalte C (Seite)
@@ -78,7 +78,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                     seite = "mitte"
                 End If
 
-                Me.Cells(rCell.Row, M_COL_SEITE).Value = seite
+                Me.Cells(rCell.Row, M_COL_SEITE).value = seite
             End If
         Next rCell
     End If
@@ -97,13 +97,13 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                 Dim AustrittsZelle As Range
                 Set AustrittsZelle = Me.Cells(cCell.Row, M_COL_AUSTRITT)
                 
-                If StrComp(Trim(CStr(cCell.Value)), AUSTRITT_STATUS, vbTextCompare) = 0 Then
-                    If IsEmpty(AustrittsZelle.Value) Then
-                        AustrittsZelle.Value = Date
+                If StrComp(Trim(CStr(cCell.value)), AUSTRITT_STATUS, vbTextCompare) = 0 Then
+                    If IsEmpty(AustrittsZelle.value) Then
+                        AustrittsZelle.value = Date
                         AustrittsZelle.NumberFormat = "DD.MM.YYYY"
                     End If
                 Else
-                    If Not IsEmpty(AustrittsZelle.Value) Then
+                    If Not IsEmpty(AustrittsZelle.value) Then
                         AustrittsZelle.ClearContents
                     End If
                 End If

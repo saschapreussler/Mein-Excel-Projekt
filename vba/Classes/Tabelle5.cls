@@ -41,7 +41,7 @@ Private Sub Worksheet_Activate()
         End If
         
         ' Rufen Sie SetModus auf
-        If ToggleControl.Value = True Then
+        If ToggleControl.value = True Then
             Debug.Print "Worksheet_Activate: Aufruf SetModus('NETTO')"
             Call SetModus("NETTO")
         Else
@@ -120,7 +120,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         If Not ToggleControl Is Nothing Then
             
             ' A. Netto/Brutto-Werte neu berechnen (Neue Logik)
-            If ToggleControl.Value = True Then ' NETTO Modus
+            If ToggleControl.value = True Then ' NETTO Modus
                 If Not Intersect(Target, Me.Range("B5,K2:K3")) Is Nothing Then Call RechneAlleZeilen("NETTO")
             Else ' BRUTTO Modus
                 If Not Intersect(Target, Me.Range("B5,M2:M3")) Is Nothing Then Call RechneAlleZeilen("BRUTTO")
@@ -175,7 +175,7 @@ Private Sub ToggleNettoBrutto_Click()
     Application.EnableEvents = False
     Application.ScreenUpdating = False
     
-    If ToggleNettoBrutto.Value = True Then
+    If ToggleNettoBrutto.value = True Then
         Call SetModus("NETTO")
     Else
         Call SetModus("BRUTTO")
@@ -247,8 +247,8 @@ Private Sub RechneAlleZeilen(modus As String)
     Dim nettoVal As Variant, bruttoVal As Variant, mwstVal As Double
     
     ' MwSt-Satz in B5 lesen
-    If IsNumeric(Me.Range("B5").Value) Then
-        mwstSatz = CDbl(Me.Range("B5").Value)
+    If IsNumeric(Me.Range("B5").value) Then
+        mwstSatz = CDbl(Me.Range("B5").value)
         If mwstSatz >= 1 And mwstSatz <= 100 Then
             mwstSatz = mwstSatz / 100
         End If
@@ -265,15 +265,15 @@ Private Sub RechneAlleZeilen(modus As String)
             Exit Sub
         End If
         
-        nettoVal = Me.Cells(r, "K").Value
-        bruttoVal = Me.Cells(r, "M").Value
+        nettoVal = Me.Cells(r, "K").value
+        bruttoVal = Me.Cells(r, "M").value
         
         If UCase(modus) = "NETTO" Then
             ' Eingabe in NETTO (K)
             If IsNumeric(nettoVal) And Trim(CStr(nettoVal)) <> "" And CDbl(nettoVal) <> 0 Then
                 mwstVal = CDbl(nettoVal) * mwstSatz
-                Me.Cells(r, "L").Value = mwstVal
-                Me.Cells(r, "M").Value = CDbl(nettoVal) + mwstVal
+                Me.Cells(r, "L").value = mwstVal
+                Me.Cells(r, "M").value = CDbl(nettoVal) + mwstVal
             Else
                 Me.Cells(r, "L").ClearContents
                 Me.Cells(r, "M").ClearContents
@@ -283,8 +283,8 @@ Private Sub RechneAlleZeilen(modus As String)
             If IsNumeric(bruttoVal) And Trim(CStr(bruttoVal)) <> "" And CDbl(bruttoVal) <> 0 Then
                 nettoVal = CDbl(bruttoVal) / (1 + mwstSatz)
                 mwstVal = CDbl(bruttoVal) - nettoVal
-                Me.Cells(r, "K").Value = nettoVal
-                Me.Cells(r, "L").Value = mwstVal
+                Me.Cells(r, "K").value = nettoVal
+                Me.Cells(r, "L").value = mwstVal
             Else
                 Me.Cells(r, "K").ClearContents
                 Me.Cells(r, "L").ClearContents

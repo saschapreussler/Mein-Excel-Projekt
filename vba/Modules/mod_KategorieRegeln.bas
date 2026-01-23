@@ -38,7 +38,7 @@ End Sub
 Public Sub PruefeUndSynchronisiere_Kategorie(ByVal ws As Worksheet, ByVal changedRow As Long)
 
     Dim katName As String
-    katName = Trim(ws.Cells(changedRow, "J").Value)
+    katName = Trim(ws.Cells(changedRow, "J").value)
     If katName = "" Then Exit Sub
 
     Dim refRow As Long
@@ -49,10 +49,10 @@ Public Sub PruefeUndSynchronisiere_Kategorie(ByVal ws As Worksheet, ByVal change
     Application.EnableEvents = False
 
     ' Referenzwerte übernehmen
-    ws.Cells(changedRow, "K").Value = ws.Cells(refRow, "K").Value
-    ws.Cells(changedRow, "N").Value = ws.Cells(refRow, "N").Value
-    ws.Cells(changedRow, "O").Value = ws.Cells(refRow, "O").Value
-    ws.Cells(changedRow, "P").Value = ws.Cells(refRow, "P").Value
+    ws.Cells(changedRow, "K").value = ws.Cells(refRow, "K").value
+    ws.Cells(changedRow, "N").value = ws.Cells(refRow, "N").value
+    ws.Cells(changedRow, "O").value = ws.Cells(refRow, "O").value
+    ws.Cells(changedRow, "P").value = ws.Cells(refRow, "P").value
 
     ' Hinweis für den Nutzer
     MsgBox _
@@ -77,7 +77,7 @@ Private Function FindeErsteKategorieZeile(ws As Worksheet, _
     Dim r As Long
     For r = 4 To lastRow
         If r <> excludeRow Then
-            If Trim(ws.Cells(r, "J").Value) = katName Then
+            If Trim(ws.Cells(r, "J").value) = katName Then
                 FindeErsteKategorieZeile = r
                 Exit Function
             End If

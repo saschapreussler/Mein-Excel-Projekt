@@ -35,7 +35,7 @@ End Sub
 Public Sub ApplyZielspaltenDropdown(ByVal ws As Worksheet, ByVal rowNr As Long)
 
     Dim ea As String
-    ea = Trim(ws.Cells(rowNr, COL_EIN_AUS).Value)
+    ea = Trim(ws.Cells(rowNr, COL_EIN_AUS).value)
 
     Dim targetCell As Range
     Set targetCell = ws.Cells(rowNr, COL_ZIELSPALTE)

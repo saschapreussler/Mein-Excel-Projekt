@@ -41,7 +41,7 @@ Public Sub Aktualisiere_Parzellen_Mapping_Final()
     ' SCHRITT 1: Bestehende IBANs merken
     ' ------------------------------------------------
     For rD = DATA_START_ROW To lastRowD
-        tempIBAN = Replace(Trim(wsD.Cells(rD, DATA_MAP_COL_IBAN_OLD).Value), " ", "")
+        tempIBAN = Replace(Trim(wsD.Cells(rD, DATA_MAP_COL_IBAN_OLD).value), " ", "")
         If tempIBAN <> "" Then dictIBANsMapping(tempIBAN) = True
     Next rD
 
@@ -49,8 +49,8 @@ Public Sub Aktualisiere_Parzellen_Mapping_Final()
     ' SCHRITT 2: IBANs aus Bankkonto aggregieren
     ' ------------------------------------------------
     For r = BK_START_ROW To lastRowBK
-        tempIBAN = Replace(Trim(wsBK.Cells(r, BK_COL_IBAN).Value), " ", "")
-        currentKontoName = Trim(wsBK.Cells(r, BK_COL_NAME).Value)
+        tempIBAN = Replace(Trim(wsBK.Cells(r, BK_COL_IBAN).value), " ", "")
+        currentKontoName = Trim(wsBK.Cells(r, BK_COL_NAME).value)
 
         If tempIBAN <> "" And tempIBAN <> "n.a." Then
             If dictIBANsBank.Exists(tempIBAN) Then
@@ -75,9 +75,9 @@ Public Sub Aktualisiere_Parzellen_Mapping_Final()
 
     For Each currentIBAN In dictIBANsBank.Keys
         If Not dictIBANsMapping.Exists(currentIBAN) Then
-            wsD.Cells(rD, DATA_MAP_COL_ENTITYKEY).Value = entityID
-            wsD.Cells(rD, DATA_MAP_COL_IBAN_OLD).Value = currentIBAN
-            wsD.Cells(rD, DATA_MAP_COL_KTONAME).Value = dictIBANsBank(currentIBAN)
+            wsD.Cells(rD, DATA_MAP_COL_ENTITYKEY).value = entityID
+            wsD.Cells(rD, DATA_MAP_COL_IBAN_OLD).value = currentIBAN
+            wsD.Cells(rD, DATA_MAP_COL_KTONAME).value = dictIBANsBank(currentIBAN)
             entityID = entityID + 1
             rD = rD + 1
         End If
@@ -92,23 +92,23 @@ Public Sub Aktualisiere_Parzellen_Mapping_Final()
 
         fuzzyResultCode = 0
         foundZuordnung = ""
-        tempIBAN = Replace(Trim(wsD.Cells(rD, DATA_MAP_COL_IBAN_OLD).Value), " ", "")
+        tempIBAN = Replace(Trim(wsD.Cells(rD, DATA_MAP_COL_IBAN_OLD).value), " ", "")
 
         If dictIBANsBank.Exists(tempIBAN) Then
-            wsD.Cells(rD, DATA_MAP_COL_KTONAME).Value = dictIBANsBank(tempIBAN)
+            wsD.Cells(rD, DATA_MAP_COL_KTONAME).value = dictIBANsBank(tempIBAN)
         End If
 
         wsD.Range(wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG), _
                   wsD.Cells(rD, DATA_MAP_COL_DEBUG)).Interior.color = COLOR_WHITE
 
         ' --- MANUELL HAT VORRANG ---
-        If Trim(wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG).Value) <> "" Then
-            wsD.Cells(rD, DATA_MAP_COL_DEBUG).Value = "Manuell zugeordnet oder bestätigt"
+        If Trim(wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG).value) <> "" Then
+            wsD.Cells(rD, DATA_MAP_COL_DEBUG).value = "Manuell zugeordnet oder bestätigt"
             wsD.Range(wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG), wsD.Cells(rD, DATA_MAP_COL_DEBUG)).Interior.color = COLOR_GREEN
             GoTo NextRow
         End If
 
-        ktonames = wsD.Cells(rD, DATA_MAP_COL_KTONAME).Value
+        ktonames = wsD.Cells(rD, DATA_MAP_COL_KTONAME).value
         Set foundParzellenRange = wsD.Cells(rD, DATA_MAP_COL_PARZELLE)
         foundZuordnung = FuzzyMemberSearch(ktonames, wsM, foundParzellenRange)
 
@@ -145,19 +145,19 @@ Public Sub Aktualisiere_Parzellen_Mapping_Final()
 
         Select Case fuzzyResultCode
             Case 2
-                wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG).Value = foundZuordnung
-                wsD.Cells(rD, DATA_MAP_COL_ENTITYROLE).Value = IIf(InStr(1, wsD.Cells(rD, DATA_MAP_COL_PARZELLE).Value, "Verein", vbTextCompare) > 0, "VEREIN", "MITGLIED")
-                wsD.Cells(rD, DATA_MAP_COL_DEBUG).Value = "Sicherer Treffer (Vor- und Nachname eindeutig)"
+                wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG).value = foundZuordnung
+                wsD.Cells(rD, DATA_MAP_COL_ENTITYROLE).value = IIf(InStr(1, wsD.Cells(rD, DATA_MAP_COL_PARZELLE).value, "Verein", vbTextCompare) > 0, "VEREIN", "MITGLIED")
+                wsD.Cells(rD, DATA_MAP_COL_DEBUG).value = "Sicherer Treffer (Vor- und Nachname eindeutig)"
                 wsD.Range(wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG), wsD.Cells(rD, DATA_MAP_COL_DEBUG)).Interior.color = COLOR_GREEN
 
             Case 1
-                wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG).Value = foundZuordnung
-                wsD.Cells(rD, DATA_MAP_COL_ENTITYROLE).Value = IIf(InStr(1, wsD.Cells(rD, DATA_MAP_COL_PARZELLE).Value, "Verein", vbTextCompare) > 0, "VEREIN", "MITGLIED")
-                wsD.Cells(rD, DATA_MAP_COL_DEBUG).Value = "Unsicherer Treffer (keine eindeutige Namensgleichheit)"
+                wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG).value = foundZuordnung
+                wsD.Cells(rD, DATA_MAP_COL_ENTITYROLE).value = IIf(InStr(1, wsD.Cells(rD, DATA_MAP_COL_PARZELLE).value, "Verein", vbTextCompare) > 0, "VEREIN", "MITGLIED")
+                wsD.Cells(rD, DATA_MAP_COL_DEBUG).value = "Unsicherer Treffer (keine eindeutige Namensgleichheit)"
                 wsD.Range(wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG), wsD.Cells(rD, DATA_MAP_COL_DEBUG)).Interior.color = COLOR_YELLOW
 
             Case Else
-                wsD.Cells(rD, DATA_MAP_COL_DEBUG).Value = "Kein Treffer – manuelle Zuordnung erforderlich"
+                wsD.Cells(rD, DATA_MAP_COL_DEBUG).value = "Kein Treffer – manuelle Zuordnung erforderlich"
                 wsD.Range(wsD.Cells(rD, DATA_MAP_COL_ZUORDNUNG), wsD.Cells(rD, DATA_MAP_COL_DEBUG)).Interior.color = COLOR_RED
         End Select
 
@@ -347,9 +347,9 @@ Public Sub Importiere_Kontoauszug()
     If lRowZiel < BK_START_ROW Then lRowZiel = BK_START_ROW - 1
     
     For i = BK_START_ROW To lRowZiel
-        If wsZiel.Cells(i, BK_COL_BETRAG).Value <> "" Then
+        If wsZiel.Cells(i, BK_COL_BETRAG).value <> "" Then
             ' Schlüssel: Datum | Betrag | IBAN | Verwendungszweck
-            sKey = Format(wsZiel.Cells(i, BK_COL_DATUM).Value, "YYYYMMDD") & "|" & CStr(wsZiel.Cells(i, BK_COL_BETRAG).Value) & "|" & Replace(CStr(wsZiel.Cells(i, BK_COL_IBAN).Value), " ", "") & "|" & CStr(wsZiel.Cells(i, BK_COL_VERWENDUNGSZWECK).Value)
+            sKey = Format(wsZiel.Cells(i, BK_COL_DATUM).value, "YYYYMMDD") & "|" & CStr(wsZiel.Cells(i, BK_COL_BETRAG).value) & "|" & Replace(CStr(wsZiel.Cells(i, BK_COL_IBAN).value), " ", "") & "|" & CStr(wsZiel.Cells(i, BK_COL_VERWENDUNGSZWECK).value)
             dictUmsaetze(sKey) = True
         End If
     Next i
@@ -386,7 +386,7 @@ Public Sub Importiere_Kontoauszug()
     
     For lRowTemp = 2 To lastRowTemp
         
-        betragString = CStr(wsTemp.Cells(lRowTemp, CSV_COL_BETRAG).Value)
+        betragString = CStr(wsTemp.Cells(lRowTemp, CSV_COL_BETRAG).value)
         
         ' Zahlensäuberung
         betragString = Replace(betragString, " EUR", "")
@@ -411,17 +411,17 @@ Public Sub Importiere_Kontoauszug()
         On Error GoTo ImportFehler
         
         ' Datum extrahieren und konvertieren
-        If IsDate(wsTemp.Cells(lRowTemp, CSV_COL_BUCHUNGSDATUM).Value) Then
-            dDatum = CDate(wsTemp.Cells(lRowTemp, CSV_COL_BUCHUNGSDATUM).Value)
+        If IsDate(wsTemp.Cells(lRowTemp, CSV_COL_BUCHUNGSDATUM).value) Then
+            dDatum = CDate(wsTemp.Cells(lRowTemp, CSV_COL_BUCHUNGSDATUM).value)
         Else
             rowsIgnoredFilter = rowsIgnoredFilter + 1
             GoTo NextRow
         End If
         
-        sIBAN = Replace(Trim(wsTemp.Cells(lRowTemp, CSV_COL_IBAN).Value), " ", "")
-        sName = Trim(wsTemp.Cells(lRowTemp, CSV_COL_NAME).Value)
-        sVZ = Trim(wsTemp.Cells(lRowTemp, CSV_COL_VERWENDUNGSZWECK).Value)
-        sText = Trim(wsTemp.Cells(lRowTemp, CSV_COL_STATUS).Value)
+        sIBAN = Replace(Trim(wsTemp.Cells(lRowTemp, CSV_COL_IBAN).value), " ", "")
+        sName = Trim(wsTemp.Cells(lRowTemp, CSV_COL_NAME).value)
+        sVZ = Trim(wsTemp.Cells(lRowTemp, CSV_COL_VERWENDUNGSZWECK).value)
+        sText = Trim(wsTemp.Cells(lRowTemp, CSV_COL_STATUS).value)
         
         ' Duplikatsprüfung mit dem stabilen Schlüssel
         sKey = Format(dDatum, "YYYYMMDD") & "|" & dBetrag & "|" & sIBAN & "|" & sVZ
@@ -435,17 +435,17 @@ Public Sub Importiere_Kontoauszug()
         lRowZiel = wsZiel.Cells(wsZiel.Rows.Count, BK_COL_DATUM).End(xlUp).Row + 1
         dictUmsaetze.Add sKey, True
         
-        wsZiel.Cells(lRowZiel, BK_COL_DATUM).Value = dDatum
+        wsZiel.Cells(lRowZiel, BK_COL_DATUM).value = dDatum
         wsZiel.Cells(lRowZiel, BK_COL_DATUM).NumberFormat = "DD.MM.YYYY"
 
-        wsZiel.Cells(lRowZiel, BK_COL_BETRAG).Value = dBetrag
+        wsZiel.Cells(lRowZiel, BK_COL_BETRAG).value = dBetrag
         wsZiel.Cells(lRowZiel, BK_COL_BETRAG).NumberFormat = "#,##0.00 [$€-de-DE]"
 
-        wsZiel.Cells(lRowZiel, BK_COL_NAME).Value = sName
-        wsZiel.Cells(lRowZiel, BK_COL_IBAN).Value = sIBAN
-        wsZiel.Cells(lRowZiel, BK_COL_VERWENDUNGSZWECK).Value = sVZ
-        wsZiel.Cells(lRowZiel, BK_COL_BUCHUNGSTEXT).Value = sText
-        wsZiel.Cells(lRowZiel, BK_COL_STATUS).Value = "Gebucht"
+        wsZiel.Cells(lRowZiel, BK_COL_NAME).value = sName
+        wsZiel.Cells(lRowZiel, BK_COL_IBAN).value = sIBAN
+        wsZiel.Cells(lRowZiel, BK_COL_VERWENDUNGSZWECK).value = sVZ
+        wsZiel.Cells(lRowZiel, BK_COL_BUCHUNGSTEXT).value = sText
+        wsZiel.Cells(lRowZiel, BK_COL_STATUS).value = "Gebucht"
         
         rowsProcessed = rowsProcessed + 1
 
@@ -522,7 +522,7 @@ Public Sub Sortiere_Bankkonto_nach_Datum()
     lr = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
     
     ' Sicherstellen, dass Daten ab der Startzeile vorhanden sind
-    If lr < BK_START_ROW Or IsEmpty(ws.Cells(BK_START_ROW, BK_COL_DATUM).Value) Then
+    If lr < BK_START_ROW Or IsEmpty(ws.Cells(BK_START_ROW, BK_COL_DATUM).value) Then
         Exit Sub
     End If
 
@@ -624,16 +624,16 @@ Public Sub Initialize_ImportReport_ListBox()
     Application.ScreenUpdating = False
     
     ' Nur initialisieren, wenn die Historie leer ist (d.h. noch kein Import durchgeführt)
-    If CStr(wsDaten.Range(CELL_IMPORT_PROTOKOLL).Value) = "" Then
+    If CStr(wsDaten.Range(CELL_IMPORT_PROTOKOLL).value) = "" Then
         
         ' 1. Temporären Bereich leeren
         wsTemp.Cells.ClearContents
         
         ' 2. Standardtext in den temporären Bereich schreiben
-        wsTemp.Range(PROTOCOL_RANGE_START).Value = "--------------------------------------------------------"
-        wsTemp.Range(PROTOCOL_RANGE_START).Offset(1, 0).Value = " Kein Import-Bericht verfügbar."
-        wsTemp.Range(PROTOCOL_RANGE_START).Offset(2, 0).Value = " Führen Sie einen CSV-Import durch, um den Bericht hier anzuzeigen."
-        wsTemp.Range(PROTOCOL_RANGE_START).Offset(3, 0).Value = "--------------------------------------------------------"
+        wsTemp.Range(PROTOCOL_RANGE_START).value = "--------------------------------------------------------"
+        wsTemp.Range(PROTOCOL_RANGE_START).Offset(1, 0).value = " Kein Import-Bericht verfügbar."
+        wsTemp.Range(PROTOCOL_RANGE_START).Offset(2, 0).value = " Führen Sie einen CSV-Import durch, um den Bericht hier anzuzeigen."
+        wsTemp.Range(PROTOCOL_RANGE_START).Offset(3, 0).value = "--------------------------------------------------------"
         
         ' 3. ListBox mit dem temporären Bereich verknüpfen
         On Error Resume Next
@@ -687,7 +687,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalEntries As Long, ByVal importe
     newReportEntry = part1 & PART_DELIMITER & part2 & PART_DELIMITER & part3 & PART_DELIMITER & part4
     
     ' Historie laden und neue Historie erstellen
-    historyString = CStr(wsDaten.Range(CELL_IMPORT_PROTOKOLL).Value)
+    historyString = CStr(wsDaten.Range(CELL_IMPORT_PROTOKOLL).value)
     newHistoryString = newReportEntry & IIf(historyString <> "", HISTORY_DELIMITER & historyString, "")
     
     ' Historie auf maximale Größe trimmen und speichern
@@ -703,7 +703,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalEntries As Long, ByVal importe
         End If
     Next i
     
-    wsDaten.Range(CELL_IMPORT_PROTOKOLL).Value = newHistoryString
+    wsDaten.Range(CELL_IMPORT_PROTOKOLL).value = newHistoryString
 
     ' --- II. Anzeige im Temporären Blatt und Verknüpfung ---
     
@@ -717,17 +717,17 @@ Public Sub Update_ImportReport_ListBox(ByVal totalEntries As Long, ByVal importe
         reportParts = Split(currentHistory(i), PART_DELIMITER)
         
         ' 1. Zeile: Datum/Uhrzeit
-        If UBound(reportParts) >= 0 Then wsTemp.Cells(k, 1).Value = Trim(reportParts(0)): k = k + 1
+        If UBound(reportParts) >= 0 Then wsTemp.Cells(k, 1).value = Trim(reportParts(0)): k = k + 1
         ' 2. Zeile: Importierte Einträge
-        If UBound(reportParts) >= 1 Then wsTemp.Cells(k, 1).Value = " * " & Trim(reportParts(1)): k = k + 1
+        If UBound(reportParts) >= 1 Then wsTemp.Cells(k, 1).value = " * " & Trim(reportParts(1)): k = k + 1
         ' 3. Zeile: Duplikate
-        If UBound(reportParts) >= 2 Then wsTemp.Cells(k, 1).Value = " * " & Trim(reportParts(2)): k = k + 1
+        If UBound(reportParts) >= 2 Then wsTemp.Cells(k, 1).value = " * " & Trim(reportParts(2)): k = k + 1
         ' 4. Zeile: Fehler
-        If UBound(reportParts) >= 3 Then wsTemp.Cells(k, 1).Value = " * " & Trim(reportParts(3)): k = k + 1
+        If UBound(reportParts) >= 3 Then wsTemp.Cells(k, 1).value = " * " & Trim(reportParts(3)): k = k + 1
 
         ' 5. Trennlinie (wenn nicht der letzte Eintrag)
         If i < UBound(currentHistory) And UBound(currentHistory) > 0 Then
-            wsTemp.Cells(k, 1).Value = "--------------------------------------------------------"
+            wsTemp.Cells(k, 1).value = "--------------------------------------------------------"
             k = k + 1
         End If
         

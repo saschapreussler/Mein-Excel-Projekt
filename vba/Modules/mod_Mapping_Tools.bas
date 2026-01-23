@@ -80,9 +80,9 @@ Public Function FuzzyMemberSearch(ByVal nameToSearch As String, ByVal wsMembers 
     
     For r = M_START_ROW To lastRowM
         ' Konstanten M_COL_NACHNAME, M_COL_VORNAME wurden durch MEMBER_COL_... ersetzt
-        memberLastName = Trim(wsMembers.Cells(r, MEMBER_COL_NACHNAME).Value)
-        memberFirstName = Trim(wsMembers.Cells(r, MEMBER_COL_VORNAME).Value)
-        parzelle = Trim(wsMembers.Cells(r, MEMBER_COL_PARZELLE).Value)
+        memberLastName = Trim(wsMembers.Cells(r, MEMBER_COL_NACHNAME).value)
+        memberFirstName = Trim(wsMembers.Cells(r, MEMBER_COL_VORNAME).value)
+        parzelle = Trim(wsMembers.Cells(r, MEMBER_COL_PARZELLE).value)
         
         If memberLastName = "" And memberFirstName = "" Then GoTo NextMember
         
@@ -159,7 +159,7 @@ EndSearch:
     Dim memberName As Variant
     
     If bestMatchStatus = MATCH_NONE Then
-         parzelleRange.Value = "" ' Leert W, wenn kein Treffer
+         parzelleRange.value = "" ' Leert W, wenn kein Treffer
          FuzzyMemberSearch = ""
          Exit Function
     End If
@@ -198,7 +198,7 @@ EndSearch:
     Next
     
     ' Ergebnis setzen
-    parzelleRange.Value = finalParzellen
+    parzelleRange.value = finalParzellen
     FuzzyMemberSearch = finalZuordnung
     
 End Function

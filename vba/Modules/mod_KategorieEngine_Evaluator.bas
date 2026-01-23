@@ -14,13 +14,13 @@ Public Function BuildKategorieContext(ByVal wsBK As Worksheet, _
     Set ctx = CreateObject("Scripting.Dictionary")
 
     Dim amount As Double
-    amount = wsBK.Cells(rowBK, BK_COL_BETRAG).Value
+    amount = wsBK.Cells(rowBK, BK_COL_BETRAG).value
 
     Dim normText As String
     normText = NormalizeBankkontoZeile(wsBK, rowBK)
 
     Dim iban As String
-    iban = Trim(wsBK.Cells(rowBK, BK_COL_IBAN).Value)
+    iban = Trim(wsBK.Cells(rowBK, BK_COL_IBAN).value)
 
     Dim entityRole As String
     entityRole = GetEntityRoleByIBAN(iban)
@@ -63,8 +63,8 @@ Private Function GetEntityRoleByIBAN(ByVal strIBAN As String) As String
 
     Dim r As Long
     For r = DATA_START_ROW To lastRow
-        If UCase(Replace(wsD.Cells(r, DATA_MAP_COL_IBAN).Value, " ", "")) = ibanClean Then
-            GetEntityRoleByIBAN = Trim(wsD.Cells(r, DATA_MAP_COL_ENTITYROLE).Value)
+        If UCase(Replace(wsD.Cells(r, DATA_MAP_COL_IBAN).value, " ", "")) = ibanClean Then
+            GetEntityRoleByIBAN = Trim(wsD.Cells(r, DATA_MAP_COL_ENTITYROLE).value)
             Exit Function
         End If
     Next r
@@ -79,7 +79,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                                       ByVal rowBK As Long, _
                                       ByVal rngRules As Range)
 
-    If Trim(wsBK.Cells(rowBK, BK_COL_KATEGORIE).Value) <> "" Then Exit Sub
+    If Trim(wsBK.Cells(rowBK, BK_COL_KATEGORIE).value) <> "" Then Exit Sub
 
     Dim ctx As Object
     Set ctx = BuildKategorieContext(wsBK, rowBK)
@@ -110,10 +110,10 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         Dim prio As Long
         Dim einAus As String
 
-        category = Trim(ruleRow.Cells(1, 1).Value)
-        einAus = Trim(ruleRow.Cells(1, 2).Value)
-        keyword = Trim(ruleRow.Cells(1, 3).Value)
-        prio = Val(ruleRow.Cells(1, 4).Value)
+        category = Trim(ruleRow.Cells(1, 1).value)
+        einAus = Trim(ruleRow.Cells(1, 2).value)
+        keyword = Trim(ruleRow.Cells(1, 3).value)
+        prio = Val(ruleRow.Cells(1, 4).value)
 
         If category = "" Or keyword = "" Then GoTo NextRule
 
@@ -164,7 +164,7 @@ NextRule:
        And ctx("EntityRole") = "MITGLIED" _
        And ctx("IsEinnahme") Then
 
-        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).Value = _
+        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
             "Mehrere Positionen: " & Join(hitCategories.Keys, " | ")
 
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
@@ -194,7 +194,7 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
                           ByVal category As String, _
                           ByVal confidence As String)
     With targetCell
-        .Value = category
+        .value = category
         .Font.color = vbBlack
         .Interior.Pattern = xlSolid
 

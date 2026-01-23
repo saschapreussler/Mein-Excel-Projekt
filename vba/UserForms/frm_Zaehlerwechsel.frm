@@ -62,7 +62,7 @@ Public Sub InitForm_Runtime(ByVal Medium As String)
     ' INITIALISIERUNG: Textbox ausblenden
     Me.txt_Bemerkung.Visible = False
     Me.txt_Bemerkung.text = ""
-    Me.chk_Bemerkung.Value = False
+    Me.chk_Bemerkung.value = False
 
     Me.txt_Datum.text = Format(Date, "dd.mm.yyyy")
 
@@ -110,7 +110,7 @@ Private Sub cmb_Parzelle_Change()
     End If
 
     ' Zeile bestimmen
-    Select Case Me.cmb_Parzelle.Value
+    Select Case Me.cmb_Parzelle.value
         Case "Clubwagen"
             m_targetRow = 22
         Case "Kühltruhe"
@@ -118,9 +118,9 @@ Private Sub cmb_Parzelle_Change()
         Case "Hauptzähler"
             m_targetRow = IIf(m_Medium = "Strom", 26, 29)
         Case Else
-            If Left(Me.cmb_Parzelle.Value, 8) = "Parzelle" Then
+            If Left(Me.cmb_Parzelle.value, 8) = "Parzelle" Then
                 Dim idx As Long
-                idx = Val(Mid(Me.cmb_Parzelle.Value, 10))
+                idx = Val(Mid(Me.cmb_Parzelle.value, 10))
                 m_targetRow = IIf(m_Medium = "Strom", idx + 7, idx + 9)
             Else
                 Exit Sub
@@ -129,7 +129,7 @@ Private Sub cmb_Parzelle_Change()
 
     ' ===== STAND ALT – EXAKT: C-Spalte der Hauptblätter =====
     ' Wir lesen den Rohwert (der potentiell Dezimalstellen hat)
-    standAltValue = ws.Cells(m_targetRow, "C").Value
+    standAltValue = ws.Cells(m_targetRow, "C").value
     
     If IsNumeric(standAltValue) Then
         ' NEU: CleanNumber verwenden, um unnötige .0 oder ,0 zu entfernen
@@ -237,7 +237,7 @@ End Sub
 ' CHECKBOX EVENT (STEUERT SICHTBARKEIT)
 ' ==========================================================
 Private Sub chk_Bemerkung_Click()
-    Me.txt_Bemerkung.Visible = Me.chk_Bemerkung.Value
+    Me.txt_Bemerkung.Visible = Me.chk_Bemerkung.value
     
     If Me.txt_Bemerkung.Visible Then
         Me.txt_Bemerkung.SetFocus
@@ -271,7 +271,7 @@ Private Sub Btn_Speichern_Click()
     End If
     
     ' 1. Plausibilitätsprüfungen (unverändert)
-    If Me.cmb_Parzelle.Value = "" Then
+    If Me.cmb_Parzelle.value = "" Then
         MsgBox "Bitte wählen Sie eine Parzelle/einen Zähler aus.", vbExclamation
         Me.cmb_Parzelle.SetFocus
         Exit Sub
@@ -294,7 +294,7 @@ Private Sub Btn_Speichern_Click()
     
     ' a) Originaler Stand Alt: Liest den Endstand des alten Zählers (der in C steht)
     ' Dient als Grundlage für die Plausibilitätsprüfung des User-korrigierten Wertes.
-    standAltOriginal = ws.Cells(m_targetRow, "C").Value
+    standAltOriginal = ws.Cells(m_targetRow, "C").value
     
     ' b) Korrigierter Stand Alt: Liest den Wert aus der Textbox txt_StandAlt und bereinigt ihn
     Dim rawTextAlt As String
@@ -358,7 +358,7 @@ Private Sub Btn_Speichern_Click()
     ' 4. Aufruf der Logik (Argumente sind korrekt)
     ' WICHTIG: Wir übergeben standAltUser (den korrigierten Wert) als AltEnde.
     Call mod_ZaehlerLogik.SchreibeHistorie( _
-        parzelle:=Me.cmb_Parzelle.Value, _
+        parzelle:=Me.cmb_Parzelle.value, _
         DatumW:=CDate(Me.txt_Datum.text), _
         AltEnde:=standAltUser, _
         neuStart:=standNeuStart_Final, _

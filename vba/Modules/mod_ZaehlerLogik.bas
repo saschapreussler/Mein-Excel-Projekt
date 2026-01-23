@@ -59,12 +59,12 @@ Function HoleNamenFuerParzelle(ws As Worksheet, suchParzelle As String, maxZ As 
     sTemp = ""
     
     For r = 6 To maxZ
-        PVal = Trim(CStr(ws.Cells(r, 2).Value))
+        PVal = Trim(CStr(ws.Cells(r, 2).value))
         
         If StrComp(PVal, suchParzelle, vbTextCompare) = 0 Then
             ' Vorname (F) + Nachname (E)
             If sTemp <> "" Then sTemp = sTemp & vbLf
-            sTemp = sTemp & Trim(ws.Cells(r, 6).Value) & " " & Trim(ws.Cells(r, 5).Value)
+            sTemp = sTemp & Trim(ws.Cells(r, 6).value) & " " & Trim(ws.Cells(r, 5).value)
         End If
     Next r
     
@@ -144,9 +144,9 @@ Sub ErzeugeParzellenUebersicht()
     maxParzelle = 14
     
     For i = 6 To lastRow
-        If IsNumeric(wsQuelle.Cells(i, 2).Value) Then
-            If wsQuelle.Cells(i, 2).Value > maxParzelle Then
-                maxParzelle = wsQuelle.Cells(i, 2).Value
+        If IsNumeric(wsQuelle.Cells(i, 2).value) Then
+            If wsQuelle.Cells(i, 2).value > maxParzelle Then
+                maxParzelle = wsQuelle.Cells(i, 2).value
             End If
         End If
     Next i
@@ -168,7 +168,7 @@ Sub ErzeugeParzellenUebersicht()
             .Merge
             .HorizontalAlignment = xlCenter
             .VerticalAlignment = xlCenter
-            .Value = "Parzelle " & i
+            .value = "Parzelle " & i
             .Font.Bold = True
         End With
         
@@ -177,7 +177,7 @@ Sub ErzeugeParzellenUebersicht()
             .WrapText = True
             .VerticalAlignment = xlCenter
             .HorizontalAlignment = xlLeft
-            .Value = nameGefunden
+            .value = nameGefunden
         End With
         
         zielZeile = zielZeile + 8
@@ -190,7 +190,7 @@ Sub ErzeugeParzellenUebersicht()
             .Merge
             .HorizontalAlignment = xlCenter
             .VerticalAlignment = xlCenter
-            .Value = "Parzelle Verein"
+            .value = "Parzelle Verein"
             .Font.Bold = True
         End With
         
@@ -199,7 +199,7 @@ Sub ErzeugeParzellenUebersicht()
             .WrapText = True
             .VerticalAlignment = xlCenter
             .HorizontalAlignment = xlLeft
-            .Value = nameGefunden
+            .value = nameGefunden
         End With
     End If
     
@@ -253,7 +253,7 @@ Sub AktualisiereZaehlerTabellenSpalteA()
 
         ' A. Verarbeitung für Strom
         With wsStrom.Cells(zielZeileStrom, "A")
-            .Value = GesamtText
+            .value = GesamtText
             .WrapText = True
             .VerticalAlignment = xlCenter
             .HorizontalAlignment = xlLeft
@@ -273,7 +273,7 @@ Sub AktualisiereZaehlerTabellenSpalteA()
 
         ' B. Verarbeitung für Wasser
         With wsWasser.Cells(zielZeileWasser, "A")
-            .Value = GesamtText
+            .value = GesamtText
             .WrapText = True
             .VerticalAlignment = xlCenter
             .HorizontalAlignment = xlLeft
@@ -329,7 +329,7 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
         ws.Name = HIST_SHEET_NAME
         
         ' Header-Werte setzen
-        ws.Range("A1:K1").Value = Array( _
+        ws.Range("A1:K1").value = Array( _
             "lfd. Nr. (ID)", _
             "Datum (Wechsel)", _
             "Parzelle/Zähler", _
@@ -405,11 +405,11 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
                 lo.Resize ws.Range("A1:K" & lo.Range.Rows.Count)
             End If
             
-            ws.Range("E1").Value = "Zähler-Nr. (ID) alt"
-            ws.Range("F1").Value = "Zählerstand (alt) aus der letzten Ablesung"
-            ws.Range("H1").Value = "Zähler-Nr. (ID) neu"
-            ws.Range("K1").Value = "Bemerkungen"
-            ws.Range("J1").Value = "Verbrauch"
+            ws.Range("E1").value = "Zähler-Nr. (ID) alt"
+            ws.Range("F1").value = "Zählerstand (alt) aus der letzten Ablesung"
+            ws.Range("H1").value = "Zähler-Nr. (ID) neu"
+            ws.Range("K1").value = "Bemerkungen"
+            ws.Range("J1").value = "Verbrauch"
             
             With ws.Range("A1:K1")
                 .NumberFormat = "General"
@@ -602,21 +602,21 @@ Private Sub CalculateSingleZaehler( _
     einheit = IIf(LCase(ZaehlerTyp) = "strom", "kWh", "m³")
     
     ' 0. Startwerte lesen
-    If IsNumeric(startCell.Value) And Not IsEmpty(startCell.Value) Then
-        standAnfangCurrent = CDbl(startCell.Value)
+    If IsNumeric(startCell.value) And Not IsEmpty(startCell.value) Then
+        standAnfangCurrent = CDbl(startCell.value)
     Else
         standAnfangCurrent = 0
     End If
     
-    If IsNumeric(endCell.Value) And Not IsEmpty(endCell.Value) Then
-        standEndeCurrent = CDbl(endCell.Value)
+    If IsNumeric(endCell.value) And Not IsEmpty(endCell.value) Then
+        standEndeCurrent = CDbl(endCell.value)
     Else
         standEndeCurrent = 0
     End If
     
     ' 1. Vorabprüfung (Fehler)
     If standEndeCurrent < standAnfangCurrent Then
-        targetBemerkung.Value = "FEHLER: Endstand (" & Format(standEndeCurrent, "#,##0.00") & ") < Startstand (" & Format(standAnfangCurrent, "#,##0.00") & ")."
+        targetBemerkung.value = "FEHLER: Endstand (" & Format(standEndeCurrent, "#,##0.00") & ") < Startstand (" & Format(standAnfangCurrent, "#,##0.00") & ")."
         targetCellD.ClearContents
         
         ' Freigabe beider Felder zur Korrektur
@@ -651,20 +651,20 @@ Private Sub CalculateSingleZaehler( _
             firstAddr = f.Address
             Do
                 currentRow = f.Row
-                If StrComp(Trim(CStr(wsHist.Cells(currentRow, COL_HIST_MEDIUM).Value)), ZaehlerTyp, vbTextCompare) = 0 Then
+                If StrComp(Trim(CStr(wsHist.Cells(currentRow, COL_HIST_MEDIUM).value)), ZaehlerTyp, vbTextCompare) = 0 Then
                     
                     zyklen = zyklen + 1
-                    If IsNumeric(wsHist.Cells(currentRow, COL_HIST_VERBRAUCH_ALT).Value) Then
-                        verbrauchAltHistorie_Summe = verbrauchAltHistorie_Summe + CDbl(wsHist.Cells(currentRow, COL_HIST_VERBRAUCH_ALT).Value)
+                    If IsNumeric(wsHist.Cells(currentRow, COL_HIST_VERBRAUCH_ALT).value) Then
+                        verbrauchAltHistorie_Summe = verbrauchAltHistorie_Summe + CDbl(wsHist.Cells(currentRow, COL_HIST_VERBRAUCH_ALT).value)
                     End If
                     
                     ' Finde den neuesten Eintrag
-                    If IsDate(wsHist.Cells(currentRow, COL_HIST_DATUM).Value) Then
-                        If CDate(wsHist.Cells(currentRow, COL_HIST_DATUM).Value) >= lastDate Then
-                            lastDate = CDate(wsHist.Cells(currentRow, COL_HIST_DATUM).Value)
-                            snNeu_last = CStr(wsHist.Cells(currentRow, COL_HIST_ZAEHLER_NEU).Value)
-                            If IsNumeric(wsHist.Cells(currentRow, COL_HIST_STAND_NEU_START).Value) Then
-                                standNeuStart_last = CDbl(wsHist.Cells(currentRow, COL_HIST_STAND_NEU_START).Value)
+                    If IsDate(wsHist.Cells(currentRow, COL_HIST_DATUM).value) Then
+                        If CDate(wsHist.Cells(currentRow, COL_HIST_DATUM).value) >= lastDate Then
+                            lastDate = CDate(wsHist.Cells(currentRow, COL_HIST_DATUM).value)
+                            snNeu_last = CStr(wsHist.Cells(currentRow, COL_HIST_ZAEHLER_NEU).value)
+                            If IsNumeric(wsHist.Cells(currentRow, COL_HIST_STAND_NEU_START).value) Then
+                                standNeuStart_last = CDbl(wsHist.Cells(currentRow, COL_HIST_STAND_NEU_START).value)
                             End If
                         End If
                     End If
@@ -679,7 +679,7 @@ Private Sub CalculateSingleZaehler( _
     If zyklen > 0 Then ' FALL A: Mindestens ein Zählerwechsel gefunden (B muss gesperrt werden)
         
         If standAnfangCurrent <> standNeuStart_last Then
-            startCell.Value = CleanNumber(standNeuStart_last)
+            startCell.value = CleanNumber(standNeuStart_last)
             standAnfangCurrent = standNeuStart_last
         End If
         
@@ -688,10 +688,10 @@ Private Sub CalculateSingleZaehler( _
         
         ' Spalte D: Gesamtverbrauch
         If targetRow = 22 And ZaehlerName = "Clubwagen" Then
-              targetCellD.Value = Round(VerbrauchGesamt, 0)
+              targetCellD.value = Round(VerbrauchGesamt, 0)
               targetCellD.NumberFormat = "0;[Red]-0;;"
         Else
-              targetCellD.Value = VerbrauchGesamt
+              targetCellD.value = VerbrauchGesamt
               targetCellD.NumberFormat = "#,##0.00;[Red]-#,##0.00;;"
         End If
         
@@ -708,7 +708,7 @@ Private Sub CalculateSingleZaehler( _
                              "Gesamtverbrauch gewechselte Zähler: " & Format(verbrauchAltHistorie_Summe, "#,##0.00") & " " & einheit & vbLf & _
                              "Verbrauch derzeitiger Zähler: " & Format(verbrauchNeuAktuell, "#,##0.00") & " " & einheit
         
-        oldBemerkung = Trim(CStr(targetBemerkung.Value))
+        oldBemerkung = Trim(CStr(targetBemerkung.value))
         
         ' 2. Prüfen, ob Makro-Eintrag bereits existiert
         posSeparator = InStr(1, oldBemerkung, STR_HISTORY_SEPARATOR, vbTextCompare)
@@ -719,17 +719,17 @@ Private Sub CalculateSingleZaehler( _
             userText = Trim(Left(oldBemerkung, posSeparator - 1))
             
             If Len(userText) > 0 Then
-                targetBemerkung.Value = userText & vbLf & STR_HISTORY_SEPARATOR & vbLf & newHistoryText
+                targetBemerkung.value = userText & vbLf & STR_HISTORY_SEPARATOR & vbLf & newHistoryText
             Else
-                targetBemerkung.Value = STR_HISTORY_SEPARATOR & vbLf & newHistoryText
+                targetBemerkung.value = STR_HISTORY_SEPARATOR & vbLf & newHistoryText
             End If
             
         Else ' Eintrag existiert noch nicht
             
             If Len(oldBemerkung) > 0 Then
-                targetBemerkung.Value = oldBemerkung & vbLf & STR_HISTORY_SEPARATOR & vbLf & newHistoryText
+                targetBemerkung.value = oldBemerkung & vbLf & STR_HISTORY_SEPARATOR & vbLf & newHistoryText
             Else
-                targetBemerkung.Value = STR_HISTORY_SEPARATOR & vbLf & newHistoryText
+                targetBemerkung.value = STR_HISTORY_SEPARATOR & vbLf & newHistoryText
             End If
         End If
         
@@ -753,7 +753,7 @@ Private Sub CalculateSingleZaehler( _
         VerbrauchGesamt = verbrauchNeuAktuell
         
         ' Spalte D: Gesamtverbrauch
-        targetCellD.Value = VerbrauchGesamt
+        targetCellD.value = VerbrauchGesamt
         targetCellD.NumberFormat = "#,##0.00;[Red]-#,##0.00;;"
         
         ' 1. Formatierung von E sicherstellen
@@ -853,8 +853,8 @@ Public Sub SchreibeHistorie( _
     
     ' 2. Lese den Startstand des ALTEN Zählers
     If targetRow > 0 And Not wsTarget Is Nothing Then
-        If IsNumeric(wsTarget.Cells(targetRow, COL_STAND_ANFANG).Value) Then
-            standAnfangAlt = CDbl(wsTarget.Cells(targetRow, COL_STAND_ANFANG).Value)
+        If IsNumeric(wsTarget.Cells(targetRow, COL_STAND_ANFANG).value) Then
+            standAnfangAlt = CDbl(wsTarget.Cells(targetRow, COL_STAND_ANFANG).value)
             If standAnfangAlt <> Int(standAnfangAlt) Then standAnfangAlt = Round(standAnfangAlt, 4)
         Else
             standAnfangAlt = 0
@@ -869,25 +869,25 @@ Public Sub SchreibeHistorie( _
     Set newRow = lo.ListRows.Add(AlwaysInsert:=True)
     
     With newRow.Range
-        .Cells(1, COL_HIST_ID).Value = lo.ListRows.Count
-        .Cells(1, COL_HIST_DATUM).Value = DatumW
-        .Cells(1, COL_HIST_PARZELLE).Value = parzelle
-        .Cells(1, COL_HIST_MEDIUM).Value = Medium
+        .Cells(1, COL_HIST_ID).value = lo.ListRows.Count
+        .Cells(1, COL_HIST_DATUM).value = DatumW
+        .Cells(1, COL_HIST_PARZELLE).value = parzelle
+        .Cells(1, COL_HIST_MEDIUM).value = Medium
         
-        .Cells(1, COL_HIST_ZAEHLER_ALT).Value = snAlt
-        .Cells(1, COL_HIST_STAND_ALT_ANFANG).Value = CleanNumber(standAnfangAlt)
-        .Cells(1, COL_HIST_STAND_ALT_ENDE).Value = CleanNumber(AltEnde_Geprueft)
-        .Cells(1, COL_HIST_ZAEHLER_NEU).Value = snNeu
-        .Cells(1, COL_HIST_STAND_NEU_START).Value = CleanNumber(neuStart_Geprueft)
-        .Cells(1, COL_HIST_VERBRAUCH_ALT).Value = CleanNumber(verbrauchAltHistorie)
-        .Cells(1, COL_HIST_BEMERKUNG).Value = bem
+        .Cells(1, COL_HIST_ZAEHLER_ALT).value = snAlt
+        .Cells(1, COL_HIST_STAND_ALT_ANFANG).value = CleanNumber(standAnfangAlt)
+        .Cells(1, COL_HIST_STAND_ALT_ENDE).value = CleanNumber(AltEnde_Geprueft)
+        .Cells(1, COL_HIST_ZAEHLER_NEU).value = snNeu
+        .Cells(1, COL_HIST_STAND_NEU_START).value = CleanNumber(neuStart_Geprueft)
+        .Cells(1, COL_HIST_VERBRAUCH_ALT).value = CleanNumber(verbrauchAltHistorie)
+        .Cells(1, COL_HIST_BEMERKUNG).value = bem
     End With
     
     ' 4. ZIELBLATT-UPDATE (Spalten B, C)
     If targetRow > 0 And Not wsTarget Is Nothing Then
         
-        wsTarget.Cells(targetRow, COL_STAND_ANFANG).Value = CleanNumber(neuStart_Geprueft)
-        wsTarget.Cells(targetRow, COL_STAND_ENDE).Value = CleanNumber(neuStart_Geprueft)
+        wsTarget.Cells(targetRow, COL_STAND_ANFANG).value = CleanNumber(neuStart_Geprueft)
+        wsTarget.Cells(targetRow, COL_STAND_ENDE).value = CleanNumber(neuStart_Geprueft)
         
         With wsTarget.Cells(targetRow, COL_STAND_ANFANG)
             .Interior.color = RGB_GEWECHSELT
@@ -964,9 +964,9 @@ Public Sub FarbeHistorieEintraege()
     On Error GoTo 0
     
     For Each lr In lo.ListRows
-        If StrComp(Trim(CStr(lr.Range.Cells(1, COL_HIST_MEDIUM).Value)), "Strom", vbTextCompare) = 0 Then
+        If StrComp(Trim(CStr(lr.Range.Cells(1, COL_HIST_MEDIUM).value)), "Strom", vbTextCompare) = 0 Then
             lngColor = RGB_STROM
-        ElseIf StrComp(Trim(CStr(lr.Range.Cells(1, COL_HIST_MEDIUM).Value)), "Wasser", vbTextCompare) = 0 Then
+        ElseIf StrComp(Trim(CStr(lr.Range.Cells(1, COL_HIST_MEDIUM).value)), "Wasser", vbTextCompare) = 0 Then
             lngColor = RGB_WASSER
         Else
             lngColor = xlNone
@@ -1058,7 +1058,7 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
     
     ' 2. ZÄHLUNG DER EINZELNEN MITGLIEDER
     For r = 6 To lastRowQuelle
-        PVal = wsQuelle.Cells(r, 2).Value
+        PVal = wsQuelle.Cells(r, 2).value
         
         If IsNumeric(PVal) Then
             Dim lNum As Long
@@ -1066,7 +1066,7 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
             
             If lNum >= 1 And lNum <= 14 Then
                 
-                strMitgliedKey = Trim(wsQuelle.Cells(r, 6).Value) & " " & Trim(wsQuelle.Cells(r, 5).Value)
+                strMitgliedKey = Trim(wsQuelle.Cells(r, 6).value) & " " & Trim(wsQuelle.Cells(r, 5).value)
                 
                 If Len(strMitgliedKey) > 1 Then
                     
@@ -1085,11 +1085,11 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
     Next r
     
     ' 3. ERGEBNISSE IN DIE ZIELZELLEN SCHREIBEN
-    wsStrom.Range("B4").Value = ZaehlerBelegteParzellen
-    wsWasser.Range("A2").Value = ZaehlerBelegteParzellen
-    wsStart.Range("F2").Value = ZaehlerBelegteParzellen
+    wsStrom.Range("B4").value = ZaehlerBelegteParzellen
+    wsWasser.Range("A2").value = ZaehlerBelegteParzellen
+    wsStart.Range("F2").value = ZaehlerBelegteParzellen
     
-    wsStart.Range("F3").Value = ZaehlerMitgliederGesamt
+    wsStart.Range("F3").value = ZaehlerMitgliederGesamt
 
     wsStrom.Protect DrawingObjects:=True, Contents:=True, Scenarios:=True
     wsWasser.Protect DrawingObjects:=True, Contents:=True, Scenarios:=True
