@@ -11,11 +11,12 @@ Private Sub Workbook_Open()
 
     Call Initialize_ImportReport_ListBox
 
-    With Worksheets(WS_MITGLIEDER)
-        .Protect PASSWORD:="", UserInterfaceOnly:=True
-    End With
+    ' Blattschutz vorerst deaktiviert - bedingte Formatierung funktioniert besser ohne
+    ' With Worksheets(WS_MITGLIEDER)
+    '     .Protect PASSWORD:="", UserInterfaceOnly:=True
+    ' End With
 
-    Call ApplyMitgliederDropdowns   ' <<< DAS fehlte
+    ' ApplyMitgliederDropdowns nur manuell aufrufen wenn nötig
+    ' Call mod_Mitglieder_UI.ApplyMitgliederDropdowns
 
 End Sub
-

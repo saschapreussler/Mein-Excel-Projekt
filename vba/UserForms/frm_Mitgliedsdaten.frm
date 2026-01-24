@@ -242,6 +242,9 @@ Private Sub cmd_Entfernen_Click()
         Call mod_Mitglieder_UI.Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
              lRow, OldParzelle, "", Nachname, AustrittsDatum, NewParzelleNr, NewMemberID, ChangeReason)
         
+        ' Formatierung neu anwenden
+        Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+        
         Unload Me
     End If
     
@@ -362,6 +365,9 @@ Private Sub cmd_Uebernehmen_Click()
         Call mod_Mitglieder_UI.Fuelle_MemberIDs_Wenn_Fehlend
     End If
     
+    ' Formatierung neu anwenden
+    Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+    
     If IsFormLoaded("frm_Mitgliederverwaltung") Then
         frm_Mitgliederverwaltung.RefreshMitgliederListe
     End If
@@ -375,6 +381,7 @@ ErrorHandler:
     If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     MsgBox "Fehler beim Speichern der Änderungen: " & Err.Description, vbCritical
 End Sub
+
 Private Sub cmd_Anlegen_Click()
     Dim wsM As Worksheet
     Dim lRow As Long
@@ -543,9 +550,13 @@ End Sub
 Private Sub UserForm_Initialize()
     Me.StartUpPosition = 1
     
+    On Error GoTo ErrorHandler
+    
     Me.cbo_Anrede.RowSource = "Daten!D4:D9"
     Me.cbo_Funktion.RowSource = "Daten!B4:B11"
-    Me.cbo_Parzelle.RowSource = "Daten!F4:F18"
+    
+    ' Fuelle cbo_Parzelle OHNE "Verein"
+    Call FuelleParzelleComboDB
     
     ' Setze default Captions für die Label-Bezeichner IMMER
     Me.lbl_PachtbeginnBezeichner.Caption = "Pachtbeginn"
@@ -557,6 +568,46 @@ Private Sub UserForm_Initialize()
         Call SetMode(True, True, False)
     End If
     
+    Exit Sub
+ErrorHandler:
+    MsgBox "Fehler beim Initialisieren der Form: " & Err.Description, vbCritical
+End Sub
+
+' ***************************************************************
+' NEUE HILFSPROZEDUR: FuelleParzelleComboDB
+' Füllt die Parzelle ComboBox mit allen Werten AUßER "Verein"
+' ***************************************************************
+Private Sub FuelleParzelleComboDB()
+    Dim ws As Worksheet
+    Dim lRow As Long
+    Dim parzelleValue As String
+    
+    On Error GoTo ErrorHandler
+    
+    Set ws = ThisWorkbook.Worksheets(WS_DATEN)
+    If ws Is Nothing Then
+        ' Fallback: Nutze die Original-RowSource minus "Verein"
+        Me.cbo_Parzelle.RowSource = "Daten!F4:F18"
+        Exit Sub
+    End If
+    
+    ' Leere die ComboBox zuerst
+    Me.cbo_Parzelle.Clear
+    
+    ' Lese alle Werte von F4:F18 und füge sie hinzu, AUSSER "Verein"
+    For lRow = 4 To 18
+        parzelleValue = Trim(ws.Cells(lRow, 6).value)
+        
+        ' Überspringe leere Zellen und "Verein"
+        If parzelleValue <> "" And UCase(parzelleValue) <> "VEREIN" Then
+            Me.cbo_Parzelle.AddItem parzelleValue
+        End If
+    Next lRow
+    
+    Exit Sub
+ErrorHandler:
+    ' Fallback bei Fehler: Nutze RowSource
+    Me.cbo_Parzelle.RowSource = "Daten!F4:F18"
 End Sub
 
 Private Function IsFormLoaded(ByVal FormName As String) As Boolean
