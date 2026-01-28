@@ -163,21 +163,25 @@ Public Const CELL_IMPORT_PROTOKOLL As String = "Z100"
 Public Const ROLE_RANGE As String = "AE4:AE8"
 
 ' ===============================================================
-' M. MITGLIEDERHISTORIE – STRUKTUR (NEU - ERWEITERT)
+' M. MITGLIEDERHISTORIE – STRUKTUR (10 Spalten: A-J)
 ' ===============================================================
 Public Const H_HEADER_ROW As Long = 3
 Public Const H_START_ROW As Long = 4
 
-Public Const H_COL_PARZELLE As Long = 1        ' A: Abgegebene Parzelle
-Public Const H_COL_MITGL_ID As Long = 2        ' B: Member ID (alt) - ID des ausscheidenden Mitglieds
-Public Const H_COL_NACHNAME As Long = 3        ' C: Nachname (Lesbarkeit)
-Public Const H_COL_VORNAME As Long = 4         ' D: Vorname (Lesbarkeit)
-Public Const H_COL_AUST_DATUM As Long = 5      ' E: Austrittsdatum (Stichtag der Endabrechnung)
-Public Const H_COL_ENDABRECHNUNG As Long = 6   ' F: Endabrechnung (Datum der Endabrechnung)
-Public Const H_COL_GRUND As Long = 7           ' G: Grund (Parzellenwechsel, Kündigung, Tod)
-Public Const H_COL_KOMMENTAR As Long = 8       ' H: Kommentar (frei wählbar)
-Public Const H_COL_NEUER_PAECHTER_ID As Long = 9 ' I: ID des Nachpächters (falls Parzellenwechsel)
-Public Const H_COL_SYSTEMZEIT As Long = 10     ' J: Eintragungszeitpunkt (System)
+Public Const H_COL_PARZELLE As Long = 1              ' A: Abgegebene Parzelle
+Public Const H_COL_MITGL_ID As Long = 2              ' B: Member ID (alt) - ID des ausscheidenden Mitglieds
+Public Const H_COL_MEMBER_ID_ALT As Long = 2         ' B: Member ID (alt) - ALIAS für Lesbarkeit
+Public Const H_COL_NAME_EHEM_PAECHTER As Long = 3   ' C: "Nachname, Vorname" kombiniert
+Public Const H_COL_NACHNAME As Long = 3              ' C: ALIAS für Abwärtskompatibilität (zeigt auf kombinierte Spalte)
+Public Const H_COL_AUST_DATUM As Long = 4            ' D: Austrittsdatum (Stichtag der Endabrechnung)
+Public Const H_COL_GRUND As Long = 5                 ' E: Grund (Parzellenwechsel, Kündigung, Tod)
+Public Const H_COL_NAME_NEUER_PAECHTER As Long = 6  ' F: Name des Nachpächters (Nachname, Vorname)
+Public Const H_COL_NACHPAECHTER_NAME As Long = 6    ' F: ALIAS für Abwärtskompatibilität
+Public Const H_COL_NEUER_PAECHTER_ID As Long = 7    ' G: ID des Nachpächters (falls Parzellenwechsel)
+Public Const H_COL_NACHPAECHTER_ID As Long = 7      ' G: ALIAS für Abwärtskompatibilität
+Public Const H_COL_KOMMENTAR As Long = 8             ' H: Kommentar (frei wählbar)
+Public Const H_COL_ENDABRECHNUNG As Long = 9         ' I: Endabrechnung (Datum der Endabrechnung)
+Public Const H_COL_SYSTEMZEIT As Long = 10           ' J: Eintragungszeitpunkt (System)
 
 ' ===============================================================
 ' N. SICHERHEIT & SONSTIGES
@@ -203,6 +207,7 @@ Public Function GetErlaubteFunktionenFuerParzelle() As Variant
         FUNKTION_1_VORSITZENDER, _
         FUNKTION_2_VORSITZENDER, _
         FUNKTION_KASSIERER, _
-        FUNKTION_SCHRIFTFUEHRER)
+        FUNKTION_SCHRIFTFUEHRER _
+    )
 End Function
 

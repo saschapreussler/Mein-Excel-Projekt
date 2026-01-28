@@ -16,6 +16,7 @@ Attribute VB_Exposed = False
 Option Explicit
 
 Private Const WS_NAME_MITGLIEDER As String = "Mitgliederliste"
+Private m_AlreadyInitialized As Boolean  ' Flag um doppelte Initialisierung zu vermeiden
 
 ' --- Hilfsfunktion für Parzelle -> Seite ---
 Private Function GetSeiteFromParzelle(ByVal parzelle As String) As String
@@ -73,6 +74,44 @@ Private Function IsNumericTag(ByVal value As String) As Boolean
     testVal = CLng(value)
     IsNumericTag = (Err.Number = 0)
     On Error GoTo 0
+End Function
+
+' --- Hilfsfunktion: Validiere Datumsformat ---
+Private Function IstGueltigesDatum(ByVal datumStr As String) As Boolean
+    If datumStr = "" Then
+        IstGueltigesDatum = True  ' Leere Strings sind erlaubt
+        Exit Function
+    End If
+    
+    On Error Resume Next
+    Dim testDatum As Date
+    testDatum = CDate(datumStr)
+    IstGueltigesDatum = (Err.Number = 0)
+    On Error GoTo 0
+End Function
+
+' ***************************************************************
+' HILFSPROZEDUR: Prüft ob Person bereits auf dieser Parzelle existiert
+' ***************************************************************
+Private Function ExistiertBereitsAufParzelle(ByVal memberID As String, ByVal parzelle As String, Optional ByVal ausschlussZeile As Long = 0) As Boolean
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    
+    Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    
+    For r = M_START_ROW To lastRow
+        If r <> ausschlussZeile Then  ' Ignoriere die aktuelle Zeile bei Bearbeitung
+            If ws.Cells(r, M_COL_MEMBER_ID).value = memberID And _
+               StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), Trim(parzelle), vbTextCompare) = 0 Then
+                ExistiertBereitsAufParzelle = True
+                Exit Function
+            End If
+        End If
+    Next r
+    
+    ExistiertBereitsAufParzelle = False
 End Function
 
 ' ***************************************************************
@@ -328,9 +367,16 @@ Private Sub cmd_Entfernen_Click()
     
     On Error GoTo 0
     
+    OldParzelle = Me.lbl_Parzelle.Caption
+    
+    ' === SICHERHEITSCHECK: Verein-Parzelle darf NIEMALS gelöscht werden ===
+    If UCase(Trim(OldParzelle)) = "VEREIN" Then
+        MsgBox "FEHLER: Die Verein-Parzelle darf nicht gelöscht oder entfernt werden!", vbCritical, "Operation nicht erlaubt"
+        Exit Sub
+    End If
+    
     Nachname = Me.lbl_Nachname.Caption
     Vorname = Me.lbl_Vorname.Caption
-    OldParzelle = Me.lbl_Parzelle.Caption
     OldMemberID = ThisWorkbook.Worksheets(WS_MITGLIEDER).Cells(lRow, M_COL_MEMBER_ID).value
     
     ' Prüfe ob Pachtende bereits gefüllt ist
@@ -544,6 +590,13 @@ Private Sub BearbeiteNachpaechterUebernahme(ByVal nachpaechterID As String, ByVa
             Call NachpaechterParzellenWechsel(nachpaechterID, nachpaechterName, neueParzelle, AustrittsDatum, alteLRow, alteMemberID, alteNachname, alteVorname, grund)
             
         ElseIf antwort = vbNo Then
+            ' Prüfe ob Nachpächter bereits auf der NEUEN Parzelle ist (Doppel-Check!)
+            If ExistiertBereitsAufParzelle(nachpaechterID, neueParzelle) Then
+                MsgBox "FEHLER: " & nachpaechterName & " ist bereits auf Parzelle " & neueParzelle & " registriert!" & vbCrLf & _
+                       "Doppelte Einträge sind nicht erlaubt.", vbCritical, "Doppelter Eintrag verhindert"
+                Exit Sub
+            End If
+            
             ' Beide Parzellen behalten - neue Zeile hinzufügen
             Call NachpaechterZusaetzlicheParzelle(nachpaechterID, nachpaechterName, neueParzelle, AustrittsDatum, alteLRow, alteMemberID, alteNachname, alteVorname, grund)
             
@@ -624,31 +677,62 @@ Private Sub NachpaechterParzellenWechsel(ByVal nachpaechterID As String, ByVal n
     Dim r As Long
     Dim lastRow As Long
     Dim nachpaechterPachtbeginn As String
-    Dim rowsToDelete As Collection
     Dim alteParzelle As String
     Dim nachpaechterNachname As String
     Dim nachpaechterVorname As String
+    Dim nachpaechterAnrede As String
+    Dim nachpaechterStrasse As String
+    Dim nachpaechterNummer As String
+    Dim nachpaechterPLZ As String
+    Dim nachpaechterWohnort As String
+    Dim nachpaechterTelefon As String
+    Dim nachpaechterMobil As String
+    Dim nachpaechterGeburtstag As String
+    Dim nachpaechterEmail As String
+    Dim nachpaechterFunktion As String
     
     Set wsM = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
     Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
-    Set rowsToDelete = New Collection
     
     wsM.Unprotect PASSWORD:=PASSWORD
     wsH.Unprotect PASSWORD:=PASSWORD
     
-    ' Sammle alle Zeilen des Nachpächters und speichere Pachtbeginn
+    ' WICHTIG: Sammle ALLE Daten des Nachpächters VOR dem Löschen!
     lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
     
-    For r = lastRow To M_START_ROW Step -1
+    For r = M_START_ROW To lastRow
         If wsM.Cells(r, M_COL_MEMBER_ID).value = nachpaechterID Then
+            ' Speichere alle Daten beim ERSTEN Fund
             If nachpaechterPachtbeginn = "" Then
                 nachpaechterPachtbeginn = wsM.Cells(r, M_COL_PACHTANFANG).value
                 nachpaechterNachname = wsM.Cells(r, M_COL_NACHNAME).value
                 nachpaechterVorname = wsM.Cells(r, M_COL_VORNAME).value
+                nachpaechterAnrede = wsM.Cells(r, M_COL_ANREDE).value
+                nachpaechterStrasse = wsM.Cells(r, M_COL_STRASSE).value
+                nachpaechterNummer = wsM.Cells(r, M_COL_NUMMER).value
+                nachpaechterPLZ = wsM.Cells(r, M_COL_PLZ).value
+                nachpaechterWohnort = wsM.Cells(r, M_COL_WOHNORT).value
+                nachpaechterTelefon = wsM.Cells(r, M_COL_TELEFON).value
+                nachpaechterMobil = wsM.Cells(r, M_COL_MOBIL).value
+                nachpaechterGeburtstag = wsM.Cells(r, M_COL_GEBURTSTAG).value
+                nachpaechterEmail = wsM.Cells(r, M_COL_EMAIL).value
+                nachpaechterFunktion = wsM.Cells(r, M_COL_FUNKTION).value
             End If
-            
-            ' Speichere alte Parzelle und verschiebe in Historie
+        End If
+    Next r
+    
+    ' Jetzt lösche alle Zeilen des Nachpächters und schreibe in Historie (rückwärts!)
+    For r = lastRow To M_START_ROW Step -1
+        If wsM.Cells(r, M_COL_MEMBER_ID).value = nachpaechterID Then
+            ' Speichere alte Parzelle
             alteParzelle = wsM.Cells(r, M_COL_PARZELLE).value
+            
+            ' === SICHERHEITSCHECK: NIEMALS Verein-Zeile löschen ===
+            If UCase(Trim(alteParzelle)) = "VEREIN" Then
+                ' Überspringe diese Zeile - NICHT LÖSCHEN!
+                Debug.Print "WARNUNG: Verein-Zeile übersprungen (Zeile " & r & ")"
+                GoTo NextRow
+            End If
             
             ' Schreibe in Mitgliederhistorie
             Dim nextHistRow As Long
@@ -658,50 +742,63 @@ Private Sub NachpaechterParzellenWechsel(ByVal nachpaechterID As String, ByVal n
             wsH.Cells(nextHistRow, H_COL_PARZELLE).value = alteParzelle
             wsH.Cells(nextHistRow, H_COL_MEMBER_ID_ALT).value = nachpaechterID
             wsH.Cells(nextHistRow, H_COL_NAME_EHEM_PAECHTER).value = nachpaechterNachname & ", " & nachpaechterVorname
+            
+            On Error Resume Next
             wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = AustrittsDatum
-            wsH.Cells(nextHistRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
+            If Err.Number = 0 Then
+                wsH.Cells(nextHistRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
+            End If
+            On Error GoTo 0
+            
             wsH.Cells(nextHistRow, H_COL_GRUND).value = "Parzellenwechsel"
             wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = ""
             wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = ""
             wsH.Cells(nextHistRow, H_COL_KOMMENTAR).value = ""
             wsH.Cells(nextHistRow, H_COL_ENDABRECHNUNG).value = ""
+            
+            On Error Resume Next
             wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).value = Now
-            wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
+            If Err.Number = 0 Then
+                wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
+            End If
+            On Error GoTo 0
             
             ' Lösche Zeile
             wsM.Rows(r).Delete Shift:=xlUp
         End If
+NextRow:
     Next r
     
     ' Erstelle neue Zeile für Nachpächter auf neuer Parzelle
     Dim newRow As Long
     newRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row + 1
     
-    ' Kopiere Daten vom ersten gefundenen Eintrag (verwende gespeicherte Werte)
+    ' Schreibe alle gespeicherten Daten in neue Zeile
     wsM.Cells(newRow, M_COL_MEMBER_ID).value = nachpaechterID
     wsM.Cells(newRow, M_COL_PARZELLE).value = neueParzelle
     wsM.Cells(newRow, M_COL_SEITE).value = GetSeiteFromParzelle(neueParzelle)
-    wsM.Cells(newRow, M_COL_PACHTANFANG).value = CDate(nachpaechterPachtbeginn)
-    wsM.Cells(newRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
+    wsM.Cells(newRow, M_COL_ANREDE).value = nachpaechterAnrede
+    wsM.Cells(newRow, M_COL_NACHNAME).value = nachpaechterNachname
+    wsM.Cells(newRow, M_COL_VORNAME).value = nachpaechterVorname
+    wsM.Cells(newRow, M_COL_STRASSE).value = nachpaechterStrasse
+    wsM.Cells(newRow, M_COL_NUMMER).value = nachpaechterNummer
+    wsM.Cells(newRow, M_COL_PLZ).value = nachpaechterPLZ
+    wsM.Cells(newRow, M_COL_WOHNORT).value = nachpaechterWohnort
+    wsM.Cells(newRow, M_COL_TELEFON).value = nachpaechterTelefon
+    wsM.Cells(newRow, M_COL_MOBIL).value = nachpaechterMobil
+    wsM.Cells(newRow, M_COL_GEBURTSTAG).value = nachpaechterGeburtstag
+    wsM.Cells(newRow, M_COL_EMAIL).value = nachpaechterEmail
+    wsM.Cells(newRow, M_COL_FUNKTION).value = nachpaechterFunktion
     
-    ' Hole restliche Daten aus der Datenbank (erster Eintrag mit dieser Member-ID)
-    For r = M_START_ROW To lastRow
-        If wsM.Cells(r, M_COL_MEMBER_ID).value = nachpaechterID Then
-            wsM.Cells(newRow, M_COL_ANREDE).value = wsM.Cells(r, M_COL_ANREDE).value
-            wsM.Cells(newRow, M_COL_NACHNAME).value = wsM.Cells(r, M_COL_NACHNAME).value
-            wsM.Cells(newRow, M_COL_VORNAME).value = wsM.Cells(r, M_COL_VORNAME).value
-            wsM.Cells(newRow, M_COL_STRASSE).value = wsM.Cells(r, M_COL_STRASSE).value
-            wsM.Cells(newRow, M_COL_NUMMER).value = wsM.Cells(r, M_COL_NUMMER).value
-            wsM.Cells(newRow, M_COL_PLZ).value = wsM.Cells(r, M_COL_PLZ).value
-            wsM.Cells(newRow, M_COL_WOHNORT).value = wsM.Cells(r, M_COL_WOHNORT).value
-            wsM.Cells(newRow, M_COL_TELEFON).value = wsM.Cells(r, M_COL_TELEFON).value
-            wsM.Cells(newRow, M_COL_MOBIL).value = wsM.Cells(r, M_COL_MOBIL).value
-            wsM.Cells(newRow, M_COL_GEBURTSTAG).value = wsM.Cells(r, M_COL_GEBURTSTAG).value
-            wsM.Cells(newRow, M_COL_EMAIL).value = wsM.Cells(r, M_COL_EMAIL).value
-            wsM.Cells(newRow, M_COL_FUNKTION).value = wsM.Cells(r, M_COL_FUNKTION).value
-            Exit For
+    ' Pachtbeginn nur setzen wenn vorhanden - MIT FEHLERBEHANDLUNG
+    If nachpaechterPachtbeginn <> "" Then
+        On Error Resume Next
+        wsM.Cells(newRow, M_COL_PACHTANFANG).value = CDate(nachpaechterPachtbeginn)
+        If Err.Number = 0 Then
+            wsM.Cells(newRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
         End If
-    Next r
+        On Error GoTo 0
+    End If
     
     wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -752,6 +849,14 @@ Private Sub NachpaechterZusaetzlicheParzelle(ByVal nachpaechterID As String, ByV
     Dim vorlagenRow As Long
     
     Set wsM = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    
+    ' === SICHERHEITSCHECK: Prüfe ob bereits auf dieser Parzelle ===
+    If ExistiertBereitsAufParzelle(nachpaechterID, neueParzelle) Then
+        MsgBox "FEHLER: " & nachpaechterName & " ist bereits auf Parzelle " & neueParzelle & " registriert!" & vbCrLf & _
+               "Doppelte Einträge sind nicht erlaubt.", vbCritical, "Doppelter Eintrag verhindert"
+        Exit Sub
+    End If
+    
     wsM.Unprotect PASSWORD:=PASSWORD
     
     ' Finde eine Zeile des Nachpächters als Vorlage
@@ -790,8 +895,14 @@ Private Sub NachpaechterZusaetzlicheParzelle(ByVal nachpaechterID As String, ByV
     wsM.Cells(newRow, M_COL_GEBURTSTAG).value = wsM.Cells(vorlagenRow, M_COL_GEBURTSTAG).value
     wsM.Cells(newRow, M_COL_EMAIL).value = wsM.Cells(vorlagenRow, M_COL_EMAIL).value
     wsM.Cells(newRow, M_COL_FUNKTION).value = wsM.Cells(vorlagenRow, M_COL_FUNKTION).value
-    wsM.Cells(newRow, M_COL_PACHTANFANG).value = AustrittsDatum  ' Pachtbeginn = Übernahmedatum
-    wsM.Cells(newRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
+    
+    ' Pachtbeginn = Übernahmedatum (AustrittsDatum) - MIT FEHLERBEHANDLUNG
+    On Error Resume Next
+    wsM.Cells(newRow, M_COL_PACHTANFANG).value = AustrittsDatum
+    If Err.Number = 0 Then
+        wsM.Cells(newRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
+    End If
+    On Error GoTo 0
     
     wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
@@ -874,6 +985,13 @@ Private Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, B
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
     
+    ' === SICHERHEITSCHECK: NIEMALS Verein-Parzelle löschen ===
+    If UCase(Trim(parzelle)) = "VEREIN" Then
+        MsgBox "KRITISCHER FEHLER: Versuch, die Verein-Parzelle zu löschen wurde verhindert!" & vbCrLf & _
+               "Zeile " & lRow & ", Member-ID: " & memberID, vbCritical, "Sicherheitswarnung"
+        Exit Sub
+    End If
+    
     ' Entsperre beide Blätter
     wsM.Unprotect PASSWORD:=PASSWORD
     wsH.Unprotect PASSWORD:=PASSWORD
@@ -882,19 +1000,30 @@ Private Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, B
     nextHistRow = wsH.Cells(wsH.Rows.Count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row + 1
     If nextHistRow < H_START_ROW Then nextHistRow = H_START_ROW
     
-    ' Schreibe Daten in Mitgliederhistorie (10 Spalten A-J)
+    ' Schreibe Daten in Mitgliederhistorie (10 Spalten A-J) - MIT FEHLERBEHANDLUNG
     wsH.Cells(nextHistRow, H_COL_PARZELLE).value = parzelle                          ' A: Parzelle
     wsH.Cells(nextHistRow, H_COL_MEMBER_ID_ALT).value = memberID                     ' B: Member ID (alt)
     wsH.Cells(nextHistRow, H_COL_NAME_EHEM_PAECHTER).value = Nachname & ", " & Vorname  ' C: Name ehem. Pächter (kombiniert)
+    
+    On Error Resume Next
     wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = AustrittsDatum                  ' D: Austrittsdatum
-    wsH.Cells(nextHistRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
+    If Err.Number = 0 Then
+        wsH.Cells(nextHistRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
+    End If
+    On Error GoTo 0
+    
     wsH.Cells(nextHistRow, H_COL_GRUND).value = grund                                ' E: Grund
     wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = nachpaechterName         ' F: Name neuer Pächter
     wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = nachpaechterID             ' G: ID neuer Pächter
     wsH.Cells(nextHistRow, H_COL_KOMMENTAR).value = ""                               ' H: Kommentar (leer)
     wsH.Cells(nextHistRow, H_COL_ENDABRECHNUNG).value = ""                           ' I: Endabrechnung (leer)
+    
+    On Error Resume Next
     wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).value = Now                             ' J: Systemzeit
-    wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
+    If Err.Number = 0 Then
+        wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
+    End If
+    On Error GoTo 0
     
     ' Lösche Zeile aus Mitgliederliste
     wsM.Rows(lRow).Delete Shift:=xlUp
@@ -965,13 +1094,31 @@ Private Sub cmd_Uebernehmen_Click()
     Dim Nachname As String
     Dim ChangeReason As String
     Dim AustrittsDatum As Date
+    Dim currentMemberID As String
     
     On Error GoTo ErrorHandler
     
     Set wsM = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
     
-    If Me.txt_Nachname.value = "" Or Me.txt_Vorname.value = "" Then
+    ' === PFLICHTFELDER VALIDIERUNG ===
+    If Trim(Me.txt_Nachname.value) = "" Or Trim(Me.txt_Vorname.value) = "" Then
         MsgBox "Nachname und Vorname dürfen nicht leer sein.", vbCritical
+        Exit Sub
+    End If
+    
+    ' === DATUMSVALIDIERUNG ===
+    If Not IstGueltigesDatum(Me.txt_Geburtstag.value) Then
+        MsgBox "Geburtstag: Bitte ein gültiges Datum eingeben (Format: TT.MM.JJJJ).", vbExclamation
+        Exit Sub
+    End If
+    
+    If Not IstGueltigesDatum(Me.txt_Pachtbeginn.value) Then
+        MsgBox "Pachtbeginn: Bitte ein gültiges Datum eingeben (Format: TT.MM.JJJJ).", vbExclamation
+        Exit Sub
+    End If
+    
+    If Not IstGueltigesDatum(Me.txt_Pachtende.value) Then
+        MsgBox "Pachtende: Bitte ein gültiges Datum eingeben (Format: TT.MM.JJJJ).", vbExclamation
         Exit Sub
     End If
     
@@ -979,7 +1126,8 @@ Private Sub cmd_Uebernehmen_Click()
     istMitgliedOhnePacht = (funktion = "Mitglied ohne Pacht")
     
     ' === SICHERHEITSCHECK: Verein-Parzelle darf nicht bearbeitet werden ===
-    If Trim(Me.lbl_Parzelle.Caption) = PARZELLE_VEREIN Then
+    OldParzelle = Me.lbl_Parzelle.Caption
+    If UCase(Trim(OldParzelle)) = "VEREIN" Then
         MsgBox "FEHLER: Die Verein-Parzelle darf nicht bearbeitet werden!", vbCritical
         Exit Sub
     End If
@@ -991,31 +1139,21 @@ Private Sub cmd_Uebernehmen_Click()
             MsgBox "Für diese Funktion ist ein Pachtbeginn erforderlich.", vbCritical
             Exit Sub
         End If
-        If Not IsDate(Me.txt_Pachtbeginn.value) Then
-            MsgBox "Pachtbeginn: Bitte ein gültiges Datum eingeben.", vbExclamation
-            Exit Sub
-        End If
-    Else
-        ' Ohne Pacht: Pachtbeginn ist optional
-        If Me.txt_Pachtbeginn.value <> "" Then
-            If Not IsDate(Me.txt_Pachtbeginn.value) Then
-                MsgBox "Mitgliedsbeginn: Bitte ein gültiges Datum eingeben.", vbExclamation
-                Exit Sub
-            End If
-        End If
     End If
     
-    If Me.txt_Pachtende.value <> "" Then
-        If Not IsDate(Me.txt_Pachtende.value) Then
-            MsgBox "Pachtende: Bitte ein gültiges Datum eingeben.", vbExclamation
+    ' Prüfe auf Parzellenwechsel
+    NewParzelle = Me.cbo_Parzelle.value
+    Nachname = Me.txt_Nachname.value
+    currentMemberID = wsM.Cells(lRow, M_COL_MEMBER_ID).value
+    
+    ' === SICHERHEITSCHECK: Doppelte Einträge verhindern ===
+    If OldParzelle <> NewParzelle Then
+        If ExistiertBereitsAufParzelle(currentMemberID, NewParzelle, lRow) Then
+            MsgBox "FEHLER: Diese Person ist bereits auf Parzelle " & NewParzelle & " registriert!" & vbCrLf & _
+                   "Doppelte Einträge sind nicht erlaubt.", vbCritical, "Doppelter Eintrag verhindert"
             Exit Sub
         End If
     End If
-
-    ' Prüfe auf Parzellenwechsel
-    OldParzelle = Me.lbl_Parzelle.Caption
-    NewParzelle = Me.cbo_Parzelle.value
-    Nachname = Me.txt_Nachname.value
 
     wsM.Unprotect PASSWORD:=PASSWORD
     
@@ -1038,14 +1176,22 @@ Private Sub cmd_Uebernehmen_Click()
     wsM.Cells(lRow, M_COL_EMAIL).value = Me.txt_Email.value
     wsM.Cells(lRow, M_COL_FUNKTION).value = Me.cbo_Funktion.value
     
+    ' Pachtbeginn mit Fehlerbehandlung
     If Me.txt_Pachtbeginn.value <> "" Then
         wsM.Cells(lRow, M_COL_PACHTANFANG).value = CDate(Me.txt_Pachtbeginn.value)
-        wsM.Cells(lRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
+        If Err.Number = 0 Then
+            wsM.Cells(lRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
+        End If
+        Err.Clear
     End If
     
+    ' Pachtende mit Fehlerbehandlung
     If Me.txt_Pachtende.value <> "" Then
         wsM.Cells(lRow, M_COL_PACHTENDE).value = CDate(Me.txt_Pachtende.value)
-        wsM.Cells(lRow, M_COL_PACHTENDE).NumberFormat = "dd.mm.yyyy"
+        If Err.Number = 0 Then
+            wsM.Cells(lRow, M_COL_PACHTENDE).NumberFormat = "dd.mm.yyyy"
+        End If
+        Err.Clear
     End If
     
     On Error GoTo 0
@@ -1108,8 +1254,8 @@ Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As Strin
         Exit Sub
     End If
     
-    If Not IsDate(Me.txt_Pachtende.value) Then
-        MsgBox "Austrittsdatum: Bitte ein gültiges Datum eingeben.", vbExclamation
+    If Not IstGueltigesDatum(Me.txt_Pachtende.value) Then
+        MsgBox "Austrittsdatum: Bitte ein gültiges Datum eingeben (Format: TT.MM.JJJJ).", vbExclamation
         Exit Sub
     End If
     
@@ -1118,6 +1264,12 @@ Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As Strin
     Vorname = wsM.Cells(lRow, M_COL_VORNAME).value
     OldParzelle = wsM.Cells(lRow, M_COL_PARZELLE).value
     OldMemberID = wsM.Cells(lRow, M_COL_MEMBER_ID).value
+    
+    ' === SICHERHEITSCHECK: Verein-Parzelle darf NIEMALS gelöscht werden ===
+    If UCase(Trim(OldParzelle)) = "VEREIN" Then
+        MsgBox "FEHLER: Die Verein-Parzelle darf nicht gelöscht werden!", vbCritical, "Operation nicht erlaubt"
+        Exit Sub
+    End If
     
     ' Verschiebe Mitglied in Mitgliederhistorie
     Call VerschiebeInHistorie(lRow, OldParzelle, OldMemberID, Nachname, Vorname, AustrittsDatum, grund, nachpaechterName, nachpaechterID)
@@ -1147,13 +1299,41 @@ Private Sub cmd_Anlegen_Click()
     Dim r As Long
     Dim lastRow As Long
     Dim funktion_in_zeile As String
+    Dim newMemberID As String
     
     On Error GoTo ErrorHandler
     
     Set wsM = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
     
-    If Me.txt_Nachname.value = "" Or Me.txt_Vorname.value = "" Then
+    ' === PFLICHTFELDER VALIDIERUNG ===
+    If Trim(Me.txt_Nachname.value) = "" Or Trim(Me.txt_Vorname.value) = "" Then
         MsgBox "Nachname und Vorname dürfen nicht leer sein.", vbCritical
+        Exit Sub
+    End If
+    
+    If Trim(Me.cbo_Parzelle.value) = "" Then
+        MsgBox "Parzelle muss ausgefüllt werden.", vbCritical
+        Exit Sub
+    End If
+    
+    If Trim(Me.cbo_Funktion.value) = "" Then
+        MsgBox "Funktion muss ausgewählt werden.", vbCritical
+        Exit Sub
+    End If
+    
+    ' === DATUMSVALIDIERUNG ===
+    If Not IstGueltigesDatum(Me.txt_Geburtstag.value) Then
+        MsgBox "Geburtstag: Bitte ein gültiges Datum eingeben (Format: TT.MM.JJJJ).", vbExclamation
+        Exit Sub
+    End If
+    
+    If Not IstGueltigesDatum(Me.txt_Pachtbeginn.value) Then
+        MsgBox "Pachtbeginn: Bitte ein gültiges Datum eingeben (Format: TT.MM.JJJJ).", vbExclamation
+        Exit Sub
+    End If
+    
+    If Not IstGueltigesDatum(Me.txt_Pachtende.value) Then
+        MsgBox "Pachtende: Bitte ein gültiges Datum eingeben (Format: TT.MM.JJJJ).", vbExclamation
         Exit Sub
     End If
     
@@ -1161,35 +1341,16 @@ Private Sub cmd_Anlegen_Click()
     parzelle = Me.cbo_Parzelle.value
     istMitgliedOhnePacht = (funktion = "Mitglied ohne Pacht")
     
-    ' --- VALIDIERUNG 1: Pachtbeginn je nach Funktion ---
+    ' --- VALIDIERUNG: Pachtbeginn je nach Funktion ---
     If Not istMitgliedOhnePacht Then
-        ' Mit Pacht: Pachtbeginn MANDATORY - Auto-Ausfüllung wenn leer
+        ' Mit Pacht: Pachtbeginn MANDATORY
         If Me.txt_Pachtbeginn.value = "" Then
-            Me.txt_Pachtbeginn.value = Format(Date, "dd.mm.yyyy")
-        End If
-        If Not IsDate(Me.txt_Pachtbeginn.value) Then
-            MsgBox "Pachtbeginn: Bitte ein gültiges Datum eingeben.", vbExclamation
-            Exit Sub
-        End If
-    Else
-        ' Mitglied ohne Pacht: Pachtbeginn optional
-        If Me.txt_Pachtbeginn.value <> "" Then
-            If Not IsDate(Me.txt_Pachtbeginn.value) Then
-                MsgBox "Mitgliedsbeginn: Bitte ein gültiges Datum eingeben.", vbExclamation
-                Exit Sub
-            End If
-        End If
-    End If
-    
-    ' --- VALIDIERUNG 2: Pachtende ---
-    If Me.txt_Pachtende.value <> "" Then
-        If Not IsDate(Me.txt_Pachtende.value) Then
-            MsgBox "Pachtende: Bitte ein gültiges Datum eingeben.", vbExclamation
+            MsgBox "Für diese Funktion ist ein Pachtbeginn erforderlich.", vbCritical
             Exit Sub
         End If
     End If
     
-    ' --- VALIDIERUNG 3: Parzelle je nach Funktion ---
+    ' --- VALIDIERUNG: Parzelle je nach Funktion ---
     If Not istMitgliedOhnePacht Then
         ' Mit Pacht: Muss eine Parzelle haben
         If parzelle = "" Then
@@ -1231,7 +1392,7 @@ Private Sub cmd_Anlegen_Click()
         End If
     End If
     
-    ' --- VALIDIERUNG 4: Prüfe Duplikate bei Vorsitzende ---
+    ' --- VALIDIERUNG: Prüfe Duplikate bei Vorsitzende ---
     If funktion = "1. Vorsitzende(r)" Or funktion = "2. Vorsitzende(r)" Then
         If FunktionExistiertBereits(funktion, "") Then
             antwort = MsgBox("Es gibt bereits einen/eine " & funktion & "!" & vbCrLf & vbCrLf & _
@@ -1244,7 +1405,17 @@ Private Sub cmd_Anlegen_Click()
     
     lRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row + 1
     
-    wsM.Cells(lRow, M_COL_MEMBER_ID).value = mod_Mitglieder_UI.CreateGUID_Public()
+    newMemberID = mod_Mitglieder_UI.CreateGUID_Public()
+    
+    ' === SICHERHEITSCHECK: Doppelte Einträge verhindern ===
+    If ExistiertBereitsAufParzelle(newMemberID, parzelle) Then
+        wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        MsgBox "FEHLER: Diese Person existiert bereits auf Parzelle " & parzelle & "!" & vbCrLf & _
+               "Doppelte Einträge sind nicht erlaubt.", vbCritical, "Doppelter Eintrag verhindert"
+        Exit Sub
+    End If
+    
+    wsM.Cells(lRow, M_COL_MEMBER_ID).value = newMemberID
     
     autoSeite = GetSeiteFromParzelle(Me.cbo_Parzelle.value)
     
@@ -1265,14 +1436,22 @@ Private Sub cmd_Anlegen_Click()
     wsM.Cells(lRow, M_COL_EMAIL).value = Me.txt_Email.value
     wsM.Cells(lRow, M_COL_FUNKTION).value = Me.cbo_Funktion.value
     
+    ' Pachtbeginn mit Fehlerbehandlung
     If Me.txt_Pachtbeginn.value <> "" Then
         wsM.Cells(lRow, M_COL_PACHTANFANG).value = CDate(Me.txt_Pachtbeginn.value)
-        wsM.Cells(lRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
+        If Err.Number = 0 Then
+            wsM.Cells(lRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
+        End If
+        Err.Clear
     End If
     
+    ' Pachtende mit Fehlerbehandlung
     If Me.txt_Pachtende.value <> "" Then
         wsM.Cells(lRow, M_COL_PACHTENDE).value = CDate(Me.txt_Pachtende.value)
-        wsM.Cells(lRow, M_COL_PACHTENDE).NumberFormat = "dd.mm.yyyy"
+        If Err.Number = 0 Then
+            wsM.Cells(lRow, M_COL_PACHTENDE).NumberFormat = "dd.mm.yyyy"
+        End If
+        Err.Clear
     End If
     
     On Error GoTo 0
@@ -1297,6 +1476,7 @@ End Sub
 
 Private Sub UserForm_Initialize()
     Me.StartUpPosition = 1
+    m_AlreadyInitialized = False  ' Flag zurücksetzen
     
     On Error GoTo ErrorHandler
     
@@ -1312,19 +1492,38 @@ Private Sub UserForm_Initialize()
     Me.lbl_PachtbeginnBezeichner.Caption = "Pachtbeginn"
     Me.lbl_PachtendeBezeichner.Caption = "Pachtende"
     
+    Exit Sub
+ErrorHandler:
+    MsgBox "Fehler beim Initialisieren der Form: " & Err.Description, vbCritical
+End Sub
+
+' ***************************************************************
+' EVENT: UserForm_Activate - wird NACH Tag-Setzen ausgeführt!
+' ***************************************************************
+Private Sub UserForm_Activate()
+    ' Verhindere doppelte Ausführung
+    If m_AlreadyInitialized Then Exit Sub
+    m_AlreadyInitialized = True
+    
+    On Error GoTo ErrorHandler
+    
+    Dim tagStr As String
+    tagStr = CStr(Me.Tag)
+    
+    ' DEBUG: Zeige Tag-Wert (optional auskommentieren nach Test)
+    Debug.Print "DEBUG UserForm_Activate - Tag = '" & tagStr & "'"
+    
     ' Prüfe ob es ein Nachpächter-NEU Modus ist
-    If InStr(CStr(Me.Tag), "NACHPAECHTER_NEU") > 0 Then
-        ' Format: "NACHPAECHTER_NEU|Parzelle|Pachtbeginn"
-        Dim tagParts() As String
-        tagParts = Split(CStr(Me.Tag), "|")
-        
-        ' Setze Modus auf Edit
+    If InStr(tagStr, "NACHPAECHTER_NEU") > 0 Then
+        Debug.Print "DEBUG: NACHPAECHTER_NEU erkannt - setze EditMode"
         Call SetMode(True, True, False)
         Exit Sub
     End If
     
-    ' Rufe SetMode NUR für NEUE Mitglieder auf
-    If CStr(Me.Tag) = "NEU" Then
+    ' Prüfe ob "NEU" für neues Mitglied
+    If tagStr = "NEU" Then
+        Debug.Print "DEBUG: NEU erkannt - leere Felder und setze EditMode"
+        
         ' Leere alle Felder
         Me.cbo_Parzelle.value = ""
         Me.cbo_Anrede.value = ""
@@ -1345,23 +1544,16 @@ Private Sub UserForm_Initialize()
         Me.txt_Pachtbeginn.value = Format(Date, "dd.mm.yyyy")
         
         Call SetMode(True, True, False)
-    Else
-        ' Für bestehende Mitglieder: Explizit alle TextBoxen und ComboBoxen ausblenden
-        Dim ctl As MSForms.Control
-        For Each ctl In Me.Controls
-            If TypeOf ctl Is MSForms.TextBox Or TypeOf ctl Is MSForms.ComboBox Then
-                ctl.Visible = False
-            End If
-        Next ctl
-        
-        ' Stelle sicher, dass die Bezeichner-Labels sichtbar sind
-        Me.lbl_PachtbeginnBezeichner.Visible = True
-        Me.lbl_PachtendeBezeichner.Visible = True
+        Exit Sub
     End If
+    
+    ' Für bestehende Mitglieder: ViewMode (nur Labels sichtbar)
+    Debug.Print "DEBUG: Bestehendes Mitglied - setze ViewMode"
+    Call SetMode(False, False, False)
     
     Exit Sub
 ErrorHandler:
-    MsgBox "Fehler beim Initialisieren der Form: " & Err.Description, vbCritical
+    MsgBox "Fehler beim Aktivieren der Form: " & Err.Description, vbCritical
 End Sub
 
 ' ***************************************************************
@@ -1454,4 +1646,6 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     
     IsFormLoaded = False
 End Function
+
+
 
