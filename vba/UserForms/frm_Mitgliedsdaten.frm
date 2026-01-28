@@ -87,11 +87,84 @@ Private Function GetLRowFromTag() As Long
     ' Prüfe ob Tag das Format "lRow|..." hat
     If InStr(tagStr, "|") > 0 Then
         tagParts = Split(tagStr, "|")
-        GetLRowFromTag = CLng(tagParts(0))
+        ' Prüfe ob erstes Element numerisch ist
+        If IsNumericTag(tagParts(0)) Then
+            GetLRowFromTag = CLng(tagParts(0))
+        Else
+            ' Für "NACHPAECHTER_NEU|..." Format
+            GetLRowFromTag = 0
+        End If
     Else
-        ' Normales Format: nur lRow
-        GetLRowFromTag = CLng(tagStr)
+        ' Normales Format: nur lRow oder "NEU"
+        If IsNumericTag(tagStr) Then
+            GetLRowFromTag = CLng(tagStr)
+        Else
+            GetLRowFromTag = 0
+        End If
     End If
+End Function
+
+' ***************************************************************
+' HILFSPROZEDUR: Prüft ob auf einer Parzelle noch zahlende Mitglieder sind
+' ***************************************************************
+Private Function HatParzelleNochZahlendesMitglied(ByVal parzelle As String, ByVal ausschlussMemberID As String) As Boolean
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim funktion As String
+    Dim memberID As String
+    
+    Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    
+    For r = M_START_ROW To lastRow
+        If StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), parzelle, vbTextCompare) = 0 Then
+            memberID = ws.Cells(r, M_COL_MEMBER_ID).value
+            funktion = ws.Cells(r, M_COL_FUNKTION).value
+            
+            ' Ignoriere die auszuschließende Member-ID
+            If memberID <> ausschlussMemberID Then
+                ' Prüfe ob zahlendes Mitglied
+                If funktion = "Mitglied mit Pacht" Or _
+                   funktion = "1. Vorsitzende(r)" Or _
+                   funktion = "2. Vorsitzende(r)" Or _
+                   funktion = "Kassierer(in)" Or _
+                   funktion = "Schriftführer(in)" Then
+                    HatParzelleNochZahlendesMitglied = True
+                    Exit Function
+                End If
+            End If
+        End If
+    Next r
+    
+    HatParzelleNochZahlendesMitglied = False
+End Function
+
+' ***************************************************************
+' HILFSPROZEDUR: Findet alle Parzellen eines Mitglieds anhand Member-ID
+' ***************************************************************
+Private Function GetParzellenVonMitglied(ByVal memberID As String) As String
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim parzellen As String
+    
+    Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    
+    parzellen = ""
+    
+    For r = M_START_ROW To lastRow
+        If ws.Cells(r, M_COL_MEMBER_ID).value = memberID Then
+            If parzellen = "" Then
+                parzellen = ws.Cells(r, M_COL_PARZELLE).value
+            Else
+                parzellen = parzellen & ", " & ws.Cells(r, M_COL_PARZELLE).value
+            End If
+        End If
+    Next r
+    
+    GetParzellenVonMitglied = parzellen
 End Function
 
 ' ***************************************************************
@@ -140,7 +213,7 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
         End If
     Next ctl
     
-    If CStr(Me.Tag) = "NEU" Then
+    If CStr(Me.Tag) = "NEU" Or InStr(CStr(Me.Tag), "NACHPAECHTER_NEU") > 0 Then
         Me.cmd_Bearbeiten.Visible = False
         Me.cmd_Entfernen.Visible = False
         Me.cmd_Uebernehmen.Visible = False
@@ -169,24 +242,26 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
     Call AktualisiereLabelsFuerFunktion
     
     If CStr(Me.Tag) <> "NEU" And InStr(CStr(Me.Tag), "NACHPAECHTER_NEU") = 0 Then
-        Me.cbo_Parzelle.value = Me.lbl_Parzelle.Caption
-        Me.cbo_Anrede.value = Me.lbl_Anrede.Caption
-        Me.txt_Vorname.value = Me.lbl_Vorname.Caption
-        Me.txt_Nachname.value = Me.lbl_Nachname.Caption
-        Me.txt_Strasse.value = Me.lbl_Strasse.Caption
-        Me.txt_Nummer.value = Me.lbl_Nummer.Caption
-        Me.txt_PLZ.value = Me.lbl_PLZ.Caption
-        Me.txt_Wohnort.value = Me.lbl_Wohnort.Caption
-        Me.txt_Telefon.value = Me.lbl_Telefon.Caption
-        Me.txt_Mobil.value = Me.lbl_Mobil.Caption
-        Me.txt_Geburtstag.value = Me.lbl_Geburtstag.Caption
-        Me.txt_Email.value = Me.lbl_Email.Caption
-        Me.cbo_Funktion.value = Me.lbl_Funktion.Caption
-        Me.txt_Pachtbeginn.value = Me.lbl_Pachtbeginn.Caption
-        Me.txt_Pachtende.value = Me.lbl_Pachtende.Caption
-    ElseIf IsNewEntry Then
-        ' Für neue Mitglieder: txt_Pachtbeginn wird in UserForm_Initialize gesetzt
-        ' txt_Pachtende bleibt leer
+        Dim lRow As Long
+        lRow = GetLRowFromTag()
+        
+        If lRow > 0 Then
+            Me.cbo_Parzelle.value = Me.lbl_Parzelle.Caption
+            Me.cbo_Anrede.value = Me.lbl_Anrede.Caption
+            Me.txt_Vorname.value = Me.lbl_Vorname.Caption
+            Me.txt_Nachname.value = Me.lbl_Nachname.Caption
+            Me.txt_Strasse.value = Me.lbl_Strasse.Caption
+            Me.txt_Nummer.value = Me.lbl_Nummer.Caption
+            Me.txt_PLZ.value = Me.lbl_PLZ.Caption
+            Me.txt_Wohnort.value = Me.lbl_Wohnort.Caption
+            Me.txt_Telefon.value = Me.lbl_Telefon.Caption
+            Me.txt_Mobil.value = Me.lbl_Mobil.Caption
+            Me.txt_Geburtstag.value = Me.lbl_Geburtstag.Caption
+            Me.txt_Email.value = Me.lbl_Email.Caption
+            Me.cbo_Funktion.value = Me.lbl_Funktion.Caption
+            Me.txt_Pachtbeginn.value = Me.lbl_Pachtbeginn.Caption
+            Me.txt_Pachtende.value = Me.lbl_Pachtende.Caption
+        End If
     End If
     
 End Sub
@@ -200,7 +275,7 @@ Private Sub cmd_Abbrechen_Click()
     
     tagStr = CStr(Me.Tag)
     
-    If tagStr = "NEU" Then
+    If tagStr = "NEU" Or InStr(tagStr, "NACHPAECHTER_NEU") > 0 Then
         Unload Me
         Exit Sub
     End If
@@ -209,7 +284,9 @@ Private Sub cmd_Abbrechen_Click()
     If InStr(tagStr, "|") > 0 Then
         Dim tagParts() As String
         tagParts = Split(tagStr, "|")
-        Me.Tag = tagParts(0)  ' Nur lRow behalten
+        If IsNumericTag(tagParts(0)) Then
+            Me.Tag = tagParts(0)  ' Nur lRow behalten
+        End If
     End If
     
     Call SetMode(False)
@@ -330,7 +407,9 @@ Private Sub cmd_Entfernen_Click()
                 Exit Sub
             Else
                 ' Bestehender Nachpächter wurde ausgewählt
-                GoTo AustrittBearbeiten
+                ' Prüfe ob Nachpächter bereits eine Parzelle hat
+                Call BearbeiteNachpaechterUebernahme(nachpaechterID, nachpaechterName, OldParzelle, lRow, OldMemberID, Nachname, Vorname, Date, ChangeReason)
+                Exit Sub
             End If
             
         Case 2 ' Tod
@@ -401,6 +480,337 @@ TagError:
 End Sub
 
 ' ***************************************************************
+' HILFSPROZEDUR: BearbeiteNachpaechterUebernahme
+' Behandelt die Übernahme einer Parzelle durch einen registrierten Nachpächter
+' ***************************************************************
+Private Sub BearbeiteNachpaechterUebernahme(ByVal nachpaechterID As String, ByVal nachpaechterName As String, _
+                                             ByVal neueParzelle As String, ByVal alteLRow As Long, _
+                                             ByVal alteMemberID As String, ByVal alteNachname As String, _
+                                             ByVal alteVorname As String, ByVal AustrittsDatum As Date, _
+                                             ByVal grund As String)
+    
+    Dim wsM As Worksheet
+    Dim alteParzellen As String
+    Dim antwort As VbMsgBoxResult
+    Dim r As Long
+    Dim lastRow As Long
+    Dim nachpaechterParzelle As String
+    Dim nachpaechterRow As Long
+    
+    Set wsM = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    
+    ' Finde alle Parzellen des Nachpächters
+    alteParzellen = GetParzellenVonMitglied(nachpaechterID)
+    
+    If alteParzellen = "" Then
+        ' Nachpächter hat keine Parzelle - einfach neue Parzelle zuweisen
+        Call UebernehmeParzelleOhneWechsel(nachpaechterID, nachpaechterName, neueParzelle, alteLRow, alteMemberID, alteNachname, alteVorname, AustrittsDatum, grund)
+    Else
+        ' Nachpächter hat bereits Parzelle(n) - Benutzer fragen
+        antwort = MsgBox("Der Nachpächter " & nachpaechterName & " ist bereits auf Parzelle " & alteParzellen & " gemeldet." & vbCrLf & vbCrLf & _
+                        "Möchten Sie:" & vbCrLf & _
+                        "JA = Parzelle " & alteParzellen & " verlassen und zu Parzelle " & neueParzelle & " wechseln" & vbCrLf & _
+                        "NEIN = Beide Parzellen (" & alteParzellen & " und " & neueParzelle & ") behalten" & vbCrLf & _
+                        "ABBRECHEN = Vorgang abbrechen", _
+                        vbYesNoCancel + vbQuestion, "Nachpächter bereits registriert")
+        
+        If antwort = vbYes Then
+            ' Parzelle wechseln - prüfe ob alte Parzelle noch zahlende Mitglieder hat
+            ' Bei mehreren Parzellen: Prüfe jede einzeln
+            Dim parzellenArray() As String
+            parzellenArray = Split(alteParzellen, ", ")
+            
+            Dim kannWechseln As Boolean
+            kannWechseln = True
+            Dim problematischeParzelle As String
+            
+            Dim i As Integer
+            For i = LBound(parzellenArray) To UBound(parzellenArray)
+                If Not HatParzelleNochZahlendesMitglied(parzellenArray(i), nachpaechterID) Then
+                    kannWechseln = False
+                    problematischeParzelle = parzellenArray(i)
+                    Exit For
+                End If
+            Next i
+            
+            If Not kannWechseln Then
+                MsgBox "Der Wechsel ist nicht möglich!" & vbCrLf & vbCrLf & _
+                       "Sie sind das einzige zahlende Mitglied auf Parzelle " & problematischeParzelle & "." & vbCrLf & _
+                       "Ein Wechsel würde die Parzelle ohne zahlendes Mitglied zurücklassen.", vbCritical, "Wechsel nicht möglich"
+                Exit Sub
+            End If
+            
+            ' Wechsel durchführen - alle alten Einträge in Historie verschieben
+            Call NachpaechterParzellenWechsel(nachpaechterID, nachpaechterName, neueParzelle, AustrittsDatum, alteLRow, alteMemberID, alteNachname, alteVorname, grund)
+            
+        ElseIf antwort = vbNo Then
+            ' Beide Parzellen behalten - neue Zeile hinzufügen
+            Call NachpaechterZusaetzlicheParzelle(nachpaechterID, nachpaechterName, neueParzelle, AustrittsDatum, alteLRow, alteMemberID, alteNachname, alteVorname, grund)
+            
+        Else
+            ' Abbrechen
+            Exit Sub
+        End If
+    End If
+    
+End Sub
+
+' ***************************************************************
+' HILFSPROZEDUR: UebernehmeParzelleOhneWechsel
+' Nachpächter ohne bestehende Parzelle übernimmt neue Parzelle
+' ***************************************************************
+Private Sub UebernehmeParzelleOhneWechsel(ByVal nachpaechterID As String, ByVal nachpaechterName As String, _
+                                           ByVal neueParzelle As String, ByVal alteLRow As Long, _
+                                           ByVal alteMemberID As String, ByVal alteNachname As String, _
+                                           ByVal alteVorname As String, ByVal AustrittsDatum As Date, _
+                                           ByVal grund As String)
+    
+    Dim wsM As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim nachpaechterRow As Long
+    Dim nachpaechterPachtbeginn As String
+    
+    Set wsM = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    wsM.Unprotect PASSWORD:=PASSWORD
+    
+    ' Finde Zeile des Nachpächters
+    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    nachpaechterRow = 0
+    
+    For r = M_START_ROW To lastRow
+        If wsM.Cells(r, M_COL_MEMBER_ID).value = nachpaechterID Then
+            nachpaechterRow = r
+            nachpaechterPachtbeginn = wsM.Cells(r, M_COL_PACHTANFANG).value
+            Exit For
+        End If
+    Next r
+    
+    If nachpaechterRow > 0 Then
+        ' Aktualisiere Parzelle des Nachpächters
+        wsM.Cells(nachpaechterRow, M_COL_PARZELLE).value = neueParzelle
+        wsM.Cells(nachpaechterRow, M_COL_SEITE).value = GetSeiteFromParzelle(neueParzelle)
+    End If
+    
+    wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    ' Verschiebe altes Mitglied in Historie
+    Call VerschiebeInHistorie(alteLRow, neueParzelle, alteMemberID, alteNachname, alteVorname, AustrittsDatum, grund, nachpaechterName, nachpaechterID)
+    
+    ' Formatierung neu anwenden
+    Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+    
+    If IsFormLoaded("frm_Mitgliederverwaltung") Then
+        frm_Mitgliederverwaltung.RefreshMitgliederListe
+    End If
+    
+    MsgBox "Parzelle " & neueParzelle & " wurde an " & nachpaechterName & " übergeben.", vbInformation
+    
+    Unload Me
+End Sub
+
+' ***************************************************************
+' HILFSPROZEDUR: NachpaechterParzellenWechsel
+' Nachpächter verlässt alte Parzelle(n) komplett und wechselt zur neuen
+' ***************************************************************
+Private Sub NachpaechterParzellenWechsel(ByVal nachpaechterID As String, ByVal nachpaechterName As String, _
+                                          ByVal neueParzelle As String, ByVal AustrittsDatum As Date, _
+                                          ByVal alteLRow As Long, ByVal alteMemberID As String, _
+                                          ByVal alteNachname As String, ByVal alteVorname As String, _
+                                          ByVal grund As String)
+    
+    Dim wsM As Worksheet
+    Dim wsH As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim nachpaechterPachtbeginn As String
+    Dim rowsToDelete As Collection
+    Dim alteParzelle As String
+    Dim nachpaechterNachname As String
+    Dim nachpaechterVorname As String
+    
+    Set wsM = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
+    Set rowsToDelete = New Collection
+    
+    wsM.Unprotect PASSWORD:=PASSWORD
+    wsH.Unprotect PASSWORD:=PASSWORD
+    
+    ' Sammle alle Zeilen des Nachpächters und speichere Pachtbeginn
+    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    
+    For r = lastRow To M_START_ROW Step -1
+        If wsM.Cells(r, M_COL_MEMBER_ID).value = nachpaechterID Then
+            If nachpaechterPachtbeginn = "" Then
+                nachpaechterPachtbeginn = wsM.Cells(r, M_COL_PACHTANFANG).value
+                nachpaechterNachname = wsM.Cells(r, M_COL_NACHNAME).value
+                nachpaechterVorname = wsM.Cells(r, M_COL_VORNAME).value
+            End If
+            
+            ' Speichere alte Parzelle und verschiebe in Historie
+            alteParzelle = wsM.Cells(r, M_COL_PARZELLE).value
+            
+            ' Schreibe in Mitgliederhistorie
+            Dim nextHistRow As Long
+            nextHistRow = wsH.Cells(wsH.Rows.Count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row + 1
+            If nextHistRow < H_START_ROW Then nextHistRow = H_START_ROW
+            
+            wsH.Cells(nextHistRow, H_COL_PARZELLE).value = alteParzelle
+            wsH.Cells(nextHistRow, H_COL_MEMBER_ID_ALT).value = nachpaechterID
+            wsH.Cells(nextHistRow, H_COL_NAME_EHEM_PAECHTER).value = nachpaechterNachname & ", " & nachpaechterVorname
+            wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = AustrittsDatum
+            wsH.Cells(nextHistRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
+            wsH.Cells(nextHistRow, H_COL_GRUND).value = "Parzellenwechsel"
+            wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = ""
+            wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = ""
+            wsH.Cells(nextHistRow, H_COL_KOMMENTAR).value = ""
+            wsH.Cells(nextHistRow, H_COL_ENDABRECHNUNG).value = ""
+            wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).value = Now
+            wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
+            
+            ' Lösche Zeile
+            wsM.Rows(r).Delete Shift:=xlUp
+        End If
+    Next r
+    
+    ' Erstelle neue Zeile für Nachpächter auf neuer Parzelle
+    Dim newRow As Long
+    newRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row + 1
+    
+    ' Kopiere Daten vom ersten gefundenen Eintrag (verwende gespeicherte Werte)
+    wsM.Cells(newRow, M_COL_MEMBER_ID).value = nachpaechterID
+    wsM.Cells(newRow, M_COL_PARZELLE).value = neueParzelle
+    wsM.Cells(newRow, M_COL_SEITE).value = GetSeiteFromParzelle(neueParzelle)
+    wsM.Cells(newRow, M_COL_PACHTANFANG).value = CDate(nachpaechterPachtbeginn)
+    wsM.Cells(newRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
+    
+    ' Hole restliche Daten aus der Datenbank (erster Eintrag mit dieser Member-ID)
+    For r = M_START_ROW To lastRow
+        If wsM.Cells(r, M_COL_MEMBER_ID).value = nachpaechterID Then
+            wsM.Cells(newRow, M_COL_ANREDE).value = wsM.Cells(r, M_COL_ANREDE).value
+            wsM.Cells(newRow, M_COL_NACHNAME).value = wsM.Cells(r, M_COL_NACHNAME).value
+            wsM.Cells(newRow, M_COL_VORNAME).value = wsM.Cells(r, M_COL_VORNAME).value
+            wsM.Cells(newRow, M_COL_STRASSE).value = wsM.Cells(r, M_COL_STRASSE).value
+            wsM.Cells(newRow, M_COL_NUMMER).value = wsM.Cells(r, M_COL_NUMMER).value
+            wsM.Cells(newRow, M_COL_PLZ).value = wsM.Cells(r, M_COL_PLZ).value
+            wsM.Cells(newRow, M_COL_WOHNORT).value = wsM.Cells(r, M_COL_WOHNORT).value
+            wsM.Cells(newRow, M_COL_TELEFON).value = wsM.Cells(r, M_COL_TELEFON).value
+            wsM.Cells(newRow, M_COL_MOBIL).value = wsM.Cells(r, M_COL_MOBIL).value
+            wsM.Cells(newRow, M_COL_GEBURTSTAG).value = wsM.Cells(r, M_COL_GEBURTSTAG).value
+            wsM.Cells(newRow, M_COL_EMAIL).value = wsM.Cells(r, M_COL_EMAIL).value
+            wsM.Cells(newRow, M_COL_FUNKTION).value = wsM.Cells(r, M_COL_FUNKTION).value
+            Exit For
+        End If
+    Next r
+    
+    wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    ' Verschiebe altes Mitglied in Historie (muss neu gesucht werden, da Zeilen verschoben wurden)
+    ' Finde die neue lRow des austretenden Mitglieds
+    Dim neueAlteLRow As Long
+    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    
+    For r = M_START_ROW To lastRow
+        If wsM.Cells(r, M_COL_MEMBER_ID).value = alteMemberID And _
+           wsM.Cells(r, M_COL_PARZELLE).value = neueParzelle Then
+            neueAlteLRow = r
+            Exit For
+        End If
+    Next r
+    
+    If neueAlteLRow > 0 Then
+        Call VerschiebeInHistorie(neueAlteLRow, neueParzelle, alteMemberID, alteNachname, alteVorname, AustrittsDatum, grund, nachpaechterName, nachpaechterID)
+    End If
+    
+    ' Formatierung neu anwenden
+    Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+    
+    If IsFormLoaded("frm_Mitgliederverwaltung") Then
+        frm_Mitgliederverwaltung.RefreshMitgliederListe
+    End If
+    
+    MsgBox "Nachpächter " & nachpaechterName & " ist von allen bisherigen Parzellen zu Parzelle " & neueParzelle & " gewechselt.", vbInformation
+    
+    Unload Me
+End Sub
+
+' ***************************************************************
+' HILFSPROZEDUR: NachpaechterZusaetzlicheParzelle
+' Nachpächter behält alte Parzelle und bekommt zusätzlich neue
+' ***************************************************************
+Private Sub NachpaechterZusaetzlicheParzelle(ByVal nachpaechterID As String, ByVal nachpaechterName As String, _
+                                              ByVal neueParzelle As String, ByVal AustrittsDatum As Date, _
+                                              ByVal alteLRow As Long, ByVal alteMemberID As String, _
+                                              ByVal alteNachname As String, ByVal alteVorname As String, _
+                                              ByVal grund As String)
+    
+    Dim wsM As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim newRow As Long
+    Dim vorlagenRow As Long
+    
+    Set wsM = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    wsM.Unprotect PASSWORD:=PASSWORD
+    
+    ' Finde eine Zeile des Nachpächters als Vorlage
+    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    vorlagenRow = 0
+    
+    For r = M_START_ROW To lastRow
+        If wsM.Cells(r, M_COL_MEMBER_ID).value = nachpaechterID Then
+            vorlagenRow = r
+            Exit For
+        End If
+    Next r
+    
+    If vorlagenRow = 0 Then
+        MsgBox "Fehler: Nachpächter nicht gefunden.", vbCritical
+        wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        Exit Sub
+    End If
+    
+    ' Erstelle neue Zeile für zusätzliche Parzelle
+    newRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row + 1
+    
+    ' Kopiere alle Daten von Vorlagenzeile
+    wsM.Cells(newRow, M_COL_MEMBER_ID).value = wsM.Cells(vorlagenRow, M_COL_MEMBER_ID).value
+    wsM.Cells(newRow, M_COL_PARZELLE).value = neueParzelle
+    wsM.Cells(newRow, M_COL_SEITE).value = GetSeiteFromParzelle(neueParzelle)
+    wsM.Cells(newRow, M_COL_ANREDE).value = wsM.Cells(vorlagenRow, M_COL_ANREDE).value
+    wsM.Cells(newRow, M_COL_NACHNAME).value = wsM.Cells(vorlagenRow, M_COL_NACHNAME).value
+    wsM.Cells(newRow, M_COL_VORNAME).value = wsM.Cells(vorlagenRow, M_COL_VORNAME).value
+    wsM.Cells(newRow, M_COL_STRASSE).value = wsM.Cells(vorlagenRow, M_COL_STRASSE).value
+    wsM.Cells(newRow, M_COL_NUMMER).value = wsM.Cells(vorlagenRow, M_COL_NUMMER).value
+    wsM.Cells(newRow, M_COL_PLZ).value = wsM.Cells(vorlagenRow, M_COL_PLZ).value
+    wsM.Cells(newRow, M_COL_WOHNORT).value = wsM.Cells(vorlagenRow, M_COL_WOHNORT).value
+    wsM.Cells(newRow, M_COL_TELEFON).value = wsM.Cells(vorlagenRow, M_COL_TELEFON).value
+    wsM.Cells(newRow, M_COL_MOBIL).value = wsM.Cells(vorlagenRow, M_COL_MOBIL).value
+    wsM.Cells(newRow, M_COL_GEBURTSTAG).value = wsM.Cells(vorlagenRow, M_COL_GEBURTSTAG).value
+    wsM.Cells(newRow, M_COL_EMAIL).value = wsM.Cells(vorlagenRow, M_COL_EMAIL).value
+    wsM.Cells(newRow, M_COL_FUNKTION).value = wsM.Cells(vorlagenRow, M_COL_FUNKTION).value
+    wsM.Cells(newRow, M_COL_PACHTANFANG).value = AustrittsDatum  ' Pachtbeginn = Übernahmedatum
+    wsM.Cells(newRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
+    
+    wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    ' Verschiebe altes Mitglied in Historie
+    Call VerschiebeInHistorie(alteLRow, neueParzelle, alteMemberID, alteNachname, alteVorname, AustrittsDatum, grund, nachpaechterName, nachpaechterID)
+    
+    ' Formatierung neu anwenden
+    Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+    
+    If IsFormLoaded("frm_Mitgliederverwaltung") Then
+        frm_Mitgliederverwaltung.RefreshMitgliederListe
+    End If
+    
+    MsgBox "Nachpächter " & nachpaechterName & " hat zusätzlich Parzelle " & neueParzelle & " übernommen.", vbInformation
+    
+    Unload Me
+End Sub
+
+' ***************************************************************
 ' HILFSPROZEDUR: VerarbeiteAustrittNachNachpaechterErfassung
 ' Wird aufgerufen nachdem ein neuer Nachpächter erfasst wurde
 ' ***************************************************************
@@ -447,6 +857,7 @@ End Sub
 ' ***************************************************************
 ' HILFSPROZEDUR: VerschiebeInHistorie
 ' Verschiebt ein Mitglied von Mitgliederliste in Mitgliederhistorie
+' NEUE STRUKTUR: 10 Spalten (A-J)
 ' ***************************************************************
 Private Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, ByVal memberID As String, _
                                    ByVal Nachname As String, ByVal Vorname As String, _
@@ -468,22 +879,21 @@ Private Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, B
     wsH.Unprotect PASSWORD:=PASSWORD
     
     ' Finde nächste freie Zeile in Mitgliederhistorie (ab Zeile 4)
-    nextHistRow = wsH.Cells(wsH.Rows.Count, H_COL_NACHNAME).End(xlUp).Row + 1
+    nextHistRow = wsH.Cells(wsH.Rows.Count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row + 1
     If nextHistRow < H_START_ROW Then nextHistRow = H_START_ROW
     
-    ' Schreibe Daten in Mitgliederhistorie (11 Spalten A-K)
-    wsH.Cells(nextHistRow, H_COL_PARZELLE).value = parzelle                  ' A: Parzelle
-    wsH.Cells(nextHistRow, H_COL_MEMBER_ID_ALT).value = memberID             ' B: Member ID (alt)
-    wsH.Cells(nextHistRow, H_COL_NACHNAME).value = Nachname                  ' C: Nachname
-    wsH.Cells(nextHistRow, H_COL_VORNAME).value = Vorname                    ' D: Vorname
-    wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = AustrittsDatum          ' E: Austrittsdatum
+    ' Schreibe Daten in Mitgliederhistorie (10 Spalten A-J)
+    wsH.Cells(nextHistRow, H_COL_PARZELLE).value = parzelle                          ' A: Parzelle
+    wsH.Cells(nextHistRow, H_COL_MEMBER_ID_ALT).value = memberID                     ' B: Member ID (alt)
+    wsH.Cells(nextHistRow, H_COL_NAME_EHEM_PAECHTER).value = Nachname & ", " & Vorname  ' C: Name ehem. Pächter (kombiniert)
+    wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = AustrittsDatum                  ' D: Austrittsdatum
     wsH.Cells(nextHistRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
-    wsH.Cells(nextHistRow, H_COL_GRUND).value = grund                        ' F: Grund
-    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = nachpaechterName ' G: Name neuer Pächter
-    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = nachpaechterID     ' H: ID neuer Pächter
-    wsH.Cells(nextHistRow, H_COL_KOMMENTAR).value = ""                       ' I: Kommentar (leer)
-    wsH.Cells(nextHistRow, H_COL_ENDABRECHNUNG).value = ""                   ' J: Endabrechnung (leer)
-    wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).value = Now                     ' K: Systemzeit
+    wsH.Cells(nextHistRow, H_COL_GRUND).value = grund                                ' E: Grund
+    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = nachpaechterName         ' F: Name neuer Pächter
+    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = nachpaechterID             ' G: ID neuer Pächter
+    wsH.Cells(nextHistRow, H_COL_KOMMENTAR).value = ""                               ' H: Kommentar (leer)
+    wsH.Cells(nextHistRow, H_COL_ENDABRECHNUNG).value = ""                           ' I: Endabrechnung (leer)
+    wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).value = Now                             ' J: Systemzeit
     wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
     
     ' Lösche Zeile aus Mitgliederliste
@@ -522,7 +932,9 @@ Private Sub cmd_Uebernehmen_Click()
     ' Prüfe ob Tag im Format "lRow|Grund|NachpaechterID|NachpaechterName" vorliegt (bei Austritt)
     If InStr(Me.Tag, "|") > 0 Then
         tagParts = Split(Me.Tag, "|")
-        If UBound(tagParts) >= 1 Then
+        
+        ' Prüfe ob erstes Element numerisch ist
+        If IsNumericTag(tagParts(0)) And UBound(tagParts) >= 1 Then
             ' Austritt-Modus mit Grund
             lRow = CLng(tagParts(0))
             grund = tagParts(1)
@@ -538,7 +950,7 @@ Private Sub cmd_Uebernehmen_Click()
     On Error GoTo TagError
     lRow = GetLRowFromTag()
     
-    If lRow < M_START_ROW Then
+    If lRow = 0 Or lRow < M_START_ROW Then
         MsgBox "Interner Fehler: Keine gültige Zeilennummer für das Speichern gefunden.", vbCritical
         Exit Sub
     End If
@@ -913,6 +1325,22 @@ Private Sub UserForm_Initialize()
     
     ' Rufe SetMode NUR für NEUE Mitglieder auf
     If CStr(Me.Tag) = "NEU" Then
+        ' Leere alle Felder
+        Me.cbo_Parzelle.value = ""
+        Me.cbo_Anrede.value = ""
+        Me.txt_Vorname.value = ""
+        Me.txt_Nachname.value = ""
+        Me.txt_Strasse.value = ""
+        Me.txt_Nummer.value = ""
+        Me.txt_PLZ.value = ""
+        Me.txt_Wohnort.value = ""
+        Me.txt_Telefon.value = ""
+        Me.txt_Mobil.value = ""
+        Me.txt_Geburtstag.value = ""
+        Me.txt_Email.value = ""
+        Me.cbo_Funktion.value = ""
+        Me.txt_Pachtende.value = ""
+        
         ' Fülle txt_Pachtbeginn mit aktuellem Datum
         Me.txt_Pachtbeginn.value = Format(Date, "dd.mm.yyyy")
         

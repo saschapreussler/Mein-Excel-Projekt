@@ -118,12 +118,11 @@ Private Sub cmd_OK_Click()
                 Exit Sub
             ElseIf antwort = vbNo Then
                 ' Nein - Neuer Nachpächter muss angelegt werden
-                MsgBox "Der neue Nachpächter muss erfasst werden." & vbCrLf & vbCrLf & _
-                       "Die Parzelle und das Pachtbeginn-Datum werden automatisch vorausgefüllt.", vbInformation, "Nachpächter erfassen"
+                MsgBox "Es muss ein neuer Nachpächter erfasst werden.", vbInformation, "Nachpächter erfassen"
                 
                 m_SelectedOption = 1
                 m_CustomReason = "Übergabe an Nachpächter"
-                m_NachpaechterID = ""
+                m_NachpaechterID = "NACHPAECHTER_NEU"
                 m_NachpaechterName = ""
                 Me.Hide
                 Exit Sub
