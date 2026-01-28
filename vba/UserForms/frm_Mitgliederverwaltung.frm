@@ -28,6 +28,7 @@ Private Sub cmd_NeuesMitglied_Click()
     With frm_Mitgliedsdaten
         .Tag = "NEU"
         
+        ' Setze alle Felder leer
         .cbo_Parzelle.value = ""
         .cbo_Anrede.value = ""
         .txt_Vorname.value = ""
@@ -41,8 +42,9 @@ Private Sub cmd_NeuesMitglied_Click()
         .txt_Geburtstag.value = ""
         .txt_Email.value = ""
         .cbo_Funktion.value = ""
-        .txt_Pachtbeginn.value = ""
         .txt_Pachtende.value = ""
+        
+        ' txt_Pachtbeginn wird NACH .Show in UserForm_Initialize gefüllt
         
         .Show
     End With
@@ -239,4 +241,3 @@ Private Sub AktualisiereDatumLabel()
     
     On Error GoTo 0
 End Sub
-

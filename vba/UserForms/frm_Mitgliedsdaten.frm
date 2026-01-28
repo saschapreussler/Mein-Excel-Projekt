@@ -67,10 +67,31 @@ Private Function FunktionExistiertBereits(ByVal funktion As String, ByVal aussch
 End Function
 
 ' --- Hilfsfunktion: Prüfe ob String eine Zahl ist ---
-Private Function IsNumeric(ByVal value As String) As Boolean
+Private Function IsNumericTag(ByVal value As String) As Boolean
+    Dim testVal As Long
     On Error Resume Next
-    IsNumeric = Not IsError(CLng(value))
+    testVal = CLng(value)
+    IsNumericTag = (Err.Number = 0)
     On Error GoTo 0
+End Function
+
+' ***************************************************************
+' HILFSPROZEDUR: Extrahiert lRow aus Tag (unterstützt auch "lRow|Grund|..." Format)
+' ***************************************************************
+Private Function GetLRowFromTag() As Long
+    Dim tagStr As String
+    Dim tagParts() As String
+    
+    tagStr = CStr(Me.Tag)
+    
+    ' Prüfe ob Tag das Format "lRow|..." hat
+    If InStr(tagStr, "|") > 0 Then
+        tagParts = Split(tagStr, "|")
+        GetLRowFromTag = CLng(tagParts(0))
+    Else
+        ' Normales Format: nur lRow
+        GetLRowFromTag = CLng(tagStr)
+    End If
 End Function
 
 ' ***************************************************************
@@ -147,7 +168,7 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
     ' Aktualisiere Labels nach Funktion
     Call AktualisiereLabelsFuerFunktion
     
-    If CStr(Me.Tag) <> "NEU" Then
+    If CStr(Me.Tag) <> "NEU" And InStr(CStr(Me.Tag), "NACHPAECHTER_NEU") = 0 Then
         Me.cbo_Parzelle.value = Me.lbl_Parzelle.Caption
         Me.cbo_Anrede.value = Me.lbl_Anrede.Caption
         Me.txt_Vorname.value = Me.lbl_Vorname.Caption
@@ -164,9 +185,8 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
         Me.txt_Pachtbeginn.value = Me.lbl_Pachtbeginn.Caption
         Me.txt_Pachtende.value = Me.lbl_Pachtende.Caption
     ElseIf IsNewEntry Then
-        ' Für neue Mitglieder: Felder leer lassen
-        Me.txt_Pachtbeginn.value = ""
-        Me.txt_Pachtende.value = ""
+        ' Für neue Mitglieder: txt_Pachtbeginn wird in UserForm_Initialize gesetzt
+        ' txt_Pachtende bleibt leer
     End If
     
 End Sub
@@ -176,10 +196,22 @@ Private Sub cmd_Bearbeiten_Click()
 End Sub
 
 Private Sub cmd_Abbrechen_Click()
-    If CStr(Me.Tag) = "NEU" Then
+    Dim tagStr As String
+    
+    tagStr = CStr(Me.Tag)
+    
+    If tagStr = "NEU" Then
         Unload Me
         Exit Sub
     End If
+    
+    ' Wenn Tag im Format "lRow|Grund|..." ist (nach Abbruch eines Austritts), stelle ursprünglichen Tag wieder her
+    If InStr(tagStr, "|") > 0 Then
+        Dim tagParts() As String
+        tagParts = Split(tagStr, "|")
+        Me.Tag = tagParts(0)  ' Nur lRow behalten
+    End If
+    
     Call SetMode(False)
 End Sub
 
@@ -201,13 +233,24 @@ Private Sub cmd_Entfernen_Click()
     Dim ChangeReason As String
     Dim pachtEndeVal As String
     Dim auswahlOption As Integer
+    Dim nachpaechterID As String
+    Dim nachpaechterName As String
+    Dim tagStr As String
     
-    If Not IsNumeric(Me.Tag) Or CLng(Me.Tag) < M_START_ROW Then
+    ' Sichere Tag-Extraktion mit Fehlerbehandlung
+    On Error GoTo TagError
+    tagStr = CStr(Me.Tag)
+    
+    ' Extrahiere lRow aus Tag (unterstützt auch "lRow|Grund|..." Format)
+    lRow = GetLRowFromTag()
+    
+    If lRow < M_START_ROW Then
         MsgBox "Interner Fehler: Keine gültige Zeilennummer für das Entfernen gefunden.", vbCritical
         Exit Sub
     End If
     
-    lRow = CLng(Me.Tag)
+    On Error GoTo 0
+    
     Nachname = Me.lbl_Nachname.Caption
     Vorname = Me.lbl_Vorname.Caption
     OldParzelle = Me.lbl_Parzelle.Caption
@@ -221,35 +264,98 @@ Private Sub cmd_Entfernen_Click()
         .Show vbModal
         auswahlOption = .SelectedOption
         ChangeReason = .CustomReason
+        nachpaechterID = .nachpaechterID
+        nachpaechterName = .nachpaechterName
         Unload frm_Austrittsauswahl
     End With
     
     If auswahlOption = 0 Then
-        ' Benutzer hat abgebrochen
+        ' Benutzer hat abgebrochen - stelle ursprünglichen Tag wieder her
+        Me.Tag = lRow
         Exit Sub
     End If
     
     Select Case auswahlOption
         Case 1 ' Nachpächter
             If ChangeReason = "" Then ChangeReason = "Übergabe an Nachpächter"
-            GoTo AustrittBearbeiten
+            
+            ' Prüfe ob neuer Nachpächter angelegt werden muss
+            If nachpaechterID = "NACHPAECHTER_NEU" Then
+                ' Speichere aktuellen Zustand im Tag
+                Me.Tag = lRow & "|" & ChangeReason & "|NACHPAECHTER_NEU|" & OldParzelle
+                
+                ' Verstecke aktuelles Formular
+                Me.Hide
+                
+                ' Lade NEUES Formular für Nachpächter
+                Dim frmNachpaechter As frm_Mitgliedsdaten
+                Set frmNachpaechter = New frm_Mitgliedsdaten
+                
+                With frmNachpaechter
+                    .Tag = "NACHPAECHTER_NEU|" & OldParzelle & "|" & Format(Date, "dd.mm.yyyy")
+                    
+                    ' Leere alle Felder
+                    .cbo_Anrede.value = ""
+                    .txt_Vorname.value = ""
+                    .txt_Nachname.value = ""
+                    .txt_Strasse.value = ""
+                    .txt_Nummer.value = ""
+                    .txt_PLZ.value = ""
+                    .txt_Wohnort.value = ""
+                    .txt_Telefon.value = ""
+                    .txt_Mobil.value = ""
+                    .txt_Geburtstag.value = ""
+                    .txt_Email.value = ""
+                    .txt_Pachtende.value = ""
+                    
+                    ' Vorbefüllen: Parzelle, Funktion, Pachtbeginn
+                    .cbo_Parzelle.value = OldParzelle
+                    .cbo_Funktion.value = "Mitglied mit Pacht"
+                    .txt_Pachtbeginn.value = Format(Date, "dd.mm.yyyy")
+                    
+                    ' Setze Modus auf Bearbeiten
+                    Call .SetMode(True, True, False)
+                    
+                    .Show vbModal
+                End With
+                
+                ' Aufräumen
+                Set frmNachpaechter = Nothing
+                
+                ' Zeige aktuelles Formular wieder
+                Me.Show
+                
+                ' Nach Rückkehr: Verarbeite Austritt mit neuem Nachpächter
+                Call VerarbeiteAustrittNachNachpaechterErfassung(lRow, OldParzelle, OldMemberID, Nachname, Vorname, Date, ChangeReason)
+                Exit Sub
+            Else
+                ' Bestehender Nachpächter wurde ausgewählt
+                GoTo AustrittBearbeiten
+            End If
             
         Case 2 ' Tod
             If ChangeReason = "" Then ChangeReason = "Tod des Mitglieds"
+            nachpaechterID = ""
+            nachpaechterName = ""
             GoTo AustrittBearbeiten
             
         Case 3 ' Kündigung
             If ChangeReason = "" Then ChangeReason = "Kündigung"
+            nachpaechterID = ""
+            nachpaechterName = ""
             GoTo AustrittBearbeiten
             
         Case 4 ' Parzellenwechsel
             ChangeReason = "Parzellenwechsel"
+            Me.Tag = lRow  ' Stelle ursprünglichen Tag wieder her
             Call SetMode(True, False, False)
             MsgBox "Bitte geben Sie die neue Parzellennummer in das Feld 'Parzelle' ein und klicken Sie dann 'Übernehmen'.", vbInformation, "Parzellenwechsel"
             Exit Sub
             
         Case 5 ' Sonstiges
             If ChangeReason = "" Then ChangeReason = "Sonstiges"
+            nachpaechterID = ""
+            nachpaechterName = ""
             GoTo AustrittBearbeiten
     End Select
     
@@ -259,7 +365,7 @@ AustrittBearbeiten:
         Call SetMode(True, False, False)
         
         ' Speichere Grund temporär im Tag des Formulars
-        Me.Tag = lRow & "|" & ChangeReason
+        Me.Tag = lRow & "|" & ChangeReason & "|" & nachpaechterID & "|" & nachpaechterName
         
         ' Fülle Pachtende mit heutigem Datum und MARKIERE ES komplett
         Me.txt_Pachtende.value = Format(Date, "dd.mm.yyyy")
@@ -277,7 +383,7 @@ AustrittBearbeiten:
     End If
     
     ' Verschiebe Mitglied in Mitgliederhistorie
-    Call VerschiebeInHistorie(lRow, OldParzelle, OldMemberID, Nachname, Vorname, AustrittsDatum, ChangeReason)
+    Call VerschiebeInHistorie(lRow, OldParzelle, OldMemberID, Nachname, Vorname, AustrittsDatum, ChangeReason, nachpaechterName, nachpaechterID)
     
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
@@ -287,7 +393,55 @@ AustrittBearbeiten:
     End If
     
     Unload Me
+    Exit Sub
     
+TagError:
+    MsgBox "Fehler beim Lesen der Zeilennummer: " & Err.Description, vbCritical
+    Exit Sub
+End Sub
+
+' ***************************************************************
+' HILFSPROZEDUR: VerarbeiteAustrittNachNachpaechterErfassung
+' Wird aufgerufen nachdem ein neuer Nachpächter erfasst wurde
+' ***************************************************************
+Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVal parzelle As String, _
+                                                          ByVal memberID As String, ByVal Nachname As String, _
+                                                          ByVal Vorname As String, ByVal AustrittsDatum As Date, _
+                                                          ByVal grund As String)
+    
+    Dim wsM As Worksheet
+    Dim newMemberID As String
+    Dim newMemberName As String
+    Dim r As Long
+    Dim lastRow As Long
+    
+    Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    
+    ' Finde den neu angelegten Nachpächter (letzte Zeile mit gleicher Parzelle)
+    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    
+    For r = lastRow To M_START_ROW Step -1
+        If StrComp(Trim(wsM.Cells(r, M_COL_PARZELLE).value), parzelle, vbTextCompare) = 0 Then
+            ' Prüfe ob es nicht das alte Mitglied ist
+            If r <> lRow Then
+                newMemberID = wsM.Cells(r, M_COL_MEMBER_ID).value
+                newMemberName = wsM.Cells(r, M_COL_NACHNAME).value & ", " & wsM.Cells(r, M_COL_VORNAME).value
+                Exit For
+            End If
+        End If
+    Next r
+    
+    ' Verschiebe altes Mitglied in Historie mit Nachpächter-Daten
+    Call VerschiebeInHistorie(lRow, parzelle, memberID, Nachname, Vorname, AustrittsDatum, grund, newMemberName, newMemberID)
+    
+    ' Formatierung neu anwenden
+    Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+    
+    If IsFormLoaded("frm_Mitgliederverwaltung") Then
+        frm_Mitgliederverwaltung.RefreshMitgliederListe
+    End If
+    
+    Unload Me
 End Sub
 
 ' ***************************************************************
@@ -296,7 +450,9 @@ End Sub
 ' ***************************************************************
 Private Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, ByVal memberID As String, _
                                    ByVal Nachname As String, ByVal Vorname As String, _
-                                   ByVal AustrittsDatum As Date, ByVal grund As String)
+                                   ByVal AustrittsDatum As Date, ByVal grund As String, _
+                                   Optional ByVal nachpaechterName As String = "", _
+                                   Optional ByVal nachpaechterID As String = "")
     
     Dim wsM As Worksheet
     Dim wsH As Worksheet
@@ -312,18 +468,23 @@ Private Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, B
     wsH.Unprotect PASSWORD:=PASSWORD
     
     ' Finde nächste freie Zeile in Mitgliederhistorie (ab Zeile 4)
-    nextHistRow = wsH.Cells(wsH.Rows.Count, 3).End(xlUp).Row + 1
-    If nextHistRow < 4 Then nextHistRow = 4
+    nextHistRow = wsH.Cells(wsH.Rows.Count, H_COL_NACHNAME).End(xlUp).Row + 1
+    If nextHistRow < H_START_ROW Then nextHistRow = H_START_ROW
     
-    ' Schreibe Daten in Mitgliederhistorie
-    wsH.Cells(nextHistRow, 1).value = parzelle              ' Spalte A: Parzelle
-    wsH.Cells(nextHistRow, 2).value = memberID              ' Spalte B: Member ID (alt)
-    wsH.Cells(nextHistRow, 3).value = Nachname              ' Spalte C: Nachname
-    wsH.Cells(nextHistRow, 4).value = Vorname               ' Spalte D: Vorname
-    wsH.Cells(nextHistRow, 5).value = AustrittsDatum        ' Spalte E: Austrittsdatum
-    wsH.Cells(nextHistRow, 5).NumberFormat = "dd.mm.yyyy"
-    wsH.Cells(nextHistRow, 6).value = grund                 ' Spalte F: Grund
-    wsH.Cells(nextHistRow, 7).value = ""                    ' Spalte G: Endabrechnung (leer)
+    ' Schreibe Daten in Mitgliederhistorie (11 Spalten A-K)
+    wsH.Cells(nextHistRow, H_COL_PARZELLE).value = parzelle                  ' A: Parzelle
+    wsH.Cells(nextHistRow, H_COL_MEMBER_ID_ALT).value = memberID             ' B: Member ID (alt)
+    wsH.Cells(nextHistRow, H_COL_NACHNAME).value = Nachname                  ' C: Nachname
+    wsH.Cells(nextHistRow, H_COL_VORNAME).value = Vorname                    ' D: Vorname
+    wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = AustrittsDatum          ' E: Austrittsdatum
+    wsH.Cells(nextHistRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
+    wsH.Cells(nextHistRow, H_COL_GRUND).value = grund                        ' F: Grund
+    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = nachpaechterName ' G: Name neuer Pächter
+    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = nachpaechterID     ' H: ID neuer Pächter
+    wsH.Cells(nextHistRow, H_COL_KOMMENTAR).value = ""                       ' I: Kommentar (leer)
+    wsH.Cells(nextHistRow, H_COL_ENDABRECHNUNG).value = ""                   ' J: Endabrechnung (leer)
+    wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).value = Now                     ' K: Systemzeit
+    wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
     
     ' Lösche Zeile aus Mitgliederliste
     wsM.Rows(lRow).Delete Shift:=xlUp
@@ -332,8 +493,15 @@ Private Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, B
     wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
+    Dim nachpaechterInfo As String
+    If nachpaechterName <> "" Then
+        nachpaechterInfo = vbCrLf & "Nachpächter: " & nachpaechterName
+    Else
+        nachpaechterInfo = ""
+    End If
+    
     MsgBox "Mitglied " & Nachname & " wurde in die Mitgliederhistorie verschoben." & vbCrLf & _
-           "Grund: " & grund, vbInformation
+           "Grund: " & grund & nachpaechterInfo, vbInformation
     
     Exit Sub
 ErrorHandler:
@@ -348,24 +516,33 @@ Private Sub cmd_Uebernehmen_Click()
     Dim tagParts() As String
     Dim lRow As Long
     Dim grund As String
+    Dim nachpaechterID As String
+    Dim nachpaechterName As String
     
-    ' Prüfe ob Tag im Format "lRow|Grund" vorliegt (bei Austritt)
+    ' Prüfe ob Tag im Format "lRow|Grund|NachpaechterID|NachpaechterName" vorliegt (bei Austritt)
     If InStr(Me.Tag, "|") > 0 Then
         tagParts = Split(Me.Tag, "|")
         If UBound(tagParts) >= 1 Then
             ' Austritt-Modus mit Grund
-            Call cmd_Uebernehmen_MitAustritt(CLng(tagParts(0)), tagParts(1))
+            lRow = CLng(tagParts(0))
+            grund = tagParts(1)
+            If UBound(tagParts) >= 2 Then nachpaechterID = tagParts(2)
+            If UBound(tagParts) >= 3 Then nachpaechterName = tagParts(3)
+            
+            Call cmd_Uebernehmen_MitAustritt(lRow, grund, nachpaechterName, nachpaechterID)
             Exit Sub
         End If
     End If
     
     ' Normale Validierung für Bearbeiten-Modus
-    If Not IsNumeric(Me.Tag) Or CLng(Me.Tag) < M_START_ROW Then
+    On Error GoTo TagError
+    lRow = GetLRowFromTag()
+    
+    If lRow < M_START_ROW Then
         MsgBox "Interner Fehler: Keine gültige Zeilennummer für das Speichern gefunden.", vbCritical
         Exit Sub
     End If
-    
-    lRow = CLng(Me.Tag)
+    On Error GoTo 0
     
     Dim wsM As Worksheet
     Dim autoSeite As String
@@ -484,6 +661,11 @@ Private Sub cmd_Uebernehmen_Click()
     
     Unload Me
     Exit Sub
+    
+TagError:
+    MsgBox "Fehler beim Lesen der Zeilennummer: " & Err.Description, vbCritical
+    Exit Sub
+    
 ErrorHandler:
     On Error GoTo 0
     If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -494,7 +676,9 @@ End Sub
 ' HILFSPROZEDUR: cmd_Uebernehmen_MitAustritt
 ' Wird aufgerufen wenn Austritt mit Grund durchgeführt wird
 ' ***************************************************************
-Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As String)
+Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As String, _
+                                         Optional ByVal nachpaechterName As String = "", _
+                                         Optional ByVal nachpaechterID As String = "")
     
     Dim wsM As Worksheet
     Dim Nachname As String
@@ -524,7 +708,7 @@ Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As Strin
     OldMemberID = wsM.Cells(lRow, M_COL_MEMBER_ID).value
     
     ' Verschiebe Mitglied in Mitgliederhistorie
-    Call VerschiebeInHistorie(lRow, OldParzelle, OldMemberID, Nachname, Vorname, AustrittsDatum, grund)
+    Call VerschiebeInHistorie(lRow, OldParzelle, OldMemberID, Nachname, Vorname, AustrittsDatum, grund, nachpaechterName, nachpaechterID)
     
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
@@ -716,8 +900,22 @@ Private Sub UserForm_Initialize()
     Me.lbl_PachtbeginnBezeichner.Caption = "Pachtbeginn"
     Me.lbl_PachtendeBezeichner.Caption = "Pachtende"
     
+    ' Prüfe ob es ein Nachpächter-NEU Modus ist
+    If InStr(CStr(Me.Tag), "NACHPAECHTER_NEU") > 0 Then
+        ' Format: "NACHPAECHTER_NEU|Parzelle|Pachtbeginn"
+        Dim tagParts() As String
+        tagParts = Split(CStr(Me.Tag), "|")
+        
+        ' Setze Modus auf Edit
+        Call SetMode(True, True, False)
+        Exit Sub
+    End If
+    
     ' Rufe SetMode NUR für NEUE Mitglieder auf
     If CStr(Me.Tag) = "NEU" Then
+        ' Fülle txt_Pachtbeginn mit aktuellem Datum
+        Me.txt_Pachtbeginn.value = Format(Date, "dd.mm.yyyy")
+        
         Call SetMode(True, True, False)
     Else
         ' Für bestehende Mitglieder: Explizit alle TextBoxen und ComboBoxen ausblenden
