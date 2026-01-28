@@ -106,14 +106,15 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
     Dim ctl As MSForms.Control
     For Each ctl In Me.Controls
         If TypeOf ctl Is MSForms.Label And Left(ctl.Name, 4) = "lbl_" Then
-            ' Bezeichner-Labels sollen IMMER sichtbar sein (auch im EditMode)
+            ' Bezeichner-Labels sollen IMMER sichtbar sein
             If ctl.Name = "lbl_PachtbeginnBezeichner" Or ctl.Name = "lbl_PachtendeBezeichner" Then
                 ctl.Visible = True
             Else
-                ' Alle anderen Labels: unsichtbar im EditMode, sichtbar im ViewMode
+                ' Alle anderen Labels (Datenlabels): SICHTBAR im ViewMode, UNSICHTBAR im EditMode
                 ctl.Visible = Not EditMode
             End If
         ElseIf TypeOf ctl Is MSForms.TextBox Or TypeOf ctl Is MSForms.ComboBox Then
+            ' TextBoxen/ComboBoxen: UNSICHTBAR im ViewMode, SICHTBAR im EditMode
             ctl.Visible = EditMode
         End If
     Next ctl
@@ -133,6 +134,7 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
         Me.cmd_Abbrechen.Visible = True
         
     Else
+        ' ViewMode (Vorschau)
         Me.cmd_Bearbeiten.Visible = True
         Me.cmd_Entfernen.Visible = True
         Me.cmd_Uebernehmen.Visible = False
@@ -487,6 +489,7 @@ ErrorHandler:
     If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     MsgBox "Fehler beim Speichern der Änderungen: " & Err.Description, vbCritical
 End Sub
+
 ' ***************************************************************
 ' HILFSPROZEDUR: cmd_Uebernehmen_MitAustritt
 ' Wird aufgerufen wenn Austritt mit Grund durchgeführt wird
@@ -713,9 +716,21 @@ Private Sub UserForm_Initialize()
     Me.lbl_PachtbeginnBezeichner.Caption = "Pachtbeginn"
     Me.lbl_PachtendeBezeichner.Caption = "Pachtende"
     
-    ' Rufe SetMode auf, um die Form zu initialisieren
+    ' Rufe SetMode NUR für NEUE Mitglieder auf
     If CStr(Me.Tag) = "NEU" Then
         Call SetMode(True, True, False)
+    Else
+        ' Für bestehende Mitglieder: Explizit alle TextBoxen und ComboBoxen ausblenden
+        Dim ctl As MSForms.Control
+        For Each ctl In Me.Controls
+            If TypeOf ctl Is MSForms.TextBox Or TypeOf ctl Is MSForms.ComboBox Then
+                ctl.Visible = False
+            End If
+        Next ctl
+        
+        ' Stelle sicher, dass die Bezeichner-Labels sichtbar sind
+        Me.lbl_PachtbeginnBezeichner.Visible = True
+        Me.lbl_PachtendeBezeichner.Visible = True
     End If
     
     Exit Sub
@@ -725,7 +740,7 @@ End Sub
 
 ' ***************************************************************
 ' HILFSPROZEDUR: FuelleParzelleComboDB
-' Füllt die Parzelle ComboBox mit allen Werten AUßER "Verein"
+' Füllt die Parzelle ComboBox mit allen Werten AUSSER "Verein"
 ' ***************************************************************
 Private Sub FuelleParzelleComboDB()
     Dim ws As Worksheet
@@ -744,7 +759,7 @@ Private Sub FuelleParzelleComboDB()
     ' Leere die ComboBox zuerst
     Me.cbo_Parzelle.Clear
     
-    ' Lese alle Werte von F4:F17 und füge sie hinzu, AUßER "Verein"
+    ' Lese alle Werte von F4:F17 und füge sie hinzu, AUSSER "Verein"
     For lRow = 4 To 17
         parzelleValue = Trim(ws.Cells(lRow, 6).value)
         

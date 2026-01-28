@@ -27,7 +27,6 @@ Private Sub cmd_NeuesMitglied_Click()
     
     With frm_Mitgliedsdaten
         .Tag = "NEU"
-        Call .SetMode(True, True, False)
         
         .cbo_Parzelle.value = ""
         .cbo_Anrede.value = ""
@@ -86,8 +85,6 @@ Public Sub OeffneMitgliedsDetails()
 
     With frm_Mitgliedsdaten
         .Tag = lRow
-        
-        Call .SetMode(False)
         
         .lbl_Parzelle.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 0)
         .lbl_Anrede.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 2)
