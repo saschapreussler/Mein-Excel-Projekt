@@ -192,13 +192,13 @@ Private Sub cmd_Entfernen_Click()
     
     Dim lRow As Long
     Dim Nachname As String
+    Dim Vorname As String
     Dim OldParzelle As String
+    Dim OldMemberID As String
     Dim AustrittsDatum As Date
-    Dim NewParzelleNr As String
-    Dim NewMemberID As String
     Dim ChangeReason As String
-    Dim AustrittAustritt As VbMsgBoxResult
     Dim pachtEndeVal As String
+    Dim auswahlOption As Integer
     
     If Not IsNumeric(Me.Tag) Or CLng(Me.Tag) < M_START_ROW Then
         MsgBox "Interner Fehler: Keine gültige Zeilennummer für das Entfernen gefunden.", vbCritical
@@ -207,57 +207,164 @@ Private Sub cmd_Entfernen_Click()
     
     lRow = CLng(Me.Tag)
     Nachname = Me.lbl_Nachname.Caption
+    Vorname = Me.lbl_Vorname.Caption
     OldParzelle = Me.lbl_Parzelle.Caption
+    OldMemberID = ThisWorkbook.Worksheets(WS_MITGLIEDER).Cells(lRow, M_COL_MEMBER_ID).value
     
     ' Prüfe ob Pachtende bereits gefüllt ist
     pachtEndeVal = Trim(Me.lbl_Pachtende.Caption)
     
-    AustrittAustritt = MsgBox("Wählen Sie den Grund für die Änderung:" & vbCrLf & vbCrLf & _
-                                "Ja = Parzellenwechsel (Mitglied behält Mitgliedschaft, bekommt neue Parzelle)" & vbCrLf & _
-                                "Nein = Austritt (Mitglied gibt Parzelle ab und tritt aus)", vbYesNo + vbQuestion, "Parzellenwechsel oder Austritt?")
+    ' Zeige Austrittsauswahl-Dialog
+    With frm_Austrittsauswahl
+        .Show vbModal
+        auswahlOption = .SelectedOption
+        ChangeReason = .CustomReason
+        Unload frm_Austrittsauswahl
+    End With
     
-    If AustrittAustritt = vbYes Then
-        ' PARZELLENWECHSEL - Im Edit-Modus die neue Parzelle eingeben
-        Call SetMode(True, False, False)
-        MsgBox "Bitte geben Sie die neue Parzellennummer in das Feld 'Parzelle' ein und klicken Sie dann 'Übernehmen'.", vbInformation, "Parzellenwechsel"
+    If auswahlOption = 0 Then
+        ' Benutzer hat abgebrochen
         Exit Sub
-        
-    Else
-        ' AUSTRITT - Im Edit-Modus das Austrittsdatum eingeben
-        If pachtEndeVal = "" Then
-            ' Pachtende ist noch leer - Benutzer kann es eintragen
-            Call SetMode(True, False, False)
-            Me.txt_Pachtende.value = Format(Date, "dd.mm.yyyy")
-            MsgBox "Bitte bestätigen Sie das Austrittsdatum (oder ändern Sie es) und klicken Sie dann 'Übernehmen'.", vbInformation, "Austrittsdatum"
-            Exit Sub
-        Else
-            ' Pachtende ist bereits gesetzt - einfach als Austritt eintragen
-            AustrittsDatum = CDate(pachtEndeVal)
-        End If
-        
-        NewParzelleNr = ""
-        NewMemberID = ""
-        ChangeReason = "Austritt aus Parzelle"
-        
-        Call mod_Mitglieder_UI.Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
-             lRow, OldParzelle, "", Nachname, AustrittsDatum, NewParzelleNr, NewMemberID, ChangeReason)
-        
-        ' Formatierung neu anwenden
-        Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
-        
-        Unload Me
     End If
     
+    Select Case auswahlOption
+        Case 1 ' Nachpächter
+            If ChangeReason = "" Then ChangeReason = "Übergabe an Nachpächter"
+            GoTo AustrittBearbeiten
+            
+        Case 2 ' Tod
+            If ChangeReason = "" Then ChangeReason = "Tod des Mitglieds"
+            GoTo AustrittBearbeiten
+            
+        Case 3 ' Kündigung
+            If ChangeReason = "" Then ChangeReason = "Kündigung"
+            GoTo AustrittBearbeiten
+            
+        Case 4 ' Parzellenwechsel
+            ChangeReason = "Parzellenwechsel"
+            Call SetMode(True, False, False)
+            MsgBox "Bitte geben Sie die neue Parzellennummer in das Feld 'Parzelle' ein und klicken Sie dann 'Übernehmen'.", vbInformation, "Parzellenwechsel"
+            Exit Sub
+            
+        Case 5 ' Sonstiges
+            If ChangeReason = "" Then ChangeReason = "Sonstiges"
+            GoTo AustrittBearbeiten
+    End Select
+    
+AustrittBearbeiten:
+    If pachtEndeVal = "" Then
+        ' Pachtende ist noch leer - Benutzer kann es eintragen
+        Call SetMode(True, False, False)
+        
+        ' Speichere Grund temporär im Tag des Formulars
+        Me.Tag = lRow & "|" & ChangeReason
+        
+        ' Fülle Pachtende mit heutigem Datum und MARKIERE ES komplett
+        Me.txt_Pachtende.value = Format(Date, "dd.mm.yyyy")
+        Me.txt_Pachtende.SetFocus
+        Me.txt_Pachtende.SelStart = 0
+        Me.txt_Pachtende.SelLength = Len(Me.txt_Pachtende.value)
+        
+        MsgBox "Das Austrittsdatum wurde auf heute gesetzt." & vbCrLf & _
+               "Grund: " & ChangeReason & vbCrLf & vbCrLf & _
+               "Bitte bestätigen Sie es (oder ändern Sie es) und klicken Sie dann 'Übernehmen'.", vbInformation, "Austrittsdatum"
+        Exit Sub
+    Else
+        ' Pachtende ist bereits gesetzt - Mitglied in Historie verschieben
+        AustrittsDatum = CDate(pachtEndeVal)
+    End If
+    
+    ' Verschiebe Mitglied in Mitgliederhistorie
+    Call VerschiebeInHistorie(lRow, OldParzelle, OldMemberID, Nachname, Vorname, AustrittsDatum, ChangeReason)
+    
+    ' Formatierung neu anwenden
+    Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+    
+    If IsFormLoaded("frm_Mitgliederverwaltung") Then
+        frm_Mitgliederverwaltung.RefreshMitgliederListe
+    End If
+    
+    Unload Me
+    
+End Sub
+
+' ***************************************************************
+' HILFSPROZEDUR: VerschiebeInHistorie
+' Verschiebt ein Mitglied von Mitgliederliste in Mitgliederhistorie
+' ***************************************************************
+Private Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, ByVal memberID As String, _
+                                   ByVal Nachname As String, ByVal Vorname As String, _
+                                   ByVal AustrittsDatum As Date, ByVal grund As String)
+    
+    Dim wsM As Worksheet
+    Dim wsH As Worksheet
+    Dim nextHistRow As Long
+    
+    On Error GoTo ErrorHandler
+    
+    Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
+    
+    ' Entsperre beide Blätter
+    wsM.Unprotect PASSWORD:=PASSWORD
+    wsH.Unprotect PASSWORD:=PASSWORD
+    
+    ' Finde nächste freie Zeile in Mitgliederhistorie (ab Zeile 4)
+    nextHistRow = wsH.Cells(wsH.Rows.Count, 3).End(xlUp).Row + 1
+    If nextHistRow < 4 Then nextHistRow = 4
+    
+    ' Schreibe Daten in Mitgliederhistorie
+    wsH.Cells(nextHistRow, 1).value = parzelle              ' Spalte A: Parzelle
+    wsH.Cells(nextHistRow, 2).value = memberID              ' Spalte B: Member ID (alt)
+    wsH.Cells(nextHistRow, 3).value = Nachname              ' Spalte C: Nachname
+    wsH.Cells(nextHistRow, 4).value = Vorname               ' Spalte D: Vorname
+    wsH.Cells(nextHistRow, 5).value = AustrittsDatum        ' Spalte E: Austrittsdatum
+    wsH.Cells(nextHistRow, 5).NumberFormat = "dd.mm.yyyy"
+    wsH.Cells(nextHistRow, 6).value = grund                 ' Spalte F: Grund
+    wsH.Cells(nextHistRow, 7).value = ""                    ' Spalte G: Endabrechnung (leer)
+    
+    ' Lösche Zeile aus Mitgliederliste
+    wsM.Rows(lRow).Delete Shift:=xlUp
+    
+    ' Schütze Blätter wieder
+    wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    MsgBox "Mitglied " & Nachname & " wurde in die Mitgliederhistorie verschoben." & vbCrLf & _
+           "Grund: " & grund, vbInformation
+    
+    Exit Sub
+ErrorHandler:
+    On Error GoTo 0
+    If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    If Not wsH Is Nothing Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    MsgBox "Fehler beim Verschieben in Historie: " & Err.Description, vbCritical
 End Sub
 
 Private Sub cmd_Uebernehmen_Click()
     
+    Dim tagParts() As String
+    Dim lRow As Long
+    Dim grund As String
+    
+    ' Prüfe ob Tag im Format "lRow|Grund" vorliegt (bei Austritt)
+    If InStr(Me.Tag, "|") > 0 Then
+        tagParts = Split(Me.Tag, "|")
+        If UBound(tagParts) >= 1 Then
+            ' Austritt-Modus mit Grund
+            Call cmd_Uebernehmen_MitAustritt(CLng(tagParts(0)), tagParts(1))
+            Exit Sub
+        End If
+    End If
+    
+    ' Normale Validierung für Bearbeiten-Modus
     If Not IsNumeric(Me.Tag) Or CLng(Me.Tag) < M_START_ROW Then
         MsgBox "Interner Fehler: Keine gültige Zeilennummer für das Speichern gefunden.", vbCritical
         Exit Sub
     End If
     
-    Dim lRow As Long
+    lRow = CLng(Me.Tag)
+    
     Dim wsM As Worksheet
     Dim autoSeite As String
     Dim funktion As String
@@ -270,7 +377,6 @@ Private Sub cmd_Uebernehmen_Click()
     
     On Error GoTo ErrorHandler
     
-    lRow = CLng(Me.Tag)
     Set wsM = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
     
     If Me.txt_Nachname.value = "" Or Me.txt_Vorname.value = "" Then
@@ -381,6 +487,54 @@ ErrorHandler:
     If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     MsgBox "Fehler beim Speichern der Änderungen: " & Err.Description, vbCritical
 End Sub
+' ***************************************************************
+' HILFSPROZEDUR: cmd_Uebernehmen_MitAustritt
+' Wird aufgerufen wenn Austritt mit Grund durchgeführt wird
+' ***************************************************************
+Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As String)
+    
+    Dim wsM As Worksheet
+    Dim Nachname As String
+    Dim Vorname As String
+    Dim OldParzelle As String
+    Dim OldMemberID As String
+    Dim AustrittsDatum As Date
+    
+    On Error GoTo ErrorHandler
+    
+    Set wsM = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    
+    If Me.txt_Pachtende.value = "" Then
+        MsgBox "Austrittsdatum darf nicht leer sein.", vbCritical
+        Exit Sub
+    End If
+    
+    If Not IsDate(Me.txt_Pachtende.value) Then
+        MsgBox "Austrittsdatum: Bitte ein gültiges Datum eingeben.", vbExclamation
+        Exit Sub
+    End If
+    
+    AustrittsDatum = CDate(Me.txt_Pachtende.value)
+    Nachname = wsM.Cells(lRow, M_COL_NACHNAME).value
+    Vorname = wsM.Cells(lRow, M_COL_VORNAME).value
+    OldParzelle = wsM.Cells(lRow, M_COL_PARZELLE).value
+    OldMemberID = wsM.Cells(lRow, M_COL_MEMBER_ID).value
+    
+    ' Verschiebe Mitglied in Mitgliederhistorie
+    Call VerschiebeInHistorie(lRow, OldParzelle, OldMemberID, Nachname, Vorname, AustrittsDatum, grund)
+    
+    ' Formatierung neu anwenden
+    Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+    
+    If IsFormLoaded("frm_Mitgliederverwaltung") Then
+        frm_Mitgliederverwaltung.RefreshMitgliederListe
+    End If
+    
+    Unload Me
+    Exit Sub
+ErrorHandler:
+    MsgBox "Fehler beim Austritt: " & Err.Description, vbCritical
+End Sub
 
 Private Sub cmd_Anlegen_Click()
     Dim wsM As Worksheet
@@ -410,9 +564,9 @@ Private Sub cmd_Anlegen_Click()
     
     ' --- VALIDIERUNG 1: Pachtbeginn je nach Funktion ---
     If Not istMitgliedOhnePacht Then
+        ' Mit Pacht: Pachtbeginn MANDATORY - Auto-Ausfüllung wenn leer
         If Me.txt_Pachtbeginn.value = "" Then
-            MsgBox "Für diese Funktion ist ein Pachtbeginn erforderlich.", vbCritical
-            Exit Sub
+            Me.txt_Pachtbeginn.value = Format(Date, "dd.mm.yyyy")
         End If
         If Not IsDate(Me.txt_Pachtbeginn.value) Then
             MsgBox "Pachtbeginn: Bitte ein gültiges Datum eingeben.", vbExclamation
@@ -460,11 +614,6 @@ Private Sub cmd_Anlegen_Click()
                     funktion_in_zeile = wsM.Cells(r, M_COL_FUNKTION).value
                     
                     ' REGEL: Folgende Funktionen sind IMMER mit Pacht:
-                    ' - "Mitglied mit Pacht" (explizit)
-                    ' - "1. Vorsitzende(r)" (Vorstand = immer mit Pacht)
-                    ' - "2. Vorsitzende(r)" (Vorstand = immer mit Pacht)
-                    ' - "Kassierer(in)" (Vorstand = immer mit Pacht)
-                    ' - "Schriftführer(in)" (Vorstand = immer mit Pacht)
                     If funktion_in_zeile = "Mitglied mit Pacht" Or _
                        funktion_in_zeile = "1. Vorsitzende(r)" Or _
                        funktion_in_zeile = "2. Vorsitzende(r)" Or _
@@ -553,7 +702,9 @@ Private Sub UserForm_Initialize()
     On Error GoTo ErrorHandler
     
     Me.cbo_Anrede.RowSource = "Daten!D4:D9"
-    Me.cbo_Funktion.RowSource = "Daten!B4:B11"
+    
+    ' Funktion dynamisch füllen
+    Call FuelleFunktionComboDB
     
     ' Fuelle cbo_Parzelle OHNE "Verein"
     Call FuelleParzelleComboDB
@@ -563,7 +714,6 @@ Private Sub UserForm_Initialize()
     Me.lbl_PachtendeBezeichner.Caption = "Pachtende"
     
     ' Rufe SetMode auf, um die Form zu initialisieren
-    ' Für neue Mitglieder (Tag = "NEU") wird EditMode direkt gesetzt
     If CStr(Me.Tag) = "NEU" Then
         Call SetMode(True, True, False)
     End If
@@ -574,7 +724,7 @@ ErrorHandler:
 End Sub
 
 ' ***************************************************************
-' NEUE HILFSPROZEDUR: FuelleParzelleComboDB
+' HILFSPROZEDUR: FuelleParzelleComboDB
 ' Füllt die Parzelle ComboBox mit allen Werten AUßER "Verein"
 ' ***************************************************************
 Private Sub FuelleParzelleComboDB()
@@ -586,16 +736,16 @@ Private Sub FuelleParzelleComboDB()
     
     Set ws = ThisWorkbook.Worksheets(WS_DATEN)
     If ws Is Nothing Then
-        ' Fallback: Nutze die Original-RowSource minus "Verein"
-        Me.cbo_Parzelle.RowSource = "Daten!F4:F18"
+        ' Fallback: Nutze F4:F17 (OHNE F18 = "Verein")
+        Me.cbo_Parzelle.RowSource = "Daten!F4:F17"
         Exit Sub
     End If
     
     ' Leere die ComboBox zuerst
     Me.cbo_Parzelle.Clear
     
-    ' Lese alle Werte von F4:F18 und füge sie hinzu, AUSSER "Verein"
-    For lRow = 4 To 18
+    ' Lese alle Werte von F4:F17 und füge sie hinzu, AUßER "Verein"
+    For lRow = 4 To 17
         parzelleValue = Trim(ws.Cells(lRow, 6).value)
         
         ' Überspringe leere Zellen und "Verein"
@@ -606,8 +756,49 @@ Private Sub FuelleParzelleComboDB()
     
     Exit Sub
 ErrorHandler:
-    ' Fallback bei Fehler: Nutze RowSource
-    Me.cbo_Parzelle.RowSource = "Daten!F4:F18"
+    ' Fallback bei Fehler: Nutze F4:F17
+    Me.cbo_Parzelle.RowSource = "Daten!F4:F17"
+End Sub
+
+' ***************************************************************
+' HILFSPROZEDUR: FuelleFunktionComboDB
+' Füllt die Funktion ComboBox dynamisch aus Daten!B4:B?
+' ***************************************************************
+Private Sub FuelleFunktionComboDB()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim lRow As Long
+    Dim funktionValue As String
+    
+    On Error GoTo ErrorHandler
+    
+    Set ws = ThisWorkbook.Worksheets(WS_DATEN)
+    If ws Is Nothing Then
+        ' Fallback
+        Me.cbo_Funktion.RowSource = "Daten!B4:B12"
+        Exit Sub
+    End If
+    
+    ' Leere die ComboBox zuerst
+    Me.cbo_Funktion.Clear
+    
+    ' Finde letzte gefüllte Zeile in Spalte B
+    lastRow = ws.Cells(ws.Rows.Count, 2).End(xlUp).Row
+    
+    ' Lese alle Werte von B4 bis lastRow
+    For lRow = 4 To lastRow
+        funktionValue = Trim(ws.Cells(lRow, 2).value)
+        
+        ' Überspringe leere Zellen
+        If funktionValue <> "" Then
+            Me.cbo_Funktion.AddItem funktionValue
+        End If
+    Next lRow
+    
+    Exit Sub
+ErrorHandler:
+    ' Fallback bei Fehler
+    Me.cbo_Funktion.RowSource = "Daten!B4:B12"
 End Sub
 
 Private Function IsFormLoaded(ByVal FormName As String) As Boolean

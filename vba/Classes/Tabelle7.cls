@@ -75,7 +75,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 
                 ' Verwendung von StrComp für robuste, fallunabhängige Prüfung
                 ElseIf StrComp(parzelle, PARZELLE_VEREIN, vbTextCompare) = 0 Then
-                    seite = "mitte"
+                    seite = "zentral"
                 End If
 
                 Me.Cells(rCell.Row, M_COL_SEITE).value = seite

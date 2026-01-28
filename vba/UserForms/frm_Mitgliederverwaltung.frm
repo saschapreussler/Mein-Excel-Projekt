@@ -24,19 +24,11 @@ Private Sub cmd_MitgliedEdit_Click()
 End Sub
 
 Private Sub cmd_NeuesMitglied_Click()
-    ' === NEUES DESIGN: Keine InputBox mehr - Form direkt öffnen ===
-    ' Die Parzelle wird auf der frm_Mitgliedsdaten eingegeben
-    ' "Mitglied ohne Pacht" kann auch leer bleiben
     
     With frm_Mitgliedsdaten
-        ' Marker für den Anlage-Modus
         .Tag = "NEU"
-        
-        ' Alle Felder als TextBox/ComboBox sichtbar machen (Eingabemodus)
-        ' IsNewEntry=True: Pachtanfang wird mit aktuellem Datum vorgefüllt
         Call .SetMode(True, True, False)
         
-        ' Alle Felder leeren/zurücksetzen
         .cbo_Parzelle.value = ""
         .cbo_Anrede.value = ""
         .txt_Vorname.value = ""
@@ -50,11 +42,9 @@ Private Sub cmd_NeuesMitglied_Click()
         .txt_Geburtstag.value = ""
         .txt_Email.value = ""
         .cbo_Funktion.value = ""
+        .txt_Pachtbeginn.value = ""
         .txt_Pachtende.value = ""
         
-        ' Pachtanfang ist bereits vorgefüllt (siehe SetMode mit IsNewEntry=True)
-        
-        ' Zeige Formular
         .Show
     End With
 
@@ -113,6 +103,19 @@ Public Sub OeffneMitgliedsDetails()
         .lbl_Email.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 12)
         .lbl_Funktion.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 13)
         
+        ' Fülle auch die Pachtbeginn und Pachtende Labels
+        If Me.lst_Mitgliederliste.ColumnCount > 14 Then
+            .lbl_Pachtbeginn.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 14)
+        Else
+            .lbl_Pachtbeginn.Caption = ""
+        End If
+        
+        If Me.lst_Mitgliederliste.ColumnCount > 15 Then
+            .lbl_Pachtende.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 15)
+        Else
+            .lbl_Pachtende.Caption = ""
+        End If
+        
         .cbo_Parzelle.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 0)
         .cbo_Anrede.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 2)
         .txt_Vorname.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 3)
@@ -127,33 +130,37 @@ Public Sub OeffneMitgliedsDetails()
         .txt_Email.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 12)
         .cbo_Funktion.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 13)
         
+        ' Fülle auch die Pachtbeginn und Pachtende TextBoxen
+        If Me.lst_Mitgliederliste.ColumnCount > 14 Then
+            .txt_Pachtbeginn.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 14)
+        Else
+            .txt_Pachtbeginn.value = ""
+        End If
+        
+        If Me.lst_Mitgliederliste.ColumnCount > 15 Then
+            .txt_Pachtende.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 15)
+        Else
+            .txt_Pachtende.value = ""
+        End If
+        
     End With
     
     frm_Mitgliedsdaten.Show
     
 End Sub
 
-' ==========================================================
-' PROZEDUR: Befüllt die ListBox mit Mitgliederdaten
-' WICHTIG: Filtert ausgetretene Mitglieder aus (Pachtende nicht leer)
-' ==========================================================
 Private Sub LoadListBoxData()
     Dim iZeile As Long
     Dim AnzArr As Long
     Dim arr() As Variant
 
-    lst_Mitgliederliste.ColumnCount = 14
+    lst_Mitgliederliste.ColumnCount = 16
     lst_Mitgliederliste.ColumnHeads = False
     
     AnzArr = 0
     
     With Worksheets("Mitgliederliste")
-        ' ZÄHLE zuerst die aktiven Mitglieder (Pachtende LEER und Parzelle nicht leer/nicht "Verein")
         For iZeile = 6 To .Cells(.Rows.Count, 2).End(xlUp).Row
-            ' Bedingungen:
-            ' 1. Parzelle nicht leer
-            ' 2. Parzelle nicht "Verein"
-            ' 3. Pachtende LEER (= aktives Mitglied, nicht ausgetreten)
             If Trim(.Cells(iZeile, 2).value) <> "" And _
                StrComp(Trim(.Cells(iZeile, 2).value), "Verein", vbTextCompare) <> 0 And _
                Trim(.Cells(iZeile, M_COL_PACHTENDE).value) = "" Then
@@ -162,7 +169,7 @@ Private Sub LoadListBoxData()
         Next iZeile
         
         If AnzArr > 0 Then
-             ReDim arr(0 To AnzArr - 1, 0 To 13)
+             ReDim arr(0 To AnzArr - 1, 0 To 15)
         Else
              lst_Mitgliederliste.Clear
              Exit Sub
@@ -170,14 +177,13 @@ Private Sub LoadListBoxData()
         
         AnzArr = 0
         
-        ' FÜLLE die aktiven Mitglieder in das Array
         For iZeile = 6 To .Cells(.Rows.Count, 2).End(xlUp).Row
             If Trim(.Cells(iZeile, 2).value) <> "" And _
                StrComp(Trim(.Cells(iZeile, 2).value), "Verein", vbTextCompare) <> 0 And _
                Trim(.Cells(iZeile, M_COL_PACHTENDE).value) = "" Then
                 
                 arr(AnzArr, 0) = .Cells(iZeile, 2).value    ' B: Parzelle
-                arr(AnzArr, 1) = .Cells(iZeile, 3).value    ' C: Seite (wird nur angezeigt, nicht bearbeitet)
+                arr(AnzArr, 1) = .Cells(iZeile, 3).value    ' C: Seite
                 arr(AnzArr, 2) = .Cells(iZeile, 4).value    ' D: Anrede
                 arr(AnzArr, 3) = .Cells(iZeile, 6).value    ' F: Vorname
                 arr(AnzArr, 4) = .Cells(iZeile, 5).value    ' E: Nachname
@@ -190,6 +196,8 @@ Private Sub LoadListBoxData()
                 arr(AnzArr, 11) = .Cells(iZeile, 13).value  ' M: Geburtstag
                 arr(AnzArr, 12) = .Cells(iZeile, 14).value  ' N: Email
                 arr(AnzArr, 13) = .Cells(iZeile, 15).value  ' O: Funktion
+                arr(AnzArr, 14) = .Cells(iZeile, 16).value  ' P: Pachtbeginn
+                arr(AnzArr, 15) = .Cells(iZeile, 17).value  ' Q: Pachtende
                 
                 AnzArr = AnzArr + 1
             End If
@@ -198,15 +206,40 @@ Private Sub LoadListBoxData()
         lst_Mitgliederliste.List = arr
     End With
 End Sub
-Private Sub UserForm_Initialize()
-    Me.StartUpPosition = 1
-    With Me
-        .lbl_ListDatum.Caption = "Mitgliederliste vom:  " & Worksheets("Mitgliederliste").Range("D2")
-    End With
-    Call LoadListBoxData
-End Sub
 
 Public Sub RefreshMitgliederListe()
     Call LoadListBoxData
+    Call AktualisiereDatumLabel
+End Sub
+
+Private Sub UserForm_Initialize()
+    Call LoadListBoxData
+    Call AktualisiereDatumLabel
+End Sub
+
+' ***************************************************************
+' HILFSPROZEDUR: AktualisiereDatumLabel
+' Setzt das Label lbl_ListDatum mit dem Stand-Datum aus D2
+' ***************************************************************
+Private Sub AktualisiereDatumLabel()
+    Dim ws As Worksheet
+    Dim standDatum As Variant
+    
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets("Mitgliederliste")
+    
+    If Not ws Is Nothing Then
+        standDatum = ws.Cells(2, 4).value
+        
+        If IsDate(standDatum) Then
+            Me.lbl_ListDatum.Caption = "Stand: " & Format(standDatum, "dd.mm.yyyy")
+        Else
+            Me.lbl_ListDatum.Caption = "Stand: " & CStr(standDatum)
+        End If
+    Else
+        Me.lbl_ListDatum.Caption = "Stand: (unbekannt)"
+    End If
+    
+    On Error GoTo 0
 End Sub
 
