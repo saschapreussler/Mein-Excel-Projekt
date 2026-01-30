@@ -179,12 +179,16 @@ End Sub
 
 ' ***************************************************************
 ' PROZEDUR: Formatiere_Mitgliederhistorie (Formatierung für Historientabelle)
+' Spalten A-J mit spezifischen Ausrichtungen:
+' A = zentriert, B-H = linksbündig, I = zentriert, J = rechtsbündig
+' Alle Zellen vertikal zentriert, AutoFit ab Zeile 4
 ' ***************************************************************
 Public Sub Formatiere_Mitgliederhistorie()
     
     Dim ws As Worksheet
     Dim lastRow As Long
     Dim rngData As Range
+    Dim rngHeaders As Range
     Dim wasProtected As Boolean
     
     On Error GoTo ErrorHandler
@@ -195,11 +199,12 @@ Public Sub Formatiere_Mitgliederhistorie()
     wasProtected = ws.ProtectContents
     If wasProtected Then ws.Unprotect PASSWORD:=PASSWORD
     
-    lastRow = ws.Cells(ws.Rows.Count, H_COL_NACHNAME).End(xlUp).Row
-    If lastRow < H_START_ROW Then GoTo Cleanup
+    lastRow = ws.Cells(ws.Rows.Count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row
+    If lastRow < H_START_ROW Then lastRow = H_START_ROW ' Mindestens Header-Zeile
     
-    ' Datenbereich für Formatierung
-    Set rngData = ws.Range(ws.Cells(H_START_ROW, H_COL_PARZELLE), ws.Cells(lastRow, H_COL_SYSTEMZEIT))
+    ' Datenbereich für Formatierung (ab Zeile 3 = Header)
+    Set rngData = ws.Range(ws.Cells(H_HEADER_ROW, H_COL_PARZELLE), ws.Cells(lastRow, H_COL_SYSTEMZEIT))
+    Set rngHeaders = ws.Range(ws.Cells(H_HEADER_ROW, H_COL_PARZELLE), ws.Cells(H_HEADER_ROW, H_COL_SYSTEMZEIT))
     
     ' --- 1. RAHMENLINIE (dünne schwarze Linien) ---
     With rngData.Borders
@@ -208,13 +213,42 @@ Public Sub Formatiere_Mitgliederhistorie()
         .Weight = xlThin
     End With
     
-    ' --- 2. SPALTEN AUSRICHTUNG ---
-    With ws.Range(ws.Cells(H_START_ROW, H_COL_PARZELLE), ws.Cells(lastRow, H_COL_PARZELLE))
-        .HorizontalAlignment = xlCenter
-        .VerticalAlignment = xlCenter
-    End With
+    ' --- 2. VERTIKALE AUSRICHTUNG: Alle Zellen zentriert in Zellenhöhe ---
+    rngData.VerticalAlignment = xlCenter
     
-    ' --- 3. DATUMSFORMATE ---
+    ' --- 3. HORIZONTALE AUSRICHTUNG je Spalte (ab Zeile 3 inkl. Header) ---
+    
+    ' Spalte A (Parzelle) - ZENTRIERT
+    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_PARZELLE), ws.Cells(lastRow, H_COL_PARZELLE)).HorizontalAlignment = xlCenter
+    
+    ' Spalte B (Member ID alt) - LINKSBÜNDIG
+    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_MEMBER_ID_ALT), ws.Cells(lastRow, H_COL_MEMBER_ID_ALT)).HorizontalAlignment = xlLeft
+    
+    ' Spalte C (Name ehem. Pächter) - LINKSBÜNDIG
+    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_NAME_EHEM_PAECHTER), ws.Cells(lastRow, H_COL_NAME_EHEM_PAECHTER)).HorizontalAlignment = xlLeft
+    
+    ' Spalte D (Austrittsdatum) - LINKSBÜNDIG
+    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_AUST_DATUM), ws.Cells(lastRow, H_COL_AUST_DATUM)).HorizontalAlignment = xlLeft
+    
+    ' Spalte E (Grund des Austritts) - LINKSBÜNDIG
+    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_GRUND), ws.Cells(lastRow, H_COL_GRUND)).HorizontalAlignment = xlLeft
+    
+    ' Spalte F (Name neuer Pächter) - LINKSBÜNDIG
+    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_NACHPAECHTER_NAME), ws.Cells(lastRow, H_COL_NACHPAECHTER_NAME)).HorizontalAlignment = xlLeft
+    
+    ' Spalte G (ID neuer Pächter) - LINKSBÜNDIG
+    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_NACHPAECHTER_ID), ws.Cells(lastRow, H_COL_NACHPAECHTER_ID)).HorizontalAlignment = xlLeft
+    
+    ' Spalte H (Kommentar) - LINKSBÜNDIG
+    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_KOMMENTAR), ws.Cells(lastRow, H_COL_KOMMENTAR)).HorizontalAlignment = xlLeft
+    
+    ' Spalte I (Endabrechnung erstellt) - ZENTRIERT
+    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_ENDABRECHNUNG), ws.Cells(lastRow, H_COL_ENDABRECHNUNG)).HorizontalAlignment = xlCenter
+    
+    ' Spalte J (Systemzeit) - RECHTSBÜNDIG
+    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_SYSTEMZEIT), ws.Cells(lastRow, H_COL_SYSTEMZEIT)).HorizontalAlignment = xlRight
+    
+    ' --- 4. DATUMSFORMATE ---
     With ws.Range(ws.Cells(H_START_ROW, H_COL_AUST_DATUM), ws.Cells(lastRow, H_COL_AUST_DATUM))
         .NumberFormat = "dd.mm.yyyy"
     End With
@@ -223,8 +257,15 @@ Public Sub Formatiere_Mitgliederhistorie()
         .NumberFormat = "dd.mm.yyyy hh:mm:ss"
     End With
     
-    ' --- 4. ZEBRA-FORMATIERUNG (NACH anderen Formatierungen!) ---
-    Call Anwende_Zebra_Formatierung_Direkt(ws, H_COL_PARZELLE, H_COL_SYSTEMZEIT, H_START_ROW, H_COL_NACHNAME)
+    ' --- 5. AUTOFIT Spaltenbreite (nur Datenbereich ab Zeile 4) ---
+    ' Wir berechnen AutoFit basierend auf dem gesamten Bereich ab Header
+    Dim col As Long
+    For col = H_COL_PARZELLE To H_COL_SYSTEMZEIT
+        ws.Columns(col).AutoFit
+    Next col
+    
+    ' --- 6. ZEBRA-FORMATIERUNG (NACH anderen Formatierungen!) ---
+    Call Anwende_Zebra_Formatierung_Direkt(ws, H_COL_PARZELLE, H_COL_SYSTEMZEIT, H_START_ROW, H_COL_NAME_EHEM_PAECHTER)
 
 Cleanup:
     If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -234,63 +275,6 @@ ErrorHandler:
     MsgBox "Fehler beim Formatieren der Mitgliederhistorie: " & Err.Description, vbCritical
 End Sub
 
-' ***************************************************************
-' PROZEDUR: Formatiere_Daten_Tabellen (Kategorie-Regeln und Mapping)
-' ***************************************************************
-Public Sub Formatiere_Daten_Tabellen()
-    
-    Dim ws As Worksheet
-    Dim lastRow As Long
-    Dim rngData As Range
-    Dim wasProtected As Boolean
-    
-    On Error GoTo ErrorHandler
-    
-    Set ws = ThisWorkbook.Worksheets(WS_DATEN)
-    If ws Is Nothing Then Exit Sub
-    
-    wasProtected = ws.ProtectContents
-    If wasProtected Then ws.Unprotect PASSWORD:=PASSWORD
-    
-    ' --- TABELLE 1: KATEGORIE-REGELN (J bis Q) ---
-    lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_START).End(xlUp).Row
-    If lastRow >= DATA_START_ROW Then
-        Set rngData = ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), ws.Cells(lastRow, DATA_CAT_COL_END))
-        
-        ' Rahmenlinie
-        With rngData.Borders
-            .LineStyle = xlContinuous
-            .color = RGB(0, 0, 0)
-            .Weight = xlThin
-        End With
-        
-        ' Zebra-Formatierung (NACH Rahmenlinie!)
-        Call Anwende_Zebra_Formatierung_Direkt(ws, DATA_CAT_COL_START, DATA_CAT_COL_END, DATA_START_ROW, DATA_CAT_COL_START)
-    End If
-    
-    ' --- TABELLE 2: ENTITYKEY/MAPPING (S bis U) ---
-    lastRow = ws.Cells(ws.Rows.Count, DATA_MAP_COL_ENTITYKEY).End(xlUp).Row
-    If lastRow >= DATA_START_ROW Then
-        Set rngData = ws.Range(ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYKEY), ws.Cells(lastRow, 21))
-        
-        ' Rahmenlinie
-        With rngData.Borders
-            .LineStyle = xlContinuous
-            .color = RGB(0, 0, 0)
-            .Weight = xlThin
-        End With
-        
-        ' Zebra-Formatierung (NACH Rahmenlinie!)
-        Call Anwende_Zebra_Formatierung_Direkt(ws, DATA_MAP_COL_ENTITYKEY, 21, DATA_START_ROW, DATA_MAP_COL_ENTITYKEY)
-    End If
-
-Cleanup:
-    If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    Exit Sub
-ErrorHandler:
-    If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    MsgBox "Fehler beim Formatieren der Datentabellen: " & Err.Description, vbCritical
-End Sub
 
 ' ***************************************************************
 ' PROZEDUR: Formatiere_Alle_Tabellen_Neu (Zentrale Formatierungs-Koordination)
@@ -360,6 +344,75 @@ ErrorHandler:
     Application.EnableEvents = True
     MsgBox "FEHLER beim Formatieren der Tabellen: " & Err.Description, vbCritical
 End Sub
+
+
+' ***************************************************************
+' PROZEDUR: Formatiere_Daten_Tabellen (Formatierung für Datenblatt)
+' Formatiert beide Tabellen auf dem Datenblatt
+' ***************************************************************
+Public Sub Formatiere_Daten_Tabellen()
+    
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim rngData As Range
+    Dim wasProtected As Boolean
+    
+    On Error GoTo ErrorHandler
+    
+    Set ws = ThisWorkbook.Worksheets(WS_DATEN)
+    If ws Is Nothing Then Exit Sub
+    
+    wasProtected = ws.ProtectContents
+    If wasProtected Then ws.Unprotect PASSWORD:=PASSWORD
+    
+    ' === TABELLE 1: Kategorien (Spalten B-E, ab Zeile 4) ===
+    lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_START).End(xlUp).Row
+    If lastRow >= DATA_START_ROW Then
+        Set rngData = ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), ws.Cells(lastRow, DATA_CAT_COL_END))
+        
+        ' Rahmenlinie
+        With rngData.Borders
+            .LineStyle = xlContinuous
+            .color = RGB(0, 0, 0)
+            .Weight = xlThin
+        End With
+        
+        ' Vertikale Ausrichtung
+        rngData.VerticalAlignment = xlCenter
+        
+        ' Zebra-Formatierung
+        Call Anwende_Zebra_Formatierung_Direkt(ws, DATA_CAT_COL_START, DATA_CAT_COL_END, DATA_START_ROW, DATA_CAT_COL_START)
+    End If
+    
+    ' === TABELLE 2: Mapping (Spalten H-U, ab Zeile 4) ===
+    lastRow = ws.Cells(ws.Rows.Count, DATA_MAP_COL_ENTITYKEY).End(xlUp).Row
+    If lastRow >= DATA_START_ROW Then
+        Set rngData = ws.Range(ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYKEY), ws.Cells(lastRow, 21))
+        
+        ' Rahmenlinie
+        With rngData.Borders
+            .LineStyle = xlContinuous
+            .color = RGB(0, 0, 0)
+            .Weight = xlThin
+        End With
+        
+        ' Vertikale Ausrichtung
+        rngData.VerticalAlignment = xlCenter
+        
+        ' Zebra-Formatierung
+        Call Anwende_Zebra_Formatierung_Direkt(ws, DATA_MAP_COL_ENTITYKEY, 21, DATA_START_ROW, DATA_MAP_COL_ENTITYKEY)
+    End If
+
+Cleanup:
+    If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    Exit Sub
+    
+ErrorHandler:
+    If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    MsgBox "Fehler beim Formatieren der Daten-Tabellen: " & Err.Description, vbCritical
+End Sub
+
+
 
 ' ***************************************************************
 ' PROZEDUR: DebugNachFormatierung (Debug-Funktion für Zebra-Formatierung)

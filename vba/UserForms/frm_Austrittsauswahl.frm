@@ -53,7 +53,7 @@ Private Sub UserForm_Initialize()
     Me.opt_Nachpaechter.value = False
     Me.opt_Tod.value = False
     Me.opt_Kuendigung.value = False
-    Me.opt_Parzellenwechsel.value = False
+    ' ENTFERNT: Me.opt_Parzellenwechsel.value = False
     Me.opt_Sonstiges.value = False
     
     Me.txt_Sonstiges.Visible = False
@@ -89,10 +89,7 @@ Private Sub opt_Kuendigung_Click()
     Me.cbo_Nachpaechter.Visible = False
 End Sub
 
-Private Sub opt_Parzellenwechsel_Click()
-    Me.txt_Sonstiges.Visible = False
-    Me.cbo_Nachpaechter.Visible = False
-End Sub
+' ENTFERNT: Private Sub opt_Parzellenwechsel_Click()
 
 Private Sub opt_Sonstiges_Click()
     Me.txt_Sonstiges.Visible = Me.opt_Sonstiges.value
@@ -161,12 +158,15 @@ Private Sub cmd_OK_Click()
     ElseIf Me.opt_Tod.value Then
         m_SelectedOption = 2
         m_CustomReason = "Tod des Mitglieds"
+        
     ElseIf Me.opt_Kuendigung.value Then
         m_SelectedOption = 3
         m_CustomReason = "Kündigung"
-    ElseIf Me.opt_Parzellenwechsel.value Then
-        m_SelectedOption = 4
-        m_CustomReason = "Parzellenwechsel"
+        
+    ' ENTFERNT: ElseIf Me.opt_Parzellenwechsel.value Then
+    '     m_SelectedOption = 4
+    '     m_CustomReason = "Parzellenwechsel"
+        
     ElseIf Me.opt_Sonstiges.value Then
         If Trim(Me.txt_Sonstiges.value) = "" Then
             MsgBox "Bitte geben Sie einen Grund ein.", vbExclamation

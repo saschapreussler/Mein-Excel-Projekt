@@ -10,13 +10,10 @@ Attribute VB_Exposed = True
 Private Sub Workbook_Open()
 
     Call Initialize_ImportReport_ListBox
-
-    ' Blattschutz vorerst deaktiviert - bedingte Formatierung funktioniert besser ohne
-    ' With Worksheets(WS_MITGLIEDER)
-    '     .Protect PASSWORD:="", UserInterfaceOnly:=True
-    ' End With
-
-    ' ApplyMitgliederDropdowns nur manuell aufrufen wenn nötig
-    ' Call mod_Mitglieder_UI.ApplyMitgliederDropdowns
+    
+    ' Bereinige eventuell verwaiste TEMP Worksheets
+    On Error Resume Next
+    Call mod_Hilfsfunktionen.BereinigeTempWorksheets
+    On Error GoTo 0
 
 End Sub

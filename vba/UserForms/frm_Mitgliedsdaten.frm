@@ -305,6 +305,170 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
     
 End Sub
 
+Private Sub cbo_Parzelle_Change()
+' ***************************************************************
+' EVENT: ComboBox Parzelle-Änderung
+' Prüft ob Parzelle belegt ist und bietet Adressübernahme an
+' ***************************************************************
+    Dim parzelle As String
+    Dim tagStr As String
+    
+    ' Nur im NEU-Modus aktiv (nicht beim Bearbeiten)
+    tagStr = CStr(Me.Tag)
+    If tagStr <> "NEU" And InStr(tagStr, "NACHPAECHTER_NEU") = 0 Then
+        Exit Sub
+    End If
+    
+    parzelle = Trim(Me.cbo_Parzelle.value)
+    If parzelle = "" Then Exit Sub
+    
+    ' Prüfe ob Parzelle belegt ist
+    Call PruefeUndUebernehmeAdresse(parzelle)
+    
+    ' Setze Fokus auf cbo_Anrede
+    On Error Resume Next
+    Me.cbo_Anrede.SetFocus
+    On Error GoTo 0
+End Sub
+
+' ***************************************************************
+' HILFSPROZEDUR: Prüft Parzellenbelegung und bietet Adressübernahme an
+' ***************************************************************
+Private Sub PruefeUndUebernehmeAdresse(ByVal parzelle As String)
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim mitgliederAufParzelle As Collection
+    Dim mitgliedInfo As Variant
+    Dim antwort As VbMsgBoxResult
+    Dim auswahlIndex As Long
+    Dim auswahlText As String
+    Dim i As Long
+    
+    On Error GoTo ErrorHandler
+    
+    Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    Set mitgliederAufParzelle = New Collection
+    
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    
+    ' Sammle alle aktiven Mitglieder auf dieser Parzelle
+    For r = M_START_ROW To lastRow
+        If StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), parzelle, vbTextCompare) = 0 Then
+            ' Nur aktive Mitglieder (ohne Pachtende)
+            If Trim(ws.Cells(r, M_COL_PACHTENDE).value) = "" Then
+                ' Speichere: Zeile|Nachname|Vorname|Strasse|Nummer|PLZ|Wohnort
+                mitgliedInfo = Array( _
+                    r, _
+                    ws.Cells(r, M_COL_NACHNAME).value, _
+                    ws.Cells(r, M_COL_VORNAME).value, _
+                    ws.Cells(r, M_COL_STRASSE).value, _
+                    ws.Cells(r, M_COL_NUMMER).value, _
+                    ws.Cells(r, M_COL_PLZ).value, _
+                    ws.Cells(r, M_COL_WOHNORT).value _
+                )
+                mitgliederAufParzelle.Add mitgliedInfo
+            End If
+        End If
+    Next r
+    
+    ' Keine Mitglieder auf Parzelle gefunden
+    If mitgliederAufParzelle.Count = 0 Then
+        Exit Sub
+    End If
+    
+    ' EIN Mitglied auf Parzelle
+    If mitgliederAufParzelle.Count = 1 Then
+        mitgliedInfo = mitgliederAufParzelle(1)
+        
+        antwort = MsgBox("Auf Parzelle " & parzelle & " ist bereits gemeldet:" & vbCrLf & _
+                        mitgliedInfo(1) & ", " & mitgliedInfo(2) & vbCrLf & vbCrLf & _
+                        "Adresse: " & mitgliedInfo(3) & " " & mitgliedInfo(4) & ", " & _
+                        mitgliedInfo(5) & " " & mitgliedInfo(6) & vbCrLf & vbCrLf & _
+                        "Möchten Sie diese Adresse übernehmen?", _
+                        vbYesNo + vbQuestion, "Adresse übernehmen?")
+        
+        If antwort = vbYes Then
+            Me.txt_Strasse.value = mitgliedInfo(3)
+            Me.txt_Nummer.value = mitgliedInfo(4)
+            Me.txt_PLZ.value = mitgliedInfo(5)
+            Me.txt_Wohnort.value = mitgliedInfo(6)
+        End If
+        
+    Else
+        ' MEHRERE Mitglieder auf Parzelle - Auswahl anbieten
+        auswahlText = "Auf Parzelle " & parzelle & " sind mehrere Personen gemeldet:" & vbCrLf & vbCrLf
+        
+        For i = 1 To mitgliederAufParzelle.Count
+            mitgliedInfo = mitgliederAufParzelle(i)
+            auswahlText = auswahlText & i & ") " & mitgliedInfo(1) & ", " & mitgliedInfo(2) & vbCrLf & _
+                         "    " & mitgliedInfo(3) & " " & mitgliedInfo(4) & ", " & _
+                         mitgliedInfo(5) & " " & mitgliedInfo(6) & vbCrLf & vbCrLf
+        Next i
+        
+        auswahlText = auswahlText & "Möchten Sie eine Adresse übernehmen?"
+        
+        antwort = MsgBox(auswahlText, vbYesNo + vbQuestion, "Adresse übernehmen?")
+        
+        If antwort = vbYes Then
+            ' Zeige Auswahl-Dialog
+            auswahlIndex = ZeigeAdressAuswahl(mitgliederAufParzelle)
+            
+            If auswahlIndex > 0 And auswahlIndex <= mitgliederAufParzelle.Count Then
+                mitgliedInfo = mitgliederAufParzelle(auswahlIndex)
+                Me.txt_Strasse.value = mitgliedInfo(3)
+                Me.txt_Nummer.value = mitgliedInfo(4)
+                Me.txt_PLZ.value = mitgliedInfo(5)
+                Me.txt_Wohnort.value = mitgliedInfo(6)
+            End If
+        End If
+    End If
+    
+    Exit Sub
+    
+ErrorHandler:
+    Debug.Print "Fehler bei Adressübernahme: " & Err.Description
+End Sub
+
+' ***************************************************************
+' HILFSPROZEDUR: Zeigt Auswahl-Dialog für mehrere Mitglieder
+' ***************************************************************
+Private Function ZeigeAdressAuswahl(ByRef mitglieder As Collection) As Long
+    Dim eingabe As String
+    Dim auswahlText As String
+    Dim i As Long
+    Dim mitgliedInfo As Variant
+    Dim auswahlNummer As Long
+    
+    auswahlText = "Geben Sie die Nummer des Mitglieds ein:" & vbCrLf & vbCrLf
+    
+    For i = 1 To mitglieder.Count
+        mitgliedInfo = mitglieder(i)
+        auswahlText = auswahlText & i & " = " & mitgliedInfo(1) & ", " & mitgliedInfo(2) & vbCrLf
+    Next i
+    
+    auswahlText = auswahlText & vbCrLf & "0 = Abbrechen"
+    
+    eingabe = InputBox(auswahlText, "Adresse auswählen", "1")
+    
+    If eingabe = "" Then
+        ZeigeAdressAuswahl = 0
+        Exit Function
+    End If
+    
+    On Error Resume Next
+    auswahlNummer = CLng(eingabe)
+    On Error GoTo 0
+    
+    If auswahlNummer < 0 Or auswahlNummer > mitglieder.Count Then
+        MsgBox "Ungültige Auswahl.", vbExclamation
+        ZeigeAdressAuswahl = 0
+    Else
+        ZeigeAdressAuswahl = auswahlNummer
+    End If
+End Function
+
+
 Private Sub cmd_Bearbeiten_Click()
     Call SetMode(True, False, False)
 End Sub
@@ -470,12 +634,7 @@ Private Sub cmd_Entfernen_Click()
             nachpaechterName = ""
             GoTo AustrittBearbeiten
             
-        Case 4 ' Parzellenwechsel
-            ChangeReason = "Parzellenwechsel"
-            Me.Tag = lRow  ' Stelle ursprünglichen Tag wieder her
-            Call SetMode(True, False, False)
-            MsgBox "Bitte geben Sie die neue Parzellennummer in das Feld 'Parzelle' ein und klicken Sie dann 'Übernehmen'.", vbInformation, "Parzellenwechsel"
-            Exit Sub
+        ' ENTFERNT: Case 4 ' Parzellenwechsel
             
         Case 5 ' Sonstiges
             If ChangeReason = "" Then ChangeReason = "Sonstiges"
@@ -483,7 +642,8 @@ Private Sub cmd_Entfernen_Click()
             nachpaechterName = ""
             GoTo AustrittBearbeiten
     End Select
-    
+        
+        
 AustrittBearbeiten:
     If pachtEndeVal = "" Then
         ' Pachtende ist noch leer - Benutzer kann es eintragen
@@ -1050,6 +1210,116 @@ ErrorHandler:
     MsgBox "Fehler beim Verschieben in Historie: " & Err.Description, vbCritical
 End Sub
 
+
+
+' ***************************************************************
+' HILFSPROZEDUR: Prüft ob eine Parzelle zahlendes Mitglied hat
+' ***************************************************************
+Private Function ParzelleHatZahlendesMitglied(ByVal parzelle As String) As Boolean
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim funktion As String
+    
+    Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    
+    For r = M_START_ROW To lastRow
+        If StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), Trim(parzelle), vbTextCompare) = 0 Then
+            If Trim(ws.Cells(r, M_COL_PACHTENDE).value) = "" Then
+                funktion = ws.Cells(r, M_COL_FUNKTION).value
+                
+                If funktion = "Mitglied mit Pacht" Or _
+                   funktion = "1. Vorsitzende(r)" Or _
+                   funktion = "2. Vorsitzende(r)" Or _
+                   funktion = "Kassierer(in)" Or _
+                   funktion = "Schriftführer(in)" Then
+                    ParzelleHatZahlendesMitglied = True
+                    Exit Function
+                End If
+            End If
+        End If
+    Next r
+    
+    ParzelleHatZahlendesMitglied = False
+End Function
+
+' ***************************************************************
+' HILFSPROZEDUR: Prüft ob Person auf Parzelle existiert
+' ***************************************************************
+Private Function ExistiertPersonAufParzelle(ByVal Vorname As String, ByVal Nachname As String, _
+                                             ByVal parzelle As String, Optional ByVal ausschlussZeile As Long = 0) As Boolean
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    
+    Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    
+    For r = M_START_ROW To lastRow
+        If r <> ausschlussZeile Then
+            If StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), Trim(parzelle), vbTextCompare) = 0 And _
+               StrComp(Trim(ws.Cells(r, M_COL_VORNAME).value), Trim(Vorname), vbTextCompare) = 0 And _
+               StrComp(Trim(ws.Cells(r, M_COL_NACHNAME).value), Trim(Nachname), vbTextCompare) = 0 Then
+                ExistiertPersonAufParzelle = True
+                Exit Function
+            End If
+        End If
+    Next r
+    
+    ExistiertPersonAufParzelle = False
+End Function
+
+' ***************************************************************
+' HILFSPROZEDUR: Prüft ob Parzelle leer ist
+' ***************************************************************
+Private Function IstParzelleLeer(ByVal parzelle As String) As Boolean
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    
+    Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    
+    For r = M_START_ROW To lastRow
+        If StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), Trim(parzelle), vbTextCompare) = 0 Then
+            If Trim(ws.Cells(r, M_COL_PACHTENDE).value) = "" Then
+                IstParzelleLeer = False
+                Exit Function
+            End If
+        End If
+    Next r
+    
+    IstParzelleLeer = True
+End Function
+
+' ***************************************************************
+' HILFSPROZEDUR: Holt Namen des ersten Mitglieds auf Parzelle
+' ***************************************************************
+Private Function GetMitgliedNameAufParzelle(ByVal parzelle As String) As String
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    
+    Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    
+    For r = M_START_ROW To lastRow
+        If StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), Trim(parzelle), vbTextCompare) = 0 Then
+            If Trim(ws.Cells(r, M_COL_PACHTENDE).value) = "" Then
+                GetMitgliedNameAufParzelle = ws.Cells(r, M_COL_NACHNAME).value & ", " & ws.Cells(r, M_COL_VORNAME).value
+                Exit Function
+            End If
+        End If
+    Next r
+    
+    GetMitgliedNameAufParzelle = ""
+End Function
+
+
+' ***************************************************************
+' NEUE VERSION: cmd_Uebernehmen_Click mit Parzellenwechsel-Logik
+' ***************************************************************
 Private Sub cmd_Uebernehmen_Click()
     
     Dim tagParts() As String
@@ -1092,9 +1362,12 @@ Private Sub cmd_Uebernehmen_Click()
     Dim OldParzelle As String
     Dim NewParzelle As String
     Dim Nachname As String
-    Dim ChangeReason As String
-    Dim AustrittsDatum As Date
+    Dim Vorname As String
     Dim currentMemberID As String
+    Dim antwort As VbMsgBoxResult
+    Dim zielParzelleHatMitglied As Boolean
+    Dim istWechsel As Boolean
+    Dim mitgliedNameAufZiel As String
     
     On Error GoTo ErrorHandler
     
@@ -1125,10 +1398,49 @@ Private Sub cmd_Uebernehmen_Click()
     funktion = Me.cbo_Funktion.value
     istMitgliedOhnePacht = (funktion = "Mitglied ohne Pacht")
     
-    ' === SICHERHEITSCHECK: Verein-Parzelle darf nicht bearbeitet werden ===
     OldParzelle = Me.lbl_Parzelle.Caption
+    NewParzelle = Me.cbo_Parzelle.value
+    Nachname = Me.txt_Nachname.value
+    Vorname = Me.txt_Vorname.value
+    currentMemberID = wsM.Cells(lRow, M_COL_MEMBER_ID).value
+    
+    ' === SICHERHEITSCHECK: Verein-Parzelle darf nicht bearbeitet werden ===
     If UCase(Trim(OldParzelle)) = "VEREIN" Then
         MsgBox "FEHLER: Die Verein-Parzelle darf nicht bearbeitet werden!", vbCritical
+        Exit Sub
+    End If
+    
+    ' === VALIDIERUNG: "Mitglied ohne Pacht" darf keine leere Parzelle beziehen ===
+    If istMitgliedOhnePacht Then
+        If NewParzelle <> "" And IstParzelleLeer(NewParzelle) Then
+            ' Prüfe ob es ein Wechsel von "Mitglied mit Pacht" zu "Mitglied ohne Pacht" ist
+            Dim alteFunktion As String
+            alteFunktion = wsM.Cells(lRow, M_COL_FUNKTION).value
+            
+            If alteFunktion <> "Mitglied ohne Pacht" Then
+                ' Wechsel von zahlendem Mitglied zu "ohne Pacht"
+                ' Prüfe ob andere zahlende Mitglieder auf der Parzelle sind
+                If Not HatParzelleNochZahlendesMitglied(NewParzelle, currentMemberID) Then
+                    MsgBox "FEHLER: Ein Mitglied ohne Pacht kann nicht das einzige Mitglied auf einer Parzelle sein!" & vbCrLf & vbCrLf & _
+                           "Es muss immer ein zahlendes Mitglied (Mitglied mit Pacht oder Vorstandsmitglied) auf der Parzelle sein.", _
+                           vbCritical, "Validierungsfehler"
+                    Exit Sub
+                End If
+            Else
+                ' War schon "Mitglied ohne Pacht" und will auf leere Parzelle
+                MsgBox "FEHLER: Ein Mitglied ohne Pacht kann keine leere Parzelle beziehen!" & vbCrLf & vbCrLf & _
+                       "Die Parzelle " & NewParzelle & " hat kein zahlendes Mitglied.", _
+                       vbCritical, "Validierungsfehler"
+                Exit Sub
+            End If
+        End If
+    End If
+    
+    ' === VALIDIERUNG: Duplikate (gleicher Vor- und Nachname auf Parzelle) ===
+    If ExistiertPersonAufParzelle(Vorname, Nachname, NewParzelle, lRow) Then
+        MsgBox "FEHLER: Eine Person mit dem Namen " & Nachname & ", " & Vorname & _
+               " ist bereits auf Parzelle " & NewParzelle & " registriert!" & vbCrLf & vbCrLf & _
+               "Doppelte Einträge sind nicht erlaubt.", vbCritical, "Doppelter Eintrag verhindert"
         Exit Sub
     End If
     
@@ -1141,27 +1453,133 @@ Private Sub cmd_Uebernehmen_Click()
         End If
     End If
     
-    ' Prüfe auf Parzellenwechsel
-    NewParzelle = Me.cbo_Parzelle.value
-    Nachname = Me.txt_Nachname.value
-    currentMemberID = wsM.Cells(lRow, M_COL_MEMBER_ID).value
-    
-    ' === SICHERHEITSCHECK: Doppelte Einträge verhindern ===
-    If OldParzelle <> NewParzelle Then
-        If ExistiertBereitsAufParzelle(currentMemberID, NewParzelle, lRow) Then
-            MsgBox "FEHLER: Diese Person ist bereits auf Parzelle " & NewParzelle & " registriert!" & vbCrLf & _
-                   "Doppelte Einträge sind nicht erlaubt.", vbCritical, "Doppelter Eintrag verhindert"
+    ' === PARZELLENWECHSEL-LOGIK ===
+    If OldParzelle <> NewParzelle And OldParzelle <> "" And NewParzelle <> "" Then
+        ' Parzellenwechsel erkannt!
+        zielParzelleHatMitglied = Not IstParzelleLeer(NewParzelle)
+        
+        If zielParzelleHatMitglied Then
+            ' Zielparzelle hat bereits Mitglieder
+            mitgliedNameAufZiel = GetMitgliedNameAufParzelle(NewParzelle)
+            
+            antwort = MsgBox("Die Parzelle " & NewParzelle & " hat bereits ein Mitglied (" & mitgliedNameAufZiel & ")." & vbCrLf & vbCrLf & _
+                           "Möchten Sie:" & vbCrLf & _
+                           "JA = Parzelle " & NewParzelle & " zusätzlich pachten (beide Parzellen behalten)" & vbCrLf & _
+                           "NEIN = Parzelle " & OldParzelle & " verlassen und zu " & NewParzelle & " wechseln (Umzug)" & vbCrLf & _
+                           "ABBRECHEN = Vorgang abbrechen", _
+                           vbYesNoCancel + vbQuestion, "Parzellenwechsel")
+        Else
+            ' Zielparzelle ist leer
+            antwort = MsgBox("Die Parzelle " & NewParzelle & " ist leer." & vbCrLf & vbCrLf & _
+                           "Möchten Sie:" & vbCrLf & _
+                           "JA = Parzelle " & NewParzelle & " zusätzlich pachten (beide Parzellen behalten)" & vbCrLf & _
+                           "NEIN = Parzelle " & OldParzelle & " verlassen und zu " & NewParzelle & " wechseln (Umzug)" & vbCrLf & _
+                           "ABBRECHEN = Vorgang abbrechen", _
+                           vbYesNoCancel + vbQuestion, "Parzellenwechsel")
+        End If
+        
+        If antwort = vbCancel Then
             Exit Sub
         End If
+        
+        ' GEÄNDERT: JA = Zusätzliche Parzelle, NEIN = Wechsel
+        istWechsel = (antwort = vbNo)
+        
+        If istWechsel Then
+            ' === UMZUG: Alte Parzelle verlassen ===
+            
+            ' PRÜFUNG 1: Ist die neue Parzelle leer UND ist das Mitglied KEIN zahlendes Mitglied?
+            If IstParzelleLeer(NewParzelle) Then
+                If Not (funktion = "Mitglied mit Pacht" Or _
+                        funktion = "1. Vorsitzende(r)" Or _
+                        funktion = "2. Vorsitzende(r)" Or _
+                        funktion = "Kassierer(in)" Or _
+                        funktion = "Schriftführer(in)") Then
+                    MsgBox "FEHLER: Ein 'Mitglied ohne Pacht' kann nicht alleine auf eine leere Parzelle wechseln!" & vbCrLf & vbCrLf & _
+                           "Die Parzelle " & NewParzelle & " ist leer und benötigt ein zahlendes Mitglied " & _
+                           "(Mitglied mit Pacht oder Vorstandsmitglied).", vbCritical, "Wechsel nicht möglich"
+                    Exit Sub
+                End If
+            End If
+            
+            ' PRÜFUNG 2: Prüfe ob auf alter Parzelle noch zahlende Mitglieder bleiben
+            If Not HatParzelleNochZahlendesMitglied(OldParzelle, currentMemberID) Then
+                Dim warnAntwort As VbMsgBoxResult
+                warnAntwort = MsgBox("WARNUNG: Sie sind das einzige zahlende Mitglied auf Parzelle " & OldParzelle & "!" & vbCrLf & vbCrLf & _
+                               "Nach Ihrem Wechsel wird die Parzelle ohne zahlendes Mitglied sein." & vbCrLf & vbCrLf & _
+                               "Möchten Sie trotzdem wechseln?", vbYesNo + vbExclamation, "Warnung")
+                If warnAntwort = vbNo Then
+                    Exit Sub
+                End If
+            End If
+            
+            ' Speichere Änderungen in Mitgliederliste (neue Parzelle)
+            Call SpeichereMitgliedsdaten(wsM, lRow, NewParzelle)
+            
+            ' Speichere Parzellenwechsel in Historie (Member ID bleibt erhalten!)
+            Call SpeichereParzellenwechselInHistorie(OldParzelle, NewParzelle, currentMemberID, Nachname, Vorname, "Parzellenwechsel (Umzug)")
+            
+        Else
+            ' === ZUSÄTZLICHE PARZELLE: Neue Zeile anlegen (JA wurde gedrückt) ===
+            ' WICHTIG: Die bestehende Zeile (OldParzelle) wird NICHT geändert!
+            
+            ' Prüfe ob Mitglied bereits auf der neuen Parzelle existiert (Duplikat-Check)
+            If ExistiertBereitsAufParzelle(currentMemberID, NewParzelle, 0) Then
+                MsgBox "FEHLER: Sie sind bereits auf Parzelle " & NewParzelle & " registriert!" & vbCrLf & _
+                       "Doppelte Einträge sind nicht erlaubt.", vbCritical, "Doppelter Eintrag verhindert"
+                Exit Sub
+            End If
+            
+            ' Erstelle nur die neue Zeile für die zusätzliche Parzelle
+            Call ErstelleZusaetzlicheParzelleZeile(wsM, lRow, NewParzelle, currentMemberID)
+            
+            ' Speichere in Historie
+            Call SpeichereParzellenwechselInHistorie(OldParzelle, NewParzelle, currentMemberID, Nachname, Vorname, "Zusätzliche Parzelle gepachtet")
+        End If
+        
+    Else
+        ' === NORMALE ÄNDERUNG (kein Parzellenwechsel) ===
+        Call SpeichereMitgliedsdaten(wsM, lRow, NewParzelle)
+        
+        ' Normale Änderung - nur Sortierung und Formatierung
+        Call mod_Mitglieder_UI.Sortiere_Mitgliederliste_Nach_Parzelle
+        Call mod_Mitglieder_UI.Fuelle_MemberIDs_Wenn_Fehlend
     End If
-
+    
+    ' Formatierung neu anwenden
+    Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+    
+    If IsFormLoaded("frm_Mitgliederverwaltung") Then
+        frm_Mitgliederverwaltung.RefreshMitgliederListe
+    End If
+    
+    MsgBox "Änderungen für Mitglied " & Nachname & " erfolgreich gespeichert.", vbInformation
+    
+    Unload Me
+    Exit Sub
+    
+TagError:
+    MsgBox "Fehler beim Lesen der Zeilennummer: " & Err.Description, vbCritical
+    Exit Sub
+    
+ErrorHandler:
+    On Error GoTo 0
+    If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    MsgBox "Fehler beim Speichern der Änderungen: " & Err.Description, vbCritical
+End Sub
+' ***************************************************************
+' HILFSPROZEDUR: Speichert Mitgliedsdaten in Worksheet
+' ***************************************************************
+Private Sub SpeichereMitgliedsdaten(ByRef wsM As Worksheet, ByVal lRow As Long, ByVal parzelle As String)
+    Dim autoSeite As String
+    
     wsM.Unprotect PASSWORD:=PASSWORD
     
     On Error Resume Next
     
-    autoSeite = GetSeiteFromParzelle(Me.cbo_Parzelle.value)
+    autoSeite = GetSeiteFromParzelle(parzelle)
     
-    wsM.Cells(lRow, M_COL_PARZELLE).value = Me.cbo_Parzelle.value
+    wsM.Cells(lRow, M_COL_PARZELLE).value = parzelle
     wsM.Cells(lRow, M_COL_SEITE).value = autoSeite
     wsM.Cells(lRow, M_COL_ANREDE).value = Me.cbo_Anrede.value
     wsM.Cells(lRow, M_COL_NACHNAME).value = Me.txt_Nachname.value
@@ -1196,39 +1614,98 @@ Private Sub cmd_Uebernehmen_Click()
     
     On Error GoTo 0
     wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+End Sub
+
+' ***************************************************************
+' HILFSPROZEDUR: Erstellt neue Zeile für zusätzliche Parzelle
+' Member ID wird beibehalten!
+' ***************************************************************
+Private Sub ErstelleZusaetzlicheParzelleZeile(ByRef wsM As Worksheet, ByVal vorlagenRow As Long, _
+                                               ByVal neueParzelle As String, ByVal memberID As String)
+    Dim newRow As Long
+    Dim autoSeite As String
     
-    ' Prüfe auf Parzellenwechsel und speichere ggf. in Historie
-    If OldParzelle <> "" And NewParzelle <> OldParzelle Then
-        ' Parzellenwechsel erkannt
-        Call mod_Mitglieder_UI.Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
-             lRow, OldParzelle, "", Nachname, Date, NewParzelle, "", "Parzellenwechsel")
-    Else
-        ' Normale Änderung - nur Sortierung und Formatierung
-        Call mod_Mitglieder_UI.Sortiere_Mitgliederliste_Nach_Parzelle
-        Call mod_Mitglieder_UI.Fuelle_MemberIDs_Wenn_Fehlend
-    End If
+    wsM.Unprotect PASSWORD:=PASSWORD
     
-    ' Formatierung neu anwenden
-    Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+    newRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row + 1
+    autoSeite = GetSeiteFromParzelle(neueParzelle)
     
-    If IsFormLoaded("frm_Mitgliederverwaltung") Then
-        frm_Mitgliederverwaltung.RefreshMitgliederListe
-    End If
+    ' Kopiere alle Daten von Vorlagenzeile mit GLEICHER Member ID
+    wsM.Cells(newRow, M_COL_MEMBER_ID).value = memberID  ' WICHTIG: Gleiche Member ID!
+    wsM.Cells(newRow, M_COL_PARZELLE).value = neueParzelle
+    wsM.Cells(newRow, M_COL_SEITE).value = autoSeite
+    wsM.Cells(newRow, M_COL_ANREDE).value = Me.cbo_Anrede.value
+    wsM.Cells(newRow, M_COL_NACHNAME).value = Me.txt_Nachname.value
+    wsM.Cells(newRow, M_COL_VORNAME).value = Me.txt_Vorname.value
+    wsM.Cells(newRow, M_COL_STRASSE).value = Me.txt_Strasse.value
+    wsM.Cells(newRow, M_COL_NUMMER).value = Me.txt_Nummer.value
+    wsM.Cells(newRow, M_COL_PLZ).value = Me.txt_PLZ.value
+    wsM.Cells(newRow, M_COL_WOHNORT).value = Me.txt_Wohnort.value
+    wsM.Cells(newRow, M_COL_TELEFON).value = Me.txt_Telefon.value
+    wsM.Cells(newRow, M_COL_MOBIL).value = Me.txt_Mobil.value
+    wsM.Cells(newRow, M_COL_GEBURTSTAG).value = Me.txt_Geburtstag.value
+    wsM.Cells(newRow, M_COL_EMAIL).value = Me.txt_Email.value
+    wsM.Cells(newRow, M_COL_FUNKTION).value = Me.cbo_Funktion.value
     
-    MsgBox "Änderungen für Mitglied " & Me.txt_Nachname.value & " erfolgreich gespeichert.", vbInformation
+    ' Pachtbeginn = heute (Übernahmedatum)
+    On Error Resume Next
+    wsM.Cells(newRow, M_COL_PACHTANFANG).value = Date
+    wsM.Cells(newRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
+    On Error GoTo 0
     
-    Unload Me
-    Exit Sub
+    wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
-TagError:
-    MsgBox "Fehler beim Lesen der Zeilennummer: " & Err.Description, vbCritical
+    ' Sortiere und formatiere
+    Call mod_Mitglieder_UI.Sortiere_Mitgliederliste_Nach_Parzelle
+End Sub
+
+' ***************************************************************
+' HILFSPROZEDUR: Speichert Parzellenwechsel in Mitgliederhistorie
+' ***************************************************************
+Private Sub SpeichereParzellenwechselInHistorie(ByVal alteParzelle As String, ByVal neueParzelle As String, _
+                                                  ByVal memberID As String, ByVal Nachname As String, _
+                                                  ByVal Vorname As String, ByVal grund As String)
+    Dim wsH As Worksheet
+    Dim nextHistRow As Long
+    
+    On Error GoTo ErrorHandler
+    
+    Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
+    
+    wsH.Unprotect PASSWORD:=PASSWORD
+    
+    nextHistRow = wsH.Cells(wsH.Rows.Count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row + 1
+    If nextHistRow < H_START_ROW Then nextHistRow = H_START_ROW
+    
+    wsH.Cells(nextHistRow, H_COL_PARZELLE).value = alteParzelle                     ' A: Alte Parzelle
+    wsH.Cells(nextHistRow, H_COL_MEMBER_ID_ALT).value = memberID                    ' B: Member ID (bleibt gleich)
+    wsH.Cells(nextHistRow, H_COL_NAME_EHEM_PAECHTER).value = Nachname & ", " & Vorname  ' C: Name
+    
+    On Error Resume Next
+    wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = Date                           ' D: Wechseldatum
+    wsH.Cells(nextHistRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
+    On Error GoTo ErrorHandler
+    
+    wsH.Cells(nextHistRow, H_COL_GRUND).value = grund                               ' E: Grund
+    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = ""                      ' F: kein Nachpächter
+    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = ""                        ' G: kein Nachpächter
+    wsH.Cells(nextHistRow, H_COL_KOMMENTAR).value = "Neue Parzelle: " & neueParzelle ' H: Kommentar
+    wsH.Cells(nextHistRow, H_COL_ENDABRECHNUNG).value = ""                          ' I: keine Endabrechnung
+    
+    On Error Resume Next
+    wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).value = Now                            ' J: Systemzeit
+    wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
+    On Error GoTo ErrorHandler
+    
+    wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
     Exit Sub
     
 ErrorHandler:
-    On Error GoTo 0
-    If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    MsgBox "Fehler beim Speichern der Änderungen: " & Err.Description, vbCritical
+    If Not wsH Is Nothing Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    Debug.Print "Fehler beim Speichern in Historie: " & Err.Description
 End Sub
+
 
 ' ***************************************************************
 ' HILFSPROZEDUR: cmd_Uebernehmen_MitAustritt
@@ -1283,9 +1760,11 @@ Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As Strin
     
     Unload Me
     Exit Sub
+    
 ErrorHandler:
     MsgBox "Fehler beim Austritt: " & Err.Description, vbCritical
 End Sub
+
 
 Private Sub cmd_Anlegen_Click()
     Dim wsM As Worksheet

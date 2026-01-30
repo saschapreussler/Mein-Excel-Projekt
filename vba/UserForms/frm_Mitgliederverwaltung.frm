@@ -15,14 +15,6 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 Option Explicit
 
-Private Sub cmd_MitgliedEdit_Click()
-    If Me.lst_Mitgliederliste.ListIndex >= 0 Then
-        Call OeffneMitgliedsDetails
-    Else
-        MsgBox "Bitte wählen Sie zuerst ein Mitglied aus der Liste aus.", vbExclamation
-    End If
-End Sub
-
 Private Sub cmd_NeuesMitglied_Click()
     
     With frm_Mitgliedsdaten
