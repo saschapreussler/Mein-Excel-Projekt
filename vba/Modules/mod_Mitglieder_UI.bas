@@ -40,7 +40,7 @@ Public Sub Fuelle_MemberIDs_Wenn_Fehlend()
     wasProtected = wsM.ProtectContents
     If wasProtected Then wsM.Unprotect PASSWORD:=PASSWORD
     
-    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).row
     
     If lastRow < M_START_ROW Then GoTo Cleanup
     
@@ -152,7 +152,7 @@ Public Sub Sortiere_Mitgliederliste_Nach_Parzelle()
     wasProtected = ws.ProtectContents
     If wasProtected Then ws.Unprotect PASSWORD:=PASSWORD
     
-    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).row
     
     If lastRow < M_START_ROW Then GoTo Cleanup
     
@@ -205,13 +205,13 @@ Public Function GetEntityKeyByParzelle(ByVal ParzelleNr As String) As String
     Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
     If wsD Is Nothing Then GoTo ErrorHandler
     
-    lastRow = wsD.Cells(wsD.Rows.Count, DATA_MAP_COL_PARZELLE).End(xlUp).Row
+    lastRow = wsD.Cells(wsD.Rows.Count, DATA_MAP_COL_PARZELLE).End(xlUp).row
     Set rngFind = wsD.Range(wsD.Cells(DATA_START_ROW, DATA_MAP_COL_PARZELLE), wsD.Cells(lastRow, DATA_MAP_COL_PARZELLE))
     
     Set rngFind = rngFind.Find(What:=ParzelleNr, LookIn:=xlValues, LookAt:=xlWhole)
     
     If Not rngFind Is Nothing Then
-        GetEntityKeyByParzelle = wsD.Cells(rngFind.Row, DATA_MAP_COL_ENTITYKEY).value
+        GetEntityKeyByParzelle = wsD.Cells(rngFind.row, DATA_MAP_COL_ENTITYKEY).value
     Else
         GetEntityKeyByParzelle = ""
     End If
@@ -235,14 +235,12 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ByVal Nachname As String, _
     ByVal AustrittsDatum As Date, _
     ByVal NewParzelleNr As String, _
-    ByVal NewMemberID As String, _
+    ByVal newMemberID As String, _
     ByVal ChangeReason As String)
 
     Dim wsM As Worksheet
     Dim wsH As Worksheet
     Dim NextRow As Long
-    Dim lastRow As Long
-    Dim iRow As Long
     
     Application.ScreenUpdating = False
     Application.EnableEvents = False
@@ -262,19 +260,22 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     
     ' --- 1. HISTORIE SPEICHERN ---
     wsH.Unprotect PASSWORD:=PASSWORD
-    NextRow = wsH.Cells(wsH.Rows.Count, H_COL_PARZELLE).End(xlUp).Row + 1
+    NextRow = wsH.Cells(wsH.Rows.Count, H_COL_PARZELLE).End(xlUp).row + 1
     If NextRow < H_START_ROW Then NextRow = H_START_ROW
     
     wsH.Cells(NextRow, H_COL_PARZELLE).value = OldParzelle
     wsH.Cells(NextRow, H_COL_MITGL_ID).value = OldMemberID
-    wsH.Cells(NextRow, H_COL_NACHNAME).value = Nachname
+    wsH.Cells(NextRow, H_COL_NAME_EHEM_PAECHTER).value = Nachname   ' Erwartet "Nachname, Vorname"
     wsH.Cells(NextRow, H_COL_AUST_DATUM).value = AustrittsDatum
-    wsH.Cells(NextRow, H_COL_NEUER_PAECHTER_ID).value = NewMemberID
+    wsH.Cells(NextRow, H_COL_NEUER_PAECHTER_ID).value = newMemberID
     wsH.Cells(NextRow, H_COL_GRUND).value = ChangeReason
     wsH.Cells(NextRow, H_COL_SYSTEMZEIT).value = Now
     
     wsH.Cells(NextRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
     wsH.Cells(NextRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
+    
+    Call FormatiereHistorieZeile(wsH, NextRow)
+    
     wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
 
     ' --- 2. MITGLIEDERLISTE AKTUALISIEREN ---
@@ -320,10 +321,6 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     Call mod_ZaehlerLogik.Ermittle_Kennzahlen_Mitgliederliste
     Call mod_ZaehlerLogik.ErzeugeParzellenUebersicht
     Call mod_ZaehlerLogik.AktualisiereZaehlerTabellenSpalteA
-
-    If IsFormLoaded("frm_Mitgliederverwaltung") Then
-        frm_Mitgliederverwaltung.RefreshMitgliederListe
-    End If
     
     On Error GoTo 0
     
@@ -363,16 +360,13 @@ Private Sub VerifikationVereinsParzelleIntakt()
     vereinParzelleRow = 0
     
     ' Finde die Zeile mit "Verein"-Parzelle
-    For lRow = M_START_ROW To ws.Cells(ws.Rows.Count, M_COL_PARZELLE).End(xlUp).Row
+    For lRow = M_START_ROW To ws.Cells(ws.Rows.Count, M_COL_PARZELLE).End(xlUp).row
         If Trim(ws.Cells(lRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
             vereinParzelleRow = lRow
             vereinRowNachname = Trim(ws.Cells(lRow, M_COL_NACHNAME).value)
             
             ' SICHERHEITSPRÜFUNG: Die Verein-Zeile sollte leer sein oder nur spezielle Marker enthalten
-            ' Falls Nachname leer: OK
-            ' Falls Nachname nicht leer: Warnung (zeigt manuell übernommene Daten an)
             If vereinRowNachname <> "" Then
-                ' Die Zeile hat Mitgliederdaten - dies sollte nicht passieren!
                 Debug.Print "WARNUNG: Verein-Parzelle-Zeile (" & vereinParzelleRow & ") enthält Mitgliederdaten: " & vereinRowNachname
             End If
             Exit For
@@ -381,7 +375,7 @@ Private Sub VerifikationVereinsParzelleIntakt()
 End Sub
 
 ' ***************************************************************
-' HILFSFUNKTION: Prüfen, ob eine UserForm geladen ist
+' HILFSFUNKTION: Pruefen, ob eine UserForm geladen ist
 ' ***************************************************************
 Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     
@@ -398,4 +392,23 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     
 End Function
 
+' ***************************************************************
+' HILFSPROZEDUR: Formatierung Mitgliederhistorie
+' ***************************************************************
+Private Sub FormatiereHistorieZeile(ByVal wsH As Worksheet, ByVal row As Long)
+    With wsH.Range(wsH.Cells(row, 1), wsH.Cells(row, 10))
+        .VerticalAlignment = xlVAlignCenter
+    End With
+    
+    wsH.Cells(row, 1).HorizontalAlignment = xlCenter
+    wsH.Cells(row, 2).HorizontalAlignment = xlLeft
+    wsH.Cells(row, 3).HorizontalAlignment = xlLeft
+    wsH.Cells(row, 4).HorizontalAlignment = xlLeft
+    wsH.Cells(row, 5).HorizontalAlignment = xlLeft
+    wsH.Cells(row, 6).HorizontalAlignment = xlLeft
+    wsH.Cells(row, 7).HorizontalAlignment = xlLeft
+    wsH.Cells(row, 8).HorizontalAlignment = xlLeft
+    wsH.Cells(row, 9).HorizontalAlignment = xlCenter
+    wsH.Cells(row, 10).HorizontalAlignment = xlRight
+End Sub
 

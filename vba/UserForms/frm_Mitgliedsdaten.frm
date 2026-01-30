@@ -46,6 +46,10 @@ Private Function GetSeiteFromParzelle(ByVal parzelle As String) As String
     
 End Function
 
+Private Function FormatName(ByVal Nachname As String, ByVal Vorname As String) As String
+    FormatName = Trim(Nachname) & ", " & Trim(Vorname)
+End Function
+
 ' --- Prüfe ob Funktion bereits existiert ---
 Private Function FunktionExistiertBereits(ByVal funktion As String, ByVal ausschlussParzelle As String) As Boolean
     Dim ws As Worksheet
@@ -53,7 +57,7 @@ Private Function FunktionExistiertBereits(ByVal funktion As String, ByVal aussch
     Dim lastRow As Long
     
     Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
-    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).row
     
     For r = M_START_ROW To lastRow
         If ws.Cells(r, M_COL_FUNKTION).value = funktion And _
@@ -91,7 +95,7 @@ Private Function IstGueltigesDatum(ByVal datumStr As String) As Boolean
 End Function
 
 ' ***************************************************************
-' HILFSPROZEDUR: Prüft ob Person bereits auf dieser Parzelle existiert
+' HILFSPROZEDUR: Prüft ob Person bereits auf dieser Parzelle existiert (MemberID)
 ' ***************************************************************
 Private Function ExistiertBereitsAufParzelle(ByVal memberID As String, ByVal parzelle As String, Optional ByVal ausschlussZeile As Long = 0) As Boolean
     Dim ws As Worksheet
@@ -99,10 +103,10 @@ Private Function ExistiertBereitsAufParzelle(ByVal memberID As String, ByVal par
     Dim lastRow As Long
     
     Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
-    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).row
     
     For r = M_START_ROW To lastRow
-        If r <> ausschlussZeile Then  ' Ignoriere die aktuelle Zeile bei Bearbeitung
+        If r <> ausschlussZeile Then
             If ws.Cells(r, M_COL_MEMBER_ID).value = memberID And _
                StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), Trim(parzelle), vbTextCompare) = 0 Then
                 ExistiertBereitsAufParzelle = True
@@ -115,6 +119,32 @@ Private Function ExistiertBereitsAufParzelle(ByVal memberID As String, ByVal par
 End Function
 
 ' ***************************************************************
+' HILFSPROZEDUR: Prüft ob Person (Nachname+Vorname) bereits auf Parzelle existiert
+' ***************************************************************
+Private Function ExistiertPersonAufParzelle(ByVal Nachname As String, ByVal Vorname As String, _
+                                           ByVal parzelle As String, Optional ByVal ausschlussZeile As Long = 0) As Boolean
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    
+    Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).row
+    
+    For r = M_START_ROW To lastRow
+        If r <> ausschlussZeile Then
+            If StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), Trim(parzelle), vbTextCompare) = 0 And _
+               StrComp(Trim(ws.Cells(r, M_COL_NACHNAME).value), Trim(Nachname), vbTextCompare) = 0 And _
+               StrComp(Trim(ws.Cells(r, M_COL_VORNAME).value), Trim(Vorname), vbTextCompare) = 0 Then
+                ExistiertPersonAufParzelle = True
+                Exit Function
+            End If
+        End If
+    Next r
+    
+    ExistiertPersonAufParzelle = False
+End Function
+
+' ***************************************************************
 ' HILFSPROZEDUR: Extrahiert lRow aus Tag (unterstützt auch "lRow|Grund|..." Format)
 ' ***************************************************************
 Private Function GetLRowFromTag() As Long
@@ -123,18 +153,14 @@ Private Function GetLRowFromTag() As Long
     
     tagStr = CStr(Me.Tag)
     
-    ' Prüfe ob Tag das Format "lRow|..." hat
     If InStr(tagStr, "|") > 0 Then
         tagParts = Split(tagStr, "|")
-        ' Prüfe ob erstes Element numerisch ist
         If IsNumericTag(tagParts(0)) Then
             GetLRowFromTag = CLng(tagParts(0))
         Else
-            ' Für "NACHPAECHTER_NEU|..." Format
             GetLRowFromTag = 0
         End If
     Else
-        ' Normales Format: nur lRow oder "NEU"
         If IsNumericTag(tagStr) Then
             GetLRowFromTag = CLng(tagStr)
         Else
@@ -154,16 +180,14 @@ Private Function HatParzelleNochZahlendesMitglied(ByVal parzelle As String, ByVa
     Dim memberID As String
     
     Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
-    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).row
     
     For r = M_START_ROW To lastRow
         If StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), parzelle, vbTextCompare) = 0 Then
             memberID = ws.Cells(r, M_COL_MEMBER_ID).value
             funktion = ws.Cells(r, M_COL_FUNKTION).value
             
-            ' Ignoriere die auszuschließende Member-ID
             If memberID <> ausschlussMemberID Then
-                ' Prüfe ob zahlendes Mitglied
                 If funktion = "Mitglied mit Pacht" Or _
                    funktion = "1. Vorsitzende(r)" Or _
                    funktion = "2. Vorsitzende(r)" Or _
@@ -180,6 +204,65 @@ Private Function HatParzelleNochZahlendesMitglied(ByVal parzelle As String, ByVa
 End Function
 
 ' ***************************************************************
+' HILFSPROZEDUR: Prüft ob Parzelle irgendein zahlendes Mitglied hat
+' ***************************************************************
+Private Function parzelleHatMitgliedMitPacht(ByVal parzelle As String, Optional ByVal ausschlussMemberID As String = "") As Boolean
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim funktion As String
+    Dim memberID As String
+    
+    Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).row
+    
+    For r = M_START_ROW To lastRow
+        If StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), parzelle, vbTextCompare) = 0 Then
+            memberID = ws.Cells(r, M_COL_MEMBER_ID).value
+            funktion = ws.Cells(r, M_COL_FUNKTION).value
+            
+            If memberID <> ausschlussMemberID Then
+                If funktion = "Mitglied mit Pacht" Or _
+                   funktion = "1. Vorsitzende(r)" Or _
+                   funktion = "2. Vorsitzende(r)" Or _
+                   funktion = "Kassierer(in)" Or _
+                   funktion = "Schriftführer(in)" Then
+                    parzelleHatMitgliedMitPacht = True
+                    Exit Function
+                End If
+            End If
+        End If
+    Next r
+    
+    parzelleHatMitgliedMitPacht = False
+End Function
+
+' ***************************************************************
+' HILFSPROZEDUR: Prüft ob auf Parzelle noch andere Mitglieder existieren
+' ***************************************************************
+Private Function ParzelleHatWeitereMitglieder(ByVal parzelle As String, ByVal ausschlussMemberID As String) As Boolean
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim memberID As String
+    
+    Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).row
+    
+    For r = M_START_ROW To lastRow
+        If StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), parzelle, vbTextCompare) = 0 Then
+            memberID = ws.Cells(r, M_COL_MEMBER_ID).value
+            If memberID <> ausschlussMemberID Then
+                ParzelleHatWeitereMitglieder = True
+                Exit Function
+            End If
+        End If
+    Next r
+    
+    ParzelleHatWeitereMitglieder = False
+End Function
+
+' ***************************************************************
 ' HILFSPROZEDUR: Findet alle Parzellen eines Mitglieds anhand Member-ID
 ' ***************************************************************
 Private Function GetParzellenVonMitglied(ByVal memberID As String) As String
@@ -189,7 +272,7 @@ Private Function GetParzellenVonMitglied(ByVal memberID As String) As String
     Dim parzellen As String
     
     Set ws = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
-    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).row
     
     parzellen = ""
     
@@ -212,9 +295,7 @@ End Function
 Private Sub AktualisiereLabelsFuerFunktion()
     Dim istMitgliedOhnePacht As Boolean
     
-    ' Prüfe ob cbo_Funktion einen Wert hat
     If Me.cbo_Funktion.value = "" Then
-        ' Default setzen
         Me.lbl_PachtbeginnBezeichner.Caption = "Pachtbeginn"
         Me.lbl_PachtendeBezeichner.Caption = "Pachtende"
         Exit Sub
@@ -239,15 +320,12 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
     Dim ctl As MSForms.Control
     For Each ctl In Me.Controls
         If TypeOf ctl Is MSForms.Label And Left(ctl.Name, 4) = "lbl_" Then
-            ' Bezeichner-Labels sollen IMMER sichtbar sein
             If ctl.Name = "lbl_PachtbeginnBezeichner" Or ctl.Name = "lbl_PachtendeBezeichner" Then
                 ctl.Visible = True
             Else
-                ' Alle anderen Labels (Datenlabels): SICHTBAR im ViewMode, UNSICHTBAR im EditMode
                 ctl.Visible = Not EditMode
             End If
         ElseIf TypeOf ctl Is MSForms.TextBox Or TypeOf ctl Is MSForms.ComboBox Then
-            ' TextBoxen/ComboBoxen: UNSICHTBAR im ViewMode, SICHTBAR im EditMode
             ctl.Visible = EditMode
         End If
     Next ctl
@@ -267,7 +345,6 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
         Me.cmd_Abbrechen.Visible = True
         
     Else
-        ' ViewMode (Vorschau)
         Me.cmd_Bearbeiten.Visible = True
         Me.cmd_Entfernen.Visible = True
         Me.cmd_Uebernehmen.Visible = False
@@ -277,7 +354,6 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
     
     If EditMode = False Then Exit Sub
     
-    ' Aktualisiere Labels nach Funktion
     Call AktualisiereLabelsFuerFunktion
     
     If CStr(Me.Tag) <> "NEU" And InStr(CStr(Me.Tag), "NACHPAECHTER_NEU") = 0 Then
@@ -308,6 +384,9 @@ End Sub
 Private Sub cmd_Bearbeiten_Click()
     Call SetMode(True, False, False)
 End Sub
+
+
+
 
 Private Sub cmd_Abbrechen_Click()
     Dim tagStr As String
@@ -513,9 +592,7 @@ AustrittBearbeiten:
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
     
-    If IsFormLoaded("frm_Mitgliederverwaltung") Then
-        frm_Mitgliederverwaltung.RefreshMitgliederListe
-    End If
+    Call RefreshMitgliederverwaltungIfLoaded
     
     Unload Me
     Exit Sub
@@ -628,7 +705,7 @@ Private Sub UebernehmeParzelleOhneWechsel(ByVal nachpaechterID As String, ByVal 
     wsM.Unprotect PASSWORD:=PASSWORD
     
     ' Finde Zeile des Nachpächters
-    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).row
     nachpaechterRow = 0
     
     For r = M_START_ROW To lastRow
@@ -653,9 +730,7 @@ Private Sub UebernehmeParzelleOhneWechsel(ByVal nachpaechterID As String, ByVal 
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
     
-    If IsFormLoaded("frm_Mitgliederverwaltung") Then
-        frm_Mitgliederverwaltung.RefreshMitgliederListe
-    End If
+    Call RefreshMitgliederverwaltungIfLoaded
     
     MsgBox "Parzelle " & neueParzelle & " wurde an " & nachpaechterName & " übergeben.", vbInformation
     
@@ -698,7 +773,7 @@ Private Sub NachpaechterParzellenWechsel(ByVal nachpaechterID As String, ByVal n
     wsH.Unprotect PASSWORD:=PASSWORD
     
     ' WICHTIG: Sammle ALLE Daten des Nachpächters VOR dem Löschen!
-    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).row
     
     For r = M_START_ROW To lastRow
         If wsM.Cells(r, M_COL_MEMBER_ID).value = nachpaechterID Then
@@ -736,7 +811,7 @@ Private Sub NachpaechterParzellenWechsel(ByVal nachpaechterID As String, ByVal n
             
             ' Schreibe in Mitgliederhistorie
             Dim nextHistRow As Long
-            nextHistRow = wsH.Cells(wsH.Rows.Count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row + 1
+            nextHistRow = wsH.Cells(wsH.Rows.Count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).row + 1
             If nextHistRow < H_START_ROW Then nextHistRow = H_START_ROW
             
             wsH.Cells(nextHistRow, H_COL_PARZELLE).value = alteParzelle
@@ -771,7 +846,7 @@ NextRow:
     
     ' Erstelle neue Zeile für Nachpächter auf neuer Parzelle
     Dim newRow As Long
-    newRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row + 1
+    newRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).row + 1
     
     ' Schreibe alle gespeicherten Daten in neue Zeile
     wsM.Cells(newRow, M_COL_MEMBER_ID).value = nachpaechterID
@@ -806,7 +881,7 @@ NextRow:
     ' Verschiebe altes Mitglied in Historie (muss neu gesucht werden, da Zeilen verschoben wurden)
     ' Finde die neue lRow des austretenden Mitglieds
     Dim neueAlteLRow As Long
-    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).row
     
     For r = M_START_ROW To lastRow
         If wsM.Cells(r, M_COL_MEMBER_ID).value = alteMemberID And _
@@ -823,9 +898,7 @@ NextRow:
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
     
-    If IsFormLoaded("frm_Mitgliederverwaltung") Then
-        frm_Mitgliederverwaltung.RefreshMitgliederListe
-    End If
+    Call RefreshMitgliederverwaltungIfLoaded
     
     MsgBox "Nachpächter " & nachpaechterName & " ist von allen bisherigen Parzellen zu Parzelle " & neueParzelle & " gewechselt.", vbInformation
     
@@ -860,7 +933,7 @@ Private Sub NachpaechterZusaetzlicheParzelle(ByVal nachpaechterID As String, ByV
     wsM.Unprotect PASSWORD:=PASSWORD
     
     ' Finde eine Zeile des Nachpächters als Vorlage
-    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).row
     vorlagenRow = 0
     
     For r = M_START_ROW To lastRow
@@ -877,7 +950,7 @@ Private Sub NachpaechterZusaetzlicheParzelle(ByVal nachpaechterID As String, ByV
     End If
     
     ' Erstelle neue Zeile für zusätzliche Parzelle
-    newRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row + 1
+    newRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).row + 1
     
     ' Kopiere alle Daten von Vorlagenzeile
     wsM.Cells(newRow, M_COL_MEMBER_ID).value = wsM.Cells(vorlagenRow, M_COL_MEMBER_ID).value
@@ -912,9 +985,7 @@ Private Sub NachpaechterZusaetzlicheParzelle(ByVal nachpaechterID As String, ByV
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
     
-    If IsFormLoaded("frm_Mitgliederverwaltung") Then
-        frm_Mitgliederverwaltung.RefreshMitgliederListe
-    End If
+    Call RefreshMitgliederverwaltungIfLoaded
     
     MsgBox "Nachpächter " & nachpaechterName & " hat zusätzlich Parzelle " & neueParzelle & " übernommen.", vbInformation
     
@@ -939,7 +1010,7 @@ Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVa
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     
     ' Finde den neu angelegten Nachpächter (letzte Zeile mit gleicher Parzelle)
-    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).row
     
     For r = lastRow To M_START_ROW Step -1
         If StrComp(Trim(wsM.Cells(r, M_COL_PARZELLE).value), parzelle, vbTextCompare) = 0 Then
@@ -958,9 +1029,7 @@ Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVa
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
     
-    If IsFormLoaded("frm_Mitgliederverwaltung") Then
-        frm_Mitgliederverwaltung.RefreshMitgliederListe
-    End If
+    Call RefreshMitgliederverwaltungIfLoaded
     
     Unload Me
 End Sub
@@ -997,7 +1066,7 @@ Private Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, B
     wsH.Unprotect PASSWORD:=PASSWORD
     
     ' Finde nächste freie Zeile in Mitgliederhistorie (ab Zeile 4)
-    nextHistRow = wsH.Cells(wsH.Rows.Count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row + 1
+    nextHistRow = wsH.Cells(wsH.Rows.Count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).row + 1
     If nextHistRow < H_START_ROW Then nextHistRow = H_START_ROW
     
     ' Schreibe Daten in Mitgliederhistorie (10 Spalten A-J) - MIT FEHLERBEHANDLUNG
@@ -1211,9 +1280,7 @@ Private Sub cmd_Uebernehmen_Click()
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
     
-    If IsFormLoaded("frm_Mitgliederverwaltung") Then
-        frm_Mitgliederverwaltung.RefreshMitgliederListe
-    End If
+    Call RefreshMitgliederverwaltungIfLoaded
     
     MsgBox "Änderungen für Mitglied " & Me.txt_Nachname.value & " erfolgreich gespeichert.", vbInformation
     
@@ -1277,9 +1344,7 @@ Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As Strin
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
     
-    If IsFormLoaded("frm_Mitgliederverwaltung") Then
-        frm_Mitgliederverwaltung.RefreshMitgliederListe
-    End If
+    Call RefreshMitgliederverwaltungIfLoaded
     
     Unload Me
     Exit Sub
@@ -1365,7 +1430,7 @@ Private Sub cmd_Anlegen_Click()
         If parzelle <> "" Then
             ' Prüfe ob auf dieser Parzelle ein Mitglied mit Pacht existiert
             parzelleHatMitgliedMitPacht = False
-            lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+            lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).row
             
             For r = M_START_ROW To lastRow
                 ' Suche Mitglieder auf dieser Parzelle
@@ -1403,7 +1468,7 @@ Private Sub cmd_Anlegen_Click()
 
     wsM.Unprotect PASSWORD:=PASSWORD
     
-    lRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row + 1
+    lRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).row + 1
     
     newMemberID = mod_Mitglieder_UI.CreateGUID_Public()
     
@@ -1460,9 +1525,7 @@ Private Sub cmd_Anlegen_Click()
     Call mod_Mitglieder_UI.Sortiere_Mitgliederliste_Nach_Parzelle
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
     
-    If IsFormLoaded("frm_Mitgliederverwaltung") Then
-        frm_Mitgliederverwaltung.RefreshMitgliederListe
-    End If
+    Call RefreshMitgliederverwaltungIfLoaded
     
     MsgBox "Neues Mitglied " & Me.txt_Nachname.value & " erfolgreich angelegt.", vbInformation
     
@@ -1616,7 +1679,7 @@ Private Sub FuelleFunktionComboDB()
     Me.cbo_Funktion.Clear
     
     ' Finde letzte gefüllte Zeile in Spalte B
-    lastRow = ws.Cells(ws.Rows.Count, 2).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.Count, 2).End(xlUp).row
     
     ' Lese alle Werte von B4 bis lastRow
     For lRow = 4 To lastRow
@@ -1634,6 +1697,17 @@ ErrorHandler:
     Me.cbo_Funktion.RowSource = "Daten!B4:B12"
 End Sub
 
+Private Sub RefreshMitgliederverwaltungIfLoaded()
+    Dim i As Long
+    
+    For i = 0 To VBA.UserForms.Count - 1
+        If StrComp(VBA.UserForms.Item(i).Name, "frm_Mitgliederverwaltung", vbTextCompare) = 0 Then
+            VBA.UserForms.Item(i).RefreshMitgliederListe
+            Exit For
+        End If
+    Next i
+End Sub
+
 Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     Dim i As Long
     
@@ -1646,6 +1720,5 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     
     IsFormLoaded = False
 End Function
-
 
 

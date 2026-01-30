@@ -16,90 +16,62 @@ Private Const TEMP_WS_NAME As String = "TEMP_LISTEN"
 Public Sub AktualisiereNamedRange_MitgliederNamen()
     
     Dim wsM As Worksheet
-    Dim wsTemp As Worksheet
+    Dim wsD As Worksheet
     Dim lastRow As Long
-    Dim tempRow As Long
-    Dim rngTarget As Range
+    Dim writeRow As Long
     Dim wasProtected As Boolean
+    Dim rngTarget As Range
+    Dim r As Long
     
     Application.ScreenUpdating = False
     
     On Error GoTo ErrorHandler
     
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
     
-    ' 1. Temporäres Arbeitsblatt erstellen/finden
+    ' TEMP_LISTEN falls vorhanden sofort entfernen
     On Error Resume Next
-    Set wsTemp = ThisWorkbook.Worksheets(TEMP_WS_NAME)
+    Application.DisplayAlerts = False
+    ThisWorkbook.Worksheets(TEMP_WS_NAME).Delete
+    Application.DisplayAlerts = True
     On Error GoTo 0
     
-    If wsTemp Is Nothing Then
-        Set wsTemp = ThisWorkbook.Worksheets.Add(After:=wsM)
-        wsTemp.Name = TEMP_WS_NAME
-    Else
-        ' Vorherige Daten löschen
-        wsTemp.Cells.Clear
-    End If
-    
-    ' 2. Daten kopieren und filtern (Nur aktive Mitglieder)
     wasProtected = wsM.ProtectContents
     If wasProtected Then wsM.Unprotect PASSWORD:=PASSWORD
     
-    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).row
+    
+    ' Zielbereich in Daten!AA (DATA_TEMP_COL_NAME) leeren
+    wsD.Columns(DATA_TEMP_COL_NAME).ClearContents
+    
+    writeRow = 4 ' Startzeile in Daten
     
     If lastRow >= M_START_ROW Then
-        
-        ' Filterbereich definieren (Header bis letzte Zeile)
-        wsM.Range(wsM.Cells(M_HEADER_ROW, 1), wsM.Cells(lastRow, M_COL_FUNKTION)).AutoFilter
-        
-        ' Filtern: Pachtende (M_COL_PACHTENDE) muss leer sein (Aktives Mitglied)
-        ' Wir filtern auf "" (leer) ODER wenn die Spalte nicht leer ist, aber das Datum in der Zukunft liegt.
-        ' Einfachheitshalber filtern wir hier nur auf LEER ("") um aktive Mitglieder zu erhalten.
-        wsM.Range(wsM.Cells(M_HEADER_ROW, 1), wsM.Cells(lastRow, M_COL_PACHTENDE)).AutoFilter _
-             Field:=M_COL_PACHTENDE, Criteria1:="="
-        
-        tempRow = 1
-        ' Kopiere die Spalten: Nachname (5), Vorname (6), Parzelle (2)
-        Dim copyCols As Variant
-        copyCols = Array(M_COL_NACHNAME, M_COL_VORNAME, M_COL_PARZELLE)
-        Dim i As Long
-        
-        For i = LBound(copyCols) To UBound(copyCols)
-            wsM.Columns(copyCols(i)).SpecialCells(xlCellTypeVisible).Copy
-            ' Fügen Sie in die temporäre Tabelle in Spalten A, B, C ein
-            wsTemp.Cells(tempRow, i + 1).PasteSpecial xlPasteValues
-        Next i
-        
-        Application.CutCopyMode = False
-        wsM.AutoFilterMode = False ' Filter aufheben
-        
-        ' 3. Kombinierte Namen-Liste erstellen (Nachname, Vorname)
-        tempRow = wsTemp.Cells(wsTemp.Rows.Count, 1).End(xlUp).Row
-        
-        If tempRow > 1 Then ' Zeile 1 enthält die Header/Erste Zeile des kopierten Bereichs
-            For i = 2 To tempRow
-                ' Spalte D: Nachname, Vorname (wird im Dropdown angezeigt)
-                wsTemp.Cells(i, 4).value = wsTemp.Cells(i, 1).value & ", " & wsTemp.Cells(i, 2).value
-            Next i
-            
-            ' 4. Benannten Bereich erstellen/aktualisieren (Spalte D, ab Zeile 2)
-            Set rngTarget = wsTemp.Range(wsTemp.Cells(2, 4), wsTemp.Cells(tempRow, 4))
-            
-            ' Bestehenden benannten Bereich löschen
-            On Error Resume Next
-            ThisWorkbook.Names("rng_MitgliederNamen").Delete
-            On Error GoTo 0
-            
-            ' Neuen benannten Bereich definieren
-            ThisWorkbook.Names.Add Name:="rng_MitgliederNamen", RefersTo:=rngTarget
-        End If
+        For r = M_START_ROW To lastRow
+            If Trim(wsM.Cells(r, M_COL_NACHNAME).value) <> "" Then
+                If Trim(wsM.Cells(r, M_COL_PACHTENDE).value) = "" Then
+                    wsD.Cells(writeRow, DATA_TEMP_COL_NAME).value = _
+                        Trim(wsM.Cells(r, M_COL_NACHNAME).value) & ", " & Trim(wsM.Cells(r, M_COL_VORNAME).value)
+                    writeRow = writeRow + 1
+                End If
+            End If
+        Next r
+    End If
+    
+    ' Named Range setzen
+    On Error Resume Next
+    ThisWorkbook.Names("rng_MitgliederNamen").Delete
+    On Error GoTo 0
+    
+    If writeRow > 4 Then
+        Set rngTarget = wsD.Range(wsD.Cells(4, DATA_TEMP_COL_NAME), wsD.Cells(writeRow - 1, DATA_TEMP_COL_NAME))
+        ThisWorkbook.Names.Add Name:="rng_MitgliederNamen", RefersTo:=rngTarget
     End If
     
 Cleanup:
     Application.ScreenUpdating = True
     If Not wsM Is Nothing Then
-        If wsM.AutoFilterMode Then wsM.AutoFilterMode = False
-        ' Korrektur: UserInterfaceOnly hinzufügen
         If wasProtected Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     End If
     Exit Sub
@@ -109,7 +81,6 @@ ErrorHandler:
     Resume Cleanup
 
 End Sub
-
 
 ' ***************************************************************
 ' HILFSFUNKTION: Prüfen, ob eine UserForm geladen ist (KORRIGIERT FÜR EXCEL)
@@ -130,8 +101,4 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False ' Formular nicht gefunden
     
 End Function
-
-
-
-
 

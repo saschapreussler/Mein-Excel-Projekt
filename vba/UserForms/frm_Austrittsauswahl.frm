@@ -1,10 +1,10 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frm_Austrittsauswahl 
    Caption         =   "Austrittsgrund"
-   ClientHeight    =   2890
+   ClientHeight    =   2720
    ClientLeft      =   110
    ClientTop       =   450
-   ClientWidth     =   4540
+   ClientWidth     =   4420
    OleObjectBlob   =   "frm_Austrittsauswahl.frx":0000
    StartUpPosition =   1  'Fenstermitte
 End
@@ -53,7 +53,6 @@ Private Sub UserForm_Initialize()
     Me.opt_Nachpaechter.value = False
     Me.opt_Tod.value = False
     Me.opt_Kuendigung.value = False
-    Me.opt_Parzellenwechsel.value = False
     Me.opt_Sonstiges.value = False
     
     Me.txt_Sonstiges.Visible = False
@@ -85,11 +84,6 @@ Private Sub opt_Tod_Click()
 End Sub
 
 Private Sub opt_Kuendigung_Click()
-    Me.txt_Sonstiges.Visible = False
-    Me.cbo_Nachpaechter.Visible = False
-End Sub
-
-Private Sub opt_Parzellenwechsel_Click()
     Me.txt_Sonstiges.Visible = False
     Me.cbo_Nachpaechter.Visible = False
 End Sub
@@ -145,7 +139,7 @@ Private Sub cmd_OK_Click()
             selectedName = Me.cbo_Nachpaechter.value
             
             ' Suche Member ID anhand des Namens
-            lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+            lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).row
             For lRow = M_START_ROW To lastRow
                 Dim fullName As String
                 fullName = ws.Cells(lRow, M_COL_NACHNAME).value & ", " & ws.Cells(lRow, M_COL_VORNAME).value
@@ -164,9 +158,6 @@ Private Sub cmd_OK_Click()
     ElseIf Me.opt_Kuendigung.value Then
         m_SelectedOption = 3
         m_CustomReason = "Kündigung"
-    ElseIf Me.opt_Parzellenwechsel.value Then
-        m_SelectedOption = 4
-        m_CustomReason = "Parzellenwechsel"
     ElseIf Me.opt_Sonstiges.value Then
         If Trim(Me.txt_Sonstiges.value) = "" Then
             MsgBox "Bitte geben Sie einen Grund ein.", vbExclamation
@@ -195,22 +186,39 @@ Private Sub FuelleNachpaechterComboBox()
     Dim ws As Worksheet
     Dim lRow As Long
     Dim lastRow As Long
+    Dim nachpaechterName As String
+    Dim currentLRow As Long
+    Dim currentMemberID As String
+    
+    On Error GoTo ErrorHandler
     
     Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER)
-    
     Me.cbo_Nachpaechter.Clear
     
-    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    ' Hole aktuelle Zeile aus Tag
+    On Error Resume Next
+    currentLRow = CLng(Me.Tag)
+    On Error GoTo ErrorHandler
+    
+    If currentLRow > 0 Then
+        currentMemberID = ws.Cells(currentLRow, M_COL_MEMBER_ID).value
+    End If
+    
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).row
     
     For lRow = M_START_ROW To lastRow
-        ' Nur aktive Mitglieder (Pachtende leer) und nicht "Verein"
-        If Trim(ws.Cells(lRow, M_COL_NACHNAME).value) <> "" And _
-           Trim(ws.Cells(lRow, M_COL_PACHTENDE).value) = "" And _
-           StrComp(Trim(ws.Cells(lRow, M_COL_PARZELLE).value), "Verein", vbTextCompare) <> 0 Then
-            
-            ' Format: "Nachname, Vorname"
-            Me.cbo_Nachpaechter.AddItem ws.Cells(lRow, M_COL_NACHNAME).value & ", " & ws.Cells(lRow, M_COL_VORNAME).value
+        ' Überspringe das aktuelle Mitglied (kann nicht sein eigener Nachpächter sein)
+        If lRow <> currentLRow And ws.Cells(lRow, M_COL_MEMBER_ID).value <> currentMemberID Then
+            ' Nur Mitglieder mit Nachname anzeigen
+            If Trim(ws.Cells(lRow, M_COL_NACHNAME).value) <> "" Then
+                nachpaechterName = ws.Cells(lRow, M_COL_NACHNAME).value & ", " & ws.Cells(lRow, M_COL_VORNAME).value
+                Me.cbo_Nachpaechter.AddItem nachpaechterName
+            End If
         End If
     Next lRow
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "Fehler beim Füllen der Nachpächter-Liste: " & Err.Description, vbCritical
 End Sub
-

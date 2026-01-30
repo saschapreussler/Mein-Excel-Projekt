@@ -21,7 +21,7 @@ Public Sub Anwende_Zebra_Formatierung_Direkt(ByVal ws As Worksheet, ByVal startC
     Dim checkColValue As Variant
     
     ' 1. Letzte gefüllte Zeile in der Prüfspalte ermitteln
-    lastRow = ws.Cells(ws.Rows.Count, dataCheckCol).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.Count, dataCheckCol).End(xlUp).row
     If lastRow < startRow Then
         Exit Sub ' Keine Daten vorhanden
     End If
@@ -60,7 +60,7 @@ Public Sub Entferne_Zebra_Formatierung()
     ' 1. Mitgliederliste (WS_MITGLIEDER)
     Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     If Not ws Is Nothing Then
-        lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+        lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).row
         If lastRow >= M_START_ROW Then
             ws.Range(ws.Cells(M_START_ROW, M_COL_MEMBER_ID), ws.Cells(lastRow, M_COL_PACHTENDE)).Interior.ColorIndex = xlNone
         End If
@@ -69,7 +69,7 @@ Public Sub Entferne_Zebra_Formatierung()
     ' 2. Mitgliederhistorie (WS_MITGLIEDER_HISTORIE)
     Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
     If Not ws Is Nothing Then
-        lastRow = ws.Cells(ws.Rows.Count, H_COL_NACHNAME).End(xlUp).Row
+        lastRow = ws.Cells(ws.Rows.Count, H_COL_NACHNAME).End(xlUp).row
         If lastRow >= H_START_ROW Then
             ws.Range(ws.Cells(H_START_ROW, H_COL_PARZELLE), ws.Cells(lastRow, H_COL_SYSTEMZEIT)).Interior.ColorIndex = xlNone
         End If
@@ -78,13 +78,13 @@ Public Sub Entferne_Zebra_Formatierung()
     ' 3. Datenblatt - Tabelle 1 (WS_DATEN)
     Set ws = ThisWorkbook.Worksheets(WS_DATEN)
     If Not ws Is Nothing Then
-        lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_START).End(xlUp).Row
+        lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_START).End(xlUp).row
         If lastRow >= DATA_START_ROW Then
             ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), ws.Cells(lastRow, DATA_CAT_COL_END)).Interior.ColorIndex = xlNone
         End If
         
         ' Datenblatt - Tabelle 2 (WS_DATEN)
-        lastRow = ws.Cells(ws.Rows.Count, DATA_MAP_COL_ENTITYKEY).End(xlUp).Row
+        lastRow = ws.Cells(ws.Rows.Count, DATA_MAP_COL_ENTITYKEY).End(xlUp).row
         If lastRow >= DATA_START_ROW Then
             ws.Range(ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYKEY), ws.Cells(lastRow, 21)).Interior.ColorIndex = xlNone
         End If
@@ -113,7 +113,7 @@ Public Sub FormatiereMitgliedertabelle()
     wasProtected = ws.ProtectContents
     If wasProtected Then ws.Unprotect PASSWORD:=PASSWORD
     
-    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).row
     If lastRow < M_START_ROW Then GoTo Cleanup
     
     ' Datenbereich für Formatierung
@@ -195,7 +195,7 @@ Public Sub Formatiere_Mitgliederhistorie()
     wasProtected = ws.ProtectContents
     If wasProtected Then ws.Unprotect PASSWORD:=PASSWORD
     
-    lastRow = ws.Cells(ws.Rows.Count, H_COL_NACHNAME).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.Count, H_COL_NACHNAME).End(xlUp).row
     If lastRow < H_START_ROW Then GoTo Cleanup
     
     ' Datenbereich für Formatierung
@@ -253,7 +253,7 @@ Public Sub Formatiere_Daten_Tabellen()
     If wasProtected Then ws.Unprotect PASSWORD:=PASSWORD
     
     ' --- TABELLE 1: KATEGORIE-REGELN (J bis Q) ---
-    lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_START).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_START).End(xlUp).row
     If lastRow >= DATA_START_ROW Then
         Set rngData = ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), ws.Cells(lastRow, DATA_CAT_COL_END))
         
@@ -269,7 +269,7 @@ Public Sub Formatiere_Daten_Tabellen()
     End If
     
     ' --- TABELLE 2: ENTITYKEY/MAPPING (S bis U) ---
-    lastRow = ws.Cells(ws.Rows.Count, DATA_MAP_COL_ENTITYKEY).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.Count, DATA_MAP_COL_ENTITYKEY).End(xlUp).row
     If lastRow >= DATA_START_ROW Then
         Set rngData = ws.Range(ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYKEY), ws.Cells(lastRow, 21))
         
@@ -405,3 +405,4 @@ Public Sub DebugNachFormatierung()
     Debug.Print "===== END DEBUG ====="
     
 End Sub
+
