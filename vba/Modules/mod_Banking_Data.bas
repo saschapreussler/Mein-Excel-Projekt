@@ -529,7 +529,7 @@ Public Sub Sortiere_Bankkonto_nach_Datum()
     ' Sortierung des Datenbereichs von der Startzeile bis zur letzten belegten Zeile
     With ws.Sort
         .SortFields.Clear
-        .SortFields.Add Key:=ws.Cells(BK_START_ROW, BK_COL_DATUM), _
+        .SortFields.Add key:=ws.Cells(BK_START_ROW, BK_COL_DATUM), _
                              SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
         .SetRange ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lr, BK_COL_STATUS))
         .Header = xlNo
@@ -558,7 +558,7 @@ Public Sub Sortiere_Tabellen_Daten()
     If lr >= DATA_START_ROW Then
         With ws.Sort
             .SortFields.Clear
-            .SortFields.Add Key:=ws.Cells(DATA_START_ROW, DATA_CAT_COL_KATEGORIE), _
+            .SortFields.Add key:=ws.Cells(DATA_START_ROW, DATA_CAT_COL_KATEGORIE), _
                                  Order:=xlAscending
             .SetRange ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), ws.Cells(lr, DATA_CAT_COL_END))
             .Header = xlNo
@@ -572,7 +572,7 @@ Public Sub Sortiere_Tabellen_Daten()
     If lr >= DATA_START_ROW Then
         With ws.Sort
             .SortFields.Clear
-            .SortFields.Add Key:=ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYKEY), _
+            .SortFields.Add key:=ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYKEY), _
                                  Order:=xlAscending
             ' Sortierbereich muss alle Mapping-Spalten (bis Y) umfassen
             .SetRange ws.Range(ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYKEY), ws.Cells(lr, DATA_MAP_COL_LAST))

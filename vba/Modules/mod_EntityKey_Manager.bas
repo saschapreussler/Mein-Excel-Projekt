@@ -4,8 +4,9 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_EntityKey_Manager
 ' ZWECK: Verwaltung und Zuordnung von EntityKeys für Bankverkehr
-' VERSION: 1.4 - 31.01.2026
+' VERSION: 1.5 - 31.01.2026
 ' WICHTIG: Bestehende Daten werden NIEMALS überschrieben!
+' ÄNDERUNG: EntityKey wird aktualisiert wenn Role-Typ nicht passt
 ' ***************************************************************
 
 ' ===============================================================
@@ -30,6 +31,7 @@ Public Const PREFIX_VERSORGER As String = "VERS-"
 Public Const PREFIX_BANK As String = "BANK-"
 Public Const PREFIX_SHOP As String = "SHOP-"
 Public Const PREFIX_EHEMALIG As String = "EX-"
+Public Const PREFIX_SONSTIGE As String = "SONSTIGE-"
 
 ' EntityRole-Werte
 Public Const ROLE_MITGLIED_MIT_PACHT As String = "MITGLIED_MIT_PACHT"
@@ -38,6 +40,7 @@ Public Const ROLE_EHEMALIGES_MITGLIED As String = "EHEMALIGES_MITGLIED"
 Public Const ROLE_VERSORGER As String = "VERSORGER"
 Public Const ROLE_BANK As String = "BANK"
 Public Const ROLE_SHOP As String = "SHOP"
+Public Const ROLE_SONSTIGE As String = "SONSTIGE"
 
 ' Zebra-Farben (wie in Mitgliederliste)
 Private Const ZEBRA_FARBE_GERADE As Long = 16777215  ' Weiß
@@ -698,21 +701,21 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
         If IstVersorger(kontoName) Then
             outEntityKey = PREFIX_VERSORGER & CreateGUID()
             outEntityRole = ROLE_VERSORGER
-            outZuordnung = ExtrahiereAnzeigeName(kontoName)  ' NEU: Name eintragen!
+            outZuordnung = ExtrahiereAnzeigeName(kontoName)
             outDebugInfo = "Automatisch als VERSORGER erkannt"
             outAmpelStatus = 1
             Exit Sub
         ElseIf IstBank(kontoName) Then
             outEntityKey = PREFIX_BANK & CreateGUID()
             outEntityRole = ROLE_BANK
-            outZuordnung = ExtrahiereAnzeigeName(kontoName)  ' NEU: Name eintragen!
+            outZuordnung = ExtrahiereAnzeigeName(kontoName)
             outDebugInfo = "Automatisch als BANK erkannt"
             outAmpelStatus = 1
             Exit Sub
         ElseIf IstShop(kontoName) Then
             outEntityKey = PREFIX_SHOP & CreateGUID()
             outEntityRole = ROLE_SHOP
-            outZuordnung = ExtrahiereAnzeigeName(kontoName)  ' NEU: Name eintragen!
+            outZuordnung = ExtrahiereAnzeigeName(kontoName)
             outDebugInfo = "Automatisch als SHOP erkannt"
             outAmpelStatus = 1
             Exit Sub
@@ -1305,8 +1308,70 @@ ErrorHandler:
 End Sub
 
 ' ===============================================================
+' HILFSFUNKTION: Prüft ob EntityKey zum Role-Typ passt
+' WICHTIG: Gibt TRUE zurück wenn EntityKey aktualisiert werden muss
+' ===============================================================
+Private Function EntityKeyPasstNichtZuRole(ByVal entityKey As String, ByVal role As String) As Boolean
+    
+    EntityKeyPasstNichtZuRole = False
+    
+    ' Wenn EntityKey leer ist, muss er definitiv gesetzt werden
+    If entityKey = "" Then
+        EntityKeyPasstNichtZuRole = True
+        Exit Function
+    End If
+    
+    Select Case role
+        Case ROLE_EHEMALIGES_MITGLIED
+            ' EntityKey muss mit "EX-" beginnen
+            If Left(entityKey, Len(PREFIX_EHEMALIG)) <> PREFIX_EHEMALIG Then
+                EntityKeyPasstNichtZuRole = True
+            End If
+            
+        Case ROLE_VERSORGER
+            ' EntityKey muss mit "VERS-" beginnen
+            If Left(entityKey, Len(PREFIX_VERSORGER)) <> PREFIX_VERSORGER Then
+                EntityKeyPasstNichtZuRole = True
+            End If
+            
+        Case ROLE_BANK
+            ' EntityKey muss mit "BANK-" beginnen
+            If Left(entityKey, Len(PREFIX_BANK)) <> PREFIX_BANK Then
+                EntityKeyPasstNichtZuRole = True
+            End If
+            
+        Case ROLE_SHOP
+            ' EntityKey muss mit "SHOP-" beginnen
+            If Left(entityKey, Len(PREFIX_SHOP)) <> PREFIX_SHOP Then
+                EntityKeyPasstNichtZuRole = True
+            End If
+            
+        Case ROLE_SONSTIGE
+            ' EntityKey muss mit "SONSTIGE-" beginnen
+            If Left(entityKey, Len(PREFIX_SONSTIGE)) <> PREFIX_SONSTIGE Then
+                EntityKeyPasstNichtZuRole = True
+            End If
+            
+        Case ROLE_MITGLIED_MIT_PACHT, ROLE_MITGLIED_OHNE_PACHT
+            ' EntityKey darf NICHT mit EX-, VERS-, BANK-, SHOP-, SONSTIGE- beginnen
+            ' (SHARE- ist OK für Gemeinschaftskonten)
+            If Left(entityKey, Len(PREFIX_EHEMALIG)) = PREFIX_EHEMALIG Or _
+               Left(entityKey, Len(PREFIX_VERSORGER)) = PREFIX_VERSORGER Or _
+               Left(entityKey, Len(PREFIX_BANK)) = PREFIX_BANK Or _
+               Left(entityKey, Len(PREFIX_SHOP)) = PREFIX_SHOP Or _
+               Left(entityKey, Len(PREFIX_SONSTIGE)) = PREFIX_SONSTIGE Then
+                EntityKeyPasstNichtZuRole = True
+            End If
+            
+    End Select
+    
+End Function
+
+' ===============================================================
 ' ÖFFENTLICHE PROZEDUR: Verarbeitet manuelle Änderung in Spalte X
 ' Wird vom Worksheet_Change Event aufgerufen
+' VERSION 1.5: EntityKey wird auch aktualisiert wenn er nicht
+'              zum gewählten Role-Typ passt (nicht nur wenn leer)
 ' ===============================================================
 Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
     Dim ws As Worksheet
@@ -1320,6 +1385,7 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
     Dim mitgliedInfo As Variant
     Dim i As Long
     Dim gefunden As Boolean
+    Dim entityKeyMussAktualisiert As Boolean
     
     On Error GoTo ErrorHandler
     
@@ -1343,9 +1409,14 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
     On Error GoTo ErrorHandler
     
     ' ============================================================
-    ' Wenn EntityKey noch leer ist, generiere basierend auf Role
+    ' NEUE LOGIK: Prüfen ob EntityKey zum Role-Typ passt
     ' ============================================================
-    If entityKey = "" Then
+    entityKeyMussAktualisiert = EntityKeyPasstNichtZuRole(entityKey, neueRole)
+    
+    ' ============================================================
+    ' Wenn EntityKey leer ist ODER nicht zum Role passt: generieren
+    ' ============================================================
+    If entityKeyMussAktualisiert Then
         Select Case neueRole
             Case ROLE_EHEMALIGES_MITGLIED
                 ' Suche in Mitgliederhistorie
@@ -1380,6 +1451,10 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
                 entityKey = PREFIX_SHOP & CreateGUID()
                 If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
                 
+            Case ROLE_SONSTIGE
+                entityKey = PREFIX_SONSTIGE & CreateGUID()
+                If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
+                
             Case ROLE_MITGLIED_MIT_PACHT, ROLE_MITGLIED_OHNE_PACHT
                 ' Suche in Mitgliederliste
                 Set mitglieder = SucheMitgliederZuKontoname(kontoName, wsM, wsH)
@@ -1404,7 +1479,7 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
                 End If
         End Select
         
-        ' Werte eintragen
+        ' Werte eintragen (EntityKey wird IMMER aktualisiert wenn nötig)
         ws.Cells(zeile, EK_COL_ENTITYKEY).value = entityKey
         If zuordnung <> "" And Trim(ws.Cells(zeile, EK_COL_ZUORDNUNG).value) = "" Then
             ws.Cells(zeile, EK_COL_ZUORDNUNG).value = zuordnung
@@ -1540,6 +1615,7 @@ Public Sub EntityKeyDialogFuerAktuelleZeile()
     auswahlText = auswahlText & "  V = VERSORGER" & vbCrLf
     auswahlText = auswahlText & "  B = BANK" & vbCrLf
     auswahlText = auswahlText & "  S = SHOP" & vbCrLf
+    auswahlText = auswahlText & "  O = SONSTIGE" & vbCrLf
     auswahlText = auswahlText & "  X = Abbrechen"
     
     eingabe = UCase(Trim(InputBox(auswahlText, "EntityKey-Zuordnung", "M")))
@@ -1633,24 +1709,29 @@ Public Sub EntityKeyDialogFuerAktuelleZeile()
             neueRole = ROLE_SHOP
             neueZuordnung = ExtrahiereAnzeigeName(kontoName)
             
+        Case "O"
+            neuerEntityKey = PREFIX_SONSTIGE & CreateGUID()
+            neueRole = ROLE_SONSTIGE
+            neueZuordnung = ExtrahiereAnzeigeName(kontoName)
+            
         Case Else
             MsgBox "Ungültige Eingabe.", vbExclamation
             wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
             Exit Sub
     End Select
     
-    If Trim(wsD.Cells(aktuelleZeile, EK_COL_ENTITYKEY).value) = "" Then
-        wsD.Cells(aktuelleZeile, EK_COL_ENTITYKEY).value = neuerEntityKey
-    End If
+    ' EntityKey wird IMMER gesetzt (auch überschrieben!)
+    wsD.Cells(aktuelleZeile, EK_COL_ENTITYKEY).value = neuerEntityKey
+    
     If Trim(wsD.Cells(aktuelleZeile, EK_COL_ZUORDNUNG).value) = "" Then
         wsD.Cells(aktuelleZeile, EK_COL_ZUORDNUNG).value = neueZuordnung
     End If
     If Trim(wsD.Cells(aktuelleZeile, EK_COL_PARZELLE).value) = "" And neueParzellen <> "" Then
         wsD.Cells(aktuelleZeile, EK_COL_PARZELLE).value = neueParzellen
     End If
-    If Trim(wsD.Cells(aktuelleZeile, EK_COL_ROLE).value) = "" Then
-        wsD.Cells(aktuelleZeile, EK_COL_ROLE).value = neueRole
-    End If
+    
+    ' Role wird IMMER gesetzt
+    wsD.Cells(aktuelleZeile, EK_COL_ROLE).value = neueRole
     
     wsD.Cells(aktuelleZeile, EK_COL_DEBUG).value = "Manuell zugeordnet am " & Format(Now, "dd.mm.yyyy hh:mm")
     

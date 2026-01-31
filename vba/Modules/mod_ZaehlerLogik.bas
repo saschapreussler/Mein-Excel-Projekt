@@ -1071,7 +1071,7 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
                 If Len(strMitgliedKey) > 1 Then
                     
                     On Error Resume Next
-                    colMitglieder.Add Item:=strMitgliedKey, Key:=strMitgliedKey
+                    colMitglieder.Add item:=strMitgliedKey, key:=strMitgliedKey
                     
                     If Err.Number = 0 Then
                         ZaehlerMitgliederGesamt = ZaehlerMitgliederGesamt + 1
