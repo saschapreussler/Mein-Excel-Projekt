@@ -4,7 +4,8 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_EntityKey_Manager
 ' ZWECK: Verwaltung und Zuordnung von EntityKeys für Bankverkehr
-' VERSION: 1.6 - 31.01.2026 - MIT DEBUG
+' VERSION: 1.7 - 31.01.2026
+' FIXES: Zebra-Farbe korrigiert, IBAN-Bereich korrigiert
 ' ***************************************************************
 
 ' ===============================================================
@@ -40,106 +41,13 @@ Public Const ROLE_BANK As String = "BANK"
 Public Const ROLE_SHOP As String = "SHOP"
 Public Const ROLE_SONSTIGE As String = "SONSTIGE"
 
-' Zebra-Farben (wie in Mitgliederliste)
-Private Const ZEBRA_FARBE_GERADE As Long = 16777215  ' Weiß
-Private Const ZEBRA_FARBE_UNGERADE As Long = 15921906 ' Hellblau/Grau
-
-' ===============================================================
-' DEBUG FUNKTION: Führe diese im Direktfenster aus!
-' Aufruf: mod_EntityKey_Manager.DEBUG_ZeigeRoleWerte
-' ===============================================================
-Public Sub DEBUG_ZeigeRoleWerte()
-    Dim ws As Worksheet
-    Dim r As Long
-    Dim lastRow As Long
-    Dim wert As String
-    
-    Set ws = ThisWorkbook.Worksheets(WS_DATEN)
-    
-    Debug.Print "=========================================="
-    Debug.Print "DEBUG: Dropdown-Werte in Spalte AF (Role)"
-    Debug.Print "=========================================="
-    
-    lastRow = ws.Cells(ws.Rows.Count, EK_ROLE_DROPDOWN_COL).End(xlUp).Row
-    
-    For r = 4 To lastRow
-        wert = ws.Cells(r, EK_ROLE_DROPDOWN_COL).value
-        Debug.Print "Zeile " & r & ": [" & wert & "] (Länge: " & Len(wert) & ")"
-        
-        ' Zeige Zeichencodes für versteckte Zeichen
-        Dim i As Long
-        Dim codes As String
-        codes = ""
-        For i = 1 To Len(wert)
-            codes = codes & Asc(Mid(wert, i, 1)) & " "
-        Next i
-        Debug.Print "   ASCII: " & codes
-    Next r
-    
-    Debug.Print ""
-    Debug.Print "=========================================="
-    Debug.Print "Konstanten-Werte im Code:"
-    Debug.Print "=========================================="
-    Debug.Print "ROLE_EHEMALIGES_MITGLIED = [" & ROLE_EHEMALIGES_MITGLIED & "]"
-    Debug.Print "ROLE_VERSORGER = [" & ROLE_VERSORGER & "]"
-    Debug.Print "ROLE_BANK = [" & ROLE_BANK & "]"
-    Debug.Print "ROLE_SHOP = [" & ROLE_SHOP & "]"
-    Debug.Print "=========================================="
-End Sub
-
-' ===============================================================
-' DEBUG FUNKTION: Teste Role-Änderung für eine Zeile
-' Aufruf: mod_EntityKey_Manager.DEBUG_TesteRoleAenderung 5
-' ===============================================================
-Public Sub DEBUG_TesteRoleAenderung(ByVal zeile As Long)
-    Dim ws As Worksheet
-    Dim neueRole As String
-    Dim entityKey As String
-    Dim passt As Boolean
-    
-    Set ws = ThisWorkbook.Worksheets(WS_DATEN)
-    
-    neueRole = Trim(ws.Cells(zeile, EK_COL_ROLE).value)
-    entityKey = Trim(ws.Cells(zeile, EK_COL_ENTITYKEY).value)
-    
-    Debug.Print "=========================================="
-    Debug.Print "DEBUG: Teste Role-Änderung für Zeile " & zeile
-    Debug.Print "=========================================="
-    Debug.Print "Gelesene Role: [" & neueRole & "]"
-    Debug.Print "Role Länge: " & Len(neueRole)
-    Debug.Print "EntityKey: [" & entityKey & "]"
-    Debug.Print ""
-    
-    ' Zeige ASCII-Codes
-    Dim i As Long
-    Dim codes As String
-    codes = ""
-    For i = 1 To Len(neueRole)
-        codes = codes & Asc(Mid(neueRole, i, 1)) & " "
-    Next i
-    Debug.Print "Role ASCII: " & codes
-    Debug.Print ""
-    
-    ' Vergleiche mit Konstanten
-    Debug.Print "Vergleich mit ROLE_EHEMALIGES_MITGLIED:"
-    Debug.Print "  Konstante: [" & ROLE_EHEMALIGES_MITGLIED & "]"
-    Debug.Print "  Gleich? " & (neueRole = ROLE_EHEMALIGES_MITGLIED)
-    Debug.Print "  UCase gleich? " & (UCase(neueRole) = UCase(ROLE_EHEMALIGES_MITGLIED))
-    Debug.Print ""
-    
-    Debug.Print "Vergleich mit ROLE_VERSORGER:"
-    Debug.Print "  Konstante: [" & ROLE_VERSORGER & "]"
-    Debug.Print "  Gleich? " & (neueRole = ROLE_VERSORGER)
-    Debug.Print ""
-    
-    passt = EntityKeyPasstNichtZuRole(entityKey, neueRole)
-    Debug.Print "EntityKeyPasstNichtZuRole: " & passt
-    Debug.Print "=========================================="
-End Sub
+' Zebra-Farbe - IDENTISCH mit mod_Formatierung!
+Private Const ZEBRA_COLOR As Long = &HDEE5E3    ' = 14607843 dezimal (Hellgrün/Grau)
 
 ' ===============================================================
 ' ÖFFENTLICHE PROZEDUR: Importiert IBANs aus Bankkonto und
 ' erstellt EntityKey-Einträge
+' KORRIGIERT: Bereich basiert auf Spalte A (Datum), nicht D (IBAN)
 ' ===============================================================
 Public Sub ImportiereIBANsAusBankkonto()
     
@@ -152,9 +60,11 @@ Public Sub ImportiereIBANsAusBankkonto()
     Dim nextRowD As Long
     Dim currentIBAN As String
     Dim currentKontoName As String
+    Dim currentDatum As Variant
     Dim ibanKey As Variant
     Dim anzahlNeu As Long
     Dim anzahlBereitsVorhanden As Long
+    Dim anzahlZeilenGeprueft As Long
     
     Application.ScreenUpdating = False
     Application.EnableEvents = False
@@ -172,7 +82,9 @@ Public Sub ImportiereIBANsAusBankkonto()
     
     anzahlNeu = 0
     anzahlBereitsVorhanden = 0
+    anzahlZeilenGeprueft = 0
     
+    ' Sammle bereits vorhandene IBANs aus Daten-Blatt
     lastRowD = wsD.Cells(wsD.Rows.Count, EK_COL_IBAN).End(xlUp).Row
     
     If lastRowD >= EK_START_ROW Then
@@ -190,31 +102,46 @@ Public Sub ImportiereIBANsAusBankkonto()
     Dim dictNeueIBANs As Object
     Set dictNeueIBANs = CreateObject("Scripting.Dictionary")
     
-    lastRowBK = wsBK.Cells(wsBK.Rows.Count, BK_COL_IBAN).End(xlUp).Row
+    ' KORRIGIERT: Letzte Zeile basierend auf Spalte A (Datum) ermitteln!
+    ' Das stellt sicher, dass ALLE Bankzeilen durchsucht werden
+    lastRowBK = wsBK.Cells(wsBK.Rows.Count, BK_COL_DATUM).End(xlUp).Row
     
+    ' Durchsuche alle Zeilen ab BK_START_ROW wo ein Datum in Spalte A steht
     For r = BK_START_ROW To lastRowBK
-        currentIBAN = NormalisiereIBAN(wsBK.Cells(r, BK_COL_IBAN).value)
-        currentKontoName = Trim(wsBK.Cells(r, BK_COL_NAME).value)
+        ' Prüfe ob Datum in Spalte A vorhanden ist
+        currentDatum = wsBK.Cells(r, BK_COL_DATUM).value
         
-        If currentIBAN <> "" And currentIBAN <> "N.A." And Len(currentIBAN) >= 15 Then
-            If Not dictIBANs.Exists(currentIBAN) Then
-                If Not dictNeueIBANs.Exists(currentIBAN) Then
-                    dictNeueIBANs.Add currentIBAN, currentKontoName
-                Else
-                    If InStr(dictNeueIBANs(currentIBAN), currentKontoName) = 0 Then
-                        dictNeueIBANs(currentIBAN) = dictNeueIBANs(currentIBAN) & vbLf & currentKontoName
+        If Not IsEmpty(currentDatum) And currentDatum <> "" Then
+            anzahlZeilenGeprueft = anzahlZeilenGeprueft + 1
+            
+            ' Hole IBAN und Kontoname
+            currentIBAN = NormalisiereIBAN(wsBK.Cells(r, BK_COL_IBAN).value)
+            currentKontoName = Trim(wsBK.Cells(r, BK_COL_NAME).value)
+            
+            ' Nur gültige IBANs verarbeiten
+            If currentIBAN <> "" And currentIBAN <> "N.A." And Len(currentIBAN) >= 15 Then
+                If Not dictIBANs.Exists(currentIBAN) Then
+                    If Not dictNeueIBANs.Exists(currentIBAN) Then
+                        dictNeueIBANs.Add currentIBAN, currentKontoName
+                    Else
+                        ' Kontoname ergänzen falls unterschiedlich
+                        If InStr(dictNeueIBANs(currentIBAN), currentKontoName) = 0 Then
+                            dictNeueIBANs(currentIBAN) = dictNeueIBANs(currentIBAN) & vbLf & currentKontoName
+                        End If
                     End If
                 End If
             End If
         End If
     Next r
     
+    ' Bestimme nächste freie Zeile im Daten-Blatt
     If lastRowD < EK_START_ROW Then
         nextRowD = EK_START_ROW
     Else
         nextRowD = lastRowD + 1
     End If
     
+    ' Schreibe neue IBANs ins Daten-Blatt
     For Each ibanKey In dictNeueIBANs.Keys
         wsD.Cells(nextRowD, EK_COL_IBAN).value = ibanKey
         wsD.Cells(nextRowD, EK_COL_KONTONAME).value = dictNeueIBANs(ibanKey)
@@ -232,6 +159,7 @@ Public Sub ImportiereIBANsAusBankkonto()
     If anzahlNeu > 0 Then
         Dim antwort As VbMsgBoxResult
         antwort = MsgBox("Import abgeschlossen!" & vbCrLf & vbCrLf & _
+                        "Bankzeilen geprüft: " & anzahlZeilenGeprueft & vbCrLf & _
                         "Neue IBANs importiert: " & anzahlNeu & vbCrLf & _
                         "Bereits vorhanden (übersprungen): " & anzahlBereitsVorhanden & vbCrLf & vbCrLf & _
                         "Möchten Sie jetzt die automatische Mitglieder-Zuordnung starten?", _
@@ -242,6 +170,7 @@ Public Sub ImportiereIBANsAusBankkonto()
         End If
     Else
         MsgBox "Keine neuen IBANs gefunden!" & vbCrLf & vbCrLf & _
+               "Bankzeilen geprüft: " & anzahlZeilenGeprueft & vbCrLf & _
                "Alle " & anzahlBereitsVorhanden & " IBANs aus dem Bankkonto sind bereits in der EntityKey-Tabelle.", _
                vbInformation, "Import abgeschlossen"
     End If
@@ -1240,13 +1169,13 @@ Private Sub SetzeAmpelFarbe(ByRef ws As Worksheet, ByVal zeile As Long, ByVal am
     
     Select Case ampelStatus
         Case 1
-            farbe = RGB(198, 224, 180)
+            farbe = RGB(198, 224, 180)  ' Hellgrün
         Case 2
-            farbe = RGB(255, 230, 153)
+            farbe = RGB(255, 230, 153)  ' Hellgelb
         Case 3
-            farbe = RGB(255, 150, 150)
+            farbe = RGB(255, 150, 150)  ' Hellrot
         Case Else
-            farbe = RGB(198, 224, 180)
+            farbe = RGB(198, 224, 180)  ' Hellgrün
     End Select
     
     rng.Interior.color = farbe
@@ -1255,6 +1184,7 @@ End Sub
 
 ' ===============================================================
 ' HILFSPROZEDUR: Formatiert die EntityKey-Tabelle
+' KORRIGIERT: Zebra-Farbe identisch mit Mitgliederliste
 ' ===============================================================
 Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As Long)
     
@@ -1276,9 +1206,7 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     Set rngBearbeitbar = ws.Range(ws.Cells(EK_START_ROW, EK_COL_ZUORDNUNG), _
                                    ws.Cells(lastRow, EK_COL_DEBUG))
     
-    Set rngZebra = ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
-                            ws.Cells(lastRow, EK_COL_KONTONAME))
-    
+    ' Rahmen
     With rngTable.Borders
         .LineStyle = xlContinuous
         .Weight = xlThin
@@ -1288,6 +1216,7 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     rngTable.VerticalAlignment = xlCenter
     rngOhneEntityKey.WrapText = True
     
+    ' Spalte S: Kein Textumbruch, feste Breite
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
                   ws.Cells(lastRow, EK_COL_ENTITYKEY))
         .WrapText = False
@@ -1295,35 +1224,47 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_ENTITYKEY).ColumnWidth = 12
     
+    ' Spalte W + X: Zentriert
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_PARZELLE), _
              ws.Cells(lastRow, EK_COL_PARZELLE)).HorizontalAlignment = xlCenter
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_ROLE), _
              ws.Cells(lastRow, EK_COL_ROLE)).HorizontalAlignment = xlCenter
     
+    ' Zellschutz
     rngBearbeitbar.Locked = False
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
              ws.Cells(lastRow, EK_COL_KONTONAME)).Locked = True
     
+    ' ============================================================
+    ' ZEBRA-FORMATIERUNG für Spalten S-U
+    ' KORRIGIERT: Verwendet jetzt ZEBRA_COLOR aus mod_Formatierung
+    ' Ungerade Zeilen (1, 3, 5...) = Zebra-Farbe
+    ' Gerade Zeilen (0, 2, 4...) = Weiß (keine Färbung)
+    ' ============================================================
     For r = EK_START_ROW To lastRow
         Set rngZebra = ws.Range(ws.Cells(r, EK_COL_ENTITYKEY), ws.Cells(r, EK_COL_KONTONAME))
         
-        If (r - EK_START_ROW) Mod 2 = 0 Then
-            rngZebra.Interior.color = ZEBRA_FARBE_GERADE
+        ' Ungerade Zeilen relativ zu startRow bekommen die Zebra-Farbe
+        If (r - EK_START_ROW) Mod 2 = 1 Then
+            rngZebra.Interior.color = ZEBRA_COLOR
         Else
-            rngZebra.Interior.color = ZEBRA_FARBE_UNGERADE
+            rngZebra.Interior.ColorIndex = xlNone  ' Weiß/Keine Farbe
         End If
     Next r
     
+    ' AutoFit Spaltenbreiten
     For col = EK_COL_IBAN To EK_COL_DEBUG
         ws.Columns(col).AutoFit
     Next col
     
+    ' Zeilenhöhe AutoFit
     ws.Rows(EK_START_ROW & ":" & lastRow).AutoFit
     
 End Sub
 
 ' ===============================================================
 ' ÖFFENTLICHE PROZEDUR: Formatiert eine einzelne Zeile
+' KORRIGIERT: Zebra-Farbe identisch mit Mitgliederliste
 ' ===============================================================
 Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long)
     Dim ws As Worksheet
@@ -1346,20 +1287,25 @@ Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long)
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ErrorHandler
     
+    ' Zebra für Spalten S-U dieser Zeile
     Set rngZebra = ws.Range(ws.Cells(zeile, EK_COL_ENTITYKEY), ws.Cells(zeile, EK_COL_KONTONAME))
     
-    If (zeile - EK_START_ROW) Mod 2 = 0 Then
-        rngZebra.Interior.color = ZEBRA_FARBE_GERADE
+    ' KORRIGIERT: Gleiche Logik wie in FormatiereEntityKeyTabelle
+    If (zeile - EK_START_ROW) Mod 2 = 1 Then
+        rngZebra.Interior.color = ZEBRA_COLOR
     Else
-        rngZebra.Interior.color = ZEBRA_FARBE_UNGERADE
+        rngZebra.Interior.ColorIndex = xlNone
     End If
     
+    ' Zellschutz für V-Y aufheben
     ws.Range(ws.Cells(zeile, EK_COL_ZUORDNUNG), ws.Cells(zeile, EK_COL_DEBUG)).Locked = False
     
+    ' AutoFit Spaltenbreite T-Y
     For col = EK_COL_IBAN To EK_COL_DEBUG
         ws.Columns(col).AutoFit
     Next col
     
+    ' Zeilenhöhe AutoFit für diese Zeile
     ws.Rows(zeile).AutoFit
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -1376,7 +1322,6 @@ End Sub
 
 ' ===============================================================
 ' HILFSFUNKTION: Normalisiert Role-String für Vergleich
-' Entfernt Leerzeichen, Unterstriche, macht alles UPPERCASE
 ' ===============================================================
 Private Function NormalisiereRoleString(ByVal role As String) As String
     Dim result As String
@@ -1388,13 +1333,11 @@ End Function
 
 ' ===============================================================
 ' HILFSFUNKTION: Prüft ob Role "EHEMALIGES MITGLIED" ist
-' Berücksichtigt verschiedene Schreibweisen
 ' ===============================================================
 Private Function IstRoleEhemaligesMitglied(ByVal role As String) As Boolean
     Dim normRole As String
     normRole = NormalisiereRoleString(role)
     
-    ' Prüfe auf verschiedene mögliche Schreibweisen
     IstRoleEhemaligesMitglied = (normRole = "EHEMALIGESVMITGLIED" Or _
                                  normRole = "EHEMALIGEMITGLIED" Or _
                                  normRole = "EHEMALIGES_MITGLIED" Or _
@@ -1403,23 +1346,19 @@ End Function
 
 ' ===============================================================
 ' HILFSFUNKTION: Prüft ob EntityKey zum Role-Typ passt
-' WICHTIG: Gibt TRUE zurück wenn EntityKey aktualisiert werden muss
 ' ===============================================================
 Private Function EntityKeyPasstNichtZuRole(ByVal entityKey As String, ByVal role As String) As Boolean
     Dim normRole As String
     
     EntityKeyPasstNichtZuRole = False
     
-    ' Wenn EntityKey leer ist, muss er definitiv gesetzt werden
     If entityKey = "" Then
         EntityKeyPasstNichtZuRole = True
         Exit Function
     End If
     
-    ' Normalisierte Role für flexiblen Vergleich
     normRole = NormalisiereRoleString(role)
     
-    ' Prüfe auf EHEMALIGES MITGLIED (verschiedene Schreibweisen)
     If IstRoleEhemaligesMitglied(role) Then
         If Left(entityKey, Len(PREFIX_EHEMALIG)) <> PREFIX_EHEMALIG Then
             EntityKeyPasstNichtZuRole = True
@@ -1427,7 +1366,6 @@ Private Function EntityKeyPasstNichtZuRole(ByVal entityKey As String, ByVal role
         Exit Function
     End If
     
-    ' Prüfe auf VERSORGER
     If normRole = "VERSORGER" Then
         If Left(entityKey, Len(PREFIX_VERSORGER)) <> PREFIX_VERSORGER Then
             EntityKeyPasstNichtZuRole = True
@@ -1435,7 +1373,6 @@ Private Function EntityKeyPasstNichtZuRole(ByVal entityKey As String, ByVal role
         Exit Function
     End If
     
-    ' Prüfe auf BANK
     If normRole = "BANK" Then
         If Left(entityKey, Len(PREFIX_BANK)) <> PREFIX_BANK Then
             EntityKeyPasstNichtZuRole = True
@@ -1443,7 +1380,6 @@ Private Function EntityKeyPasstNichtZuRole(ByVal entityKey As String, ByVal role
         Exit Function
     End If
     
-    ' Prüfe auf SHOP
     If normRole = "SHOP" Then
         If Left(entityKey, Len(PREFIX_SHOP)) <> PREFIX_SHOP Then
             EntityKeyPasstNichtZuRole = True
@@ -1451,7 +1387,6 @@ Private Function EntityKeyPasstNichtZuRole(ByVal entityKey As String, ByVal role
         Exit Function
     End If
     
-    ' Prüfe auf SONSTIGE
     If normRole = "SONSTIGE" Then
         If Left(entityKey, Len(PREFIX_SONSTIGE)) <> PREFIX_SONSTIGE Then
             EntityKeyPasstNichtZuRole = True
@@ -1459,9 +1394,7 @@ Private Function EntityKeyPasstNichtZuRole(ByVal entityKey As String, ByVal role
         Exit Function
     End If
     
-    ' Prüfe auf MITGLIED (MIT oder OHNE Pacht)
     If InStr(normRole, "MITGLIED") > 0 And InStr(normRole, "EHEMAL") = 0 Then
-        ' EntityKey darf NICHT mit EX-, VERS-, BANK-, SHOP-, SONSTIGE- beginnen
         If Left(entityKey, Len(PREFIX_EHEMALIG)) = PREFIX_EHEMALIG Or _
            Left(entityKey, Len(PREFIX_VERSORGER)) = PREFIX_VERSORGER Or _
            Left(entityKey, Len(PREFIX_BANK)) = PREFIX_BANK Or _
@@ -1476,8 +1409,6 @@ End Function
 
 ' ===============================================================
 ' ÖFFENTLICHE PROZEDUR: Verarbeitet manuelle Änderung in Spalte X
-' Wird vom Worksheet_Change Event aufgerufen
-' VERSION 1.6: Flexibler Role-Vergleich (Leerzeichen/Unterstriche)
 ' ===============================================================
 Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
     Dim ws As Worksheet
@@ -1514,25 +1445,17 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ErrorHandler
     
-    ' ============================================================
-    ' Prüfen ob EntityKey zum Role-Typ passt (flexibler Vergleich)
-    ' ============================================================
     entityKeyMussAktualisiert = EntityKeyPasstNichtZuRole(entityKey, neueRole)
     
-    ' ============================================================
-    ' Wenn EntityKey leer ist ODER nicht zum Role passt: generieren
-    ' ============================================================
     If entityKeyMussAktualisiert Then
         
-        ' Prüfe auf EHEMALIGES MITGLIED (flexibel)
         If IstRoleEhemaligesMitglied(neueRole) Then
-            ' Suche in Mitgliederhistorie
             Set mitglieder = SucheMitgliederZuKontoname(kontoName, wsM, wsH)
             gefunden = False
             
             For i = 1 To mitglieder.Count
                 mitgliedInfo = mitglieder(i)
-                If mitgliedInfo(6) = True Then  ' Ehemalig
+                If mitgliedInfo(6) = True Then
                     entityKey = PREFIX_EHEMALIG & CStr(mitgliedInfo(0))
                     If zuordnung = "" Then zuordnung = mitgliedInfo(1) & ", " & mitgliedInfo(2)
                     gefunden = True
@@ -1562,13 +1485,12 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
             If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
             
         ElseIf InStr(NormalisiereRoleString(neueRole), "MITGLIED") > 0 Then
-            ' MITGLIED_MIT_PACHT oder MITGLIED_OHNE_PACHT
             Set mitglieder = SucheMitgliederZuKontoname(kontoName, wsM, wsH)
             gefunden = False
             
             For i = 1 To mitglieder.Count
                 mitgliedInfo = mitglieder(i)
-                If mitgliedInfo(6) = False Then  ' Aktiv
+                If mitgliedInfo(6) = False Then
                     entityKey = CStr(mitgliedInfo(0))
                     If zuordnung = "" Then zuordnung = mitgliedInfo(1) & ", " & mitgliedInfo(2)
                     If Trim(ws.Cells(zeile, EK_COL_PARZELLE).value) = "" Then
@@ -1585,20 +1507,15 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
             End If
         End If
         
-        ' Werte eintragen (EntityKey wird IMMER aktualisiert wenn nötig)
         ws.Cells(zeile, EK_COL_ENTITYKEY).value = entityKey
         If zuordnung <> "" And Trim(ws.Cells(zeile, EK_COL_ZUORDNUNG).value) = "" Then
             ws.Cells(zeile, EK_COL_ZUORDNUNG).value = zuordnung
         End If
         
-        ' Debug-Info aktualisieren
         ws.Cells(zeile, EK_COL_DEBUG).value = "Manuell zugeordnet am " & Format(Now, "dd.mm.yyyy hh:mm")
     End If
     
-    ' Ampelfarbe auf Grün setzen
     Call SetzeAmpelFarbe(ws, zeile, 1)
-    
-    ' Formatierung aktualisieren
     Call FormatiereEntityKeyZeile(zeile)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -1821,7 +1738,6 @@ Public Sub EntityKeyDialogFuerAktuelleZeile()
             Exit Sub
     End Select
     
-    ' EntityKey wird IMMER gesetzt
     wsD.Cells(aktuelleZeile, EK_COL_ENTITYKEY).value = neuerEntityKey
     
     If Trim(wsD.Cells(aktuelleZeile, EK_COL_ZUORDNUNG).value) = "" Then
