@@ -4,8 +4,8 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_EntityKey_Manager
 ' ZWECK: Verwaltung und Zuordnung von EntityKeys für Bankverkehr
-' VERSION: 1.7 - 31.01.2026
-' FIXES: Zebra-Farbe korrigiert, IBAN-Bereich korrigiert
+' VERSION: 1.8 - 31.01.2026
+' ÄNDERUNG: Parzelle nur für Mitglieder und SONSTIGE bearbeitbar
 ' ***************************************************************
 
 ' ===============================================================
@@ -45,9 +45,33 @@ Public Const ROLE_SONSTIGE As String = "SONSTIGE"
 Private Const ZEBRA_COLOR As Long = &HDEE5E3    ' = 14607843 dezimal (Hellgrün/Grau)
 
 ' ===============================================================
+' HILFSFUNKTION: Prüft ob Role eine Parzelle haben darf
+' Erlaubt für: Mitglieder (alle Arten) und SONSTIGE
+' Nicht erlaubt für: VERSORGER, BANK, SHOP
+' ===============================================================
+Private Function DarfParzelleHaben(ByVal role As String) As Boolean
+    Dim normRole As String
+    normRole = NormalisiereRoleString(role)
+    
+    ' Standardmäßig: Ja (für leere Roles oder unbekannte)
+    DarfParzelleHaben = True
+    
+    ' Explizit NICHT erlaubt für VERSORGER, BANK, SHOP
+    If normRole = "VERSORGER" Then
+        DarfParzelleHaben = False
+    ElseIf normRole = "BANK" Then
+        DarfParzelleHaben = False
+    ElseIf normRole = "SHOP" Then
+        DarfParzelleHaben = False
+    End If
+    
+    ' Explizit ERLAUBT für SONSTIGE und alle Mitglieder-Typen
+    ' (wird durch obige Prüfung bereits abgedeckt, da Default = True)
+End Function
+
+' ===============================================================
 ' ÖFFENTLICHE PROZEDUR: Importiert IBANs aus Bankkonto und
 ' erstellt EntityKey-Einträge
-' KORRIGIERT: Bereich basiert auf Spalte A (Datum), nicht D (IBAN)
 ' ===============================================================
 Public Sub ImportiereIBANsAusBankkonto()
     
@@ -102,29 +126,24 @@ Public Sub ImportiereIBANsAusBankkonto()
     Dim dictNeueIBANs As Object
     Set dictNeueIBANs = CreateObject("Scripting.Dictionary")
     
-    ' KORRIGIERT: Letzte Zeile basierend auf Spalte A (Datum) ermitteln!
-    ' Das stellt sicher, dass ALLE Bankzeilen durchsucht werden
+    ' Letzte Zeile basierend auf Spalte A (Datum) ermitteln
     lastRowBK = wsBK.Cells(wsBK.Rows.Count, BK_COL_DATUM).End(xlUp).Row
     
     ' Durchsuche alle Zeilen ab BK_START_ROW wo ein Datum in Spalte A steht
     For r = BK_START_ROW To lastRowBK
-        ' Prüfe ob Datum in Spalte A vorhanden ist
         currentDatum = wsBK.Cells(r, BK_COL_DATUM).value
         
         If Not IsEmpty(currentDatum) And currentDatum <> "" Then
             anzahlZeilenGeprueft = anzahlZeilenGeprueft + 1
             
-            ' Hole IBAN und Kontoname
             currentIBAN = NormalisiereIBAN(wsBK.Cells(r, BK_COL_IBAN).value)
             currentKontoName = Trim(wsBK.Cells(r, BK_COL_NAME).value)
             
-            ' Nur gültige IBANs verarbeiten
             If currentIBAN <> "" And currentIBAN <> "N.A." And Len(currentIBAN) >= 15 Then
                 If Not dictIBANs.Exists(currentIBAN) Then
                     If Not dictNeueIBANs.Exists(currentIBAN) Then
                         dictNeueIBANs.Add currentIBAN, currentKontoName
                     Else
-                        ' Kontoname ergänzen falls unterschiedlich
                         If InStr(dictNeueIBANs(currentIBAN), currentKontoName) = 0 Then
                             dictNeueIBANs(currentIBAN) = dictNeueIBANs(currentIBAN) & vbLf & currentKontoName
                         End If
@@ -134,14 +153,12 @@ Public Sub ImportiereIBANsAusBankkonto()
         End If
     Next r
     
-    ' Bestimme nächste freie Zeile im Daten-Blatt
     If lastRowD < EK_START_ROW Then
         nextRowD = EK_START_ROW
     Else
         nextRowD = lastRowD + 1
     End If
     
-    ' Schreibe neue IBANs ins Daten-Blatt
     For Each ibanKey In dictNeueIBANs.Keys
         wsD.Cells(nextRowD, EK_COL_IBAN).value = ibanKey
         wsD.Cells(nextRowD, EK_COL_KONTONAME).value = dictNeueIBANs(ibanKey)
@@ -285,12 +302,17 @@ Public Sub AktualisiereAlleEntityKeys()
         
         If currentEntityKey = "" And newEntityKey <> "" Then wsD.Cells(r, EK_COL_ENTITYKEY).value = newEntityKey
         If currentZuordnung = "" And zuordnung <> "" Then wsD.Cells(r, EK_COL_ZUORDNUNG).value = zuordnung
-        If currentParzelle = "" And parzellen <> "" Then wsD.Cells(r, EK_COL_PARZELLE).value = parzellen
+        
+        ' Parzelle nur setzen wenn erlaubt für diesen Role-Typ
+        If currentParzelle = "" And parzellen <> "" And DarfParzelleHaben(entityRole) Then
+            wsD.Cells(r, EK_COL_PARZELLE).value = parzellen
+        End If
+        
         If currentRole = "" And entityRole <> "" Then wsD.Cells(r, EK_COL_ROLE).value = entityRole
         If currentDebug = "" Then wsD.Cells(r, EK_COL_DEBUG).value = debugInfo
         
         Call SetzeAmpelFarbe(wsD, r, ampelStatus)
-        Call SetzeZellschutzAuf(wsD, r)
+        Call SetzeZellschutzFuerZeile(wsD, r, entityRole)
         
         If ampelStatus = 3 Then
             zeilenRot.Add r
@@ -328,12 +350,25 @@ ErrorHandler:
 End Sub
 
 ' ===============================================================
-' HILFSPROZEDUR: Setzt Zellschutz für Spalten V-Y auf NICHT geschützt
+' HILFSPROZEDUR: Setzt Zellschutz basierend auf Role-Typ
+' Parzelle (W) nur bearbeitbar für Mitglieder und SONSTIGE
 ' ===============================================================
-Private Sub SetzeZellschutzAuf(ByRef ws As Worksheet, ByVal zeile As Long)
-    Dim rng As Range
-    Set rng = ws.Range(ws.Cells(zeile, EK_COL_ZUORDNUNG), ws.Cells(zeile, EK_COL_DEBUG))
-    rng.Locked = False
+Private Sub SetzeZellschutzFuerZeile(ByRef ws As Worksheet, ByVal zeile As Long, ByVal role As String)
+    
+    ' Spalten V (Zuordnung), X (Role), Y (Debug) immer bearbeitbar
+    ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = False
+    ws.Cells(zeile, EK_COL_ROLE).Locked = False
+    ws.Cells(zeile, EK_COL_DEBUG).Locked = False
+    
+    ' Spalte W (Parzelle) nur bearbeitbar wenn erlaubt
+    If DarfParzelleHaben(role) Then
+        ws.Cells(zeile, EK_COL_PARZELLE).Locked = False
+    Else
+        ws.Cells(zeile, EK_COL_PARZELLE).Locked = True
+        ' Optional: Parzelle leeren wenn nicht erlaubt
+        ' ws.Cells(zeile, EK_COL_PARZELLE).Value = ""
+    End If
+    
 End Sub
 
 ' ===============================================================
@@ -720,6 +755,7 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
             outEntityKey = PREFIX_VERSORGER & CreateGUID()
             outEntityRole = ROLE_VERSORGER
             outZuordnung = ExtrahiereAnzeigeName(kontoName)
+            outParzellen = ""  ' Keine Parzelle für Versorger
             outDebugInfo = "Automatisch als VERSORGER erkannt"
             outAmpelStatus = 1
             Exit Sub
@@ -727,6 +763,7 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
             outEntityKey = PREFIX_BANK & CreateGUID()
             outEntityRole = ROLE_BANK
             outZuordnung = ExtrahiereAnzeigeName(kontoName)
+            outParzellen = ""  ' Keine Parzelle für Bank
             outDebugInfo = "Automatisch als BANK erkannt"
             outAmpelStatus = 1
             Exit Sub
@@ -734,6 +771,7 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
             outEntityKey = PREFIX_SHOP & CreateGUID()
             outEntityRole = ROLE_SHOP
             outZuordnung = ExtrahiereAnzeigeName(kontoName)
+            outParzellen = ""  ' Keine Parzelle für Shop
             outDebugInfo = "Automatisch als SHOP erkannt"
             outAmpelStatus = 1
             Exit Sub
@@ -968,6 +1006,7 @@ Public Sub AktualisiereParzellenFuerMitglied(ByVal memberID As String)
     Dim r As Long
     Dim lastRow As Long
     Dim entityKey As String
+    Dim currentRole As String
     Dim neueParzellen As String
     
     If memberID = "" Then Exit Sub
@@ -987,13 +1026,17 @@ Public Sub AktualisiereParzellenFuerMitglied(ByVal memberID As String)
     
     For r = EK_START_ROW To lastRow
         entityKey = Trim(wsD.Cells(r, EK_COL_ENTITYKEY).value)
+        currentRole = Trim(wsD.Cells(r, EK_COL_ROLE).value)
         
         If entityKey = memberID Or _
            InStr(entityKey, memberID & "_") > 0 Or _
            InStr(entityKey, "_" & memberID) > 0 Then
             
-            wsD.Cells(r, EK_COL_PARZELLE).value = neueParzellen
-            wsD.Cells(r, EK_COL_PARZELLE).Locked = False
+            ' Nur aktualisieren wenn Parzelle erlaubt ist
+            If DarfParzelleHaben(currentRole) Then
+                wsD.Cells(r, EK_COL_PARZELLE).value = neueParzellen
+                wsD.Cells(r, EK_COL_PARZELLE).Locked = False
+            End If
         End If
     Next r
     
@@ -1184,16 +1227,15 @@ End Sub
 
 ' ===============================================================
 ' HILFSPROZEDUR: Formatiert die EntityKey-Tabelle
-' KORRIGIERT: Zebra-Farbe identisch mit Mitgliederliste
 ' ===============================================================
 Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As Long)
     
     Dim rngTable As Range
     Dim rngOhneEntityKey As Range
-    Dim rngBearbeitbar As Range
     Dim rngZebra As Range
     Dim r As Long
     Dim col As Long
+    Dim currentRole As String
     
     If lastRow < EK_START_ROW Then Exit Sub
     
@@ -1202,9 +1244,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     
     Set rngOhneEntityKey = ws.Range(ws.Cells(EK_START_ROW, EK_COL_IBAN), _
                                      ws.Cells(lastRow, EK_COL_DEBUG))
-    
-    Set rngBearbeitbar = ws.Range(ws.Cells(EK_START_ROW, EK_COL_ZUORDNUNG), _
-                                   ws.Cells(lastRow, EK_COL_DEBUG))
     
     ' Rahmen
     With rngTable.Borders
@@ -1230,25 +1269,26 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_ROLE), _
              ws.Cells(lastRow, EK_COL_ROLE)).HorizontalAlignment = xlCenter
     
-    ' Zellschutz
-    rngBearbeitbar.Locked = False
+    ' Spalten S-U immer gesperrt
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
              ws.Cells(lastRow, EK_COL_KONTONAME)).Locked = True
     
     ' ============================================================
-    ' ZEBRA-FORMATIERUNG für Spalten S-U
-    ' KORRIGIERT: Verwendet jetzt ZEBRA_COLOR aus mod_Formatierung
-    ' Ungerade Zeilen (1, 3, 5...) = Zebra-Farbe
-    ' Gerade Zeilen (0, 2, 4...) = Weiß (keine Färbung)
+    ' ZELLSCHUTZ und ZEBRA pro Zeile
     ' ============================================================
     For r = EK_START_ROW To lastRow
+        currentRole = Trim(ws.Cells(r, EK_COL_ROLE).value)
+        
+        ' Zellschutz setzen basierend auf Role
+        Call SetzeZellschutzFuerZeile(ws, r, currentRole)
+        
+        ' Zebra für Spalten S-U
         Set rngZebra = ws.Range(ws.Cells(r, EK_COL_ENTITYKEY), ws.Cells(r, EK_COL_KONTONAME))
         
-        ' Ungerade Zeilen relativ zu startRow bekommen die Zebra-Farbe
         If (r - EK_START_ROW) Mod 2 = 1 Then
             rngZebra.Interior.color = ZEBRA_COLOR
         Else
-            rngZebra.Interior.ColorIndex = xlNone  ' Weiß/Keine Farbe
+            rngZebra.Interior.ColorIndex = xlNone
         End If
     Next r
     
@@ -1264,13 +1304,13 @@ End Sub
 
 ' ===============================================================
 ' ÖFFENTLICHE PROZEDUR: Formatiert eine einzelne Zeile
-' KORRIGIERT: Zebra-Farbe identisch mit Mitgliederliste
 ' ===============================================================
 Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long)
     Dim ws As Worksheet
     Dim lastRow As Long
     Dim rngZebra As Range
     Dim col As Long
+    Dim currentRole As String
     
     On Error GoTo ErrorHandler
     
@@ -1287,18 +1327,19 @@ Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long)
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ErrorHandler
     
+    currentRole = Trim(ws.Cells(zeile, EK_COL_ROLE).value)
+    
+    ' Zellschutz setzen basierend auf Role
+    Call SetzeZellschutzFuerZeile(ws, zeile, currentRole)
+    
     ' Zebra für Spalten S-U dieser Zeile
     Set rngZebra = ws.Range(ws.Cells(zeile, EK_COL_ENTITYKEY), ws.Cells(zeile, EK_COL_KONTONAME))
     
-    ' KORRIGIERT: Gleiche Logik wie in FormatiereEntityKeyTabelle
     If (zeile - EK_START_ROW) Mod 2 = 1 Then
         rngZebra.Interior.color = ZEBRA_COLOR
     Else
         rngZebra.Interior.ColorIndex = xlNone
     End If
-    
-    ' Zellschutz für V-Y aufheben
-    ws.Range(ws.Cells(zeile, EK_COL_ZUORDNUNG), ws.Cells(zeile, EK_COL_DEBUG)).Locked = False
     
     ' AutoFit Spaltenbreite T-Y
     For col = EK_COL_IBAN To EK_COL_DEBUG
@@ -1471,18 +1512,25 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
         ElseIf NormalisiereRoleString(neueRole) = "VERSORGER" Then
             entityKey = PREFIX_VERSORGER & CreateGUID()
             If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
+            ' Parzelle leeren für Versorger
+            ws.Cells(zeile, EK_COL_PARZELLE).value = ""
             
         ElseIf NormalisiereRoleString(neueRole) = "BANK" Then
             entityKey = PREFIX_BANK & CreateGUID()
             If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
+            ' Parzelle leeren für Bank
+            ws.Cells(zeile, EK_COL_PARZELLE).value = ""
             
         ElseIf NormalisiereRoleString(neueRole) = "SHOP" Then
             entityKey = PREFIX_SHOP & CreateGUID()
             If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
+            ' Parzelle leeren für Shop
+            ws.Cells(zeile, EK_COL_PARZELLE).value = ""
             
         ElseIf NormalisiereRoleString(neueRole) = "SONSTIGE" Then
             entityKey = PREFIX_SONSTIGE & CreateGUID()
             If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
+            ' Parzelle bleibt bearbeitbar für Sonstige
             
         ElseIf InStr(NormalisiereRoleString(neueRole), "MITGLIED") > 0 Then
             Set mitglieder = SucheMitgliederZuKontoname(kontoName, wsM, wsH)
@@ -1514,6 +1562,9 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
         
         ws.Cells(zeile, EK_COL_DEBUG).value = "Manuell zugeordnet am " & Format(Now, "dd.mm.yyyy hh:mm")
     End If
+    
+    ' Zellschutz aktualisieren basierend auf neuer Role
+    Call SetzeZellschutzFuerZeile(ws, zeile, neueRole)
     
     Call SetzeAmpelFarbe(ws, zeile, 1)
     Call FormatiereEntityKeyZeile(zeile)
@@ -1716,21 +1767,25 @@ Public Sub EntityKeyDialogFuerAktuelleZeile()
             neuerEntityKey = PREFIX_VERSORGER & CreateGUID()
             neueRole = ROLE_VERSORGER
             neueZuordnung = ExtrahiereAnzeigeName(kontoName)
+            neueParzellen = ""  ' Keine Parzelle für Versorger
             
         Case "B"
             neuerEntityKey = PREFIX_BANK & CreateGUID()
             neueRole = ROLE_BANK
             neueZuordnung = ExtrahiereAnzeigeName(kontoName)
+            neueParzellen = ""  ' Keine Parzelle für Bank
             
         Case "S"
             neuerEntityKey = PREFIX_SHOP & CreateGUID()
             neueRole = ROLE_SHOP
             neueZuordnung = ExtrahiereAnzeigeName(kontoName)
+            neueParzellen = ""  ' Keine Parzelle für Shop
             
         Case "O"
             neuerEntityKey = PREFIX_SONSTIGE & CreateGUID()
             neueRole = ROLE_SONSTIGE
             neueZuordnung = ExtrahiereAnzeigeName(kontoName)
+            ' Parzelle bleibt bearbeitbar für Sonstige
             
         Case Else
             MsgBox "Ungültige Eingabe.", vbExclamation
@@ -1743,13 +1798,23 @@ Public Sub EntityKeyDialogFuerAktuelleZeile()
     If Trim(wsD.Cells(aktuelleZeile, EK_COL_ZUORDNUNG).value) = "" Then
         wsD.Cells(aktuelleZeile, EK_COL_ZUORDNUNG).value = neueZuordnung
     End If
-    If Trim(wsD.Cells(aktuelleZeile, EK_COL_PARZELLE).value) = "" And neueParzellen <> "" Then
-        wsD.Cells(aktuelleZeile, EK_COL_PARZELLE).value = neueParzellen
+    
+    ' Parzelle nur setzen wenn erlaubt
+    If DarfParzelleHaben(neueRole) Then
+        If Trim(wsD.Cells(aktuelleZeile, EK_COL_PARZELLE).value) = "" And neueParzellen <> "" Then
+            wsD.Cells(aktuelleZeile, EK_COL_PARZELLE).value = neueParzellen
+        End If
+    Else
+        ' Parzelle leeren wenn nicht erlaubt
+        wsD.Cells(aktuelleZeile, EK_COL_PARZELLE).value = ""
     End If
     
     wsD.Cells(aktuelleZeile, EK_COL_ROLE).value = neueRole
     
     wsD.Cells(aktuelleZeile, EK_COL_DEBUG).value = "Manuell zugeordnet am " & Format(Now, "dd.mm.yyyy hh:mm")
+    
+    ' Zellschutz setzen
+    Call SetzeZellschutzFuerZeile(wsD, aktuelleZeile, neueRole)
     
     Call SetzeAmpelFarbe(wsD, aktuelleZeile, 1)
     Call FormatiereEntityKeyZeile(aktuelleZeile)
