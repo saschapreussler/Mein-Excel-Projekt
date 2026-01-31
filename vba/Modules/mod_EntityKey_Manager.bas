@@ -4,9 +4,7 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_EntityKey_Manager
 ' ZWECK: Verwaltung und Zuordnung von EntityKeys für Bankverkehr
-' VERSION: 1.5 - 31.01.2026
-' WICHTIG: Bestehende Daten werden NIEMALS überschrieben!
-' ÄNDERUNG: EntityKey wird aktualisiert wenn Role-Typ nicht passt
+' VERSION: 1.6 - 31.01.2026 - MIT DEBUG
 ' ***************************************************************
 
 ' ===============================================================
@@ -45,6 +43,99 @@ Public Const ROLE_SONSTIGE As String = "SONSTIGE"
 ' Zebra-Farben (wie in Mitgliederliste)
 Private Const ZEBRA_FARBE_GERADE As Long = 16777215  ' Weiß
 Private Const ZEBRA_FARBE_UNGERADE As Long = 15921906 ' Hellblau/Grau
+
+' ===============================================================
+' DEBUG FUNKTION: Führe diese im Direktfenster aus!
+' Aufruf: mod_EntityKey_Manager.DEBUG_ZeigeRoleWerte
+' ===============================================================
+Public Sub DEBUG_ZeigeRoleWerte()
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim wert As String
+    
+    Set ws = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    Debug.Print "=========================================="
+    Debug.Print "DEBUG: Dropdown-Werte in Spalte AF (Role)"
+    Debug.Print "=========================================="
+    
+    lastRow = ws.Cells(ws.Rows.Count, EK_ROLE_DROPDOWN_COL).End(xlUp).Row
+    
+    For r = 4 To lastRow
+        wert = ws.Cells(r, EK_ROLE_DROPDOWN_COL).value
+        Debug.Print "Zeile " & r & ": [" & wert & "] (Länge: " & Len(wert) & ")"
+        
+        ' Zeige Zeichencodes für versteckte Zeichen
+        Dim i As Long
+        Dim codes As String
+        codes = ""
+        For i = 1 To Len(wert)
+            codes = codes & Asc(Mid(wert, i, 1)) & " "
+        Next i
+        Debug.Print "   ASCII: " & codes
+    Next r
+    
+    Debug.Print ""
+    Debug.Print "=========================================="
+    Debug.Print "Konstanten-Werte im Code:"
+    Debug.Print "=========================================="
+    Debug.Print "ROLE_EHEMALIGES_MITGLIED = [" & ROLE_EHEMALIGES_MITGLIED & "]"
+    Debug.Print "ROLE_VERSORGER = [" & ROLE_VERSORGER & "]"
+    Debug.Print "ROLE_BANK = [" & ROLE_BANK & "]"
+    Debug.Print "ROLE_SHOP = [" & ROLE_SHOP & "]"
+    Debug.Print "=========================================="
+End Sub
+
+' ===============================================================
+' DEBUG FUNKTION: Teste Role-Änderung für eine Zeile
+' Aufruf: mod_EntityKey_Manager.DEBUG_TesteRoleAenderung 5
+' ===============================================================
+Public Sub DEBUG_TesteRoleAenderung(ByVal zeile As Long)
+    Dim ws As Worksheet
+    Dim neueRole As String
+    Dim entityKey As String
+    Dim passt As Boolean
+    
+    Set ws = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    neueRole = Trim(ws.Cells(zeile, EK_COL_ROLE).value)
+    entityKey = Trim(ws.Cells(zeile, EK_COL_ENTITYKEY).value)
+    
+    Debug.Print "=========================================="
+    Debug.Print "DEBUG: Teste Role-Änderung für Zeile " & zeile
+    Debug.Print "=========================================="
+    Debug.Print "Gelesene Role: [" & neueRole & "]"
+    Debug.Print "Role Länge: " & Len(neueRole)
+    Debug.Print "EntityKey: [" & entityKey & "]"
+    Debug.Print ""
+    
+    ' Zeige ASCII-Codes
+    Dim i As Long
+    Dim codes As String
+    codes = ""
+    For i = 1 To Len(neueRole)
+        codes = codes & Asc(Mid(neueRole, i, 1)) & " "
+    Next i
+    Debug.Print "Role ASCII: " & codes
+    Debug.Print ""
+    
+    ' Vergleiche mit Konstanten
+    Debug.Print "Vergleich mit ROLE_EHEMALIGES_MITGLIED:"
+    Debug.Print "  Konstante: [" & ROLE_EHEMALIGES_MITGLIED & "]"
+    Debug.Print "  Gleich? " & (neueRole = ROLE_EHEMALIGES_MITGLIED)
+    Debug.Print "  UCase gleich? " & (UCase(neueRole) = UCase(ROLE_EHEMALIGES_MITGLIED))
+    Debug.Print ""
+    
+    Debug.Print "Vergleich mit ROLE_VERSORGER:"
+    Debug.Print "  Konstante: [" & ROLE_VERSORGER & "]"
+    Debug.Print "  Gleich? " & (neueRole = ROLE_VERSORGER)
+    Debug.Print ""
+    
+    passt = EntityKeyPasstNichtZuRole(entityKey, neueRole)
+    Debug.Print "EntityKeyPasstNichtZuRole: " & passt
+    Debug.Print "=========================================="
+End Sub
 
 ' ===============================================================
 ' ÖFFENTLICHE PROZEDUR: Importiert IBANs aus Bankkonto und
@@ -281,7 +372,6 @@ Public Sub AktualisiereAlleEntityKeys()
 NextRow:
     Next r
     
-    ' Formatierung anwenden (inkl. Zebra und AutoFit)
     Call FormatiereEntityKeyTabelle(wsD, lastRow)
     
     wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -652,7 +742,6 @@ End Function
 
 ' ===============================================================
 ' HILFSPROZEDUR: Generiert EntityKey und Zuordnung
-' ERWEITERT: Trägt Namen auch bei Versorgern/Banken/Shops ein
 ' ===============================================================
 Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
                                             ByVal kontoName As String, _
@@ -885,7 +974,6 @@ End Sub
 
 ' ===============================================================
 ' HILFSFUNKTION: Extrahiert Anzeigename aus Kontoname
-' Für Versorger/Banken/Shops - nimmt ersten Kontonamen
 ' ===============================================================
 Private Function ExtrahiereAnzeigeName(ByVal kontoName As String) As String
     Dim zeilen() As String
@@ -896,12 +984,9 @@ Private Function ExtrahiereAnzeigeName(ByVal kontoName As String) As String
         Exit Function
     End If
     
-    ' Bei mehreren Zeilen: Nur die erste nehmen
     zeilen = Split(kontoName, vbLf)
     erstesElement = Trim(zeilen(0))
     
-    ' Evtl. Adressen abschneiden (wenn mehr als 3 Wörter und enthält Zahlen am Ende)
-    ' Einfache Variante: Nimm die ersten 50 Zeichen
     If Len(erstesElement) > 50 Then
         erstesElement = Left(erstesElement, 50) & "..."
     End If
@@ -1170,7 +1255,6 @@ End Sub
 
 ' ===============================================================
 ' HILFSPROZEDUR: Formatiert die EntityKey-Tabelle
-' ERWEITERT: Zebra-Formatierung für Spalten S-U
 ' ===============================================================
 Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As Long)
     
@@ -1192,11 +1276,9 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     Set rngBearbeitbar = ws.Range(ws.Cells(EK_START_ROW, EK_COL_ZUORDNUNG), _
                                    ws.Cells(lastRow, EK_COL_DEBUG))
     
-    ' Zebra-Bereich (Spalten S-U)
     Set rngZebra = ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
                             ws.Cells(lastRow, EK_COL_KONTONAME))
     
-    ' Rahmen
     With rngTable.Borders
         .LineStyle = xlContinuous
         .Weight = xlThin
@@ -1206,7 +1288,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     rngTable.VerticalAlignment = xlCenter
     rngOhneEntityKey.WrapText = True
     
-    ' Spalte S: Kein Textumbruch, feste Breite
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
                   ws.Cells(lastRow, EK_COL_ENTITYKEY))
         .WrapText = False
@@ -1214,20 +1295,15 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_ENTITYKEY).ColumnWidth = 12
     
-    ' Spalte W + X: Zentriert
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_PARZELLE), _
              ws.Cells(lastRow, EK_COL_PARZELLE)).HorizontalAlignment = xlCenter
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_ROLE), _
              ws.Cells(lastRow, EK_COL_ROLE)).HorizontalAlignment = xlCenter
     
-    ' Zellschutz
     rngBearbeitbar.Locked = False
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
              ws.Cells(lastRow, EK_COL_KONTONAME)).Locked = True
     
-    ' ============================================================
-    ' ZEBRA-FORMATIERUNG für Spalten S-U
-    ' ============================================================
     For r = EK_START_ROW To lastRow
         Set rngZebra = ws.Range(ws.Cells(r, EK_COL_ENTITYKEY), ws.Cells(r, EK_COL_KONTONAME))
         
@@ -1238,21 +1314,16 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
         End If
     Next r
     
-    ' ============================================================
-    ' AUTOFIT: Erst Spaltenbreite T-Y, dann Zeilenhöhe
-    ' ============================================================
     For col = EK_COL_IBAN To EK_COL_DEBUG
         ws.Columns(col).AutoFit
     Next col
     
-    ' Zeilenhöhe AutoFit
     ws.Rows(EK_START_ROW & ":" & lastRow).AutoFit
     
 End Sub
 
 ' ===============================================================
 ' ÖFFENTLICHE PROZEDUR: Formatiert eine einzelne Zeile
-' Wird vom Worksheet_Change Event aufgerufen
 ' ===============================================================
 Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long)
     Dim ws As Worksheet
@@ -1275,7 +1346,6 @@ Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long)
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ErrorHandler
     
-    ' Zebra für Spalten S-U dieser Zeile
     Set rngZebra = ws.Range(ws.Cells(zeile, EK_COL_ENTITYKEY), ws.Cells(zeile, EK_COL_KONTONAME))
     
     If (zeile - EK_START_ROW) Mod 2 = 0 Then
@@ -1284,15 +1354,12 @@ Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long)
         rngZebra.Interior.color = ZEBRA_FARBE_UNGERADE
     End If
     
-    ' Zellschutz für V-Y aufheben
     ws.Range(ws.Cells(zeile, EK_COL_ZUORDNUNG), ws.Cells(zeile, EK_COL_DEBUG)).Locked = False
     
-    ' AutoFit Spaltenbreite T-Y
     For col = EK_COL_IBAN To EK_COL_DEBUG
         ws.Columns(col).AutoFit
     Next col
     
-    ' Zeilenhöhe AutoFit für diese Zeile
     ws.Rows(zeile).AutoFit
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -1308,10 +1375,38 @@ ErrorHandler:
 End Sub
 
 ' ===============================================================
+' HILFSFUNKTION: Normalisiert Role-String für Vergleich
+' Entfernt Leerzeichen, Unterstriche, macht alles UPPERCASE
+' ===============================================================
+Private Function NormalisiereRoleString(ByVal role As String) As String
+    Dim result As String
+    result = UCase(Trim(role))
+    result = Replace(result, " ", "")
+    result = Replace(result, "_", "")
+    NormalisiereRoleString = result
+End Function
+
+' ===============================================================
+' HILFSFUNKTION: Prüft ob Role "EHEMALIGES MITGLIED" ist
+' Berücksichtigt verschiedene Schreibweisen
+' ===============================================================
+Private Function IstRoleEhemaligesMitglied(ByVal role As String) As Boolean
+    Dim normRole As String
+    normRole = NormalisiereRoleString(role)
+    
+    ' Prüfe auf verschiedene mögliche Schreibweisen
+    IstRoleEhemaligesMitglied = (normRole = "EHEMALIGESVMITGLIED" Or _
+                                 normRole = "EHEMALIGEMITGLIED" Or _
+                                 normRole = "EHEMALIGES_MITGLIED" Or _
+                                 normRole = "EHEMALIGESMITGLIED")
+End Function
+
+' ===============================================================
 ' HILFSFUNKTION: Prüft ob EntityKey zum Role-Typ passt
 ' WICHTIG: Gibt TRUE zurück wenn EntityKey aktualisiert werden muss
 ' ===============================================================
 Private Function EntityKeyPasstNichtZuRole(ByVal entityKey As String, ByVal role As String) As Boolean
+    Dim normRole As String
     
     EntityKeyPasstNichtZuRole = False
     
@@ -1321,57 +1416,68 @@ Private Function EntityKeyPasstNichtZuRole(ByVal entityKey As String, ByVal role
         Exit Function
     End If
     
-    Select Case role
-        Case ROLE_EHEMALIGES_MITGLIED
-            ' EntityKey muss mit "EX-" beginnen
-            If Left(entityKey, Len(PREFIX_EHEMALIG)) <> PREFIX_EHEMALIG Then
-                EntityKeyPasstNichtZuRole = True
-            End If
-            
-        Case ROLE_VERSORGER
-            ' EntityKey muss mit "VERS-" beginnen
-            If Left(entityKey, Len(PREFIX_VERSORGER)) <> PREFIX_VERSORGER Then
-                EntityKeyPasstNichtZuRole = True
-            End If
-            
-        Case ROLE_BANK
-            ' EntityKey muss mit "BANK-" beginnen
-            If Left(entityKey, Len(PREFIX_BANK)) <> PREFIX_BANK Then
-                EntityKeyPasstNichtZuRole = True
-            End If
-            
-        Case ROLE_SHOP
-            ' EntityKey muss mit "SHOP-" beginnen
-            If Left(entityKey, Len(PREFIX_SHOP)) <> PREFIX_SHOP Then
-                EntityKeyPasstNichtZuRole = True
-            End If
-            
-        Case ROLE_SONSTIGE
-            ' EntityKey muss mit "SONSTIGE-" beginnen
-            If Left(entityKey, Len(PREFIX_SONSTIGE)) <> PREFIX_SONSTIGE Then
-                EntityKeyPasstNichtZuRole = True
-            End If
-            
-        Case ROLE_MITGLIED_MIT_PACHT, ROLE_MITGLIED_OHNE_PACHT
-            ' EntityKey darf NICHT mit EX-, VERS-, BANK-, SHOP-, SONSTIGE- beginnen
-            ' (SHARE- ist OK für Gemeinschaftskonten)
-            If Left(entityKey, Len(PREFIX_EHEMALIG)) = PREFIX_EHEMALIG Or _
-               Left(entityKey, Len(PREFIX_VERSORGER)) = PREFIX_VERSORGER Or _
-               Left(entityKey, Len(PREFIX_BANK)) = PREFIX_BANK Or _
-               Left(entityKey, Len(PREFIX_SHOP)) = PREFIX_SHOP Or _
-               Left(entityKey, Len(PREFIX_SONSTIGE)) = PREFIX_SONSTIGE Then
-                EntityKeyPasstNichtZuRole = True
-            End If
-            
-    End Select
+    ' Normalisierte Role für flexiblen Vergleich
+    normRole = NormalisiereRoleString(role)
+    
+    ' Prüfe auf EHEMALIGES MITGLIED (verschiedene Schreibweisen)
+    If IstRoleEhemaligesMitglied(role) Then
+        If Left(entityKey, Len(PREFIX_EHEMALIG)) <> PREFIX_EHEMALIG Then
+            EntityKeyPasstNichtZuRole = True
+        End If
+        Exit Function
+    End If
+    
+    ' Prüfe auf VERSORGER
+    If normRole = "VERSORGER" Then
+        If Left(entityKey, Len(PREFIX_VERSORGER)) <> PREFIX_VERSORGER Then
+            EntityKeyPasstNichtZuRole = True
+        End If
+        Exit Function
+    End If
+    
+    ' Prüfe auf BANK
+    If normRole = "BANK" Then
+        If Left(entityKey, Len(PREFIX_BANK)) <> PREFIX_BANK Then
+            EntityKeyPasstNichtZuRole = True
+        End If
+        Exit Function
+    End If
+    
+    ' Prüfe auf SHOP
+    If normRole = "SHOP" Then
+        If Left(entityKey, Len(PREFIX_SHOP)) <> PREFIX_SHOP Then
+            EntityKeyPasstNichtZuRole = True
+        End If
+        Exit Function
+    End If
+    
+    ' Prüfe auf SONSTIGE
+    If normRole = "SONSTIGE" Then
+        If Left(entityKey, Len(PREFIX_SONSTIGE)) <> PREFIX_SONSTIGE Then
+            EntityKeyPasstNichtZuRole = True
+        End If
+        Exit Function
+    End If
+    
+    ' Prüfe auf MITGLIED (MIT oder OHNE Pacht)
+    If InStr(normRole, "MITGLIED") > 0 And InStr(normRole, "EHEMAL") = 0 Then
+        ' EntityKey darf NICHT mit EX-, VERS-, BANK-, SHOP-, SONSTIGE- beginnen
+        If Left(entityKey, Len(PREFIX_EHEMALIG)) = PREFIX_EHEMALIG Or _
+           Left(entityKey, Len(PREFIX_VERSORGER)) = PREFIX_VERSORGER Or _
+           Left(entityKey, Len(PREFIX_BANK)) = PREFIX_BANK Or _
+           Left(entityKey, Len(PREFIX_SHOP)) = PREFIX_SHOP Or _
+           Left(entityKey, Len(PREFIX_SONSTIGE)) = PREFIX_SONSTIGE Then
+            EntityKeyPasstNichtZuRole = True
+        End If
+        Exit Function
+    End If
     
 End Function
 
 ' ===============================================================
 ' ÖFFENTLICHE PROZEDUR: Verarbeitet manuelle Änderung in Spalte X
 ' Wird vom Worksheet_Change Event aufgerufen
-' VERSION 1.5: EntityKey wird auch aktualisiert wenn er nicht
-'              zum gewählten Role-Typ passt (nicht nur wenn leer)
+' VERSION 1.6: Flexibler Role-Vergleich (Leerzeichen/Unterstriche)
 ' ===============================================================
 Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
     Dim ws As Worksheet
@@ -1409,7 +1515,7 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
     On Error GoTo ErrorHandler
     
     ' ============================================================
-    ' NEUE LOGIK: Prüfen ob EntityKey zum Role-Typ passt
+    ' Prüfen ob EntityKey zum Role-Typ passt (flexibler Vergleich)
     ' ============================================================
     entityKeyMussAktualisiert = EntityKeyPasstNichtZuRole(entityKey, neueRole)
     
@@ -1417,67 +1523,67 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
     ' Wenn EntityKey leer ist ODER nicht zum Role passt: generieren
     ' ============================================================
     If entityKeyMussAktualisiert Then
-        Select Case neueRole
-            Case ROLE_EHEMALIGES_MITGLIED
-                ' Suche in Mitgliederhistorie
-                Set mitglieder = SucheMitgliederZuKontoname(kontoName, wsM, wsH)
-                gefunden = False
-                
-                For i = 1 To mitglieder.Count
-                    mitgliedInfo = mitglieder(i)
-                    If mitgliedInfo(6) = True Then  ' Ehemalig
-                        entityKey = PREFIX_EHEMALIG & CStr(mitgliedInfo(0))
-                        If zuordnung = "" Then zuordnung = mitgliedInfo(1) & ", " & mitgliedInfo(2)
-                        gefunden = True
-                        Exit For
-                    End If
-                Next i
-                
-                If Not gefunden Then
-                    ' Nicht in Historie gefunden - extrahiere Namen aus Kontoname
-                    entityKey = PREFIX_EHEMALIG & CreateGUID()
-                    If zuordnung = "" Then zuordnung = ExtrahiereNachnameVorname(kontoName)
+        
+        ' Prüfe auf EHEMALIGES MITGLIED (flexibel)
+        If IstRoleEhemaligesMitglied(neueRole) Then
+            ' Suche in Mitgliederhistorie
+            Set mitglieder = SucheMitgliederZuKontoname(kontoName, wsM, wsH)
+            gefunden = False
+            
+            For i = 1 To mitglieder.Count
+                mitgliedInfo = mitglieder(i)
+                If mitgliedInfo(6) = True Then  ' Ehemalig
+                    entityKey = PREFIX_EHEMALIG & CStr(mitgliedInfo(0))
+                    If zuordnung = "" Then zuordnung = mitgliedInfo(1) & ", " & mitgliedInfo(2)
+                    gefunden = True
+                    Exit For
                 End If
-                
-            Case ROLE_VERSORGER
-                entityKey = PREFIX_VERSORGER & CreateGUID()
-                If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
-                
-            Case ROLE_BANK
-                entityKey = PREFIX_BANK & CreateGUID()
-                If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
-                
-            Case ROLE_SHOP
-                entityKey = PREFIX_SHOP & CreateGUID()
-                If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
-                
-            Case ROLE_SONSTIGE
-                entityKey = PREFIX_SONSTIGE & CreateGUID()
-                If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
-                
-            Case ROLE_MITGLIED_MIT_PACHT, ROLE_MITGLIED_OHNE_PACHT
-                ' Suche in Mitgliederliste
-                Set mitglieder = SucheMitgliederZuKontoname(kontoName, wsM, wsH)
-                gefunden = False
-                
-                For i = 1 To mitglieder.Count
-                    mitgliedInfo = mitglieder(i)
-                    If mitgliedInfo(6) = False Then  ' Aktiv
-                        entityKey = CStr(mitgliedInfo(0))
-                        If zuordnung = "" Then zuordnung = mitgliedInfo(1) & ", " & mitgliedInfo(2)
-                        If Trim(ws.Cells(zeile, EK_COL_PARZELLE).value) = "" Then
-                            ws.Cells(zeile, EK_COL_PARZELLE).value = HoleAlleParzellen(entityKey, wsM)
-                        End If
-                        gefunden = True
-                        Exit For
+            Next i
+            
+            If Not gefunden Then
+                entityKey = PREFIX_EHEMALIG & CreateGUID()
+                If zuordnung = "" Then zuordnung = ExtrahiereNachnameVorname(kontoName)
+            End If
+            
+        ElseIf NormalisiereRoleString(neueRole) = "VERSORGER" Then
+            entityKey = PREFIX_VERSORGER & CreateGUID()
+            If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
+            
+        ElseIf NormalisiereRoleString(neueRole) = "BANK" Then
+            entityKey = PREFIX_BANK & CreateGUID()
+            If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
+            
+        ElseIf NormalisiereRoleString(neueRole) = "SHOP" Then
+            entityKey = PREFIX_SHOP & CreateGUID()
+            If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
+            
+        ElseIf NormalisiereRoleString(neueRole) = "SONSTIGE" Then
+            entityKey = PREFIX_SONSTIGE & CreateGUID()
+            If zuordnung = "" Then zuordnung = ExtrahiereAnzeigeName(kontoName)
+            
+        ElseIf InStr(NormalisiereRoleString(neueRole), "MITGLIED") > 0 Then
+            ' MITGLIED_MIT_PACHT oder MITGLIED_OHNE_PACHT
+            Set mitglieder = SucheMitgliederZuKontoname(kontoName, wsM, wsH)
+            gefunden = False
+            
+            For i = 1 To mitglieder.Count
+                mitgliedInfo = mitglieder(i)
+                If mitgliedInfo(6) = False Then  ' Aktiv
+                    entityKey = CStr(mitgliedInfo(0))
+                    If zuordnung = "" Then zuordnung = mitgliedInfo(1) & ", " & mitgliedInfo(2)
+                    If Trim(ws.Cells(zeile, EK_COL_PARZELLE).value) = "" Then
+                        ws.Cells(zeile, EK_COL_PARZELLE).value = HoleAlleParzellen(entityKey, wsM)
                     End If
-                Next i
-                
-                If Not gefunden Then
-                    entityKey = CreateGUID()
-                    If zuordnung = "" Then zuordnung = ExtrahiereNachnameVorname(kontoName)
+                    gefunden = True
+                    Exit For
                 End If
-        End Select
+            Next i
+            
+            If Not gefunden Then
+                entityKey = CreateGUID()
+                If zuordnung = "" Then zuordnung = ExtrahiereNachnameVorname(kontoName)
+            End If
+        End If
         
         ' Werte eintragen (EntityKey wird IMMER aktualisiert wenn nötig)
         ws.Cells(zeile, EK_COL_ENTITYKEY).value = entityKey
@@ -1509,7 +1615,6 @@ End Sub
 
 ' ===============================================================
 ' HILFSFUNKTION: Extrahiert "Nachname, Vorname" aus Kontoname
-' Versucht das Format zu erkennen
 ' ===============================================================
 Private Function ExtrahiereNachnameVorname(ByVal kontoName As String) As String
     Dim teile() As String
@@ -1521,16 +1626,12 @@ Private Function ExtrahiereNachnameVorname(ByVal kontoName As String) As String
         Exit Function
     End If
     
-    ' Bei mehreren Zeilen: Nur die erste
     teile = Split(kontoName, vbLf)
     erstesElement = Trim(teile(0))
     
-    ' Versuche "Vorname Nachname" zu erkennen
     worte = Split(erstesElement, " ")
     
     If UBound(worte) >= 1 Then
-        ' Annahme: Erstes Wort = Vorname, Letztes Wort = Nachname
-        ' Ergebnis: "Nachname, Vorname"
         ExtrahiereNachnameVorname = worte(UBound(worte)) & ", " & worte(0)
     Else
         ExtrahiereNachnameVorname = erstesElement
@@ -1720,7 +1821,7 @@ Public Sub EntityKeyDialogFuerAktuelleZeile()
             Exit Sub
     End Select
     
-    ' EntityKey wird IMMER gesetzt (auch überschrieben!)
+    ' EntityKey wird IMMER gesetzt
     wsD.Cells(aktuelleZeile, EK_COL_ENTITYKEY).value = neuerEntityKey
     
     If Trim(wsD.Cells(aktuelleZeile, EK_COL_ZUORDNUNG).value) = "" Then
@@ -1730,7 +1831,6 @@ Public Sub EntityKeyDialogFuerAktuelleZeile()
         wsD.Cells(aktuelleZeile, EK_COL_PARZELLE).value = neueParzellen
     End If
     
-    ' Role wird IMMER gesetzt
     wsD.Cells(aktuelleZeile, EK_COL_ROLE).value = neueRole
     
     wsD.Cells(aktuelleZeile, EK_COL_DEBUG).value = "Manuell zugeordnet am " & Format(Now, "dd.mm.yyyy hh:mm")
