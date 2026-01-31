@@ -42,7 +42,7 @@ Public Property Let AlteParzelleNr(ByVal value As String)
     m_AlteParzelleNr = value
 End Property
 
-Public Property Let AustrittsDatum(ByVal value As String)
+Public Property Let austrittsDatum(ByVal value As String)
     m_AustrittsDatum = value
 End Property
 

@@ -178,7 +178,7 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     ' Gehe alle geladenen UserForms in der VBA-Collection durch
     For i = 0 To VBA.UserForms.Count - 1
         ' Vergleiche den Klassennamen des geladenen Formulars mit dem gesuchten Namen
-        If StrComp(VBA.UserForms.Item(i).Name, FormName, vbTextCompare) = 0 Then
+        If StrComp(VBA.UserForms.item(i).Name, FormName, vbTextCompare) = 0 Then
             IsFormLoaded = True ' Formular gefunden und ist geladen
             Exit Function
         End If

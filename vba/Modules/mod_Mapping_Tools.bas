@@ -137,8 +137,8 @@ Public Function FuzzyMemberSearch(ByVal nameToSearch As String, ByVal wsMembers 
             ' Parzelle(n) zum Mitglied hinzufügen (für Spalte W)
             If dictParzellenMap.Exists(matchFoundName) Then
                  ' Wenn bereits ein Eintrag existiert, Parzelle mit Komma/vbLf anhängen
-                If InStr(dictParzellenMap.Item(matchFoundName), parzelle) = 0 Then
-                    dictParzellenMap.Item(matchFoundName) = dictParzellenMap.Item(matchFoundName) & vbLf & parzelle
+                If InStr(dictParzellenMap.item(matchFoundName), parzelle) = 0 Then
+                    dictParzellenMap.item(matchFoundName) = dictParzellenMap.item(matchFoundName) & vbLf & parzelle
                 End If
             Else
                 dictParzellenMap.Add matchFoundName, parzelle
@@ -170,7 +170,7 @@ EndSearch:
     
     For Each memberName In dictAllMatches.Keys
         ' **HIER IST DIE KORREKTUR:** Wir akzeptieren nur Treffer, die dem besten Status entsprechen
-        If dictAllMatches.Item(memberName) = bestMatchStatus Then
+        If dictAllMatches.item(memberName) = bestMatchStatus Then
             
             ' Nur einzigartige Namen in V sammeln
             If Not listUniqueNames.Exists(memberName) Then
@@ -182,7 +182,7 @@ EndSearch:
             ' Parzellen für W sammeln (aus dem Parzellen-Dictionary)
             If dictParzellenMap.Exists(memberName) Then
                  Dim parts() As String
-                 parts = Split(dictParzellenMap.Item(memberName), vbLf)
+                 parts = Split(dictParzellenMap.item(memberName), vbLf)
                  
                  Dim part As Variant
                  For Each part In parts

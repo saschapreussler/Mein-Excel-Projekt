@@ -11,9 +11,11 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 
     Dim rng_KategorieRegeln As Range
     Dim cat As String
-    Dim r As Range ' Einzelne Zelle in der Kategorie-Spalte J
+    Dim r As Range
     Dim refValue As Variant
     Dim targetValue As Variant
+    Dim zeile As Long
+    Dim spalte As Long
     
     ' Die Spaltennummern: J=10, K=11, N=14, O=15, P=16
     Const COL_KATEGORIE As Long = 10 ' J
@@ -26,6 +28,27 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     On Error GoTo ExitPoint
     If Application.EnableEvents = False Then Exit Sub
     If Target.Cells.CountLarge <> 1 Then Exit Sub ' Nur Einzelzellen-Änderungen behandeln
+
+    ' === ENTITYKEY-TABELLE VERARBEITUNG (Spalten S-Y, ab Zeile 4) ===
+    zeile = Target.Row
+    spalte = Target.Column
+    
+    ' Prüfe ob Änderung im EntityKey-Bereich liegt
+    If zeile >= EK_START_ROW And spalte >= EK_COL_ENTITYKEY And spalte <= EK_COL_DEBUG Then
+        
+        ' Bei Änderung in Spalte X (EntityRole): Automatische Vervollständigung
+        If spalte = EK_COL_ROLE Then
+            Call mod_EntityKey_Manager.VerarbeiteManuelleRoleAenderung(zeile)
+        End If
+        
+        ' Bei jeder Änderung im EntityKey-Bereich: Formatierung aktualisieren
+        Call mod_EntityKey_Manager.FormatiereEntityKeyZeile(zeile)
+        
+        ' Nach EntityKey-Verarbeitung beenden (nicht weiter zur Kategorie-Prüfung)
+        GoTo ExitPoint
+    End If
+    
+    ' === KATEGORIE-REGELN VERARBEITUNG (Original-Code) ===
 
     ' --- 1. Bereich definieren und Prüfspalten identifizieren ---
     

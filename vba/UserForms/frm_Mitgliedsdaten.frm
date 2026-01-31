@@ -505,11 +505,11 @@ End Sub
 Private Sub cmd_Entfernen_Click()
     
     Dim lRow As Long
-    Dim Nachname As String
-    Dim Vorname As String
+    Dim nachname As String
+    Dim vorname As String
     Dim OldParzelle As String
     Dim OldMemberID As String
-    Dim AustrittsDatum As Date
+    Dim austrittsDatum As Date
     Dim ChangeReason As String
     Dim pachtEndeVal As String
     Dim auswahlOption As Integer
@@ -539,8 +539,8 @@ Private Sub cmd_Entfernen_Click()
         Exit Sub
     End If
     
-    Nachname = Me.lbl_Nachname.Caption
-    Vorname = Me.lbl_Vorname.Caption
+    nachname = Me.lbl_Nachname.Caption
+    vorname = Me.lbl_Vorname.Caption
     OldMemberID = ThisWorkbook.Worksheets(WS_MITGLIEDER).Cells(lRow, M_COL_MEMBER_ID).value
     
     ' Prüfe ob Pachtende bereits gefüllt ist
@@ -613,12 +613,12 @@ Private Sub cmd_Entfernen_Click()
                 Me.Show
                 
                 ' Nach Rückkehr: Verarbeite Austritt mit neuem Nachpächter
-                Call VerarbeiteAustrittNachNachpaechterErfassung(lRow, OldParzelle, OldMemberID, Nachname, Vorname, Date, ChangeReason)
+                Call VerarbeiteAustrittNachNachpaechterErfassung(lRow, OldParzelle, OldMemberID, nachname, vorname, Date, ChangeReason)
                 Exit Sub
             Else
                 ' Bestehender Nachpächter wurde ausgewählt
                 ' Prüfe ob Nachpächter bereits eine Parzelle hat
-                Call BearbeiteNachpaechterUebernahme(nachpaechterID, nachpaechterName, OldParzelle, lRow, OldMemberID, Nachname, Vorname, Date, ChangeReason)
+                Call BearbeiteNachpaechterUebernahme(nachpaechterID, nachpaechterName, OldParzelle, lRow, OldMemberID, nachname, vorname, Date, ChangeReason)
                 Exit Sub
             End If
             
@@ -664,11 +664,11 @@ AustrittBearbeiten:
         Exit Sub
     Else
         ' Pachtende ist bereits gesetzt - Mitglied in Historie verschieben
-        AustrittsDatum = CDate(pachtEndeVal)
+        austrittsDatum = CDate(pachtEndeVal)
     End If
     
     ' Verschiebe Mitglied in Mitgliederhistorie
-    Call VerschiebeInHistorie(lRow, OldParzelle, OldMemberID, Nachname, Vorname, AustrittsDatum, ChangeReason, nachpaechterName, nachpaechterID)
+    Call VerschiebeInHistorie(lRow, OldParzelle, OldMemberID, nachname, vorname, austrittsDatum, ChangeReason, nachpaechterName, nachpaechterID)
     
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
@@ -692,7 +692,7 @@ End Sub
 Private Sub BearbeiteNachpaechterUebernahme(ByVal nachpaechterID As String, ByVal nachpaechterName As String, _
                                              ByVal neueParzelle As String, ByVal alteLRow As Long, _
                                              ByVal alteMemberID As String, ByVal alteNachname As String, _
-                                             ByVal alteVorname As String, ByVal AustrittsDatum As Date, _
+                                             ByVal alteVorname As String, ByVal austrittsDatum As Date, _
                                              ByVal grund As String)
     
     Dim wsM As Worksheet
@@ -710,7 +710,7 @@ Private Sub BearbeiteNachpaechterUebernahme(ByVal nachpaechterID As String, ByVa
     
     If alteParzellen = "" Then
         ' Nachpächter hat keine Parzelle - einfach neue Parzelle zuweisen
-        Call UebernehmeParzelleOhneWechsel(nachpaechterID, nachpaechterName, neueParzelle, alteLRow, alteMemberID, alteNachname, alteVorname, AustrittsDatum, grund)
+        Call UebernehmeParzelleOhneWechsel(nachpaechterID, nachpaechterName, neueParzelle, alteLRow, alteMemberID, alteNachname, alteVorname, austrittsDatum, grund)
     Else
         ' Nachpächter hat bereits Parzelle(n) - Benutzer fragen
         antwort = MsgBox("Der Nachpächter " & nachpaechterName & " ist bereits auf Parzelle " & alteParzellen & " gemeldet." & vbCrLf & vbCrLf & _
@@ -747,7 +747,7 @@ Private Sub BearbeiteNachpaechterUebernahme(ByVal nachpaechterID As String, ByVa
             End If
             
             ' Wechsel durchführen - alle alten Einträge in Historie verschieben
-            Call NachpaechterParzellenWechsel(nachpaechterID, nachpaechterName, neueParzelle, AustrittsDatum, alteLRow, alteMemberID, alteNachname, alteVorname, grund)
+            Call NachpaechterParzellenWechsel(nachpaechterID, nachpaechterName, neueParzelle, austrittsDatum, alteLRow, alteMemberID, alteNachname, alteVorname, grund)
             
         ElseIf antwort = vbNo Then
             ' Prüfe ob Nachpächter bereits auf der NEUEN Parzelle ist (Doppel-Check!)
@@ -758,7 +758,7 @@ Private Sub BearbeiteNachpaechterUebernahme(ByVal nachpaechterID As String, ByVa
             End If
             
             ' Beide Parzellen behalten - neue Zeile hinzufügen
-            Call NachpaechterZusaetzlicheParzelle(nachpaechterID, nachpaechterName, neueParzelle, AustrittsDatum, alteLRow, alteMemberID, alteNachname, alteVorname, grund)
+            Call NachpaechterZusaetzlicheParzelle(nachpaechterID, nachpaechterName, neueParzelle, austrittsDatum, alteLRow, alteMemberID, alteNachname, alteVorname, grund)
             
         Else
             ' Abbrechen
@@ -775,7 +775,7 @@ End Sub
 Private Sub UebernehmeParzelleOhneWechsel(ByVal nachpaechterID As String, ByVal nachpaechterName As String, _
                                            ByVal neueParzelle As String, ByVal alteLRow As Long, _
                                            ByVal alteMemberID As String, ByVal alteNachname As String, _
-                                           ByVal alteVorname As String, ByVal AustrittsDatum As Date, _
+                                           ByVal alteVorname As String, ByVal austrittsDatum As Date, _
                                            ByVal grund As String)
     
     Dim wsM As Worksheet
@@ -808,7 +808,7 @@ Private Sub UebernehmeParzelleOhneWechsel(ByVal nachpaechterID As String, ByVal 
     wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
     ' Verschiebe altes Mitglied in Historie
-    Call VerschiebeInHistorie(alteLRow, neueParzelle, alteMemberID, alteNachname, alteVorname, AustrittsDatum, grund, nachpaechterName, nachpaechterID)
+    Call VerschiebeInHistorie(alteLRow, neueParzelle, alteMemberID, alteNachname, alteVorname, austrittsDatum, grund, nachpaechterName, nachpaechterID)
     
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
@@ -827,7 +827,7 @@ End Sub
 ' Nachpächter verlässt alte Parzelle(n) komplett und wechselt zur neuen
 ' ***************************************************************
 Private Sub NachpaechterParzellenWechsel(ByVal nachpaechterID As String, ByVal nachpaechterName As String, _
-                                          ByVal neueParzelle As String, ByVal AustrittsDatum As Date, _
+                                          ByVal neueParzelle As String, ByVal austrittsDatum As Date, _
                                           ByVal alteLRow As Long, ByVal alteMemberID As String, _
                                           ByVal alteNachname As String, ByVal alteVorname As String, _
                                           ByVal grund As String)
@@ -904,7 +904,7 @@ Private Sub NachpaechterParzellenWechsel(ByVal nachpaechterID As String, ByVal n
             wsH.Cells(nextHistRow, H_COL_NAME_EHEM_PAECHTER).value = nachpaechterNachname & ", " & nachpaechterVorname
             
             On Error Resume Next
-            wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = AustrittsDatum
+            wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = austrittsDatum
             If Err.Number = 0 Then
                 wsH.Cells(nextHistRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
             End If
@@ -977,7 +977,7 @@ NextRow:
     Next r
     
     If neueAlteLRow > 0 Then
-        Call VerschiebeInHistorie(neueAlteLRow, neueParzelle, alteMemberID, alteNachname, alteVorname, AustrittsDatum, grund, nachpaechterName, nachpaechterID)
+        Call VerschiebeInHistorie(neueAlteLRow, neueParzelle, alteMemberID, alteNachname, alteVorname, austrittsDatum, grund, nachpaechterName, nachpaechterID)
     End If
     
     ' Formatierung neu anwenden
@@ -997,7 +997,7 @@ End Sub
 ' Nachpächter behält alte Parzelle und bekommt zusätzlich neue
 ' ***************************************************************
 Private Sub NachpaechterZusaetzlicheParzelle(ByVal nachpaechterID As String, ByVal nachpaechterName As String, _
-                                              ByVal neueParzelle As String, ByVal AustrittsDatum As Date, _
+                                              ByVal neueParzelle As String, ByVal austrittsDatum As Date, _
                                               ByVal alteLRow As Long, ByVal alteMemberID As String, _
                                               ByVal alteNachname As String, ByVal alteVorname As String, _
                                               ByVal grund As String)
@@ -1058,7 +1058,7 @@ Private Sub NachpaechterZusaetzlicheParzelle(ByVal nachpaechterID As String, ByV
     
     ' Pachtbeginn = Übernahmedatum (AustrittsDatum) - MIT FEHLERBEHANDLUNG
     On Error Resume Next
-    wsM.Cells(newRow, M_COL_PACHTANFANG).value = AustrittsDatum
+    wsM.Cells(newRow, M_COL_PACHTANFANG).value = austrittsDatum
     If Err.Number = 0 Then
         wsM.Cells(newRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
     End If
@@ -1067,7 +1067,7 @@ Private Sub NachpaechterZusaetzlicheParzelle(ByVal nachpaechterID As String, ByV
     wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
     ' Verschiebe altes Mitglied in Historie
-    Call VerschiebeInHistorie(alteLRow, neueParzelle, alteMemberID, alteNachname, alteVorname, AustrittsDatum, grund, nachpaechterName, nachpaechterID)
+    Call VerschiebeInHistorie(alteLRow, neueParzelle, alteMemberID, alteNachname, alteVorname, austrittsDatum, grund, nachpaechterName, nachpaechterID)
     
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
@@ -1086,8 +1086,8 @@ End Sub
 ' Wird aufgerufen nachdem ein neuer Nachpächter erfasst wurde
 ' ***************************************************************
 Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVal parzelle As String, _
-                                                          ByVal memberID As String, ByVal Nachname As String, _
-                                                          ByVal Vorname As String, ByVal AustrittsDatum As Date, _
+                                                          ByVal memberID As String, ByVal nachname As String, _
+                                                          ByVal vorname As String, ByVal austrittsDatum As Date, _
                                                           ByVal grund As String)
     
     Dim wsM As Worksheet
@@ -1113,7 +1113,7 @@ Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVa
     Next r
     
     ' Verschiebe altes Mitglied in Historie mit Nachpächter-Daten
-    Call VerschiebeInHistorie(lRow, parzelle, memberID, Nachname, Vorname, AustrittsDatum, grund, newMemberName, newMemberID)
+    Call VerschiebeInHistorie(lRow, parzelle, memberID, nachname, vorname, austrittsDatum, grund, newMemberName, newMemberID)
     
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
@@ -1131,8 +1131,8 @@ End Sub
 ' NEUE STRUKTUR: 10 Spalten (A-J)
 ' ***************************************************************
 Private Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, ByVal memberID As String, _
-                                   ByVal Nachname As String, ByVal Vorname As String, _
-                                   ByVal AustrittsDatum As Date, ByVal grund As String, _
+                                   ByVal nachname As String, ByVal vorname As String, _
+                                   ByVal austrittsDatum As Date, ByVal grund As String, _
                                    Optional ByVal nachpaechterName As String = "", _
                                    Optional ByVal nachpaechterID As String = "")
     
@@ -1163,10 +1163,10 @@ Private Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, B
     ' Schreibe Daten in Mitgliederhistorie (10 Spalten A-J) - MIT FEHLERBEHANDLUNG
     wsH.Cells(nextHistRow, H_COL_PARZELLE).value = parzelle                          ' A: Parzelle
     wsH.Cells(nextHistRow, H_COL_MEMBER_ID_ALT).value = memberID                     ' B: Member ID (alt)
-    wsH.Cells(nextHistRow, H_COL_NAME_EHEM_PAECHTER).value = Nachname & ", " & Vorname  ' C: Name ehem. Pächter (kombiniert)
+    wsH.Cells(nextHistRow, H_COL_NAME_EHEM_PAECHTER).value = nachname & ", " & vorname  ' C: Name ehem. Pächter (kombiniert)
     
     On Error Resume Next
-    wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = AustrittsDatum                  ' D: Austrittsdatum
+    wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = austrittsDatum                  ' D: Austrittsdatum
     If Err.Number = 0 Then
         wsH.Cells(nextHistRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
     End If
@@ -1199,7 +1199,7 @@ Private Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, B
         nachpaechterInfo = ""
     End If
     
-    MsgBox "Mitglied " & Nachname & " wurde in die Mitgliederhistorie verschoben." & vbCrLf & _
+    MsgBox "Mitglied " & nachname & " wurde in die Mitgliederhistorie verschoben." & vbCrLf & _
            "Grund: " & grund & nachpaechterInfo, vbInformation
     
     Exit Sub
@@ -1247,7 +1247,7 @@ End Function
 ' ***************************************************************
 ' HILFSPROZEDUR: Prüft ob Person auf Parzelle existiert
 ' ***************************************************************
-Private Function ExistiertPersonAufParzelle(ByVal Vorname As String, ByVal Nachname As String, _
+Private Function ExistiertPersonAufParzelle(ByVal vorname As String, ByVal nachname As String, _
                                              ByVal parzelle As String, Optional ByVal ausschlussZeile As Long = 0) As Boolean
     Dim ws As Worksheet
     Dim r As Long
@@ -1259,8 +1259,8 @@ Private Function ExistiertPersonAufParzelle(ByVal Vorname As String, ByVal Nachn
     For r = M_START_ROW To lastRow
         If r <> ausschlussZeile Then
             If StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), Trim(parzelle), vbTextCompare) = 0 And _
-               StrComp(Trim(ws.Cells(r, M_COL_VORNAME).value), Trim(Vorname), vbTextCompare) = 0 And _
-               StrComp(Trim(ws.Cells(r, M_COL_NACHNAME).value), Trim(Nachname), vbTextCompare) = 0 Then
+               StrComp(Trim(ws.Cells(r, M_COL_VORNAME).value), Trim(vorname), vbTextCompare) = 0 And _
+               StrComp(Trim(ws.Cells(r, M_COL_NACHNAME).value), Trim(nachname), vbTextCompare) = 0 Then
                 ExistiertPersonAufParzelle = True
                 Exit Function
             End If
@@ -1361,8 +1361,8 @@ Private Sub cmd_Uebernehmen_Click()
     Dim istMitgliedOhnePacht As Boolean
     Dim OldParzelle As String
     Dim NewParzelle As String
-    Dim Nachname As String
-    Dim Vorname As String
+    Dim nachname As String
+    Dim vorname As String
     Dim currentMemberID As String
     Dim antwort As VbMsgBoxResult
     Dim zielParzelleHatMitglied As Boolean
@@ -1400,8 +1400,8 @@ Private Sub cmd_Uebernehmen_Click()
     
     OldParzelle = Me.lbl_Parzelle.Caption
     NewParzelle = Me.cbo_Parzelle.value
-    Nachname = Me.txt_Nachname.value
-    Vorname = Me.txt_Vorname.value
+    nachname = Me.txt_Nachname.value
+    vorname = Me.txt_Vorname.value
     currentMemberID = wsM.Cells(lRow, M_COL_MEMBER_ID).value
     
     ' === SICHERHEITSCHECK: Verein-Parzelle darf nicht bearbeitet werden ===
@@ -1437,8 +1437,8 @@ Private Sub cmd_Uebernehmen_Click()
     End If
     
     ' === VALIDIERUNG: Duplikate (gleicher Vor- und Nachname auf Parzelle) ===
-    If ExistiertPersonAufParzelle(Vorname, Nachname, NewParzelle, lRow) Then
-        MsgBox "FEHLER: Eine Person mit dem Namen " & Nachname & ", " & Vorname & _
+    If ExistiertPersonAufParzelle(vorname, nachname, NewParzelle, lRow) Then
+        MsgBox "FEHLER: Eine Person mit dem Namen " & nachname & ", " & vorname & _
                " ist bereits auf Parzelle " & NewParzelle & " registriert!" & vbCrLf & vbCrLf & _
                "Doppelte Einträge sind nicht erlaubt.", vbCritical, "Doppelter Eintrag verhindert"
         Exit Sub
@@ -1517,7 +1517,7 @@ Private Sub cmd_Uebernehmen_Click()
             Call SpeichereMitgliedsdaten(wsM, lRow, NewParzelle)
             
             ' Speichere Parzellenwechsel in Historie (Member ID bleibt erhalten!)
-            Call SpeichereParzellenwechselInHistorie(OldParzelle, NewParzelle, currentMemberID, Nachname, Vorname, "Parzellenwechsel (Umzug)")
+            Call SpeichereParzellenwechselInHistorie(OldParzelle, NewParzelle, currentMemberID, nachname, vorname, "Parzellenwechsel (Umzug)")
             
         Else
             ' === ZUSÄTZLICHE PARZELLE: Neue Zeile anlegen (JA wurde gedrückt) ===
@@ -1534,7 +1534,7 @@ Private Sub cmd_Uebernehmen_Click()
             Call ErstelleZusaetzlicheParzelleZeile(wsM, lRow, NewParzelle, currentMemberID)
             
             ' Speichere in Historie
-            Call SpeichereParzellenwechselInHistorie(OldParzelle, NewParzelle, currentMemberID, Nachname, Vorname, "Zusätzliche Parzelle gepachtet")
+            Call SpeichereParzellenwechselInHistorie(OldParzelle, NewParzelle, currentMemberID, nachname, vorname, "Zusätzliche Parzelle gepachtet")
         End If
         
     Else
@@ -1553,7 +1553,7 @@ Private Sub cmd_Uebernehmen_Click()
         frm_Mitgliederverwaltung.RefreshMitgliederListe
     End If
     
-    MsgBox "Änderungen für Mitglied " & Nachname & " erfolgreich gespeichert.", vbInformation
+    MsgBox "Änderungen für Mitglied " & nachname & " erfolgreich gespeichert.", vbInformation
     
     Unload Me
     Exit Sub
@@ -1663,8 +1663,8 @@ End Sub
 ' HILFSPROZEDUR: Speichert Parzellenwechsel in Mitgliederhistorie
 ' ***************************************************************
 Private Sub SpeichereParzellenwechselInHistorie(ByVal alteParzelle As String, ByVal neueParzelle As String, _
-                                                  ByVal memberID As String, ByVal Nachname As String, _
-                                                  ByVal Vorname As String, ByVal grund As String)
+                                                  ByVal memberID As String, ByVal nachname As String, _
+                                                  ByVal vorname As String, ByVal grund As String)
     Dim wsH As Worksheet
     Dim nextHistRow As Long
     
@@ -1679,7 +1679,7 @@ Private Sub SpeichereParzellenwechselInHistorie(ByVal alteParzelle As String, By
     
     wsH.Cells(nextHistRow, H_COL_PARZELLE).value = alteParzelle                     ' A: Alte Parzelle
     wsH.Cells(nextHistRow, H_COL_MEMBER_ID_ALT).value = memberID                    ' B: Member ID (bleibt gleich)
-    wsH.Cells(nextHistRow, H_COL_NAME_EHEM_PAECHTER).value = Nachname & ", " & Vorname  ' C: Name
+    wsH.Cells(nextHistRow, H_COL_NAME_EHEM_PAECHTER).value = nachname & ", " & vorname  ' C: Name
     
     On Error Resume Next
     wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = Date                           ' D: Wechseldatum
@@ -1716,11 +1716,11 @@ Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As Strin
                                          Optional ByVal nachpaechterID As String = "")
     
     Dim wsM As Worksheet
-    Dim Nachname As String
-    Dim Vorname As String
+    Dim nachname As String
+    Dim vorname As String
     Dim OldParzelle As String
     Dim OldMemberID As String
-    Dim AustrittsDatum As Date
+    Dim austrittsDatum As Date
     
     On Error GoTo ErrorHandler
     
@@ -1736,9 +1736,9 @@ Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As Strin
         Exit Sub
     End If
     
-    AustrittsDatum = CDate(Me.txt_Pachtende.value)
-    Nachname = wsM.Cells(lRow, M_COL_NACHNAME).value
-    Vorname = wsM.Cells(lRow, M_COL_VORNAME).value
+    austrittsDatum = CDate(Me.txt_Pachtende.value)
+    nachname = wsM.Cells(lRow, M_COL_NACHNAME).value
+    vorname = wsM.Cells(lRow, M_COL_VORNAME).value
     OldParzelle = wsM.Cells(lRow, M_COL_PARZELLE).value
     OldMemberID = wsM.Cells(lRow, M_COL_MEMBER_ID).value
     
@@ -1749,7 +1749,7 @@ Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As Strin
     End If
     
     ' Verschiebe Mitglied in Mitgliederhistorie
-    Call VerschiebeInHistorie(lRow, OldParzelle, OldMemberID, Nachname, Vorname, AustrittsDatum, grund, nachpaechterName, nachpaechterID)
+    Call VerschiebeInHistorie(lRow, OldParzelle, OldMemberID, nachname, vorname, austrittsDatum, grund, nachpaechterName, nachpaechterID)
     
     ' Formatierung neu anwenden
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
@@ -2117,7 +2117,7 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     Dim i As Long
     
     For i = 0 To VBA.UserForms.Count - 1
-        If StrComp(VBA.UserForms.Item(i).Name, FormName, vbTextCompare) = 0 Then
+        If StrComp(VBA.UserForms.item(i).Name, FormName, vbTextCompare) = 0 Then
             IsFormLoaded = True
             Exit Function
         End If

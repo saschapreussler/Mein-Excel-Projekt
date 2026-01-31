@@ -160,9 +160,9 @@ Public Sub Sortiere_Mitgliederliste_Nach_Parzelle()
     
     With ws.Sort
         .SortFields.Clear
-        .SortFields.Add Key:=ws.Columns(M_COL_PACHTENDE), SortOn:=xlSortOnValues, Order:=xlAscending
-        .SortFields.Add Key:=ws.Columns(M_COL_PARZELLE), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortTextAsNumbers
-        .SortFields.Add Key:=ws.Columns(M_COL_ANREDE), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
+        .SortFields.Add key:=ws.Columns(M_COL_PACHTENDE), SortOn:=xlSortOnValues, Order:=xlAscending
+        .SortFields.Add key:=ws.Columns(M_COL_PARZELLE), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortTextAsNumbers
+        .SortFields.Add key:=ws.Columns(M_COL_ANREDE), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
         .SetRange rngSort
         .Header = xlNo
         .MatchCase = False
@@ -232,8 +232,8 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ByVal selectedRow As Long, _
     ByVal OldParzelle As String, _
     ByVal OldMemberID As String, _
-    ByVal Nachname As String, _
-    ByVal AustrittsDatum As Date, _
+    ByVal nachname As String, _
+    ByVal austrittsDatum As Date, _
     ByVal NewParzelleNr As String, _
     ByVal newMemberID As String, _
     ByVal ChangeReason As String)
@@ -267,8 +267,8 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     
     wsH.Cells(NextRow, H_COL_PARZELLE).value = OldParzelle
     wsH.Cells(NextRow, H_COL_MITGL_ID).value = OldMemberID
-    wsH.Cells(NextRow, H_COL_NACHNAME).value = Nachname
-    wsH.Cells(NextRow, H_COL_AUST_DATUM).value = AustrittsDatum
+    wsH.Cells(NextRow, H_COL_NACHNAME).value = nachname
+    wsH.Cells(NextRow, H_COL_AUST_DATUM).value = austrittsDatum
     wsH.Cells(NextRow, H_COL_NEUER_PAECHTER_ID).value = newMemberID
     wsH.Cells(NextRow, H_COL_GRUND).value = ChangeReason
     wsH.Cells(NextRow, H_COL_SYSTEMZEIT).value = Now
@@ -300,7 +300,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
         
         ' Setze Parzelle auf leer (Member ist ausgetreten)
         wsM.Cells(selectedRow, M_COL_PARZELLE).value = ""
-        wsM.Cells(selectedRow, M_COL_PACHTENDE).value = AustrittsDatum
+        wsM.Cells(selectedRow, M_COL_PACHTENDE).value = austrittsDatum
         wsM.Cells(selectedRow, M_COL_PACHTENDE).NumberFormat = "dd.mm.yyyy"
         wsM.Cells(selectedRow, M_COL_FUNKTION).value = AUSTRITT_STATUS
     End If
