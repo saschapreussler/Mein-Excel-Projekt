@@ -1,23 +1,21 @@
 Attribute VB_Name = "mod_EntityKey_Manager"
-Option Explicit
-
 ' ***************************************************************
 ' MODUL: mod_EntityKey_Manager
 ' ZWECK: Verwaltung und Zuordnung von EntityKeys fuer Bankverkehr
-' VERSION: 2.0 - 01.02.2026
-' AENDERUNG: Konstanten ENTFERNT - nutzt jetzt mod_Const.bas!
-'            EntityKey-Tabelle jetzt R-X (18-24)
+' VERSION: 2.1 - 01.02.2026
+' AENDERUNG: Spalten korrigiert nach Loeschung Spalte O
+'            EntityRole-DropDown zeigt auf AD (Spalte 30)
+'            Nutzt zentrale Konstanten aus mod_Const.bas
 ' ***************************************************************
 
 ' ===============================================================
-' KEINE EK_COL_* KONSTANTEN MEHR HIER!
-' Alle werden aus mod_Const.bas verwendet:
-' EK_COL_ENTITYKEY, EK_COL_IBAN, EK_COL_KONTONAME, EK_COL_ZUORDNUNG,
-' EK_COL_PARZELLE, EK_COL_ROLE, EK_COL_DEBUG, EK_START_ROW, EK_HEADER_ROW
+' KEINE SPALTEN-KONSTANTEN MEHR HIER!
+' Alle EK_COL_* Konstanten kommen aus mod_Const.bas:
+' EK_COL_ENTITYKEY = 18 (R), EK_COL_IBAN = 19 (S), etc.
 ' ===============================================================
 
-' Private Konstante fuer EntityRole DropDown-Spalte
-Private Const EK_ROLE_DROPDOWN_COL As Long = 32  ' AF - Dropdown-Quelle fuer EntityRole
+' EntityRole-DropDown Quelle: Spalte AD = 30
+Private Const EK_ROLE_DROPDOWN_COL As Long = 30  ' AD - Dropdown-Quelle fuer EntityRole
 
 ' EntityRole-Praefixe
 Public Const PREFIX_SHARE As String = "SHARE-"
@@ -37,21 +35,17 @@ Public Const ROLE_SHOP As String = "SHOP"
 Public Const ROLE_SONSTIGE As String = "SONSTIGE"
 
 ' Zebra-Farbe - IDENTISCH mit mod_Formatierung!
-Private Const ZEBRA_COLOR As Long = &HDEE5E3    ' = 14607843 dezimal (Hellgruen/Grau)
+Private Const ZEBRA_COLOR As Long = &HDEE5E3
 
 ' ===============================================================
 ' HILFSFUNKTION: Prueft ob Role eine Parzelle haben darf
-' Erlaubt fuer: Mitglieder (alle Arten) und SONSTIGE
-' Nicht erlaubt fuer: VERSORGER, BANK, SHOP
 ' ===============================================================
 Private Function DarfParzelleHaben(ByVal role As String) As Boolean
     Dim normRole As String
     normRole = NormalisiereRoleString(role)
     
-    ' Standardmaessig: Ja (fuer leere Roles oder unbekannte)
     DarfParzelleHaben = True
     
-    ' Explizit NICHT erlaubt fuer VERSORGER, BANK, SHOP
     If normRole = "VERSORGER" Then
         DarfParzelleHaben = False
     ElseIf normRole = "BANK" Then
@@ -62,8 +56,7 @@ Private Function DarfParzelleHaben(ByVal role As String) As Boolean
 End Function
 
 ' ===============================================================
-' OEFFENTLICHE PROZEDUR: Importiert IBANs aus Bankkonto und
-' erstellt EntityKey-Eintraege
+' OEFFENTLICHE PROZEDUR: Importiert IBANs aus Bankkonto
 ' ===============================================================
 Public Sub ImportiereIBANsAusBankkonto()
     
@@ -100,7 +93,6 @@ Public Sub ImportiereIBANsAusBankkonto()
     anzahlBereitsVorhanden = 0
     anzahlZeilenGeprueft = 0
     
-    ' Sammle bereits vorhandene IBANs aus Daten-Blatt
     lastRowD = wsD.Cells(wsD.Rows.Count, EK_COL_IBAN).End(xlUp).Row
     
     If lastRowD >= EK_START_ROW Then
@@ -118,10 +110,8 @@ Public Sub ImportiereIBANsAusBankkonto()
     Dim dictNeueIBANs As Object
     Set dictNeueIBANs = CreateObject("Scripting.Dictionary")
     
-    ' Letzte Zeile basierend auf Spalte A (Datum) ermitteln
     lastRowBK = wsBK.Cells(wsBK.Rows.Count, BK_COL_DATUM).End(xlUp).Row
     
-    ' Durchsuche alle Zeilen ab BK_START_ROW wo ein Datum in Spalte A steht
     For r = BK_START_ROW To lastRowBK
         currentDatum = wsBK.Cells(r, BK_COL_DATUM).value
         
@@ -295,7 +285,6 @@ Public Sub AktualisiereAlleEntityKeys()
         If currentEntityKey = "" And newEntityKey <> "" Then wsD.Cells(r, EK_COL_ENTITYKEY).value = newEntityKey
         If currentZuordnung = "" And zuordnung <> "" Then wsD.Cells(r, EK_COL_ZUORDNUNG).value = zuordnung
         
-        ' Parzelle nur setzen wenn erlaubt fuer diesen Role-Typ
         If currentParzelle = "" And parzellen <> "" And DarfParzelleHaben(entityRole) Then
             wsD.Cells(r, EK_COL_PARZELLE).value = parzellen
         End If
@@ -343,16 +332,13 @@ End Sub
 
 ' ===============================================================
 ' HILFSPROZEDUR: Setzt Zellschutz basierend auf Role-Typ
-' Parzelle (V) nur bearbeitbar fuer Mitglieder und SONSTIGE
 ' ===============================================================
 Private Sub SetzeZellschutzFuerZeile(ByRef ws As Worksheet, ByVal zeile As Long, ByVal role As String)
     
-    ' Spalten U (Zuordnung), W (Role), X (Debug) immer bearbeitbar
     ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = False
     ws.Cells(zeile, EK_COL_ROLE).Locked = False
     ws.Cells(zeile, EK_COL_DEBUG).Locked = False
     
-    ' Spalte V (Parzelle) nur bearbeitbar wenn erlaubt
     If DarfParzelleHaben(role) Then
         ws.Cells(zeile, EK_COL_PARZELLE).Locked = False
     Else
@@ -659,14 +645,10 @@ Private Function NormalisiereStringFuerVergleich(ByVal s As String) As String
     result = Replace(result, ".", " ")
     result = Replace(result, "-", " ")
     
-    result = Replace(result, "ä", "ae")
-    result = Replace(result, "ö", "oe")
-    result = Replace(result, "ü", "ue")
-    result = Replace(result, "ß", "ss")
-    
     result = Replace(result, "ae", "a")
     result = Replace(result, "oe", "o")
     result = Replace(result, "ue", "u")
+    result = Replace(result, "ss", "s")
     
     Do While InStr(result, "  ") > 0
         result = Replace(result, "  ", " ")
@@ -1155,6 +1137,7 @@ End Function
 
 ' ===============================================================
 ' HILFSPROZEDUR: Setzt Dropdown fuer EntityRole
+' KORRIGIERT: Zeigt auf Spalte AD (30) statt AF (32)
 ' ===============================================================
 Private Sub SetupEntityRoleDropdown(ByRef ws As Worksheet, ByVal lastRow As Long)
     
@@ -1163,13 +1146,16 @@ Private Sub SetupEntityRoleDropdown(ByRef ws As Worksheet, ByVal lastRow As Long
     Dim lastRoleRow As Long
     Dim dropdownEndRow As Long
     
+    ' EntityRole-Liste aus Spalte AD (30) lesen
     lastRoleRow = ws.Cells(ws.Rows.Count, EK_ROLE_DROPDOWN_COL).End(xlUp).Row
     If lastRoleRow < 4 Then lastRoleRow = 10
     
-    dropdownSource = "=$AF$4:$AF$" & lastRoleRow
+    ' DropDown-Quelle: Spalte AD
+    dropdownSource = "=$AD$4:$AD$" & lastRoleRow
     
     dropdownEndRow = lastRow + 50
     
+    ' EK_COL_ROLE = 23 = Spalte W (nach Spaltenverschiebung)
     Set rngDropdown = ws.Range(ws.Cells(EK_START_ROW, EK_COL_ROLE), _
                                ws.Cells(dropdownEndRow, EK_COL_ROLE))
     
@@ -1191,12 +1177,14 @@ End Sub
 
 ' ===============================================================
 ' HILFSPROZEDUR: Setzt Ampelfarbe (nur Spalten U-X)
+' KORRIGIERT: Spalten nach Verschiebung
 ' ===============================================================
 Private Sub SetzeAmpelFarbe(ByRef ws As Worksheet, ByVal zeile As Long, ByVal ampelStatus As Long)
     
     Dim rng As Range
     Dim farbe As Long
     
+    ' EK_COL_ZUORDNUNG = 21 (U), EK_COL_DEBUG = 24 (X)
     Set rng = ws.Range(ws.Cells(zeile, EK_COL_ZUORDNUNG), ws.Cells(zeile, EK_COL_DEBUG))
     
     Select Case ampelStatus
@@ -1216,6 +1204,7 @@ End Sub
 
 ' ===============================================================
 ' HILFSPROZEDUR: Formatiert die EntityKey-Tabelle
+' KORRIGIERT: Spalte W (EntityRole) LINKSBUENDIG + AutoFit
 ' ===============================================================
 Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As Long)
     
@@ -1228,9 +1217,11 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     
     If lastRow < EK_START_ROW Then Exit Sub
     
+    ' EK_COL_ENTITYKEY = 18 (R), EK_COL_DEBUG = 24 (X)
     Set rngTable = ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
                             ws.Cells(lastRow, EK_COL_DEBUG))
     
+    ' EK_COL_IBAN = 19 (S)
     Set rngOhneEntityKey = ws.Range(ws.Cells(EK_START_ROW, EK_COL_IBAN), _
                                      ws.Cells(lastRow, EK_COL_DEBUG))
     
@@ -1241,10 +1232,11 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
         .ColorIndex = xlAutomatic
     End With
     
+    ' Vertikal zentriert
     rngTable.VerticalAlignment = xlCenter
     rngOhneEntityKey.WrapText = True
     
-    ' Spalte R: Kein Textumbruch, feste Breite
+    ' Spalte R (EntityKey): Kein Textumbruch, feste Breite, linksbuendig
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
                   ws.Cells(lastRow, EK_COL_ENTITYKEY))
         .WrapText = False
@@ -1252,11 +1244,16 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_ENTITYKEY).ColumnWidth = 14
     
-    ' Spalte V + W: Zentriert
+    ' Spalte V (Parzelle): Zentriert
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_PARZELLE), _
              ws.Cells(lastRow, EK_COL_PARZELLE)).HorizontalAlignment = xlCenter
-    ws.Range(ws.Cells(EK_START_ROW, EK_COL_ROLE), _
-             ws.Cells(lastRow, EK_COL_ROLE)).HorizontalAlignment = xlCenter
+    
+    ' Spalte W (EntityRole): LINKSBUENDIG + kein Textumbruch
+    With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ROLE), _
+                  ws.Cells(lastRow, EK_COL_ROLE))
+        .HorizontalAlignment = xlLeft
+        .WrapText = False
+    End With
     
     ' Spalten R-T immer gesperrt
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
@@ -1268,7 +1265,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     For r = EK_START_ROW To lastRow
         currentRole = Trim(ws.Cells(r, EK_COL_ROLE).value)
         
-        ' Zellschutz setzen basierend auf Role
         Call SetzeZellschutzFuerZeile(ws, r, currentRole)
         
         ' Zebra fuer Spalten R-T
@@ -1281,10 +1277,13 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
         End If
     Next r
     
-    ' AutoFit Spaltenbreiten
+    ' AutoFit Spaltenbreiten fuer S-X
     For col = EK_COL_IBAN To EK_COL_DEBUG
         ws.Columns(col).AutoFit
     Next col
+    
+    ' Speziell: AutoFit fuer Spalte W (EntityRole)
+    ws.Columns(EK_COL_ROLE).AutoFit
     
     ' Zeilenhoehe AutoFit
     ws.Rows(EK_START_ROW & ":" & lastRow).AutoFit
@@ -1318,7 +1317,6 @@ Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long)
     
     currentRole = Trim(ws.Cells(zeile, EK_COL_ROLE).value)
     
-    ' Zellschutz setzen basierend auf Role
     Call SetzeZellschutzFuerZeile(ws, zeile, currentRole)
     
     ' Zebra fuer Spalten R-T dieser Zeile
@@ -1329,6 +1327,9 @@ Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long)
     Else
         rngZebra.Interior.ColorIndex = xlNone
     End If
+    
+    ' Vertikal zentriert fuer diese Zeile
+    ws.Range(ws.Cells(zeile, EK_COL_ENTITYKEY), ws.Cells(zeile, EK_COL_DEBUG)).VerticalAlignment = xlCenter
     
     ' AutoFit Spaltenbreite S-X
     For col = EK_COL_IBAN To EK_COL_DEBUG
@@ -1548,7 +1549,6 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
         ws.Cells(zeile, EK_COL_DEBUG).value = "Manuell zugeordnet am " & Format(Now, "dd.mm.yyyy hh:mm")
     End If
     
-    ' Zellschutz aktualisieren basierend auf neuer Role
     Call SetzeZellschutzFuerZeile(ws, zeile, neueRole)
     
     Call SetzeAmpelFarbe(ws, zeile, 1)
@@ -1783,7 +1783,6 @@ Public Sub EntityKeyDialogFuerAktuelleZeile()
         wsD.Cells(aktuelleZeile, EK_COL_ZUORDNUNG).value = neueZuordnung
     End If
     
-    ' Parzelle nur setzen wenn erlaubt
     If DarfParzelleHaben(neueRole) Then
         If Trim(wsD.Cells(aktuelleZeile, EK_COL_PARZELLE).value) = "" And neueParzellen <> "" Then
             wsD.Cells(aktuelleZeile, EK_COL_PARZELLE).value = neueParzellen
@@ -1796,7 +1795,6 @@ Public Sub EntityKeyDialogFuerAktuelleZeile()
     
     wsD.Cells(aktuelleZeile, EK_COL_DEBUG).value = "Manuell zugeordnet am " & Format(Now, "dd.mm.yyyy hh:mm")
     
-    ' Zellschutz setzen
     Call SetzeZellschutzFuerZeile(wsD, aktuelleZeile, neueRole)
     
     Call SetzeAmpelFarbe(wsD, aktuelleZeile, 1)

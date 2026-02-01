@@ -4,8 +4,8 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Const
 ' ZWECK: Zentrale Konstanten fuer das gesamte Projekt
-' VERSION: 2.0 - 01.02.2026
-' AENDERUNG: EntityKey-Tabelle jetzt R-X (18-24) nach Loeschung Spalte O
+' VERSION: 2.1 - 01.02.2026
+' AENDERUNG: EntityKey-Tabelle R-X (18-24), EntityRole-DropDown auf AD (30)
 ' ***************************************************************
 
 ' ===============================================================
@@ -173,7 +173,7 @@ Public Const DATA_CAT_COL_END As Long = 16
 Public Const DATA_COL_IMPORT_STATUS As Long = 26    ' Z - Import-Protokoll
 Public Const DATA_COL_DD_KATEGORIE_START As Long = 27  ' AA - DropDown-Liste Kategorien (alt)
 Public Const DATA_COL_DD_KATEGORIE_END As Long = 31    ' AE - DropDown-Liste Ende (alt)
-Public Const DATA_COL_DD_ROLE As Long = 32          ' AF - EntityRole DropDown (alt)
+Public Const DATA_COL_DD_ROLE As Long = 30          ' AD - EntityRole DropDown (NEU!)
 Public Const DATA_COL_EINNAHMEN As Long = 32        ' AF - Einnahmen-Kategorien
 Public Const DATA_COL_AUSGABEN As Long = 33         ' AG - Ausgaben-Kategorien
 Public Const DATA_COL_MONAT_PERIODE As Long = 34    ' AH - Monat/Periode Liste
@@ -212,9 +212,9 @@ Public Const MAX_LISTBOX_LINES As Long = 60
 Public Const CELL_IMPORT_PROTOKOLL As String = "Z100"
 
 ' ===============================================================
-' L. ENTITY ROLE
+' L. ENTITY ROLE - KORRIGIERT: Jetzt Spalte AD!
 ' ===============================================================
-Public Const ROLE_RANGE As String = "AF4:AF10"
+Public Const ROLE_RANGE As String = "AD4:AD10"
 
 ' ===============================================================
 ' M. MITGLIEDERHISTORIE - STRUKTUR
