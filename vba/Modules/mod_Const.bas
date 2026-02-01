@@ -81,6 +81,7 @@ Public Const BK_COL_NAME As Long = 3
 Public Const BK_COL_IBAN As Long = 4
 Public Const BK_COL_VERWENDUNGSZWECK As Long = 5
 Public Const BK_COL_BUCHUNGSTEXT As Long = 6
+Public Const BK_COL_IM_AUSWERTUNGSMONAT As Long = 7  ' Spalte G - Formel für Monatsfilter (verweist auf Daten!$AG$4)
 Public Const BK_COL_KATEGORIE As Long = 8
 Public Const BK_COL_STATUS As Long = 11
 Public Const BK_COL_ENTITY_KEY As Long = 22
