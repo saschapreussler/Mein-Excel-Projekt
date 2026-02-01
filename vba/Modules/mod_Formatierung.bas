@@ -4,7 +4,8 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Formatierung
 ' ZWECK: Formatierung und DropDown-Listen-Verwaltung
-' VERSION: 1.0 - 01.02.2026
+' VERSION: 1.1 - 01.02.2026
+' KORREKTUR: Euro-Zeichen Encoding behoben
 ' ***************************************************************
 
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
@@ -403,8 +404,12 @@ Public Sub FormatiereBlattBankkonto()
     
     Dim ws As Worksheet
     Dim lastRow As Long
+    Dim euroFormat As String
     
     Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    
+    ' Euro-Format mit ChrW fuer korrektes Unicode-Zeichen
+    euroFormat = "#,##0.00 " & ChrW(8364)
     
     Application.ScreenUpdating = False
     
@@ -425,14 +430,14 @@ Public Sub FormatiereBlattBankkonto()
     ' Zeilenhoehe AutoFit
     ws.Rows(BK_START_ROW & ":" & lastRow).AutoFit
     
-    ' Waehrungsformat mit Euro-Zeichen (€) statt EUR
+    ' Waehrungsformat mit Euro-Zeichen
     ' Spalte B
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), _
-             ws.Cells(lastRow, BK_COL_BETRAG)).NumberFormat = "#,##0.00 ""€"""
+             ws.Cells(lastRow, BK_COL_BETRAG)).NumberFormat = euroFormat
     
     ' Spalten M-Z
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), _
-             ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = "#,##0.00 ""€"""
+             ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
@@ -441,7 +446,7 @@ Public Sub FormatiereBlattBankkonto()
     MsgBox "Formatierung des Bankkonto-Blatts abgeschlossen!" & vbCrLf & vbCrLf & _
            "- Spalte L mit Textumbruch" & vbCrLf & _
            "- Zeilenhoehe angepasst" & vbCrLf & _
-           "- Waehrung mit Euro-Zeichen (€)", vbInformation
+           "- Waehrung mit Euro-Zeichen", vbInformation
     
     Exit Sub
     

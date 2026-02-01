@@ -576,11 +576,15 @@ Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     Dim lastRow As Long
     Dim rngMonatPeriode As Range
     Dim lRow As Long
+    Dim euroFormat As String
     
     If ws Is Nothing Then Exit Sub
     
     lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
+    
+    ' Euro-Format mit ChrW fuer korrektes Unicode-Zeichen
+    euroFormat = "#,##0.00 " & ChrW(8364)
     
     Application.ScreenUpdating = False
     
@@ -588,9 +592,9 @@ Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_DATUM), _
              ws.Cells(lastRow, BK_COL_DATUM)).NumberFormat = "DD.MM.YYYY"
     
-    ' --- Spalte B: Waehrung Euro (€ statt EUR) ---
+    ' --- Spalte B: Waehrung Euro ---
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), _
-             ws.Cells(lastRow, BK_COL_BETRAG)).NumberFormat = "#,##0.00 ""€"""
+             ws.Cells(lastRow, BK_COL_BETRAG)).NumberFormat = euroFormat
     
     ' --- Spalte J: Zentriert ---
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_INTERNE_NR), _
@@ -603,9 +607,9 @@ Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' --- Spalten M-Z: Waehrung Euro (€ statt EUR) ---
+    ' --- Spalten M-Z: Waehrung Euro ---
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), _
-             ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = "#,##0.00 ""€"""
+             ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
     
     ' --- Zeilenhoehe AutoFit ---
     ws.Rows(BK_START_ROW & ":" & lastRow).AutoFit
@@ -690,7 +694,6 @@ Private Function NamedRangeExistsLocal(ByVal rangeName As String) As Boolean
     End If
     On Error GoTo 0
 End Function
-
 ' ===============================================================
 ' 2e. MONAT/PERIODE AUTOMATISCH SETZEN
 ' ===============================================================
