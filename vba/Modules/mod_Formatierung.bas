@@ -4,11 +4,105 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Formatierung
 ' ZWECK: Formatierung und DropDown-Listen-Verwaltung
-' VERSION: 1.1 - 01.02.2026
-' KORREKTUR: Euro-Zeichen Encoding behoben
+' VERSION: 1.2 - 01.02.2026
+' KORREKTUR: Euro-Zeichen Encoding + Formatiere_Alle_Tabellen_Neu
 ' ***************************************************************
 
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
+
+' ===============================================================
+' HAUPTPROZEDUR: Formatiert ALLE relevanten Tabellen neu
+' Diese Prozedur wird von mod_Mitglieder_UI und frm_Mitgliedsdaten aufgerufen
+' ===============================================================
+Public Sub Formatiere_Alle_Tabellen_Neu()
+    
+    Dim wsD As Worksheet
+    Dim wsBK As Worksheet
+    Dim lastRowD As Long
+    Dim lastRowBK As Long
+    Dim euroFormat As String
+    
+    On Error GoTo ErrorHandler
+    
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    
+    ' Euro-Format mit ChrW fuer korrektes Unicode-Zeichen
+    euroFormat = "#,##0.00 " & ChrW(8364)
+    
+    ' === DATEN-BLATT FORMATIEREN ===
+    On Error Resume Next
+    Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo ErrorHandler
+    
+    If Not wsD Is Nothing Then
+        On Error Resume Next
+        wsD.Unprotect PASSWORD:=PASSWORD
+        On Error GoTo ErrorHandler
+        
+        ' Gesamtes Blatt: Vertikal zentriert
+        wsD.Cells.VerticalAlignment = xlCenter
+        
+        ' Kategorie-Tabelle formatieren
+        Call FormatiereKategorieTabelle(wsD)
+        
+        ' EntityKey-Tabelle formatieren
+        Call FormatiereEntityKeyTabelleKomplett(wsD)
+        
+        ' DropDown-Listen aktualisieren
+        Call AktualisiereKategorieDropdownListen(wsD)
+        
+        wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    End If
+    
+    ' === BANKKONTO-BLATT FORMATIEREN ===
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    On Error GoTo ErrorHandler
+    
+    If Not wsBK Is Nothing Then
+        On Error Resume Next
+        wsBK.Unprotect PASSWORD:=PASSWORD
+        On Error GoTo ErrorHandler
+        
+        lastRowBK = wsBK.Cells(wsBK.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+        If lastRowBK < BK_START_ROW Then lastRowBK = BK_START_ROW
+        
+        ' Spalte L (Bemerkung): Textumbruch
+        With wsBK.Range(wsBK.Cells(BK_START_ROW, BK_COL_BEMERKUNG), _
+                        wsBK.Cells(lastRowBK, BK_COL_BEMERKUNG))
+            .WrapText = True
+            .VerticalAlignment = xlCenter
+        End With
+        
+        ' Zeilenhoehe AutoFit
+        wsBK.Rows(BK_START_ROW & ":" & lastRowBK).AutoFit
+        
+        ' Waehrungsformat mit Euro-Zeichen
+        ' Spalte B (Betrag)
+        wsBK.Range(wsBK.Cells(BK_START_ROW, BK_COL_BETRAG), _
+                   wsBK.Cells(lastRowBK, BK_COL_BETRAG)).NumberFormat = euroFormat
+        
+        ' Spalten M-Z (Einnahmen und Ausgaben)
+        wsBK.Range(wsBK.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), _
+                   wsBK.Cells(lastRowBK, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
+        
+        wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    End If
+    
+    Application.EnableEvents = True
+    Application.ScreenUpdating = True
+    
+    Exit Sub
+    
+ErrorHandler:
+    Application.EnableEvents = True
+    Application.ScreenUpdating = True
+    On Error Resume Next
+    If Not wsD Is Nothing Then wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    If Not wsBK Is Nothing Then wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    Debug.Print "Fehler in Formatiere_Alle_Tabellen_Neu: " & Err.Description
+End Sub
 
 ' ===============================================================
 ' HAUPTPROZEDUR: Formatiert das gesamte Daten-Blatt
