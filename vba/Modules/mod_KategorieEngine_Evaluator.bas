@@ -3,6 +3,8 @@ Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - EVALUATOR (VOLLSTAENDIG UEBERARBEITET)
+' VERSION: 2.0 - 01.02.2026
+' AENDERUNG: Sonderregel fuer 0-Euro-Betraege bei ABSCHLUSS
 ' =====================================================
 
 ' -----------------------------
@@ -27,22 +29,30 @@ Public Function BuildKategorieContext(ByVal wsBK As Worksheet, _
 
     Dim kontoName As String
     kontoName = LCase(Trim(wsBK.Cells(rowBK, BK_COL_NAME).value))
+    
+    Dim buchungsText As String
+    buchungsText = LCase(Trim(wsBK.Cells(rowBK, BK_COL_BUCHUNGSTEXT).value))
 
     ctx("Amount") = amount
     ctx("NormText") = normText
     ctx("KontoName") = kontoName
     ctx("IBAN") = iban
+    ctx("BuchungsText") = buchungsText
 
     ctx("IsEinnahme") = (amount > 0)
     ctx("IsAusgabe") = (amount < 0)
+    ctx("IsNullBetrag") = (amount = 0)  ' NEU: 0-Euro-Betraege
 
     ctx("EntityRole") = entityRole
 
     ' Entgeltabschluss-Erkennung (Bankgebuehren)
+    ' ERWEITERT: Auch bei ABSCHLUSS im Buchungstext
     ctx("IsEntgeltabschluss") = _
         (InStr(normText, "entgeltabschluss") > 0) Or _
         (InStr(normText, "kontoabschluss") > 0) Or _
-        (InStr(normText, "abschluss") > 0 And InStr(normText, "entgelt") > 0)
+        (InStr(normText, "abschluss") > 0 And InStr(normText, "entgelt") > 0) Or _
+        (buchungsText = "abschluss") Or _
+        (buchungsText = "entgeltabschluss")
 
     ' Bargeldauszahlung-Erkennung
     ctx("IsBargeldauszahlung") = _
@@ -96,6 +106,18 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     Set ctx = BuildKategorieContext(wsBK, rowBK)
 
     ' ================================
+    ' PHASE 0: SONDERREGEL FUER 0-EURO-BETRAEGE
+    ' ================================
+    ' Bei 0,00 Euro und Buchungstext "ABSCHLUSS" -> Entgeltabschluss (Kontofuehrung)
+    If ctx("IsNullBetrag") And ctx("IsEntgeltabschluss") Then
+        ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
+                       "Entgeltabschluss (Kontofuehrung)", "GRUEN"
+        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = "0-Euro-Abschluss automatisch zugeordnet"
+        ' Bei 0 Euro keine Betragszuordnung noetig
+        Exit Sub
+    End If
+
+    ' ================================
     ' PHASE 1: HARTE SONDERREGELN
     ' ================================
     
@@ -137,7 +159,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         Dim keyword As String
         Dim prio As Long
 
-        ' AKTUALISIERT: Spaltenreihenfolge nach Loeschung von O
+        ' Spaltenreihenfolge: J=Kategorie, K=E/A, L=Keyword, M=Prioritaet
         category = Trim(ruleRow.Cells(1, 1).value)      ' Spalte J - Kategorie
         einAus = UCase(Trim(ruleRow.Cells(1, 2).value)) ' Spalte K - E/A
         keyword = Trim(ruleRow.Cells(1, 3).value)       ' Spalte L - Keyword
@@ -148,9 +170,12 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
 
         ' ================================
         ' FILTER 1: Einnahme/Ausgabe MUSS passen!
+        ' Bei 0-Euro-Betraegen: beide erlauben
         ' ================================
-        If einAus = "E" And ctx("IsAusgabe") Then GoTo NextRule
-        If einAus = "A" And ctx("IsEinnahme") Then GoTo NextRule
+        If Not ctx("IsNullBetrag") Then
+            If einAus = "E" And ctx("IsAusgabe") Then GoTo NextRule
+            If einAus = "A" And ctx("IsEinnahme") Then GoTo NextRule
+        End If
 
         ' ================================
         ' FILTER 2: EntityRole-Trennung (wenn bekannt)
@@ -165,7 +190,9 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
             End If
             
             ' MITGLIED darf keine Versorger-Kategorien bekommen
-            If ctx("EntityRole") = "MITGLIED" Then
+            If ctx("EntityRole") = "MITGLIED" Or _
+               ctx("EntityRole") = "MITGLIED_MIT_PACHT" Or _
+               ctx("EntityRole") = "MITGLIED_OHNE_PACHT" Then
                 If LCase(category) Like "*versorger*" Then GoTo NextRule
                 If LCase(category) Like "*stadtwerke*" Then GoTo NextRule
                 If LCase(category) Like "*rueckzahlung versorger*" Then GoTo NextRule
@@ -273,7 +300,4 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         End Select
     End With
 End Sub
-
-
-
 

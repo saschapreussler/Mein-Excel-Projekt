@@ -7,6 +7,8 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
+Option Explicit
+
 Private Sub Worksheet_Change(ByVal Target As Range)
 
     Dim rng_KategorieRegeln As Range
@@ -22,17 +24,18 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Const COL_KATEGORIE As Long = 10  ' J
     Const COL_EINAUS As Long = 11     ' K
     Const COL_ZIELSPALTE As Long = 14 ' N
-    Const COL_FAELLIGKEIT As Long = 15 ' O (war vorher P)
-    Const COL_KOMMENTAR As Long = 16   ' P (war vorher Q)
+    Const COL_FAELLIGKEIT As Long = 15 ' O
+    Const COL_KOMMENTAR As Long = 16   ' P
 
     On Error GoTo ExitPoint
     If Application.EnableEvents = False Then Exit Sub
     If Target.Cells.CountLarge <> 1 Then Exit Sub
 
-    ' === ENTITYKEY-TABELLE VERARBEITUNG (Spalten S-Y, ab Zeile 4) ===
     zeile = Target.Row
     spalte = Target.Column
     
+    ' === ENTITYKEY-TABELLE VERARBEITUNG (Spalten R-X, ab Zeile 4) ===
+    ' KORRIGIERT: Jetzt R-X (18-24) statt S-Y (19-25)
     If zeile >= EK_START_ROW And spalte >= EK_COL_ENTITYKEY And spalte <= EK_COL_DEBUG Then
         
         If spalte = EK_COL_ROLE Then
@@ -43,6 +46,14 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         GoTo ExitPoint
     End If
     
+    ' === KATEGORIE-TABELLE VERARBEITUNG (Spalten J-P, ab Zeile 4) ===
+    If zeile >= DATA_START_ROW And spalte >= DATA_CAT_COL_KATEGORIE And spalte <= DATA_CAT_COL_END Then
+        ' Bei Aenderung in Kategorie oder E/A: DropDown-Listen aktualisieren
+        If spalte = COL_KATEGORIE Or spalte = COL_EINAUS Then
+            Call mod_Formatierung.OnKategorieChange(Target)
+        End If
+    End If
+    
     ' === KATEGORIE-REGELN VERARBEITUNG ===
     
     On Error Resume Next
@@ -51,7 +62,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     If rng_KategorieRegeln Is Nothing Then Exit Sub
 
-    ' Pruefen ob Aenderung in K, N, O oder P liegt (relevante Sync-Spalten)
+    ' Pruefen ob Aenderung in K, N, O liegt (relevante Sync-Spalten)
     Select Case Target.Column
         Case COL_EINAUS, COL_ZIELSPALTE, COL_FAELLIGKEIT
             If Intersect(Target, rng_KategorieRegeln) Is Nothing Then
@@ -111,4 +122,3 @@ Private Function ColName(ByVal colNum As Long) As String
     Loop While colNum > 0
     ColName = temp
 End Function
-

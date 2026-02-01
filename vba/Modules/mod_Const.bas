@@ -4,6 +4,8 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Const
 ' ZWECK: Zentrale Konstanten fuer das gesamte Projekt
+' VERSION: 2.0 - 01.02.2026
+' AENDERUNG: EntityKey-Tabelle jetzt R-X (18-24) nach Loeschung Spalte O
 ' ***************************************************************
 
 ' ===============================================================
@@ -116,48 +118,68 @@ Public Const BK_COL_AUSGABEN_ENDE As Long = 26
 Public Const BK_COL_ENTITY_KEY As Long = 22
 
 ' ===============================================================
-' F. DATEN - ENTITY / MAPPING (Spalten S-Y)
+' F. DATEN - ENTITY / MAPPING (Spalten R-X nach Loeschung von O!)
+' ===============================================================
+' WICHTIG: Nach Loeschung von Spalte O sind alle EntityKey-Spalten
+' um 1 nach links verschoben! R-X statt S-Y (18-24 statt 19-25)
 ' ===============================================================
 Public Const DATA_START_ROW As Long = 4
 
-Public Const DATA_MAP_COL_ENTITYKEY As Long = 19
-Public Const DATA_MAP_COL_IBAN_OLD As Long = 20
-Public Const DATA_MAP_COL_KTONAME As Long = 21
-Public Const DATA_MAP_COL_ZUORDNUNG As Long = 22
-Public Const DATA_MAP_COL_PARZELLE As Long = 23
-Public Const DATA_MAP_COL_ENTITYROLE As Long = 24
-Public Const DATA_MAP_COL_DEBUG As Long = 25
-Public Const DATA_MAP_COL_LAST As Long = 25
+' KORRIGIERT: Spalten 18-24 (R-X) statt 19-25 (S-Y)
+Public Const DATA_MAP_COL_ENTITYKEY As Long = 18    ' R - EntityKey (GUID)
+Public Const DATA_MAP_COL_IBAN_OLD As Long = 19     ' S - IBAN
+Public Const DATA_MAP_COL_KTONAME As Long = 20      ' T - Zahler/Empfaenger
+Public Const DATA_MAP_COL_ZUORDNUNG As Long = 21    ' U - Mitglied(er)/Zuordnung
+Public Const DATA_MAP_COL_PARZELLE As Long = 22     ' V - Parzelle(n)
+Public Const DATA_MAP_COL_ENTITYROLE As Long = 23   ' W - EntityRole
+Public Const DATA_MAP_COL_DEBUG As Long = 24        ' X - Debug Zuordnung
+Public Const DATA_MAP_COL_LAST As Long = 24
 
+' Aliase fuer Kompatibilitaet
 Public Const DATA_MAP_COL_PARZ_KEY As Long = DATA_MAP_COL_PARZELLE
 Public Const DATA_MAP_COL_NAME As Long = DATA_MAP_COL_ZUORDNUNG
 Public Const DATA_MAP_COL_KONTONAME As Long = DATA_MAP_COL_KTONAME
 Public Const DATA_MAP_COL_IBAN As Long = DATA_MAP_COL_IBAN_OLD
 
-' Aliase fuer EntityKey (EK_)
+' Aliase fuer EntityKey (EK_) - ZENTRAL hier definiert!
 Public Const EK_START_ROW As Long = DATA_START_ROW
-Public Const EK_COL_ENTITYKEY As Long = DATA_MAP_COL_ENTITYKEY
-Public Const EK_COL_ROLE As Long = DATA_MAP_COL_ENTITYROLE
-Public Const EK_COL_DEBUG As Long = DATA_MAP_COL_DEBUG
+Public Const EK_HEADER_ROW As Long = 3
+Public Const EK_COL_ENTITYKEY As Long = DATA_MAP_COL_ENTITYKEY   ' 18 = R
+Public Const EK_COL_IBAN As Long = DATA_MAP_COL_IBAN_OLD         ' 19 = S
+Public Const EK_COL_KONTONAME As Long = DATA_MAP_COL_KTONAME     ' 20 = T
+Public Const EK_COL_ZUORDNUNG As Long = DATA_MAP_COL_ZUORDNUNG   ' 21 = U
+Public Const EK_COL_PARZELLE As Long = DATA_MAP_COL_PARZELLE     ' 22 = V
+Public Const EK_COL_ROLE As Long = DATA_MAP_COL_ENTITYROLE       ' 23 = W
+Public Const EK_COL_DEBUG As Long = DATA_MAP_COL_DEBUG           ' 24 = X
 
 ' ===============================================================
-' G. KATEGORIE-TABELLE (Daten! Spalte J-P) - NACH LOESCHUNG VON O
+' G. KATEGORIE-TABELLE (Daten! Spalte J-P)
 ' ===============================================================
-' WICHTIG: Spalte O "Guthabenfaehig" wurde GELOESCHT!
-' Neue Struktur: J=Kategorie, K=E/A, L=Keyword, M=Prioritaet, N=Zielspalte, O=Faelligkeit, P=Kommentar
+' Struktur: J=Kategorie, K=E/A, L=Keyword, M=Prioritaet, N=Zielspalte, O=Faelligkeit, P=Kommentar
 
 Public Const DATA_CAT_COL_START As Long = 10
-Public Const DATA_CAT_COL_KATEGORIE As Long = 10
-Public Const DATA_CAT_COL_EINAUS As Long = 11
-Public Const DATA_CAT_COL_KEYWORD As Long = 12
-Public Const DATA_CAT_COL_PRIORITAET As Long = 13
-Public Const DATA_CAT_COL_ZIELSPALTE As Long = 14
-Public Const DATA_CAT_COL_FAELLIGKEIT As Long = 15
-Public Const DATA_CAT_COL_KOMMENTAR As Long = 16
+Public Const DATA_CAT_COL_KATEGORIE As Long = 10    ' J
+Public Const DATA_CAT_COL_EINAUS As Long = 11       ' K
+Public Const DATA_CAT_COL_KEYWORD As Long = 12      ' L
+Public Const DATA_CAT_COL_PRIORITAET As Long = 13   ' M
+Public Const DATA_CAT_COL_ZIELSPALTE As Long = 14   ' N
+Public Const DATA_CAT_COL_FAELLIGKEIT As Long = 15  ' O
+Public Const DATA_CAT_COL_KOMMENTAR As Long = 16    ' P
 Public Const DATA_CAT_COL_END As Long = 16
 
 ' ===============================================================
-' H. CSV-IMPORT (SPARKASSE)
+' H. HILFSSPALTEN AUF DATEN! (DropDown-Listen etc.)
+' ===============================================================
+Public Const DATA_COL_IMPORT_STATUS As Long = 26    ' Z - Import-Protokoll
+Public Const DATA_COL_DD_KATEGORIE_START As Long = 27  ' AA - DropDown-Liste Kategorien (alt)
+Public Const DATA_COL_DD_KATEGORIE_END As Long = 31    ' AE - DropDown-Liste Ende (alt)
+Public Const DATA_COL_DD_ROLE As Long = 32          ' AF - EntityRole DropDown (alt)
+Public Const DATA_COL_EINNAHMEN As Long = 32        ' AF - Einnahmen-Kategorien
+Public Const DATA_COL_AUSGABEN As Long = 33         ' AG - Ausgaben-Kategorien
+Public Const DATA_COL_MONAT_PERIODE As Long = 34    ' AH - Monat/Periode Liste
+
+' ===============================================================
+' I. CSV-IMPORT (SPARKASSE)
 ' ===============================================================
 Public Const CSV_COL_BUCHUNGSDATUM As Long = 2
 Public Const CSV_COL_STATUS As Long = 4
@@ -167,7 +189,7 @@ Public Const CSV_COL_IBAN As Long = 13
 Public Const CSV_COL_BETRAG As Long = 15
 
 ' ===============================================================
-' I. ZAEHLERLOGIK
+' J. ZAEHLERLOGIK
 ' ===============================================================
 Public Const COL_PARZELLE As Long = 1
 Public Const COL_STAND_ANFANG As Long = 2
@@ -181,7 +203,7 @@ Public Const HIST_TABLE_NAME As String = "tbl_Historie"
 Public Const STR_HISTORY_SEPARATOR As String = "--- MA-INFO ---"
 
 ' ===============================================================
-' J. LISTBOX / PROTOKOLL
+' K. LISTBOX / PROTOKOLL
 ' ===============================================================
 Public Const FORM_LISTBOX_NAME As String = "lst_ImportReport"
 Public Const WS_PROTOCOL_TEMP As String = "Protokoll_Temp"
@@ -190,12 +212,12 @@ Public Const MAX_LISTBOX_LINES As Long = 60
 Public Const CELL_IMPORT_PROTOKOLL As String = "Z100"
 
 ' ===============================================================
-' K. ENTITY ROLE
+' L. ENTITY ROLE
 ' ===============================================================
-Public Const ROLE_RANGE As String = "AE4:AE8"
+Public Const ROLE_RANGE As String = "AF4:AF10"
 
 ' ===============================================================
-' L. MITGLIEDERHISTORIE - STRUKTUR
+' M. MITGLIEDERHISTORIE - STRUKTUR
 ' ===============================================================
 Public Const H_HEADER_ROW As Long = 3
 Public Const H_START_ROW As Long = 4
@@ -216,7 +238,7 @@ Public Const H_COL_ENDABRECHNUNG As Long = 9
 Public Const H_COL_SYSTEMZEIT As Long = 10
 
 ' ===============================================================
-' M. SICHERHEIT & SONSTIGES
+' N. SICHERHEIT & SONSTIGES
 ' ===============================================================
 Public Const PASSWORD As String = ""
 Public Const PARZELLE_VEREIN As String = "Verein"
@@ -224,7 +246,7 @@ Public Const ANREDE_KGA As String = "KGA"
 Public Const AUSTRITT_STATUS As String = "Ehemaliges Mitglied"
 
 ' ===============================================================
-' N. ERLAUBTE FUNKTIONEN FUER PARZELLENPACHT
+' O. ERLAUBTE FUNKTIONEN FUER PARZELLENPACHT
 ' ===============================================================
 Public Const FUNKTION_MITGLIED_MIT_PACHT As String = "Mitglied mit Pacht"
 Public Const FUNKTION_1_VORSITZENDER As String = "1. Vorsitzende(r)"
@@ -241,8 +263,6 @@ Public Function GetErlaubteFunktionenFuerParzelle() As Variant
         FUNKTION_SCHRIFTFUEHRER _
     )
 End Function
-
-
 
 
 

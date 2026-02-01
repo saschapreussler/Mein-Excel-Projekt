@@ -3,458 +3,490 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Formatierung
-' ZWECK: Zentrale Verwaltung aller Tabellenformatierungen
+' ZWECK: Formatierung und DropDown-Listen-Verwaltung
+' VERSION: 1.0 - 01.02.2026
 ' ***************************************************************
 
-' ***************************************************************
-' PROZEDUR: Anwende_Zebra_Formatierung_Direkt (Mit direkter Zellfärbung, ohne BF)
-' ***************************************************************
-Public Sub Anwende_Zebra_Formatierung_Direkt(ByVal ws As Worksheet, ByVal startCol As Long, ByVal endCol As Long, ByVal startRow As Long, ByVal dataCheckCol As Long)
-    
-    Const ZEBRA_COLOR As Long = &HDEE5E3
-    
-    If ws Is Nothing Then Exit Sub
+Private Const ZEBRA_COLOR As Long = &HDEE5E3
 
-    Dim lastRow As Long
-    Dim lRow As Long
-    Dim rngRow As Range
-    Dim checkColValue As Variant
-    
-    ' 1. Letzte gefüllte Zeile in der Prüfspalte ermitteln
-    lastRow = ws.Cells(ws.Rows.Count, dataCheckCol).End(xlUp).Row
-    If lastRow < startRow Then
-        Exit Sub ' Keine Daten vorhanden
-    End If
-    
-    ' 2. Existierende Formatierungen (Farben) löschen
-    On Error Resume Next
-    ws.Range(ws.Cells(startRow, startCol), ws.Cells(lastRow, endCol)).Interior.ColorIndex = xlNone
-    On Error GoTo 0
-    
-    ' 3. Direkte Zellenf?bung mit MOD-Logik
-    For lRow = startRow To lastRow
-        ' Prüfe ob Zelle in der Prüfspalte gefüllt ist
-        checkColValue = ws.Cells(lRow, dataCheckCol).value
-        If checkColValue <> "" And Not IsEmpty(checkColValue) Then
-            ' Ungerade Zeilen (ab startRow) färben
-            If (lRow - startRow) Mod 2 = 1 Then
-                Set rngRow = ws.Range(ws.Cells(lRow, startCol), ws.Cells(lRow, endCol))
-                rngRow.Interior.color = ZEBRA_COLOR
-            End If
-        End If
-    Next lRow
-
-End Sub
-
-
-' ***************************************************************
-' PROZEDUR: Entferne_Zebra_Formatierung (Löscht alle Zellenfarben vor Neuerstellung)
-' ***************************************************************
-Public Sub Entferne_Zebra_Formatierung()
+' ===============================================================
+' HAUPTPROZEDUR: Formatiert das gesamte Daten-Blatt
+' ===============================================================
+Public Sub FormatiereBlattDaten()
     
     Dim ws As Worksheet
-    Dim lastRow As Long
-    
-    On Error Resume Next
-    
-    ' 1. Mitgliederliste (WS_MITGLIEDER)
-    Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER)
-    If Not ws Is Nothing Then
-        lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
-        If lastRow >= M_START_ROW Then
-            ws.Range(ws.Cells(M_START_ROW, M_COL_MEMBER_ID), ws.Cells(lastRow, M_COL_PACHTENDE)).Interior.ColorIndex = xlNone
-        End If
-    End If
-    
-    ' 2. Mitgliederhistorie (WS_MITGLIEDER_HISTORIE)
-    Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
-    If Not ws Is Nothing Then
-        lastRow = ws.Cells(ws.Rows.Count, H_COL_NACHNAME).End(xlUp).Row
-        If lastRow >= H_START_ROW Then
-            ws.Range(ws.Cells(H_START_ROW, H_COL_PARZELLE), ws.Cells(lastRow, H_COL_SYSTEMZEIT)).Interior.ColorIndex = xlNone
-        End If
-    End If
-    
-    ' 3. Datenblatt - Tabelle 1 (WS_DATEN)
     Set ws = ThisWorkbook.Worksheets(WS_DATEN)
-    If Not ws Is Nothing Then
-        lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_START).End(xlUp).Row
-        If lastRow >= DATA_START_ROW Then
-            ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), ws.Cells(lastRow, DATA_CAT_COL_END)).Interior.ColorIndex = xlNone
-        End If
-        
-        ' Datenblatt - Tabelle 2 (WS_DATEN)
-        lastRow = ws.Cells(ws.Rows.Count, DATA_MAP_COL_ENTITYKEY).End(xlUp).Row
-        If lastRow >= DATA_START_ROW Then
-            ws.Range(ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYKEY), ws.Cells(lastRow, 21)).Interior.ColorIndex = xlNone
-        End If
-    End If
     
-    On Error GoTo 0
-    
-End Sub
-
-
-' ***************************************************************
-' PROZEDUR: FormatiereMitgliedertabelle (Komplette Tabellenformatierung)
-' ***************************************************************
-Public Sub FormatiereMitgliedertabelle()
-    
-    Dim ws As Worksheet
-    Dim lastRow As Long
-    Dim rngData As Range
-    Dim wasProtected As Boolean
-    
-    On Error GoTo ErrorHandler
-    
-    Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER)
-    If ws Is Nothing Then Exit Sub
-    
-    wasProtected = ws.ProtectContents
-    If wasProtected Then ws.Unprotect PASSWORD:=PASSWORD
-    
-    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
-    If lastRow < M_START_ROW Then GoTo Cleanup
-    
-    ' Datenbereich für Formatierung
-    Set rngData = ws.Range(ws.Cells(M_START_ROW, M_COL_MEMBER_ID), ws.Cells(lastRow, M_COL_PACHTENDE))
-    
-    ' --- 1. RAHMENLINIE (dünne schwarze Linien) ---
-    With rngData.Borders
-        .LineStyle = xlContinuous
-        .color = RGB(0, 0, 0)
-        .Weight = xlThin
-    End With
-    
-    ' --- 2. SPALTE A (Member ID) - zentrisch ---
-    With ws.Range(ws.Cells(M_START_ROW, M_COL_MEMBER_ID), ws.Cells(lastRow, M_COL_MEMBER_ID))
-        .HorizontalAlignment = xlCenter
-        .VerticalAlignment = xlCenter
-    End With
-    
-    ' --- 3. SPALTE B (Parzelle) - zentrisch ---
-    With ws.Range(ws.Cells(M_START_ROW, M_COL_PARZELLE), ws.Cells(lastRow, M_COL_PARZELLE))
-        .HorizontalAlignment = xlCenter
-        .VerticalAlignment = xlCenter
-    End With
-    
-    ' --- 4. SPALTE H (Nummer/Hausnummer) - zentrisch ---
-    With ws.Range(ws.Cells(M_START_ROW, M_COL_NUMMER), ws.Cells(lastRow, M_COL_NUMMER))
-        .HorizontalAlignment = xlCenter
-        .VerticalAlignment = xlCenter
-    End With
-    
-    ' --- 5. SPALTE I (PLZ) - zentrisch ---
-    With ws.Range(ws.Cells(M_START_ROW, M_COL_PLZ), ws.Cells(lastRow, M_COL_PLZ))
-        .HorizontalAlignment = xlCenter
-        .VerticalAlignment = xlCenter
-    End With
-    
-    ' --- 6. SPALTE C (Seite) - zentrisch ---
-    With ws.Range(ws.Cells(M_START_ROW, M_COL_SEITE), ws.Cells(lastRow, M_COL_SEITE))
-        .HorizontalAlignment = xlCenter
-        .VerticalAlignment = xlCenter
-    End With
-    
-    ' --- 7. DATUMSFORMATE ---
-    With ws.Range(ws.Cells(M_START_ROW, M_COL_GEBURTSTAG), ws.Cells(lastRow, M_COL_GEBURTSTAG))
-        .NumberFormat = "dd.mm.yyyy"
-    End With
-    
-    With ws.Range(ws.Cells(M_START_ROW, M_COL_PACHTANFANG), ws.Cells(lastRow, M_COL_PACHTANFANG))
-        .NumberFormat = "dd.mm.yyyy"
-    End With
-    
-    With ws.Range(ws.Cells(M_START_ROW, M_COL_PACHTENDE), ws.Cells(lastRow, M_COL_PACHTENDE))
-        .NumberFormat = "dd.mm.yyyy"
-    End With
-    
-Cleanup:
-    If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    Exit Sub
-ErrorHandler:
-    If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    MsgBox "Fehler beim Formatieren der Mitgliedertabelle: " & Err.Description, vbCritical
-End Sub
-
-' ***************************************************************
-' PROZEDUR: Formatiere_Mitgliederhistorie (Formatierung für Historientabelle)
-' Spalten A-J mit spezifischen Ausrichtungen:
-' A = zentriert, B-H = linksbündig, I = zentriert, J = rechtsbündig
-' Alle Zellen vertikal zentriert, AutoFit ab Zeile 4
-' ***************************************************************
-Public Sub Formatiere_Mitgliederhistorie()
-    
-    Dim ws As Worksheet
-    Dim lastRow As Long
-    Dim rngData As Range
-    Dim rngHeaders As Range
-    Dim wasProtected As Boolean
-    
-    On Error GoTo ErrorHandler
-    
-    Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
-    If ws Is Nothing Then Exit Sub
-    
-    wasProtected = ws.ProtectContents
-    If wasProtected Then ws.Unprotect PASSWORD:=PASSWORD
-    
-    lastRow = ws.Cells(ws.Rows.Count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row
-    If lastRow < H_START_ROW Then lastRow = H_START_ROW ' Mindestens Header-Zeile
-    
-    ' Datenbereich für Formatierung (ab Zeile 3 = Header)
-    Set rngData = ws.Range(ws.Cells(H_HEADER_ROW, H_COL_PARZELLE), ws.Cells(lastRow, H_COL_SYSTEMZEIT))
-    Set rngHeaders = ws.Range(ws.Cells(H_HEADER_ROW, H_COL_PARZELLE), ws.Cells(H_HEADER_ROW, H_COL_SYSTEMZEIT))
-    
-    ' --- 1. RAHMENLINIE (dünne schwarze Linien) ---
-    With rngData.Borders
-        .LineStyle = xlContinuous
-        .color = RGB(0, 0, 0)
-        .Weight = xlThin
-    End With
-    
-    ' --- 2. VERTIKALE AUSRICHTUNG: Alle Zellen zentriert in Zellenhöhe ---
-    rngData.VerticalAlignment = xlCenter
-    
-    ' --- 3. HORIZONTALE AUSRICHTUNG je Spalte (ab Zeile 3 inkl. Header) ---
-    
-    ' Spalte A (Parzelle) - ZENTRIERT
-    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_PARZELLE), ws.Cells(lastRow, H_COL_PARZELLE)).HorizontalAlignment = xlCenter
-    
-    ' Spalte B (Member ID alt) - LINKSBÜNDIG
-    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_MEMBER_ID_ALT), ws.Cells(lastRow, H_COL_MEMBER_ID_ALT)).HorizontalAlignment = xlLeft
-    
-    ' Spalte C (Name ehem. Pächter) - LINKSBÜNDIG
-    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_NAME_EHEM_PAECHTER), ws.Cells(lastRow, H_COL_NAME_EHEM_PAECHTER)).HorizontalAlignment = xlLeft
-    
-    ' Spalte D (Austrittsdatum) - LINKSBÜNDIG
-    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_AUST_DATUM), ws.Cells(lastRow, H_COL_AUST_DATUM)).HorizontalAlignment = xlLeft
-    
-    ' Spalte E (Grund des Austritts) - LINKSBÜNDIG
-    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_GRUND), ws.Cells(lastRow, H_COL_GRUND)).HorizontalAlignment = xlLeft
-    
-    ' Spalte F (Name neuer Pächter) - LINKSBÜNDIG
-    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_NACHPAECHTER_NAME), ws.Cells(lastRow, H_COL_NACHPAECHTER_NAME)).HorizontalAlignment = xlLeft
-    
-    ' Spalte G (ID neuer Pächter) - LINKSBÜNDIG
-    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_NACHPAECHTER_ID), ws.Cells(lastRow, H_COL_NACHPAECHTER_ID)).HorizontalAlignment = xlLeft
-    
-    ' Spalte H (Kommentar) - LINKSBÜNDIG
-    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_KOMMENTAR), ws.Cells(lastRow, H_COL_KOMMENTAR)).HorizontalAlignment = xlLeft
-    
-    ' Spalte I (Endabrechnung erstellt) - ZENTRIERT
-    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_ENDABRECHNUNG), ws.Cells(lastRow, H_COL_ENDABRECHNUNG)).HorizontalAlignment = xlCenter
-    
-    ' Spalte J (Systemzeit) - RECHTSBÜNDIG
-    ws.Range(ws.Cells(H_HEADER_ROW, H_COL_SYSTEMZEIT), ws.Cells(lastRow, H_COL_SYSTEMZEIT)).HorizontalAlignment = xlRight
-    
-    ' --- 4. DATUMSFORMATE ---
-    With ws.Range(ws.Cells(H_START_ROW, H_COL_AUST_DATUM), ws.Cells(lastRow, H_COL_AUST_DATUM))
-        .NumberFormat = "dd.mm.yyyy"
-    End With
-    
-    With ws.Range(ws.Cells(H_START_ROW, H_COL_SYSTEMZEIT), ws.Cells(lastRow, H_COL_SYSTEMZEIT))
-        .NumberFormat = "dd.mm.yyyy hh:mm:ss"
-    End With
-    
-    ' --- 5. AUTOFIT Spaltenbreite (nur Datenbereich ab Zeile 4) ---
-    ' Wir berechnen AutoFit basierend auf dem gesamten Bereich ab Header
-    Dim col As Long
-    For col = H_COL_PARZELLE To H_COL_SYSTEMZEIT
-        ws.Columns(col).AutoFit
-    Next col
-    
-    ' --- 6. ZEBRA-FORMATIERUNG (NACH anderen Formatierungen!) ---
-    Call Anwende_Zebra_Formatierung_Direkt(ws, H_COL_PARZELLE, H_COL_SYSTEMZEIT, H_START_ROW, H_COL_NAME_EHEM_PAECHTER)
-
-Cleanup:
-    If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    Exit Sub
-ErrorHandler:
-    If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    MsgBox "Fehler beim Formatieren der Mitgliederhistorie: " & Err.Description, vbCritical
-End Sub
-
-
-' ***************************************************************
-' PROZEDUR: Formatiere_Alle_Tabellen_Neu (Zentrale Formatierungs-Koordination)
-' WICHTIG: Zebra-Formatierung wird NACH FormatiereMitgliedertabelle angewendet!
-' ***************************************************************
-Public Sub Formatiere_Alle_Tabellen_Neu()
-
-    Dim wsM As Worksheet
-    Dim wsD As Worksheet
-    Dim wsH As Worksheet
-
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ErrorHandler
     
-    ' 1. Mitgliederliste (WS_MITGLIEDER)
-    Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
-    If Not wsM Is Nothing Then
-        Dim wasProtectedM As Boolean
-        wasProtectedM = wsM.ProtectContents
-        If wasProtectedM Then wsM.Unprotect PASSWORD:=PASSWORD
-        
-        ' Spezielle Formatierungen (Borders, Alignment, etc.) ZUERST
-        Call FormatiereMitgliedertabelle
-        
-        ' Zebra-Formatierung NACH anderen Formatierungen! (A bis Q, Prüfspalte: Nachname)
-        Call Anwende_Zebra_Formatierung_Direkt(wsM, M_COL_MEMBER_ID, M_COL_PACHTENDE, M_START_ROW, M_COL_NACHNAME)
-        
-        If wasProtectedM Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    End If
+    ' 1. Gesamtes Blatt: Vertikal zentriert
+    ws.Cells.VerticalAlignment = xlCenter
     
-    ' 2. Mitgliederhistorie (WS_MITGLIEDER_HISTORIE)
-    Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
-    If Not wsH Is Nothing Then
-        Dim wasProtectedH As Boolean
-        wasProtectedH = wsH.ProtectContents
-        If wasProtectedH Then wsH.Unprotect PASSWORD:=PASSWORD
-        
-        ' Formatierung für Historientabelle (Zebra wird dort bereits NACH anderen Formatierungen angewendet)
-        Call Formatiere_Mitgliederhistorie
-        
-        If wasProtectedH Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    End If
+    ' 2. Kategorie-Tabelle formatieren
+    Call FormatiereKategorieTabelle(ws)
     
-    ' 3. Datenblatt (WS_DATEN)
-    Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
-    If Not wsD Is Nothing Then
-        Dim wasProtectedD As Boolean
-        wasProtectedD = wsD.ProtectContents
-        If wasProtectedD Then wsD.Unprotect PASSWORD:=PASSWORD
-        
-        ' Formatierung für beide Tabellen (Zebra wird dort bereits NACH Rahmenlinie angewendet)
-        Call Formatiere_Daten_Tabellen
-        
-        If wasProtectedD Then wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    End If
+    ' 3. EntityKey-Tabelle formatieren (falls vorhanden)
+    Call FormatiereEntityKeyTabelleKomplett(ws)
     
-    ' BANKKONTO: Wird NICHT formatiert - nutzt bedingte Formatierung stattdessen
-
-Cleanup:
-    Application.ScreenUpdating = True
+    ' 4. DropDown-Listen fuer Kategorien aktualisieren
+    Call AktualisiereKategorieDropdownListen(ws)
+    
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
     Application.EnableEvents = True
-    Exit Sub
-ErrorHandler:
     Application.ScreenUpdating = True
-    Application.EnableEvents = True
-    MsgBox "FEHLER beim Formatieren der Tabellen: " & Err.Description, vbCritical
-End Sub
-
-
-' ***************************************************************
-' PROZEDUR: Formatiere_Daten_Tabellen (Formatierung für Datenblatt)
-' Formatiert beide Tabellen auf dem Datenblatt
-' ***************************************************************
-Public Sub Formatiere_Daten_Tabellen()
     
-    Dim ws As Worksheet
-    Dim lastRow As Long
-    Dim rngData As Range
-    Dim wasProtected As Boolean
+    MsgBox "Formatierung des Daten-Blatts abgeschlossen!" & vbCrLf & vbCrLf & _
+           "- Alle Zellen vertikal zentriert" & vbCrLf & _
+           "- Kategorie-Tabelle formatiert" & vbCrLf & _
+           "- EntityKey-Tabelle formatiert" & vbCrLf & _
+           "- DropDown-Listen aktualisiert", vbInformation
     
-    On Error GoTo ErrorHandler
-    
-    Set ws = ThisWorkbook.Worksheets(WS_DATEN)
-    If ws Is Nothing Then Exit Sub
-    
-    wasProtected = ws.ProtectContents
-    If wasProtected Then ws.Unprotect PASSWORD:=PASSWORD
-    
-    ' === TABELLE 1: Kategorien (Spalten B-E, ab Zeile 4) ===
-    lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_START).End(xlUp).Row
-    If lastRow >= DATA_START_ROW Then
-        Set rngData = ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), ws.Cells(lastRow, DATA_CAT_COL_END))
-        
-        ' Rahmenlinie
-        With rngData.Borders
-            .LineStyle = xlContinuous
-            .color = RGB(0, 0, 0)
-            .Weight = xlThin
-        End With
-        
-        ' Vertikale Ausrichtung
-        rngData.VerticalAlignment = xlCenter
-        
-        ' Zebra-Formatierung
-        Call Anwende_Zebra_Formatierung_Direkt(ws, DATA_CAT_COL_START, DATA_CAT_COL_END, DATA_START_ROW, DATA_CAT_COL_START)
-    End If
-    
-    ' === TABELLE 2: Mapping (Spalten H-U, ab Zeile 4) ===
-    lastRow = ws.Cells(ws.Rows.Count, DATA_MAP_COL_ENTITYKEY).End(xlUp).Row
-    If lastRow >= DATA_START_ROW Then
-        Set rngData = ws.Range(ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYKEY), ws.Cells(lastRow, 21))
-        
-        ' Rahmenlinie
-        With rngData.Borders
-            .LineStyle = xlContinuous
-            .color = RGB(0, 0, 0)
-            .Weight = xlThin
-        End With
-        
-        ' Vertikale Ausrichtung
-        rngData.VerticalAlignment = xlCenter
-        
-        ' Zebra-Formatierung
-        Call Anwende_Zebra_Formatierung_Direkt(ws, DATA_MAP_COL_ENTITYKEY, 21, DATA_START_ROW, DATA_MAP_COL_ENTITYKEY)
-    End If
-
-Cleanup:
-    If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Exit Sub
     
 ErrorHandler:
-    If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    MsgBox "Fehler beim Formatieren der Daten-Tabellen: " & Err.Description, vbCritical
+    Application.EnableEvents = True
+    Application.ScreenUpdating = True
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    MsgBox "Fehler bei der Formatierung: " & Err.Description, vbCritical
 End Sub
 
+' ===============================================================
+' KATEGORIE-TABELLE FORMATIEREN (J-P)
+' ===============================================================
+Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
+    
+    Dim lastRow As Long
+    Dim rngTable As Range
+    Dim r As Long
+    Dim einAusWert As String
+    
+    If ws Is Nothing Then Set ws = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    If lastRow < DATA_START_ROW Then Exit Sub
+    
+    Set rngTable = ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
+                            ws.Cells(lastRow, DATA_CAT_COL_END))
+    
+    ' Rahmen fuer gesamte Tabelle (innen und aussen)
+    With rngTable.Borders(xlEdgeLeft)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = xlAutomatic
+    End With
+    With rngTable.Borders(xlEdgeTop)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = xlAutomatic
+    End With
+    With rngTable.Borders(xlEdgeBottom)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = xlAutomatic
+    End With
+    With rngTable.Borders(xlEdgeRight)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = xlAutomatic
+    End With
+    With rngTable.Borders(xlInsideVertical)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = xlAutomatic
+    End With
+    With rngTable.Borders(xlInsideHorizontal)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = xlAutomatic
+    End With
+    
+    ' Vertikal zentriert
+    rngTable.VerticalAlignment = xlCenter
+    
+    ' Spalte J (Kategorie): Linksbuendig
+    ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KATEGORIE), _
+             ws.Cells(lastRow, DATA_CAT_COL_KATEGORIE)).HorizontalAlignment = xlLeft
+    
+    ' Spalte K (Einnahme/Ausgabe): Zentriert
+    ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_EINAUS), _
+             ws.Cells(lastRow, DATA_CAT_COL_EINAUS)).HorizontalAlignment = xlCenter
+    
+    ' Spalte L (Keyword): Linksbuendig
+    ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KEYWORD), _
+             ws.Cells(lastRow, DATA_CAT_COL_KEYWORD)).HorizontalAlignment = xlLeft
+    
+    ' Spalte M (Prioritaet): Zentriert
+    ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_PRIORITAET), _
+             ws.Cells(lastRow, DATA_CAT_COL_PRIORITAET)).HorizontalAlignment = xlCenter
+    
+    ' Spalte N (Zielspalte): Linksbuendig + DropDown
+    ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_ZIELSPALTE), _
+             ws.Cells(lastRow, DATA_CAT_COL_ZIELSPALTE)).HorizontalAlignment = xlLeft
+    
+    ' Spalte O (Faelligkeit): Linksbuendig
+    ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_FAELLIGKEIT), _
+             ws.Cells(lastRow, DATA_CAT_COL_FAELLIGKEIT)).HorizontalAlignment = xlLeft
+    
+    ' Spalte P (Kommentar): Linksbuendig
+    ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KOMMENTAR), _
+             ws.Cells(lastRow, DATA_CAT_COL_KOMMENTAR)).HorizontalAlignment = xlLeft
+    
+    ' DropDown fuer Zielspalte (N) basierend auf E/A in Spalte K
+    For r = DATA_START_ROW To lastRow
+        einAusWert = UCase(Trim(ws.Cells(r, DATA_CAT_COL_EINAUS).value))
+        Call SetzeZielspalteDropdown(ws, r, einAusWert)
+    Next r
+    
+    ' AutoFit Spaltenbreiten
+    ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
+             ws.Cells(lastRow, DATA_CAT_COL_END)).EntireColumn.AutoFit
+    
+End Sub
 
+' ===============================================================
+' ZIELSPALTE-DROPDOWN SETZEN (abhaengig von E/A)
+' ===============================================================
+Private Sub SetzeZielspalteDropdown(ByRef ws As Worksheet, ByVal zeile As Long, ByVal einAus As String)
+    
+    Dim dropdownSource As String
+    
+    On Error Resume Next
+    ws.Cells(zeile, DATA_CAT_COL_ZIELSPALTE).Validation.Delete
+    On Error GoTo 0
+    
+    ' Erstelle DropDown basierend auf E/A
+    Select Case einAus
+        Case "E"
+            ' Einnahmen: Spalten M-S auf Bankkonto! (Zeile 27)
+            dropdownSource = "=" & WS_BANKKONTO & "!$M$27:$S$27"
+        Case "A"
+            ' Ausgaben: Spalten T-Z auf Bankkonto! (Zeile 27)
+            dropdownSource = "=" & WS_BANKKONTO & "!$T$27:$Z$27"
+        Case Else
+            ' Alles: Spalten M-Z auf Bankkonto! (Zeile 27)
+            dropdownSource = "=" & WS_BANKKONTO & "!$M$27:$Z$27"
+    End Select
+    
+    On Error Resume Next
+    With ws.Cells(zeile, DATA_CAT_COL_ZIELSPALTE).Validation
+        .Add Type:=xlValidateList, _
+             AlertStyle:=xlValidAlertWarning, _
+             Formula1:=dropdownSource
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .ShowInput = False
+        .ShowError = True
+    End With
+    On Error GoTo 0
+    
+End Sub
 
-' ***************************************************************
-' PROZEDUR: DebugNachFormatierung (Debug-Funktion für Zebra-Formatierung)
-' ***************************************************************
-Public Sub DebugNachFormatierung()
+' ===============================================================
+' DROPDOWN-LISTEN FUER KATEGORIEN AKTUALISIEREN (AF + AG + AH)
+' ===============================================================
+Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = Nothing)
+    
+    Dim lastRow As Long
+    Dim r As Long
+    Dim kategorie As String
+    Dim einAus As String
+    Dim dictEinnahmen As Object
+    Dim dictAusgaben As Object
+    Dim key As Variant
+    Dim nextRowE As Long
+    Dim nextRowA As Long
+    
+    If ws Is Nothing Then Set ws = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    Set dictEinnahmen = CreateObject("Scripting.Dictionary")
+    Set dictAusgaben = CreateObject("Scripting.Dictionary")
+    
+    lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    If lastRow < DATA_START_ROW Then Exit Sub
+    
+    ' Sammle eindeutige Kategorien nach E/A
+    For r = DATA_START_ROW To lastRow
+        kategorie = Trim(ws.Cells(r, DATA_CAT_COL_KATEGORIE).value)
+        einAus = UCase(Trim(ws.Cells(r, DATA_CAT_COL_EINAUS).value))
+        
+        If kategorie <> "" Then
+            If einAus = "E" Then
+                If Not dictEinnahmen.Exists(kategorie) Then
+                    dictEinnahmen.Add kategorie, kategorie
+                End If
+            ElseIf einAus = "A" Then
+                If Not dictAusgaben.Exists(kategorie) Then
+                    dictAusgaben.Add kategorie, kategorie
+                End If
+            End If
+        End If
+    Next r
+    
+    ' Loesche alte Listen (AF ab Zeile 4, AG ab Zeile 4, AH ab Zeile 4)
+    On Error Resume Next
+    ws.Range("AF4:AF1000").ClearContents
+    ws.Range("AG4:AG1000").ClearContents
+    ws.Range("AH4:AH1000").ClearContents
+    On Error GoTo 0
+    
+    ' Schreibe Einnahmen-Kategorien nach AF (Spalte 32)
+    nextRowE = 4
+    For Each key In dictEinnahmen.Keys
+        ws.Cells(nextRowE, DATA_COL_EINNAHMEN).value = key
+        nextRowE = nextRowE + 1
+    Next key
+    
+    ' Schreibe Ausgaben-Kategorien nach AG (Spalte 33)
+    nextRowA = 4
+    For Each key In dictAusgaben.Keys
+        ws.Cells(nextRowA, DATA_COL_AUSGABEN).value = key
+        nextRowA = nextRowA + 1
+    Next key
+    
+    ' Schreibe Monat/Periode nach AH (Spalte 34)
+    ws.Cells(4, DATA_COL_MONAT_PERIODE).value = "Januar"
+    ws.Cells(5, DATA_COL_MONAT_PERIODE).value = "Februar"
+    ws.Cells(6, DATA_COL_MONAT_PERIODE).value = "Maerz"
+    ws.Cells(7, DATA_COL_MONAT_PERIODE).value = "April"
+    ws.Cells(8, DATA_COL_MONAT_PERIODE).value = "Mai"
+    ws.Cells(9, DATA_COL_MONAT_PERIODE).value = "Juni"
+    ws.Cells(10, DATA_COL_MONAT_PERIODE).value = "Juli"
+    ws.Cells(11, DATA_COL_MONAT_PERIODE).value = "August"
+    ws.Cells(12, DATA_COL_MONAT_PERIODE).value = "September"
+    ws.Cells(13, DATA_COL_MONAT_PERIODE).value = "Oktober"
+    ws.Cells(14, DATA_COL_MONAT_PERIODE).value = "November"
+    ws.Cells(15, DATA_COL_MONAT_PERIODE).value = "Dezember"
+    
+    ' Erstelle/aktualisiere Named Ranges
+    Call ErstelleKategorieNamedRanges(ws, nextRowE - 1, nextRowA - 1)
+    
+End Sub
+
+' ===============================================================
+' NAMED RANGES FUER KATEGORIEN ERSTELLEN
+' ===============================================================
+Private Sub ErstelleKategorieNamedRanges(ByRef ws As Worksheet, ByVal lastRowE As Long, ByVal lastRowA As Long)
+    
+    On Error Resume Next
+    
+    ' Alte Named Ranges loeschen falls vorhanden
+    ThisWorkbook.Names("lst_KategorienEinnahmen").Delete
+    ThisWorkbook.Names("lst_KategorienAusgaben").Delete
+    ThisWorkbook.Names("lst_MonatPeriode").Delete
+    
+    ' lst_KategorienEinnahmen
+    If lastRowE >= 4 Then
+        ThisWorkbook.Names.Add Name:="lst_KategorienEinnahmen", _
+            RefersTo:="=" & ws.Name & "!$AF$4:$AF$" & lastRowE
+    Else
+        ThisWorkbook.Names.Add Name:="lst_KategorienEinnahmen", _
+            RefersTo:="=" & ws.Name & "!$AF$4"
+    End If
+    
+    ' lst_KategorienAusgaben
+    If lastRowA >= 4 Then
+        ThisWorkbook.Names.Add Name:="lst_KategorienAusgaben", _
+            RefersTo:="=" & ws.Name & "!$AG$4:$AG$" & lastRowA
+    Else
+        ThisWorkbook.Names.Add Name:="lst_KategorienAusgaben", _
+            RefersTo:="=" & ws.Name & "!$AG$4"
+    End If
+    
+    ' lst_MonatPeriode
+    ThisWorkbook.Names.Add Name:="lst_MonatPeriode", _
+        RefersTo:="=" & ws.Name & "!$AH$4:$AH$15"
+    
+    On Error GoTo 0
+    
+End Sub
+
+' ===============================================================
+' ENTITYKEY-TABELLE KOMPLETT FORMATIEREN
+' ===============================================================
+Public Sub FormatiereEntityKeyTabelleKomplett(Optional ByRef ws As Worksheet = Nothing)
+    
+    Dim lastRow As Long
+    Dim rngTable As Range
+    Dim rngZebra As Range
+    Dim r As Long
+    
+    If ws Is Nothing Then Set ws = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    lastRow = ws.Cells(ws.Rows.Count, EK_COL_IBAN).End(xlUp).Row
+    If lastRow < EK_START_ROW Then Exit Sub
+    
+    Set rngTable = ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
+                            ws.Cells(lastRow, EK_COL_DEBUG))
+    
+    ' Rahmen (innen und aussen)
+    With rngTable.Borders(xlEdgeLeft)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = xlAutomatic
+    End With
+    With rngTable.Borders(xlEdgeTop)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = xlAutomatic
+    End With
+    With rngTable.Borders(xlEdgeBottom)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = xlAutomatic
+    End With
+    With rngTable.Borders(xlEdgeRight)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = xlAutomatic
+    End With
+    With rngTable.Borders(xlInsideVertical)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = xlAutomatic
+    End With
+    With rngTable.Borders(xlInsideHorizontal)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = xlAutomatic
+    End With
+    
+    ' Vertikal zentriert
+    rngTable.VerticalAlignment = xlCenter
+    
+    ' Textumbruch fuer Spalten S-X (IBAN bis Debug)
+    ws.Range(ws.Cells(EK_START_ROW, EK_COL_IBAN), _
+             ws.Cells(lastRow, EK_COL_DEBUG)).WrapText = True
+    
+    ' Spalte R (EntityKey): Kein Textumbruch, linksbuendig
+    With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
+                  ws.Cells(lastRow, EK_COL_ENTITYKEY))
+        .WrapText = False
+        .HorizontalAlignment = xlLeft
+    End With
+    ws.Columns(EK_COL_ENTITYKEY).ColumnWidth = 14
+    
+    ' Spalte V + W: Zentriert
+    ws.Range(ws.Cells(EK_START_ROW, EK_COL_PARZELLE), _
+             ws.Cells(lastRow, EK_COL_PARZELLE)).HorizontalAlignment = xlCenter
+    ws.Range(ws.Cells(EK_START_ROW, EK_COL_ROLE), _
+             ws.Cells(lastRow, EK_COL_ROLE)).HorizontalAlignment = xlCenter
+    
+    ' Zebra-Formatierung fuer Spalten R-T
+    For r = EK_START_ROW To lastRow
+        Set rngZebra = ws.Range(ws.Cells(r, EK_COL_ENTITYKEY), ws.Cells(r, EK_COL_KONTONAME))
+        
+        If (r - EK_START_ROW) Mod 2 = 1 Then
+            rngZebra.Interior.color = ZEBRA_COLOR
+        Else
+            rngZebra.Interior.ColorIndex = xlNone
+        End If
+    Next r
+    
+    ' AutoFit
+    ws.Range(ws.Cells(EK_START_ROW, EK_COL_IBAN), _
+             ws.Cells(lastRow, EK_COL_DEBUG)).EntireColumn.AutoFit
+    ws.Rows(EK_START_ROW & ":" & lastRow).AutoFit
+    
+End Sub
+
+' ===============================================================
+' BANKKONTO-BLATT FORMATIEREN (Punkt 6 + 7)
+' ===============================================================
+Public Sub FormatiereBlattBankkonto()
     
     Dim ws As Worksheet
     Dim lastRow As Long
-    Dim lRow As Long
     
-    Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER)
-    If ws Is Nothing Then Exit Sub
+    Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
     
-    Debug.Print ""
-    Debug.Print "===== DEBUG VOR Formatiere_Alle_Tabellen_Neu ====="
-    Debug.Print "Zeile 28 Spalte 1 Farbe (VOR): " & Hex(ws.Cells(28, 1).Interior.color)
+    Application.ScreenUpdating = False
     
-    Debug.Print ""
-    Debug.Print "--- FARBEN VOR FORMATIERUNG (letzte 5 Zeilen) ---"
-    For lRow = 24 To 28
-        Debug.Print "Zeile " & lRow & ": " & Hex(ws.Cells(lRow, 1).Interior.color)
-    Next lRow
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo ErrorHandler
     
-    Debug.Print ""
-    Debug.Print "===== Formatiere_Alle_Tabellen_Neu START ====="
-    Debug.Print ""
+    lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then lastRow = BK_START_ROW
     
-    Call Formatiere_Alle_Tabellen_Neu
+    ' Spalte L (Bemerkung): Textumbruch ab Zeile 28
+    With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), _
+                  ws.Cells(lastRow, BK_COL_BEMERKUNG))
+        .WrapText = True
+        .VerticalAlignment = xlCenter
+    End With
     
-    Debug.Print ""
-    Debug.Print "===== Formatiere_Alle_Tabellen_Neu ENDE ====="
-    Debug.Print ""
-    Debug.Print "===== DEBUG NACH Formatiere_Alle_Tabellen_Neu ====="
-    Debug.Print "Zeile 28 Spalte 1 Farbe (NACH): " & Hex(ws.Cells(28, 1).Interior.color)
+    ' Zeilenhoehe AutoFit
+    ws.Rows(BK_START_ROW & ":" & lastRow).AutoFit
     
-    Debug.Print ""
-    Debug.Print "--- FARBEN NACH FORMATIERUNG (letzte 5 Zeilen) ---"
-    For lRow = 24 To 28
-        Debug.Print "Zeile " & lRow & ": " & Hex(ws.Cells(lRow, 1).Interior.color)
-    Next lRow
+    ' Waehrungsformat mit Euro-Zeichen (€) statt EUR
+    ' Spalte B
+    ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), _
+             ws.Cells(lastRow, BK_COL_BETRAG)).NumberFormat = "#,##0.00 ""€"""
     
-    Debug.Print ""
-    Debug.Print "===== END DEBUG ====="
+    ' Spalten M-Z
+    ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), _
+             ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = "#,##0.00 ""€"""
+    
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    Application.ScreenUpdating = True
+    
+    MsgBox "Formatierung des Bankkonto-Blatts abgeschlossen!" & vbCrLf & vbCrLf & _
+           "- Spalte L mit Textumbruch" & vbCrLf & _
+           "- Zeilenhoehe angepasst" & vbCrLf & _
+           "- Waehrung mit Euro-Zeichen (€)", vbInformation
+    
+    Exit Sub
+    
+ErrorHandler:
+    Application.ScreenUpdating = True
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    MsgBox "Fehler bei der Formatierung: " & Err.Description, vbCritical
+End Sub
+
+' ===============================================================
+' HILFSFUNKTION: Prueft ob Named Range existiert
+' ===============================================================
+Public Function NamedRangeExists(ByVal rangeName As String) As Boolean
+    Dim nm As Name
+    NamedRangeExists = False
+    
+    On Error Resume Next
+    Set nm = ThisWorkbook.Names(rangeName)
+    If Not nm Is Nothing Then
+        NamedRangeExists = True
+    End If
+    On Error GoTo 0
+End Function
+
+' ===============================================================
+' WORKSHEET_CHANGE HELPER: Aktualisiert Listen bei Aenderung
+' ===============================================================
+Public Sub OnKategorieChange(ByVal Target As Range)
+    
+    Dim ws As Worksheet
+    Set ws = Target.Worksheet
+    
+    ' Nur reagieren wenn Aenderung in Kategorie-Tabelle (Spalte J oder K)
+    If Target.Column = DATA_CAT_COL_KATEGORIE Or Target.Column = DATA_CAT_COL_EINAUS Then
+        ' DropDown-Listen aktualisieren
+        Call AktualisiereKategorieDropdownListen(ws)
+    End If
+    
+    ' Wenn E/A geaendert wurde, Zielspalte-DropDown aktualisieren
+    If Target.Column = DATA_CAT_COL_EINAUS Then
+        Dim einAus As String
+        einAus = UCase(Trim(Target.value))
+        Call SetzeZielspalteDropdown(ws, Target.Row, einAus)
+    End If
     
 End Sub
+

@@ -574,8 +574,6 @@ End Sub
 Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     
     Dim lastRow As Long
-    Dim rngKategorieE As Range
-    Dim rngKategorieA As Range
     Dim rngMonatPeriode As Range
     Dim lRow As Long
     
@@ -590,68 +588,108 @@ Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_DATUM), _
              ws.Cells(lastRow, BK_COL_DATUM)).NumberFormat = "DD.MM.YYYY"
     
-    ' --- Spalte B: Waehrung Euro ---
+    ' --- Spalte B: Waehrung Euro (€ statt EUR) ---
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), _
-             ws.Cells(lastRow, BK_COL_BETRAG)).NumberFormat = "#,##0.00 [$EUR]"
+             ws.Cells(lastRow, BK_COL_BETRAG)).NumberFormat = "#,##0.00 ""€"""
     
     ' --- Spalte J: Zentriert ---
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_INTERNE_NR), _
              ws.Cells(lastRow, BK_COL_INTERNE_NR)).HorizontalAlignment = xlCenter
     
-    ' --- Spalten M-Z: Waehrung Euro ---
+    ' --- Spalte L (Bemerkung): Textumbruch + AutoFit ---
+    With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), _
+                  ws.Cells(lastRow, BK_COL_BEMERKUNG))
+        .WrapText = True
+        .VerticalAlignment = xlCenter
+    End With
+    
+    ' --- Spalten M-Z: Waehrung Euro (€ statt EUR) ---
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), _
-             ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = "#,##0.00 [$EUR]"
+             ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = "#,##0.00 ""€"""
+    
+    ' --- Zeilenhoehe AutoFit ---
+    ws.Rows(BK_START_ROW & ":" & lastRow).AutoFit
     
     ' --- Spalte H: DropDown fuer Kategorie (abhaengig von E/A) ---
-    For lRow = BK_START_ROW To lastRow
-        Dim betrag As Double
-        betrag = ws.Cells(lRow, BK_COL_BETRAG).value
-        
-        On Error Resume Next
-        ws.Cells(lRow, BK_COL_KATEGORIE).Validation.Delete
-        On Error GoTo 0
-        
-        If betrag > 0 Then
-            ' Einnahmen-Kategorien
-            With ws.Cells(lRow, BK_COL_KATEGORIE).Validation
-                .Add Type:=xlValidateList, _
-                     AlertStyle:=xlValidAlertWarning, _
-                     Formula1:="=lst_KategorienEinnahmen"
-                .IgnoreBlank = True
-                .InCellDropdown = True
-            End With
-        ElseIf betrag < 0 Then
-            ' Ausgaben-Kategorien
-            With ws.Cells(lRow, BK_COL_KATEGORIE).Validation
-                .Add Type:=xlValidateList, _
-                     AlertStyle:=xlValidAlertWarning, _
-                     Formula1:="=lst_KategorienAusgaben"
-                .IgnoreBlank = True
-                .InCellDropdown = True
-            End With
-        End If
-    Next lRow
+    ' Pruefe erst ob Named Ranges existieren
+    Dim hasEinnahmenList As Boolean
+    Dim hasAusgabenList As Boolean
+    hasEinnahmenList = NamedRangeExistsLocal("lst_KategorienEinnahmen")
+    hasAusgabenList = NamedRangeExistsLocal("lst_KategorienAusgaben")
+    
+    If hasEinnahmenList And hasAusgabenList Then
+        For lRow = BK_START_ROW To lastRow
+            Dim betrag As Double
+            betrag = ws.Cells(lRow, BK_COL_BETRAG).value
+            
+            On Error Resume Next
+            ws.Cells(lRow, BK_COL_KATEGORIE).Validation.Delete
+            On Error GoTo 0
+            
+            If betrag > 0 Then
+                ' Einnahmen-Kategorien
+                On Error Resume Next
+                With ws.Cells(lRow, BK_COL_KATEGORIE).Validation
+                    .Add Type:=xlValidateList, _
+                         AlertStyle:=xlValidAlertWarning, _
+                         Formula1:="=lst_KategorienEinnahmen"
+                    .IgnoreBlank = True
+                    .InCellDropdown = True
+                End With
+                On Error GoTo 0
+            ElseIf betrag < 0 Then
+                ' Ausgaben-Kategorien
+                On Error Resume Next
+                With ws.Cells(lRow, BK_COL_KATEGORIE).Validation
+                    .Add Type:=xlValidateList, _
+                         AlertStyle:=xlValidAlertWarning, _
+                         Formula1:="=lst_KategorienAusgaben"
+                    .IgnoreBlank = True
+                    .InCellDropdown = True
+                End With
+                On Error GoTo 0
+            End If
+        Next lRow
+    End If
     
     ' --- Spalte I: DropDown fuer Monat/Periode ---
-    Set rngMonatPeriode = ws.Range(ws.Cells(BK_START_ROW, BK_COL_MONAT_PERIODE), _
-                                    ws.Cells(lastRow, BK_COL_MONAT_PERIODE))
-    
-    On Error Resume Next
-    rngMonatPeriode.Validation.Delete
-    On Error GoTo 0
-    
-    With rngMonatPeriode.Validation
-        .Add Type:=xlValidateList, _
-             AlertStyle:=xlValidAlertWarning, _
-             Formula1:="=lst_MonatPeriode"
-        .IgnoreBlank = True
-        .InCellDropdown = True
-    End With
+    If NamedRangeExistsLocal("lst_MonatPeriode") Then
+        Set rngMonatPeriode = ws.Range(ws.Cells(BK_START_ROW, BK_COL_MONAT_PERIODE), _
+                                        ws.Cells(lastRow, BK_COL_MONAT_PERIODE))
+        
+        On Error Resume Next
+        rngMonatPeriode.Validation.Delete
+        On Error GoTo 0
+        
+        On Error Resume Next
+        With rngMonatPeriode.Validation
+            .Add Type:=xlValidateList, _
+                 AlertStyle:=xlValidAlertWarning, _
+                 Formula1:="=lst_MonatPeriode"
+            .IgnoreBlank = True
+            .InCellDropdown = True
+        End With
+        On Error GoTo 0
+    End If
     
     Application.ScreenUpdating = True
     
 End Sub
 
+' ===============================================================
+' HILFSFUNKTION: Prueft ob Named Range existiert (lokal in diesem Modul)
+' ===============================================================
+Private Function NamedRangeExistsLocal(ByVal rangeName As String) As Boolean
+    Dim nm As Name
+    NamedRangeExistsLocal = False
+    
+    On Error Resume Next
+    Set nm = ThisWorkbook.Names(rangeName)
+    If Not nm Is Nothing Then
+        NamedRangeExistsLocal = True
+    End If
+    On Error GoTo 0
+End Function
 
 ' ===============================================================
 ' 2e. MONAT/PERIODE AUTOMATISCH SETZEN
