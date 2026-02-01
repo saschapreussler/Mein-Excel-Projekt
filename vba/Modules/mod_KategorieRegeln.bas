@@ -3,7 +3,8 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_KategorieRegeln
-' ZWECK: Kategorieverwaltung + Konsistenzprüfung
+' ZWECK: Kategorieverwaltung + Konsistenzpruefung
+' AKTUALISIERT: Spalte O (Guthabenfaehig) wurde entfernt
 ' ***************************************************************
 
 Public Sub Initialisiere_Kategorie_Regeln()
@@ -15,14 +16,15 @@ Public Sub Initialisiere_Kategorie_Regeln()
     Set ws = ThisWorkbook.Worksheets("Daten")
 
     ' Auswahlfelder auf festen Bereich anwenden
+    ' AKTUALISIERT: Spalte O ist jetzt Faelligkeit (war vorher Guthabenfaehig)
     Call SetListValidationRange(ws.Range("K" & FIRST_DATA_ROW & ":K" & FIRST_DATA_ROW + MAX_CATEGORY_ROWS), "lst_EinnahmeAusgabe")
     Call SetListValidationRange(ws.Range("M" & FIRST_DATA_ROW & ":M" & FIRST_DATA_ROW + MAX_CATEGORY_ROWS), "lst_Prioritaet")
-    Call SetListValidationRange(ws.Range("O" & FIRST_DATA_ROW & ":O" & FIRST_DATA_ROW + MAX_CATEGORY_ROWS), "lst_JaNein")
-    Call SetListValidationRange(ws.Range("P" & FIRST_DATA_ROW & ":P" & FIRST_DATA_ROW + MAX_CATEGORY_ROWS), "lst_Faelligkeit")
+    Call SetListValidationRange(ws.Range("O" & FIRST_DATA_ROW & ":O" & FIRST_DATA_ROW + MAX_CATEGORY_ROWS), "lst_Faelligkeit")
 
 End Sub
 
 Private Sub SetListValidationRange(targetRange As Range, listName As String)
+    On Error Resume Next
     With targetRange.Validation
         .Delete
         .Add Type:=xlValidateList, _
@@ -30,54 +32,50 @@ Private Sub SetListValidationRange(targetRange As Range, listName As String)
              Formula1:="=" & listName
         .InCellDropdown = True
     End With
+    On Error GoTo 0
 End Sub
 
 ' =====================================================
-' Konsistenzprüfung und automatische Vorbelegung bei gleichen Kategorien
+' Konsistenzpruefung bei gleichen Kategorien
 ' =====================================================
 Public Sub PruefeUndSynchronisiere_Kategorie(ByVal ws As Worksheet, ByVal changedRow As Long)
 
     Dim katName As String
-    katName = Trim(ws.Cells(changedRow, "J").value)
+    katName = Trim(ws.Cells(changedRow, DATA_CAT_COL_KATEGORIE).value)
     If katName = "" Then Exit Sub
 
     Dim refRow As Long
     refRow = FindeErsteKategorieZeile(ws, katName, changedRow)
 
-    If refRow = 0 Then Exit Sub ' erste Kategorie ? nichts zu prüfen
+    If refRow = 0 Then Exit Sub
 
     Application.EnableEvents = False
 
-    ' Referenzwerte übernehmen
-    ws.Cells(changedRow, "K").value = ws.Cells(refRow, "K").value
-    ws.Cells(changedRow, "N").value = ws.Cells(refRow, "N").value
-    ws.Cells(changedRow, "O").value = ws.Cells(refRow, "O").value
-    ws.Cells(changedRow, "P").value = ws.Cells(refRow, "P").value
+    ' Referenzwerte uebernehmen (AKTUALISIERT - ohne Guthabenfaehig)
+    ws.Cells(changedRow, DATA_CAT_COL_EINAUS).value = ws.Cells(refRow, DATA_CAT_COL_EINAUS).value
+    ws.Cells(changedRow, DATA_CAT_COL_ZIELSPALTE).value = ws.Cells(refRow, DATA_CAT_COL_ZIELSPALTE).value
+    ws.Cells(changedRow, DATA_CAT_COL_FAELLIGKEIT).value = ws.Cells(refRow, DATA_CAT_COL_FAELLIGKEIT).value
 
-    ' Hinweis für den Nutzer
     MsgBox _
         "Die Kategorie '" & katName & "' existiert bereits." & vbCrLf & vbCrLf & _
-        "Einnahme/Ausgabe, Zielspalte, Guthabenfähigkeit und Fälligkeit " & _
-        "wurden automatisch übernommen, um Inkonsistenzen zu vermeiden.", _
+        "Einnahme/Ausgabe, Zielspalte und Faelligkeit " & _
+        "wurden automatisch uebernommen, um Inkonsistenzen zu vermeiden.", _
         vbInformation, "Kategorie vereinheitlicht"
 
     Application.EnableEvents = True
 
 End Sub
 
-' ---------------------------------------------------------------
-' Erste Vorkommnis-Zeile finden
-' ---------------------------------------------------------------
 Private Function FindeErsteKategorieZeile(ws As Worksheet, _
                                          katName As String, _
                                          excludeRow As Long) As Long
     Dim lastRow As Long
-    lastRow = ws.Cells(ws.Rows.Count, "J").End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
 
     Dim r As Long
-    For r = 4 To lastRow
+    For r = DATA_START_ROW To lastRow
         If r <> excludeRow Then
-            If Trim(ws.Cells(r, "J").value) = katName Then
+            If Trim(ws.Cells(r, DATA_CAT_COL_KATEGORIE).value) = katName Then
                 FindeErsteKategorieZeile = r
                 Exit Function
             End If
@@ -86,7 +84,6 @@ Private Function FindeErsteKategorieZeile(ws As Worksheet, _
 
     FindeErsteKategorieZeile = 0
 End Function
-
 
 
 
