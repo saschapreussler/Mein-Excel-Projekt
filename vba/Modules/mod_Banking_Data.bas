@@ -42,14 +42,13 @@ Public Sub Importiere_Kontoauszug()
     Dim rowsFailedImport As Long
     Dim rowsTotalInFile As Long
     
-    Dim debugStep As String
-    
     tempSheetName = "TempImport"
     
     Set wsZiel = ThisWorkbook.Worksheets(WS_BANKKONTO)
     
     On Error Resume Next
     wsZiel.Unprotect PASSWORD:=PASSWORD
+    Err.Clear
     On Error GoTo 0
     
     Set dictUmsaetze = CreateObject("Scripting.Dictionary")
@@ -68,7 +67,10 @@ Public Sub Importiere_Kontoauszug()
     Err.Clear
     On Error GoTo 0
     
+    Application.DisplayAlerts = True
     strFile = Application.GetOpenFilename("CSV (*.csv), *.csv")
+    Application.DisplayAlerts = False
+    
     If strFile = False Then
         Application.ScreenUpdating = True
         Application.DisplayAlerts = True
@@ -76,9 +78,6 @@ Public Sub Importiere_Kontoauszug()
         Call Initialize_ImportReport_ListBox
         Exit Sub
     End If
-    
-    debugStep = "Schritt 1: Bestehende Umsaetze lesen"
-    On Error GoTo ImportFehler
     
     lRowZiel = wsZiel.Cells(wsZiel.Rows.Count, BK_COL_BETRAG).End(xlUp).Row
     If lRowZiel < BK_START_ROW Then lRowZiel = BK_START_ROW - 1
@@ -93,11 +92,21 @@ Public Sub Importiere_Kontoauszug()
         End If
     Next i
     
-    debugStep = "Schritt 2: CSV-Datei einlesen"
-
+    On Error Resume Next
     Set wsTemp = ThisWorkbook.Worksheets.Add(After:=wsZiel)
+    If Err.Number <> 0 Then
+        MsgBox "Fehler beim Erstellen des Temp-Blatts: " & Err.Description, vbCritical
+        Err.Clear
+        Application.DisplayAlerts = True
+        Application.ScreenUpdating = True
+        wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        Exit Sub
+    End If
     wsTemp.Name = tempSheetName
+    Err.Clear
+    On Error GoTo 0
     
+    On Error Resume Next
     With wsTemp.QueryTables.Add(Connection:="TEXT;" & strFile, Destination:=wsTemp.Cells(1, 1))
         .Name = "CSV_Import"
         .FieldNames = True
@@ -108,21 +117,32 @@ Public Sub Importiere_Kontoauszug()
         .Refresh BackgroundQuery:=False
     End With
     
+    If Err.Number <> 0 Then
+        MsgBox "Fehler beim Einlesen der CSV-Datei: " & Err.Description, vbCritical
+        Err.Clear
+        Application.DisplayAlerts = False
+        wsTemp.Delete
+        Application.DisplayAlerts = True
+        Application.ScreenUpdating = True
+        wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        Exit Sub
+    End If
+    Err.Clear
+    On Error GoTo 0
+    
     lastRowTemp = wsTemp.Cells(wsTemp.Rows.Count, 1).End(xlUp).Row
     rowsTotalInFile = lastRowTemp - 1
     
     If lastRowTemp <= 1 Then
         rowsProcessed = 0
-        GoTo ImportEnde
+        GoTo ImportAbschluss
     End If
-    
-    debugStep = "Schritt 3: CSV-Zeilen verarbeiten"
     
     On Error Resume Next
     wsTemp.QueryTables(1).Delete
     Err.Clear
-    On Error GoTo ImportFehler
-        
+    On Error GoTo 0
+    
         
 '--- Ende TEIL 1 ---
 '--- Anfang Teil 2 ---
@@ -146,10 +166,9 @@ Public Sub Importiere_Kontoauszug()
         If Err.Number <> 0 Then
             rowsIgnoredFilter = rowsIgnoredFilter + 1
             Err.Clear
-            On Error GoTo ImportFehler
             GoTo NextRowImport
         End If
-        On Error GoTo ImportFehler
+        On Error GoTo 0
         
         If IsDate(wsTemp.Cells(lRowTemp, CSV_COL_BUCHUNGSDATUM).value) Then
             dDatum = CDate(wsTemp.Cells(lRowTemp, CSV_COL_BUCHUNGSDATUM).value)
@@ -194,49 +213,30 @@ Public Sub Importiere_Kontoauszug()
 NextRowImport:
     Next lRowTemp
 
-ImportEnde:
+ImportAbschluss:
     
     rowsFailedImport = rowsIgnoredFilter
     
-    debugStep = "Schritt 4: Update_ImportReport_ListBox"
     Call Update_ImportReport_ListBox(rowsTotalInFile, rowsProcessed, rowsIgnoredDupe, rowsFailedImport)
     
-    debugStep = "Schritt 5: TempSheet loeschen"
-    If Not wsTemp Is Nothing Then
-        On Error Resume Next
-        Application.DisplayAlerts = False
-        wsTemp.Delete
-        Application.DisplayAlerts = True
-        Err.Clear
-        On Error GoTo ImportFehlerNachImport
-        Set wsTemp = Nothing
-    End If
+    On Error Resume Next
+    Application.DisplayAlerts = False
+    If Not wsTemp Is Nothing Then wsTemp.Delete
+    Application.DisplayAlerts = True
+    Set wsTemp = Nothing
+    Err.Clear
+    On Error GoTo 0
     
-    debugStep = "Schritt 6: ImportiereIBANsAusBankkonto"
-    On Error GoTo ImportFehlerNachImport
+    On Error Resume Next
     Call ImportiereIBANsAusBankkonto
-    
-    debugStep = "Schritt 7: Sortiere_Bankkonto_nach_Datum"
     Call Sortiere_Bankkonto_nach_Datum
-    
-    debugStep = "Schritt 8: Anwende_Zebra_Bankkonto"
     Call Anwende_Zebra_Bankkonto(wsZiel)
-    
-    debugStep = "Schritt 9: Anwende_Border_Bankkonto"
     Call Anwende_Border_Bankkonto(wsZiel)
-    
-    debugStep = "Schritt 10: Anwende_Formatierung_Bankkonto"
     Call Anwende_Formatierung_Bankkonto(wsZiel)
-    
-    debugStep = "Schritt 11: KategorieEngine_Pipeline"
-    If rowsProcessed > 0 Then
-        Call KategorieEngine_Pipeline(wsZiel)
-    End If
-    
-    debugStep = "Schritt 12: Setze_Monat_Periode"
+    If rowsProcessed > 0 Then Call KategorieEngine_Pipeline(wsZiel)
     Call Setze_Monat_Periode(wsZiel)
-    
-    debugStep = "Schritt 13: Fertig"
+    Err.Clear
+    On Error GoTo 0
     
     wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     wsZiel.Activate
@@ -252,58 +252,7 @@ ImportEnde:
         MsgBox "Import abgeschlossen! (" & rowsProcessed & " neue Zeilen hinzugefuegt)", vbInformation
     End If
     
-    Exit Sub
-
-ImportFehlerNachImport:
-    Application.DisplayAlerts = True
-    Application.ScreenUpdating = True
-    
-    On Error Resume Next
-    wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    On Error GoTo 0
-    
-    MsgBox "FEHLER nach CSV-Import bei: " & debugStep & vbCrLf & vbCrLf & _
-           "Fehler: " & Err.Description & vbCrLf & _
-           "Fehler-Nr: " & Err.Number, vbCritical, "Fehler nach Import"
-    
-    wsZiel.Activate
-    Exit Sub
-
-ImportFehler:
-    Application.DisplayAlerts = True
-    Application.ScreenUpdating = True
-    
-    On Error Resume Next
-    wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    On Error GoTo 0
-    
-    If rowsTotalInFile = 0 Then
-        rowsFailedImport = 1
-    Else
-        rowsFailedImport = rowsFailedImport + 1
-    End If
-    
-    Call Update_ImportReport_ListBox(rowsTotalInFile, rowsProcessed, rowsIgnoredDupe, rowsFailedImport)
-
-    MsgBox "FATALER FEHLER beim Importieren der CSV-Datei." & vbCrLf & vbCrLf & _
-           "Schritt: " & debugStep & vbCrLf & _
-           "Fehler: " & Err.Description & vbCrLf & _
-           "Fehler-Nr: " & Err.Number, vbCritical
-    
-    On Error Resume Next
-    If Not wsTemp Is Nothing Then
-        Application.DisplayAlerts = False
-        wsTemp.Delete
-        Application.DisplayAlerts = True
-    End If
-    wsZiel.Activate
-    On Error GoTo 0
 End Sub
-
-
-'--- Ende Teil 2 ---
-'--- Anfang Teil 3 ---
-
 
 ' ===============================================================
 ' 1b. ZEBRA-FORMATIERUNG
@@ -480,11 +429,6 @@ Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     Next r
     
 End Sub
-
-
-'--- Ende Teil 3 ---
-'--- Anfang Teil 4 ---
-
 
 ' ===============================================================
 ' 4. IMPORT REPORT LISTBOX
@@ -670,11 +614,6 @@ Private Sub VerarbeiteZeile(ByVal ws As Worksheet, ByVal zeile As Long)
     End If
     
 End Sub
-
-
-'--- Ende Teil 4 ---
-'--- Anfang Tei 5 ---
-
 
 Private Function SucheKategorie(ByVal suchText As String, ByVal betrag As Double) As String
     
@@ -863,4 +802,5 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
 
