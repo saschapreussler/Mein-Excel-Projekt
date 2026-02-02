@@ -84,7 +84,7 @@ Public Function CreateGUID_Public() As String
     On Error Resume Next
     Dim TypeLib As Object
     Set TypeLib = CreateObject("Scriptlet.TypeLib")
-    CreateGUID_Public = Mid(TypeLib.GUID, 2, 36)
+    CreateGUID_Public = Mid(TypeLib.guid, 2, 36)
     
     If CreateGUID_Public = "" Then
         Randomize
