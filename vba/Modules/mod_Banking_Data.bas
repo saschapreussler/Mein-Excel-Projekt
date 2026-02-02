@@ -58,6 +58,7 @@ Public Sub Importiere_Kontoauszug()
     
     On Error Resume Next
     ThisWorkbook.Worksheets(tempSheetName).Delete
+    Err.Clear
     On Error GoTo 0
     
     strFile = Application.GetOpenFilename("CSV (*.csv), *.csv")
@@ -85,10 +86,19 @@ Public Sub Importiere_Kontoauszug()
     Next i
     
     debugStep = "Schritt 2: CSV-Datei einlesen"
-
-    Set wsTemp = ThisWorkbook.Worksheets.Add(After:=wsZiel)
-    wsTemp.Name = tempSheetName
     
+    On Error Resume Next
+    Set wsTemp = ThisWorkbook.Worksheets.Add(After:=wsZiel)
+    If Err.Number <> 0 Then
+        Err.Clear
+        On Error GoTo ImportFehler
+        GoTo ImportFehler
+    End If
+    wsTemp.Name = tempSheetName
+    Err.Clear
+    On Error GoTo ImportFehler
+    
+    On Error Resume Next
     With wsTemp.QueryTables.Add(Connection:="TEXT;" & strFile, Destination:=wsTemp.Cells(1, 1))
         .Name = "CSV_Import"
         .FieldNames = True
@@ -99,6 +109,33 @@ Public Sub Importiere_Kontoauszug()
         .Refresh BackgroundQuery:=False
     End With
     
+    If Err.Number <> 0 Then
+        debugStep = "Schritt 2: CSV-Datei einlesen (QueryTable Fehler)"
+        Dim errDesc As String
+        Dim errNum As Long
+        errDesc = Err.Description
+        errNum = Err.Number
+        Err.Clear
+        On Error GoTo 0
+        
+        Application.DisplayAlerts = True
+        Application.ScreenUpdating = True
+        
+        If Not wsTemp Is Nothing Then
+            Application.DisplayAlerts = False
+            wsTemp.Delete
+            Application.DisplayAlerts = True
+        End If
+        
+        MsgBox "FEHLER beim Einlesen der CSV-Datei." & vbCrLf & vbCrLf & _
+               "Schritt: " & debugStep & vbCrLf & _
+               "Fehler: " & errDesc & vbCrLf & _
+               "Fehler-Nr: " & errNum, vbCritical
+        Exit Sub
+    End If
+    Err.Clear
+    On Error GoTo ImportFehler
+    
     lastRowTemp = wsTemp.Cells(wsTemp.Rows.Count, 1).End(xlUp).Row
     rowsTotalInFile = lastRowTemp - 1
     
@@ -108,9 +145,12 @@ Public Sub Importiere_Kontoauszug()
     End If
     
     debugStep = "Schritt 3: CSV-Zeilen verarbeiten"
-    wsTemp.QueryTables(1).Delete
     
-    For lRowTemp = 2 To lastRowTemp
+    On Error Resume Next
+    wsTemp.QueryTables(1).Delete
+    Err.Clear
+    On Error GoTo ImportFehler
+        For lRowTemp = 2 To lastRowTemp
         
         betragString = CStr(wsTemp.Cells(lRowTemp, CSV_COL_BETRAG).value)
         
@@ -186,8 +226,11 @@ ImportEnde:
     debugStep = "Schritt 5: TempSheet loeschen"
     If Not wsTemp Is Nothing Then
         On Error Resume Next
+        Application.DisplayAlerts = False
         wsTemp.Delete
-        On Error GoTo ImportFehler
+        Application.DisplayAlerts = True
+        Err.Clear
+        On Error GoTo ImportFehlerNachImport
         Set wsTemp = Nothing
     End If
     
@@ -260,7 +303,11 @@ ImportFehler:
            "Fehler-Nr: " & Err.Number, vbCritical
     
     On Error Resume Next
-    If Not wsTemp Is Nothing Then wsTemp.Delete
+    If Not wsTemp Is Nothing Then
+        Application.DisplayAlerts = False
+        wsTemp.Delete
+        Application.DisplayAlerts = True
+    End If
     wsZiel.Activate
     On Error GoTo 0
 End Sub
