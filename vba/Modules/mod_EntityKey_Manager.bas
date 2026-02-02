@@ -755,20 +755,22 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
     ' Fall 1: Keine exakten Treffer gefunden
     ' ============================================================
     If mitgliederExakt.Count = 0 Then
-        If IstVersorger(kontoName) Then
+        ' GEAENDERT: Zuerst BANK pruefen (vor VERSORGER!)
+        If IstBankTransaktion(iban, kontoName) Or IstBank(kontoName) Then
+            outEntityKey = PREFIX_BANK & CreateGUID()
+            outEntityRole = ROLE_BANK
+            outZuordnung = ExtrahiereAnzeigeName(kontoName)
+            If outZuordnung = "" Then outZuordnung = "Bank-Transaktion"
+            outParzellen = ""
+            outDebugInfo = "Automatisch als BANK erkannt"
+            outAmpelStatus = 1
+            Exit Sub
+        ElseIf IstVersorger(kontoName) Then
             outEntityKey = PREFIX_VERSORGER & CreateGUID()
             outEntityRole = ROLE_VERSORGER
             outZuordnung = ExtrahiereAnzeigeName(kontoName)
             outParzellen = ""
             outDebugInfo = "Automatisch als VERSORGER erkannt"
-            outAmpelStatus = 1
-            Exit Sub
-        ElseIf IstBank(kontoName) Then
-            outEntityKey = PREFIX_BANK & CreateGUID()
-            outEntityRole = ROLE_BANK
-            outZuordnung = ExtrahiereAnzeigeName(kontoName)
-            outParzellen = ""
-            outDebugInfo = "Automatisch als BANK erkannt"
             outAmpelStatus = 1
             Exit Sub
         ElseIf IstShop(kontoName) Then
@@ -780,6 +782,7 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
             outAmpelStatus = 1
             Exit Sub
         End If
+        
         
         If mitgliederNurNachname.Count > 0 Then
             outEntityKey = ""
@@ -1070,27 +1073,30 @@ End Function
 
 ' ===============================================================
 ' HILFSFUNKTIONEN: Erkennung von Versorger/Bank/Shop
+' GEAENDERT: LIDL ist jetzt SHOP, nicht VERSORGER
+' Versorger = NUR Betriebs- und Unterhaltskosten des Vereins
 ' ===============================================================
 Public Function IstVersorger(ByVal Name As String) As Boolean
     Dim keywords As Variant
     Dim kw As Variant
     
+    ' NUR echte Versorger fuer Betriebs- und Unterhaltskosten
     keywords = Array( _
-        "stadtwerke", "energie", "strom", "gas", "wasser", _
-        "telekom", "vodafone", "o2", "1&1", "versicherung", _
-        "allianz", "huk", "devk", "axa", "ergo", "enviam", _
-        "enso", "ewe", "eon", "e.on", "rwe", "vattenfall", _
-        "gvv", "signal iduna", "debeka", "lvm", "abfall", _
-        "müll", "entsorgung", "abwasser", "kanal", _
-        "wazv", "zweckverband", "wasserverband", "abwasserverband", _
-        "grundstücksgesellschaft", "wohnungsbau", "wohnungsgesellschaft", _
-        "hausverwaltung", "immobilien", "grundstück", _
+        "telekom", "wazv", "vattenfall", "enviam", "enso", _
+        "eon", "e.on", "rwe", "ewe", "stadtwerke", _
+        "landkreis potsdam", "potsdam-mittelmark", _
+        "brauchwasserversorgung", "wasserversorgung", _
+        "haus- und grundstuecksgesellschaft", "grundstuecksgesellschaft", _
+        "hausverwaltung", "hausverwalt", _
+        "axa versicherung", "axa", "versicherung", _
+        "allianz", "huk", "devk", "ergo", "signal iduna", _
+        "debeka", "lvm", "gvv", _
+        "abfall", "muell", "entsorgung", "abwasser", "kanal", _
+        "zweckverband", "wasserverband", "abwasserverband", _
         "finanzamt", "rundfunk", "gez", "beitragsservice", _
-        "kfz", "haftpflicht", "hausrat", "rechtsschutz", _
-        "krankenkasse", "aok", "barmer", "dak", "tk", "ikk", _
         "berufsgenossenschaft", "rentenversicherung", _
-        "stadt ", "gemeinde ", "kommune", "landkreis", _
-        "werder", "havel", "potsdam", "brandenburg")
+        "stadt ", "gemeinde ", "kommune", _
+        "werder", "havel", "brandenburg")
     
     Name = LCase(Name)
     
@@ -1104,6 +1110,7 @@ Public Function IstVersorger(ByVal Name As String) As Boolean
     IstVersorger = False
 End Function
 
+
 Public Function IstBank(ByVal Name As String) As Boolean
     Dim keywords As Variant
     Dim kw As Variant
@@ -1115,10 +1122,12 @@ Public Function IstBank(ByVal Name As String) As Boolean
         "unicredit", "n26", "comdirect", "consorsbank", _
         "mittelbrandenburgische", "mbs", "brandenburger bank", _
         "kreditbank", "landesbank", "girozentrale", _
-        "bausparkasse", "schwäbisch hall", "lbs", "wüstenrot")
+        "bausparkasse", "schwaebisch hall", "lbs", "wuestenrot", _
+        "ga ", "blz")
     
     Name = LCase(Name)
     
+    ' Pruefe auf typische Bank-Keywords
     For Each kw In keywords
         If InStr(Name, kw) > 0 Then
             IstBank = True
@@ -1126,9 +1135,71 @@ Public Function IstBank(ByVal Name As String) As Boolean
         End If
     Next kw
     
+    ' Leerer Name kann auf Bank hindeuten (wird spaeter mit Buchungstext geprueft)
+    If Trim(Name) = "" Then
+        IstBank = False  ' Wird durch IstBankTransaktion geprueft
+    End If
+    
     IstBank = False
 End Function
 
+' ===============================================================
+' NEU: Prueft ob Transaktion eine Bank-Transaktion ist
+' Basierend auf IBAN und Buchungstext aus Bankkonto!
+' ===============================================================
+Public Function IstBankTransaktion(ByVal iban As String, ByVal kontoName As String) As Boolean
+    Dim wsBK As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim buchungsText As String
+    Dim ibanNorm As String
+    Dim gefundenIBAN As String
+    
+    IstBankTransaktion = False
+    
+    ibanNorm = UCase(Trim(Replace(iban, " ", "")))
+    
+    ' Spezielle IBANs die immer BANK sind
+    If ibanNorm = "0" Or ibanNorm = "3529000972" Then
+        ' Pruefe Buchungstext auf Bankkonto!
+        On Error Resume Next
+        Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+        On Error GoTo 0
+        
+        If wsBK Is Nothing Then Exit Function
+        
+        lastRow = wsBK.Cells(wsBK.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+        
+        For r = BK_START_ROW To lastRow
+            gefundenIBAN = UCase(Trim(Replace(wsBK.Cells(r, BK_COL_IBAN).value, " ", "")))
+            
+            If gefundenIBAN = ibanNorm Then
+                buchungsText = UCase(Trim(wsBK.Cells(r, BK_COL_BUCHUNGSTEXT).value))
+                
+                ' ENTGELTABSCHLUSS, ABSCHLUSS, RECHNUNG = BANK
+                If InStr(buchungsText, "ENTGELTABSCHLUSS") > 0 Or _
+                   InStr(buchungsText, "ABSCHLUSS") > 0 Or _
+                   InStr(buchungsText, "RECHNUNG") > 0 Then
+                    IstBankTransaktion = True
+                    Exit Function
+                End If
+            End If
+        Next r
+    End If
+    
+    ' Kontoname beginnt mit "GA NR" = BANK
+    If Left(UCase(Trim(kontoName)), 5) = "GA NR" Then
+        IstBankTransaktion = True
+        Exit Function
+    End If
+    
+    ' Leerer Kontoname mit spezieller IBAN = BANK
+    If Trim(kontoName) = "" And (ibanNorm = "0" Or ibanNorm = "3529000972") Then
+        IstBankTransaktion = True
+        Exit Function
+    End If
+    
+End Function
 Public Function IstShop(ByVal Name As String) As Boolean
     Dim keywords As Variant
     Dim kw As Variant
