@@ -1115,6 +1115,67 @@ Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long)
     
 End Sub
 
+Public Sub VerarbeiteManuelleRoleAenderung(ByVal zeile As Long)
+    
+    Dim ws As Worksheet
+    Dim neueRole As String
+    Dim currentParzelle As String
+    Dim currentEntityKey As String
+    Dim antwort As VbMsgBoxResult
+    
+    Set ws = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    neueRole = Trim(ws.Cells(zeile, EK_COL_ROLE).value)
+    currentEntityKey = Trim(ws.Cells(zeile, EK_COL_ENTITYKEY).value)
+    currentParzelle = Trim(ws.Cells(zeile, EK_COL_PARZELLE).value)
+    
+    If Not DarfParzelleHaben(neueRole) Then
+        If currentParzelle <> "" Then
+            antwort = MsgBox("Der Role-Typ '" & neueRole & "' erlaubt keine Parzelle." & vbCrLf & _
+                            "Die aktuelle Parzelle '" & currentParzelle & "' wird geloescht." & vbCrLf & vbCrLf & _
+                            "Fortfahren?", vbYesNo + vbQuestion, "Parzelle loeschen?")
+            If antwort = vbYes Then
+                ws.Cells(zeile, EK_COL_PARZELLE).value = ""
+            Else
+                Application.EnableEvents = False
+                ws.Cells(zeile, EK_COL_ROLE).value = ""
+                Application.EnableEvents = True
+                ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+                Exit Sub
+            End If
+        End If
+    End If
+    
+    If currentEntityKey = "" And neueRole <> "" Then
+        Select Case neueRole
+            Case ROLE_VERSORGER
+                ws.Cells(zeile, EK_COL_ENTITYKEY).value = PREFIX_VERSORGER & CreateGUID()
+            Case ROLE_BANK
+                ws.Cells(zeile, EK_COL_ENTITYKEY).value = PREFIX_BANK & CreateGUID()
+            Case ROLE_SHOP
+                ws.Cells(zeile, EK_COL_ENTITYKEY).value = PREFIX_SHOP & CreateGUID()
+            Case ROLE_SONSTIGE
+                ws.Cells(zeile, EK_COL_ENTITYKEY).value = PREFIX_SONSTIGE & CreateGUID()
+            Case ROLE_EHEMALIGES_MITGLIED
+                ws.Cells(zeile, EK_COL_ENTITYKEY).value = PREFIX_EHEMALIG & CreateGUID()
+        End Select
+        
+        If ws.Cells(zeile, EK_COL_DEBUG).value = "" Then
+            ws.Cells(zeile, EK_COL_DEBUG).value = "Manuell zugeordnet"
+        End If
+    End If
+    
+    Call SetzeZellschutzFuerZeile(ws, zeile, neueRole)
+    Call SetzeAmpelFarbe(ws, zeile, 1)
+    
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+End Sub
+
 
 '--- Ende Teil 7 ---
 '--- Anfang Teil 8 ---
