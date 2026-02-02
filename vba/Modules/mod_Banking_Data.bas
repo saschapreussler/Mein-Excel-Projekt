@@ -44,10 +44,27 @@ Public Sub Importiere_Kontoauszug()
     
     tempSheetName = "TempImport"
     
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+    Application.EnableEvents = False
+    
+    ' Arbeitsmappenschutz aufheben falls vorhanden
+    On Error Resume Next
+    ThisWorkbook.Unprotect PASSWORD:=PASSWORD
+    Err.Clear
+    On Error GoTo 0
+    
     Set wsZiel = ThisWorkbook.Worksheets(WS_BANKKONTO)
     
+    ' Blattschutz aufheben
     On Error Resume Next
     wsZiel.Unprotect PASSWORD:=PASSWORD
+    Err.Clear
+    On Error GoTo 0
+    
+    ' Altes TempSheet loeschen falls vorhanden
+    On Error Resume Next
+    ThisWorkbook.Worksheets(tempSheetName).Delete
     Err.Clear
     On Error GoTo 0
     
@@ -58,22 +75,17 @@ Public Sub Importiere_Kontoauszug()
     rowsIgnoredFilter = 0
     rowsFailedImport = 0
     rowsTotalInFile = 0
-
-    Application.ScreenUpdating = False
-    Application.DisplayAlerts = False
-    
-    On Error Resume Next
-    ThisWorkbook.Worksheets(tempSheetName).Delete
-    Err.Clear
-    On Error GoTo 0
     
     Application.DisplayAlerts = True
+    Application.ScreenUpdating = True
     strFile = Application.GetOpenFilename("CSV (*.csv), *.csv")
+    Application.ScreenUpdating = False
     Application.DisplayAlerts = False
     
     If strFile = False Then
         Application.ScreenUpdating = True
         Application.DisplayAlerts = True
+        Application.EnableEvents = True
         wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
         Call Initialize_ImportReport_ListBox
         Exit Sub
@@ -92,13 +104,16 @@ Public Sub Importiere_Kontoauszug()
         End If
     Next i
     
+    ' TempSheet erstellen
     On Error Resume Next
-    Set wsTemp = ThisWorkbook.Worksheets.Add(After:=wsZiel)
+    Set wsTemp = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.Count))
     If Err.Number <> 0 Then
-        MsgBox "Fehler beim Erstellen des Temp-Blatts: " & Err.Description, vbCritical
+        MsgBox "Fehler beim Erstellen des Temp-Blatts: " & Err.Description & vbCrLf & vbCrLf & _
+               "Bitte pruefen Sie ob die Arbeitsmappe geschuetzt ist.", vbCritical
         Err.Clear
         Application.DisplayAlerts = True
         Application.ScreenUpdating = True
+        Application.EnableEvents = True
         wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
         Exit Sub
     End If
@@ -106,6 +121,7 @@ Public Sub Importiere_Kontoauszug()
     Err.Clear
     On Error GoTo 0
     
+    ' CSV einlesen
     On Error Resume Next
     With wsTemp.QueryTables.Add(Connection:="TEXT;" & strFile, Destination:=wsTemp.Cells(1, 1))
         .Name = "CSV_Import"
@@ -124,6 +140,7 @@ Public Sub Importiere_Kontoauszug()
         wsTemp.Delete
         Application.DisplayAlerts = True
         Application.ScreenUpdating = True
+        Application.EnableEvents = True
         wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
         Exit Sub
     End If
@@ -143,11 +160,6 @@ Public Sub Importiere_Kontoauszug()
     Err.Clear
     On Error GoTo 0
     
-        
-'--- Ende TEIL 1 ---
-'--- Anfang Teil 2 ---
-
-
     For lRowTemp = 2 To lastRowTemp
         
         betragString = CStr(wsTemp.Cells(lRowTemp, CSV_COL_BETRAG).value)
@@ -243,6 +255,7 @@ ImportAbschluss:
 
     Application.DisplayAlerts = True
     Application.ScreenUpdating = True
+    Application.EnableEvents = True
     
     If rowsTotalInFile > 0 And rowsProcessed = 0 And rowsIgnoredDupe = rowsTotalInFile And rowsFailedImport = 0 Then
         MsgBox "Achtung: Die ausgewaehlte CSV-Datei enthaelt ausschliesslich Eintraege, " & _
@@ -253,7 +266,6 @@ ImportAbschluss:
     End If
     
 End Sub
-
 ' ===============================================================
 ' 1b. ZEBRA-FORMATIERUNG
 ' ===============================================================
