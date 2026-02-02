@@ -1,9 +1,11 @@
 Attribute VB_Name = "mod_Const"
+Option Explicit
+
 ' ***************************************************************
 ' MODUL: mod_Const
 ' ZWECK: Zentrale Konstanten fuer das gesamte Projekt
-' VERSION: 2.3 - 02.02.2026
-' AENDERUNG: DATA_COL_DD_PARZELLE hinzugefuegt
+' VERSION: 2.4 - 02.02.2026
+' AENDERUNG: Doppelte Definitionen entfernt, Spalten korrigiert
 ' ***************************************************************
 
 ' ===============================================================
@@ -23,13 +25,12 @@ Public Const WS_VEREINSKASSE As String = "Vereinskasse"
 Public Const RANGE_KATEGORIE_REGELN As String = "rng_KategorieRegeln"
 
 ' ===============================================================
-' C. DATEN – TEMPORÄRE HILFSSPALTEN (ALLE -1)
+' C. DATEN - TEMPORAERE HILFSSPALTEN
 ' ===============================================================
-Public Const DATA_TEMP_COL_KEY As Long = 25       ' war 26 (Z -> Y)
-Public Const DATA_TEMP_COL_NAME As Long = 26      ' war 27 (AA -> Z)
-Public Const DATA_TEMP_COL_KONTONAME As Long = 27 ' war 28 (AB -> AA)
-Public Const DATA_TEMP_COL_IBAN As Long = 28      ' war 29 (AC -> AB)
-
+Public Const DATA_TEMP_COL_KEY As Long = 25
+Public Const DATA_TEMP_COL_NAME As Long = 26
+Public Const DATA_TEMP_COL_KONTONAME As Long = 27
+Public Const DATA_TEMP_COL_IBAN As Long = 28
 
 ' ===============================================================
 ' D. MITGLIEDERLISTE - STRUKTUR
@@ -117,74 +118,62 @@ Public Const BK_COL_AUSGABEN_ENDE As Long = 26
 Public Const BK_COL_ENTITY_KEY As Long = 22
 
 ' ===============================================================
-' F. DATEN – ENTITY / MAPPING (ALTE WERTE -> NEUE WERTE)
+' F. DATEN - KATEGORIE-TABELLE (Spalten J-P)
 ' ===============================================================
-Public Const DATA_MAP_COL_ENTITYKEY As Long = 18     ' war 19 (S -> R)
-Public Const DATA_MAP_COL_IBAN_OLD As Long = 19      ' war 20 (T -> S)
-Public Const DATA_MAP_COL_KTONAME As Long = 20       ' war 21 (U -> T)
-Public Const DATA_MAP_COL_ZUORDNUNG As Long = 21     ' war 22 (V -> U)
-Public Const DATA_MAP_COL_PARZELLE As Long = 22      ' war 23 (W -> V)
-Public Const DATA_MAP_COL_ENTITYROLE As Long = 23    ' war 24 (X -> W)
-Public Const DATA_MAP_COL_DEBUG As Long = 24         ' war 25 (Y -> X)
-Public Const DATA_MAP_COL_LAST As Long = 24          ' war 25
+Public Const DATA_START_ROW As Long = 4
+Public Const DATA_HEADER_ROW As Long = 3
 
+Public Const DATA_CAT_COL_START As Long = 10
+Public Const DATA_CAT_COL_KATEGORIE As Long = 10
+Public Const DATA_CAT_COL_EINAUS As Long = 11
+Public Const DATA_CAT_COL_KEYWORD As Long = 12
+Public Const DATA_CAT_COL_PRIORITAET As Long = 13
+Public Const DATA_CAT_COL_ZIELSPALTE As Long = 14
+Public Const DATA_CAT_COL_FAELLIGKEIT As Long = 15
+Public Const DATA_CAT_COL_KOMMENTAR As Long = 16
+Public Const DATA_CAT_COL_END As Long = 16
 
 ' ===============================================================
 ' G. DATEN - ENTITYKEY-TABELLE (Spalten R-X)
 ' ===============================================================
-Public Const DATA_MAP_COL_ENTITYKEY As Long = 18    ' R - EntityKey (GUID)
-Public Const DATA_MAP_COL_IBAN As Long = 19         ' S - IBAN
-Public Const DATA_MAP_COL_KTONAME As Long = 20      ' T - Zahler/Empfaenger (Bank)
-Public Const DATA_MAP_COL_ZUORDNUNG As Long = 21    ' U - Mitglied(er)/Zuordnung
-Public Const DATA_MAP_COL_PARZELLE As Long = 22     ' V - Parzelle(n)
-Public Const DATA_MAP_COL_ENTITYROLE As Long = 23   ' W - EntityRole
-Public Const DATA_MAP_COL_DEBUG As Long = 24        ' X - Debug Zuordnung
+Public Const DATA_MAP_COL_ENTITYKEY As Long = 18
+Public Const DATA_MAP_COL_IBAN As Long = 19
+Public Const DATA_MAP_COL_KTONAME As Long = 20
+Public Const DATA_MAP_COL_ZUORDNUNG As Long = 21
+Public Const DATA_MAP_COL_PARZELLE As Long = 22
+Public Const DATA_MAP_COL_ENTITYROLE As Long = 23
+Public Const DATA_MAP_COL_DEBUG As Long = 24
 Public Const DATA_MAP_COL_LAST As Long = 24
 
 ' Aliase fuer Kompatibilitaet
-Public Const DATA_MAP_COL_IBAN_OLD As Long = DATA_MAP_COL_IBAN
-Public Const DATA_MAP_COL_PARZ_KEY As Long = DATA_MAP_COL_PARZELLE
-Public Const DATA_MAP_COL_NAME As Long = DATA_MAP_COL_ZUORDNUNG
-Public Const DATA_MAP_COL_KONTONAME As Long = DATA_MAP_COL_KTONAME
-
-' Aliase fuer EntityKey (EK_) - ZENTRAL hier definiert!
-Public Const EK_START_ROW As Long = DATA_START_ROW   ' 4
-Public Const EK_HEADER_ROW As Long = DATA_HEADER_ROW ' 3
-Public Const EK_COL_ENTITYKEY As Long = 18           ' R
-Public Const EK_COL_IBAN As Long = 19                ' S
-Public Const EK_COL_KONTONAME As Long = 20           ' T
-Public Const EK_COL_ZUORDNUNG As Long = 21           ' U
-Public Const EK_COL_PARZELLE As Long = 22            ' V
-Public Const EK_COL_ROLE As Long = 23                ' W
-Public Const EK_COL_DEBUG As Long = 24               ' X
+Public Const DATA_MAP_COL_IBAN_OLD As Long = 19
+Public Const DATA_MAP_COL_PARZ_KEY As Long = 22
+Public Const DATA_MAP_COL_NAME As Long = 21
+Public Const DATA_MAP_COL_KONTONAME As Long = 20
 
 ' ===============================================================
 ' H. DATEN - DROPDOWN-FUELLBEREICHE (Spalten Y-AH)
 ' ===============================================================
-' Y = 25: leer (Import-Status in Y100)
-Public Const DATA_COL_IMPORT_STATUS As Long = 25     ' Y - Import-Status (Zelle Y100)
+Public Const DATA_COL_IMPORT_STATUS As Long = 25
 Public Const CELL_IMPORT_PROTOKOLL As String = "Y100"
 
-' Spalte Z-AD: DropDown-Fuellbereiche
-Public Const DATA_COL_DD_EINAUS As Long = 26         ' Z - E/A Fuellbereich
-Public Const DATA_COL_DD_PRIORITAET As Long = 27     ' AA - Prioritaet Fuellbereich
-Public Const DATA_COL_DD_JANEIN As Long = 28         ' AB - Ja/Nein Fuellbereich
-Public Const DATA_COL_DD_FAELLIGKEIT As Long = 29    ' AC - Faelligkeit Fuellbereich
-Public Const DATA_COL_DD_ENTITYROLE As Long = 30     ' AD - EntityRole Fuellbereich (DYNAMISCH!)
+Public Const DATA_COL_DD_EINAUS As Long = 26
+Public Const DATA_COL_DD_PRIORITAET As Long = 27
+Public Const DATA_COL_DD_JANEIN As Long = 28
+Public Const DATA_COL_DD_FAELLIGKEIT As Long = 29
+Public Const DATA_COL_DD_ENTITYROLE As Long = 30
 
-' Spalte AE: Hilfszelle fuer Bankkonto-Filter
-Public Const DATA_COL_HILFSZELLE_FILTER As Long = 31 ' AE - Hilfszelle AE4 fuer Bankkonto!G
+Public Const DATA_COL_HILFSZELLE_FILTER As Long = 31
 
-' Spalte AF-AH: Sortierte Kategorien und Monat/Periode
-Public Const DATA_COL_KAT_EINNAHMEN As Long = 32     ' AF - Kategorie Einnahme sortiert
-Public Const DATA_COL_KAT_AUSGABEN As Long = 33      ' AG - Kategorie Ausgabe sortiert
-Public Const DATA_COL_MONAT_PERIODE As Long = 34     ' AH - Monat/Periode Liste
+Public Const DATA_COL_KAT_EINNAHMEN As Long = 32
+Public Const DATA_COL_KAT_AUSGABEN As Long = 33
+Public Const DATA_COL_MONAT_PERIODE As Long = 34
 
-' Legacy-Aliase fuer Kompatibilitaet
-Public Const DATA_COL_EINNAHMEN As Long = DATA_COL_KAT_EINNAHMEN  ' 32 = AF
-Public Const DATA_COL_AUSGABEN As Long = DATA_COL_KAT_AUSGABEN    ' 33 = AG
-Public Const DATA_COL_DD_ROLE As Long = DATA_COL_DD_ENTITYROLE    ' 30 = AD
-Public Const DATA_COL_DD_PARZELLE As Long = 6                     ' F - Parzellen-Dropdown Quelle
+' Legacy-Aliase
+Public Const DATA_COL_EINNAHMEN As Long = 32
+Public Const DATA_COL_AUSGABEN As Long = 33
+Public Const DATA_COL_DD_ROLE As Long = 30
+Public Const DATA_COL_DD_PARZELLE As Long = 6
 
 ' ===============================================================
 ' I. CSV-IMPORT (SPARKASSE)
@@ -219,10 +208,9 @@ Public Const PROTOCOL_RANGE_START As String = "A1"
 Public Const MAX_LISTBOX_LINES As Long = 60
 
 ' ===============================================================
-' L. ENTITY ROLE (Dropdown-Bereich -1)
+' L. ENTITY ROLE
 ' ===============================================================
-Public Const ROLE_RANGE As String = "AD4:AD8"     ' war "AE4:AE8"
-
+Public Const ROLE_RANGE As String = "AD4:AD8"
 
 ' ===============================================================
 ' M. MITGLIEDERHISTORIE - STRUKTUR
@@ -271,6 +259,4 @@ Public Function GetErlaubteFunktionenFuerParzelle() As Variant
         FUNKTION_SCHRIFTFUEHRER _
     )
 End Function
-
-
 
