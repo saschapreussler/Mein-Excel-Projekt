@@ -1653,6 +1653,13 @@ Public Sub EntityKeyDialogFuerAktuelleZeile()
     iban = Trim(wsD.Cells(aktuelleZeile, EK_COL_IBAN).value)
     kontoName = Trim(wsD.Cells(aktuelleZeile, EK_COL_KONTONAME).value)
     
+    ' *** NEU: Prüfung ob Zeile überhaupt Daten enthält ***
+    If iban = "" And kontoName = "" Then
+        MsgBox "Diese Zeile enthält keine IBAN und keinen Kontonamen." & vbCrLf & _
+               "Bitte wählen Sie eine Zeile mit Daten aus.", vbExclamation, "Keine Daten"
+        Exit Sub
+    End If
+    
     Set mitglieder = SucheMitgliederZuKontoname(kontoName, wsM, wsH)
     
     auswahlText = "=== EntityKey-Zuordnung (Zeile " & aktuelleZeile & ") ===" & vbCrLf & vbCrLf
@@ -1825,7 +1832,6 @@ Public Sub EntityKeyDialogFuerAktuelleZeile()
            "Rolle: " & neueRole, vbInformation, "Zuordnung erfolgreich"
     
 End Sub
-
 ' ===============================================================
 ' ÖFFENTLICHE PROZEDUR: Wird nach CSV-Import aufgerufen
 ' ===============================================================
