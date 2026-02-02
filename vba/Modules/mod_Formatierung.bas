@@ -4,8 +4,8 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Formatierung
 ' ZWECK: Formatierung und DropDown-Listen-Verwaltung
-' VERSION: 1.3 - 02.02.2026
-' KORREKTUR: Vertikale Zentrierung fuer ALLE Blaetter
+' VERSION: 1.4 - 02.02.2026
+' KORREKTUR: Fehlende FormatiereEntityKeyTabelleKomplett hinzugefuegt
 ' ***************************************************************
 
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
@@ -23,13 +23,8 @@ Public Sub ZentriereAlleZellenVertikal()
     On Error Resume Next
     
     For Each ws In ThisWorkbook.Worksheets
-        ' Blattschutz temporaer aufheben
         ws.Unprotect PASSWORD:=PASSWORD
-        
-        ' Alle Zellen vertikal zentrieren
         ws.Cells.VerticalAlignment = xlCenter
-        
-        ' Blattschutz wieder aktivieren
         ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Next ws
     
@@ -48,10 +43,7 @@ Public Sub FormatiereNeuesBlatt(ByVal ws As Worksheet)
     On Error Resume Next
     
     ws.Unprotect PASSWORD:=PASSWORD
-    
-    ' Alle Zellen vertikal zentrieren
     ws.Cells.VerticalAlignment = xlCenter
-    
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
     On Error GoTo 0
@@ -60,7 +52,6 @@ End Sub
 
 ' ===============================================================
 ' HAUPTPROZEDUR: Formatiert ALLE relevanten Tabellen neu
-' Diese Prozedur wird von mod_Mitglieder_UI und frm_Mitgliedsdaten aufgerufen
 ' ===============================================================
 Public Sub Formatiere_Alle_Tabellen_Neu()
     
@@ -77,10 +68,8 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     
-    ' Euro-Format mit ChrW fuer korrektes Unicode-Zeichen
     euroFormat = "#,##0.00 " & ChrW(8364)
     
-    ' === ZUERST: Alle Blaetter vertikal zentrieren ===
     For Each ws In ThisWorkbook.Worksheets
         On Error Resume Next
         ws.Unprotect PASSWORD:=PASSWORD
@@ -89,7 +78,6 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         On Error GoTo ErrorHandler
     Next ws
     
-    ' === DATEN-BLATT FORMATIEREN ===
     On Error Resume Next
     Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
     On Error GoTo ErrorHandler
@@ -99,19 +87,13 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         wsD.Unprotect PASSWORD:=PASSWORD
         On Error GoTo ErrorHandler
         
-        ' Kategorie-Tabelle formatieren
         Call FormatiereKategorieTabelle(wsD)
-        
-        ' EntityKey-Tabelle formatieren
         Call FormatiereEntityKeyTabelleKomplett(wsD)
-        
-        ' DropDown-Listen aktualisieren
         Call AktualisiereKategorieDropdownListen(wsD)
         
         wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     End If
     
-    ' === BANKKONTO-BLATT FORMATIEREN ===
     On Error Resume Next
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
     On Error GoTo ErrorHandler
@@ -124,17 +106,14 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         lastRowBK = wsBK.Cells(wsBK.Rows.Count, BK_COL_DATUM).End(xlUp).Row
         If lastRowBK < BK_START_ROW Then lastRowBK = BK_START_ROW
         
-        ' Spalte L (Bemerkung): Textumbruch
         With wsBK.Range(wsBK.Cells(BK_START_ROW, BK_COL_BEMERKUNG), _
                         wsBK.Cells(lastRowBK, BK_COL_BEMERKUNG))
             .WrapText = True
             .VerticalAlignment = xlCenter
         End With
         
-        ' Zeilenhoehe AutoFit
         wsBK.Rows(BK_START_ROW & ":" & lastRowBK).AutoFit
         
-        ' Waehrungsformat mit Euro-Zeichen
         wsBK.Range(wsBK.Cells(BK_START_ROW, BK_COL_BETRAG), _
                    wsBK.Cells(lastRowBK, BK_COL_BETRAG)).NumberFormat = euroFormat
         
@@ -144,7 +123,6 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     End If
     
-    ' === MITGLIEDER-BLATT FORMATIEREN ===
     On Error Resume Next
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     On Error GoTo ErrorHandler
@@ -187,16 +165,10 @@ Public Sub FormatiereBlattDaten()
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ErrorHandler
     
-    ' 1. Gesamtes Blatt: Vertikal zentriert
     ws.Cells.VerticalAlignment = xlCenter
     
-    ' 2. Kategorie-Tabelle formatieren
     Call FormatiereKategorieTabelle(ws)
-    
-    ' 3. EntityKey-Tabelle formatieren (falls vorhanden)
     Call FormatiereEntityKeyTabelleKomplett(ws)
-    
-    ' 4. DropDown-Listen fuer Kategorien aktualisieren
     Call AktualisiereKategorieDropdownListen(ws)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -238,7 +210,6 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
     Set rngTable = ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
                             ws.Cells(lastRow, DATA_CAT_COL_END))
     
-    ' Rahmen fuer gesamte Tabelle (innen und aussen)
     With rngTable.Borders(xlEdgeLeft)
         .LineStyle = xlContinuous
         .Weight = xlThin
@@ -270,44 +241,34 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
         .ColorIndex = xlAutomatic
     End With
     
-    ' Vertikal zentriert
     rngTable.VerticalAlignment = xlCenter
     
-    ' Spalte J (Kategorie): Linksbuendig
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KATEGORIE), _
              ws.Cells(lastRow, DATA_CAT_COL_KATEGORIE)).HorizontalAlignment = xlLeft
     
-    ' Spalte K (Einnahme/Ausgabe): Zentriert
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_EINAUS), _
              ws.Cells(lastRow, DATA_CAT_COL_EINAUS)).HorizontalAlignment = xlCenter
     
-    ' Spalte L (Keyword): Linksbuendig
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KEYWORD), _
              ws.Cells(lastRow, DATA_CAT_COL_KEYWORD)).HorizontalAlignment = xlLeft
     
-    ' Spalte M (Prioritaet): Zentriert
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_PRIORITAET), _
              ws.Cells(lastRow, DATA_CAT_COL_PRIORITAET)).HorizontalAlignment = xlCenter
     
-    ' Spalte N (Zielspalte): Linksbuendig + DropDown
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_ZIELSPALTE), _
              ws.Cells(lastRow, DATA_CAT_COL_ZIELSPALTE)).HorizontalAlignment = xlLeft
     
-    ' Spalte O (Faelligkeit): Linksbuendig
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_FAELLIGKEIT), _
              ws.Cells(lastRow, DATA_CAT_COL_FAELLIGKEIT)).HorizontalAlignment = xlLeft
     
-    ' Spalte P (Kommentar): Linksbuendig
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KOMMENTAR), _
              ws.Cells(lastRow, DATA_CAT_COL_KOMMENTAR)).HorizontalAlignment = xlLeft
     
-    ' DropDown fuer Zielspalte (N) basierend auf E/A in Spalte K
     For r = DATA_START_ROW To lastRow
         einAusWert = UCase(Trim(ws.Cells(r, DATA_CAT_COL_EINAUS).value))
         Call SetzeZielspalteDropdown(ws, r, einAusWert)
     Next r
     
-    ' AutoFit Spaltenbreiten
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
              ws.Cells(lastRow, DATA_CAT_COL_END)).EntireColumn.AutoFit
     
@@ -327,7 +288,6 @@ Private Sub SetzeZielspalteDropdown(ByRef ws As Worksheet, ByVal zeile As Long, 
     ws.Cells(zeile, DATA_CAT_COL_ZIELSPALTE).Validation.Delete
     On Error GoTo 0
     
-    ' Erstelle DropDown basierend auf E/A
     Select Case einAus
         Case "E"
             dropdownSource = "=" & WS_BANKKONTO & "!$M$27:$S$27"
@@ -374,7 +334,6 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
     lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     If lastRow < DATA_START_ROW Then Exit Sub
     
-    ' Sammle eindeutige Kategorien nach E/A
     For r = DATA_START_ROW To lastRow
         kategorie = Trim(ws.Cells(r, DATA_CAT_COL_KATEGORIE).value)
         einAus = UCase(Trim(ws.Cells(r, DATA_CAT_COL_EINAUS).value))
@@ -392,28 +351,24 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
         End If
     Next r
     
-    ' Loesche alte Listen
     On Error Resume Next
     ws.Range("AF4:AF1000").ClearContents
     ws.Range("AG4:AG1000").ClearContents
     ws.Range("AH4:AH1000").ClearContents
     On Error GoTo 0
     
-    ' Schreibe Einnahmen-Kategorien nach AF (Spalte 32)
     nextRowE = 4
     For Each key In dictEinnahmen.Keys
         ws.Cells(nextRowE, DATA_COL_EINNAHMEN).value = key
         nextRowE = nextRowE + 1
     Next key
     
-    ' Schreibe Ausgaben-Kategorien nach AG (Spalte 33)
     nextRowA = 4
     For Each key In dictAusgaben.Keys
         ws.Cells(nextRowA, DATA_COL_AUSGABEN).value = key
         nextRowA = nextRowA + 1
     Next key
     
-    ' Schreibe Monat/Periode nach AH (Spalte 34)
     ws.Cells(4, DATA_COL_MONAT_PERIODE).value = "Januar"
     ws.Cells(5, DATA_COL_MONAT_PERIODE).value = "Februar"
     ws.Cells(6, DATA_COL_MONAT_PERIODE).value = "Maerz"
@@ -427,7 +382,6 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
     ws.Cells(14, DATA_COL_MONAT_PERIODE).value = "November"
     ws.Cells(15, DATA_COL_MONAT_PERIODE).value = "Dezember"
     
-    ' Erstelle/aktualisiere Named Ranges
     Call ErstelleKategorieNamedRanges(ws, nextRowE - 1, nextRowA - 1)
     
 End Sub
@@ -467,8 +421,23 @@ Private Sub ErstelleKategorieNamedRanges(ByRef ws As Worksheet, ByVal lastRowE A
 End Sub
 
 ' ===============================================================
+' WRAPPER: Formatiert die EntityKey-Tabelle komplett
+' Ermittelt lastRow automatisch und ruft FormatiereEntityKeyTabelle auf
+' ===============================================================
+Private Sub FormatiereEntityKeyTabelleKomplett(ByRef ws As Worksheet)
+    
+    Dim lastRow As Long
+    
+    lastRow = ws.Cells(ws.Rows.Count, EK_COL_ENTITYKEY).End(xlUp).Row
+    
+    If lastRow >= EK_START_ROW Then
+        Call FormatiereEntityKeyTabelle(ws, lastRow)
+    End If
+    
+End Sub
+
+' ===============================================================
 ' HILFSPROZEDUR: Formatiert die EntityKey-Tabelle
-' GEAENDERT: Neue Spaltenbreiten und Formatierung
 ' ===============================================================
 Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As Long)
     
@@ -482,17 +451,14 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     Set rngTable = ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
                             ws.Cells(lastRow, EK_COL_DEBUG))
     
-    ' Rahmen
     With rngTable.Borders
         .LineStyle = xlContinuous
         .Weight = xlThin
         .ColorIndex = xlAutomatic
     End With
     
-    ' Gesamte Tabelle vertikal zentriert
     rngTable.VerticalAlignment = xlCenter
     
-    ' === Spalte R (EntityKey): Kein Umbruch, Links, Breite 9 ===
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
                   ws.Cells(lastRow, EK_COL_ENTITYKEY))
         .WrapText = False
@@ -500,7 +466,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_ENTITYKEY).ColumnWidth = 9
     
-    ' === Spalte S (IBAN): Kein Umbruch, Links, Breite 23 ===
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_IBAN), _
                   ws.Cells(lastRow, EK_COL_IBAN))
         .WrapText = False
@@ -508,7 +473,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_IBAN).ColumnWidth = 23
     
-    ' === Spalte T (Kontoname): Umbruch JA, Links, Breite 50 ===
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_KONTONAME), _
                   ws.Cells(lastRow, EK_COL_KONTONAME))
         .WrapText = True
@@ -516,7 +480,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_KONTONAME).ColumnWidth = 50
     
-    ' === Spalte U (Zuordnung): Umbruch JA, Links, Breite 30 ===
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ZUORDNUNG), _
                   ws.Cells(lastRow, EK_COL_ZUORDNUNG))
         .WrapText = True
@@ -524,7 +487,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_ZUORDNUNG).ColumnWidth = 30
     
-    ' === Spalte V (Parzelle): Umbruch JA, Zentriert, Breite 10 ===
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_PARZELLE), _
                   ws.Cells(lastRow, EK_COL_PARZELLE))
         .WrapText = True
@@ -532,7 +494,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_PARZELLE).ColumnWidth = 10
     
-    ' === Spalte W (Role): Kein Umbruch, Links, AutoFit ===
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ROLE), _
                   ws.Cells(lastRow, EK_COL_ROLE))
         .WrapText = False
@@ -540,7 +501,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_ROLE).AutoFit
     
-    ' === Spalte X (Debug): Kein Umbruch, Links, AutoFit ===
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_DEBUG), _
                   ws.Cells(lastRow, EK_COL_DEBUG))
         .WrapText = False
@@ -548,20 +508,14 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_DEBUG).AutoFit
     
-    ' Spalten R-T immer gesperrt
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
              ws.Cells(lastRow, EK_COL_KONTONAME)).Locked = True
     
-    ' ============================================================
-    ' ZELLSCHUTZ und ZEBRA pro Zeile
-    ' ============================================================
     For r = EK_START_ROW To lastRow
         currentRole = Trim(ws.Cells(r, EK_COL_ROLE).value)
         
-        ' Zellschutz setzen basierend auf Role
         Call SetzeZellschutzFuerZeile(ws, r, currentRole)
         
-        ' Zebra fuer Spalten R-T
         Set rngZebra = ws.Range(ws.Cells(r, EK_COL_ENTITYKEY), ws.Cells(r, EK_COL_KONTONAME))
         
         If (r - EK_START_ROW) Mod 2 = 1 Then
@@ -571,7 +525,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
         End If
     Next r
     
-    ' Zeilenhoehe AutoFit
     ws.Rows(EK_START_ROW & ":" & lastRow).AutoFit
     
 End Sub
@@ -595,23 +548,19 @@ Public Sub FormatiereBlattBankkonto()
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ErrorHandler
     
-    ' Gesamtes Blatt vertikal zentrieren
     ws.Cells.VerticalAlignment = xlCenter
     
     lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then lastRow = BK_START_ROW
     
-    ' Spalte L (Bemerkung): Textumbruch ab Zeile 28
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), _
                   ws.Cells(lastRow, BK_COL_BEMERKUNG))
         .WrapText = True
         .VerticalAlignment = xlCenter
     End With
     
-    ' Zeilenhoehe AutoFit
     ws.Rows(BK_START_ROW & ":" & lastRow).AutoFit
     
-    ' Waehrungsformat mit Euro-Zeichen
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), _
              ws.Cells(lastRow, BK_COL_BETRAG)).NumberFormat = euroFormat
     
@@ -660,12 +609,10 @@ Public Sub OnKategorieChange(ByVal Target As Range)
     Dim ws As Worksheet
     Set ws = Target.Worksheet
     
-    ' Nur reagieren wenn Aenderung in Kategorie-Tabelle (Spalte J oder K)
     If Target.Column = DATA_CAT_COL_KATEGORIE Or Target.Column = DATA_CAT_COL_EINAUS Then
         Call AktualisiereKategorieDropdownListen(ws)
     End If
     
-    ' Wenn E/A geaendert wurde, Zielspalte-DropDown aktualisieren
     If Target.Column = DATA_CAT_COL_EINAUS Then
         Dim einAus As String
         einAus = UCase(Trim(Target.value))
@@ -673,4 +620,6 @@ Public Sub OnKategorieChange(ByVal Target As Range)
     End If
     
 End Sub
+
+
 

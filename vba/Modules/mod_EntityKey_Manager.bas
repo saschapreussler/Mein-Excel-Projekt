@@ -354,7 +354,7 @@ End Sub
 ' HILFSPROZEDUR: Setzt Zellschutz basierend auf Role-Typ
 ' Parzelle (V) nur bearbeitbar für Mitglieder und SONSTIGE
 ' ===============================================================
-Private Sub SetzeZellschutzFuerZeile(ByRef ws As Worksheet, ByVal zeile As Long, ByVal role As String)
+Public Sub SetzeZellschutzFuerZeile(ByRef ws As Worksheet, ByVal zeile As Long, ByVal role As String)
     
     ' Spalten U (Zuordnung), W (Role), X (Debug) immer bearbeitbar
     ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = False
