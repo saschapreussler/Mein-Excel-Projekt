@@ -7,7 +7,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
-Option Explicit
+' Nach Option Explicit in Tabelle8 (Daten) einfuegen:
 
 Private Sub Worksheet_Change(ByVal Target As Range)
 
@@ -20,7 +20,6 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Dim spalte As Long
     
     ' AKTUALISIERT: Spaltennummern nach Loeschung von Spalte O (Guthabenfaehig)
-    ' Neue Struktur: J=Kategorie, K=E/A, L=Keyword, M=Prio, N=Zielspalte, O=Faelligkeit, P=Kommentar
     Const COL_KATEGORIE As Long = 10  ' J
     Const COL_EINAUS As Long = 11     ' K
     Const COL_ZIELSPALTE As Long = 14 ' N
@@ -35,20 +34,20 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     spalte = Target.Column
     
     ' === ENTITYKEY-TABELLE VERARBEITUNG (Spalten R-X, ab Zeile 4) ===
-    ' KORRIGIERT: Jetzt R-X (18-24) statt S-Y (19-25)
     If zeile >= EK_START_ROW And spalte >= EK_COL_ENTITYKEY And spalte <= EK_COL_DEBUG Then
         
+        ' Bei Role-Aenderung: EntityKey anpassen
         If spalte = EK_COL_ROLE Then
             Call mod_EntityKey_Manager.VerarbeiteManuelleRoleAenderung(zeile)
         End If
         
+        ' Zeile formatieren
         Call mod_EntityKey_Manager.FormatiereEntityKeyZeile(zeile)
         GoTo ExitPoint
     End If
     
     ' === KATEGORIE-TABELLE VERARBEITUNG (Spalten J-P, ab Zeile 4) ===
     If zeile >= DATA_START_ROW And spalte >= DATA_CAT_COL_KATEGORIE And spalte <= DATA_CAT_COL_END Then
-        ' Bei Aenderung in Kategorie oder E/A: DropDown-Listen aktualisieren
         If spalte = COL_KATEGORIE Or spalte = COL_EINAUS Then
             Call mod_Formatierung.OnKategorieChange(Target)
         End If
@@ -62,7 +61,6 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     If rng_KategorieRegeln Is Nothing Then Exit Sub
 
-    ' Pruefen ob Aenderung in K, N, O liegt (relevante Sync-Spalten)
     Select Case Target.Column
         Case COL_EINAUS, COL_ZIELSPALTE, COL_FAELLIGKEIT
             If Intersect(Target, rng_KategorieRegeln) Is Nothing Then
@@ -72,13 +70,11 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             Exit Sub
     End Select
     
-    ' Kategorie ermitteln
     cat = Trim(CStr(Me.Cells(Target.Row, COL_KATEGORIE).value))
     If cat = "" Then Exit Sub
     
     targetValue = Me.Cells(Target.Row, Target.Column).value
 
-    ' Referenzwert suchen
     refValue = ""
     
     For Each r In Intersect(Me.Columns(COL_KATEGORIE), rng_KategorieRegeln).Cells
@@ -97,7 +93,6 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         End If
     Next r
 
-    ' Vergleich und Rueckgaengigmachung
     If Not IsEmpty(refValue) And Len(Trim(CStr(refValue))) > 0 Then
         If Trim(CStr(targetValue)) <> Trim(CStr(refValue)) Then
 
@@ -122,3 +117,6 @@ Private Function ColName(ByVal colNum As Long) As String
     Loop While colNum > 0
     ColName = temp
 End Function
+
+
+
