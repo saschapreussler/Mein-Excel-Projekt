@@ -51,7 +51,7 @@ Public Sub Fuelle_MemberIDs_Wenn_Fehlend()
     
     ' Schleife durch alle Zeilen ab M_START_ROW
     For lRow = M_START_ROW To lastRow
-        ' Prüfen, ob eine MemberID fehlt und ob der Datensatz nicht leer ist
+        ' Pruefen, ob eine MemberID fehlt und ob der Datensatz nicht leer ist
         If wsM.Cells(lRow, M_COL_MEMBER_ID).value = "" And _
            wsM.Cells(lRow, M_COL_NACHNAME).value <> "" Then
             
@@ -72,12 +72,12 @@ Cleanup:
     Exit Sub
     
 ErrorHandler:
-    MsgBox "Fehler beim Füllen der MemberIDs: " & Err.Description, vbCritical
+    MsgBox "Fehler beim Fuellen der MemberIDs: " & Err.Description, vbCritical
     Resume Cleanup
 End Sub
 
 ' ***************************************************************
-' HILFSFUNKTION: GUID erstellen (PUBLIC - für frm_Mitgliedsdaten zugänglich)
+' HILFSFUNKTION: GUID erstellen (PUBLIC - fuer frm_Mitgliedsdaten zugaenglich)
 ' ***************************************************************
 Public Function CreateGUID_Public() As String
     
@@ -129,8 +129,8 @@ Private Sub ApplyDropdown(ByVal targetRange As Range, ByVal sourceFormula As Str
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:=sourceFormula
         .IgnoreBlank = allowBlanks
         .InCellDropdown = True
-        .ErrorTitle = "Ungültiger Wert"
-        .ErrorMessage = "Bitte wählen Sie einen Wert aus der Liste."
+        .ErrorTitle = "Ungueltiger Wert"
+        .ErrorMessage = "Bitte waehlen Sie einen Wert aus der Liste."
     End With
 End Sub
 
@@ -226,7 +226,7 @@ End Function
 ' ***************************************************************
 ' PROZEDUR: Speichere_Historie_und_Aktualisiere_Mitgliederliste
 ' ***************************************************************
-' SICHERHEITSKRITISCH: Schützt die Verein-Parzelle vor Datenüberschreibung
+' SICHERHEITSKRITISCH: Schuetzt die Verein-Parzelle vor Datenueberschreibung
 ' ***************************************************************
 Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ByVal selectedRow As Long, _
@@ -255,7 +255,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ' === SICHERHEITSCHECK 1: selectedRow darf nicht die Verein-Parzelle sein ===
     If selectedRow >= M_START_ROW Then
         If Trim(wsM.Cells(selectedRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
-            MsgBox "FEHLER: Die Verein-Parzelle darf nicht geändert werden!", vbCritical
+            MsgBox "FEHLER: Die Verein-Parzelle darf nicht geaendert werden!", vbCritical
             GoTo Cleanup
         End If
     End If
@@ -283,7 +283,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     If ChangeReason = "Parzellenwechsel" And NewParzelleNr <> "" Then
         ' === SICHERHEITSCHECK 2: NewParzelleNr darf nicht "Verein" sein ===
         If Trim(NewParzelleNr) = PARZELLE_VEREIN Then
-            MsgBox "FEHLER: Austretende Mitglieder dürfen nicht zur Verein-Parzelle wechseln!", vbCritical
+            MsgBox "FEHLER: Austretende Mitglieder duerfen nicht zur Verein-Parzelle wechseln!", vbCritical
             wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
             GoTo Cleanup
         End If
@@ -293,7 +293,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ElseIf ChangeReason = "Austritt aus Parzelle" Then
         ' === SICHERHEITSCHECK 3: Stelle sicher, dass wir nicht die Verein-Parzelle antasten ===
         If Trim(wsM.Cells(selectedRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
-            MsgBox "FEHLER: Die Verein-Parzelle kann nicht aufgelöst werden!", vbCritical
+            MsgBox "FEHLER: Die Verein-Parzelle kann nicht aufgeloest werden!", vbCritical
             wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
             GoTo Cleanup
         End If
@@ -311,11 +311,11 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ' === SICHERHEITSCHECK 4: Verifikation vor Sortierung ===
     Call VerifikationVereinsParzelleIntakt
     
-    ' --- 3. AUFRÄUMEN & AKTUALISIERUNG ---
+    ' --- 3. AUFRAEUMEN & AKTUALISIERUNG ---
     On Error Resume Next
     Call mod_Hilfsfunktionen.AktualisiereNamedRange_MitgliederNamen
     Call Sortiere_Mitgliederliste_Nach_Parzelle
-    Call mod_Banking_Data.Aktualisiere_Parzellen_Mapping_Final
+    Call ImportiereIBANsAusBankkonto
     Call mod_Banking_Data.Sortiere_Tabellen_Daten
     Call mod_ZaehlerLogik.Ermittle_Kennzahlen_Mitgliederliste
     Call mod_ZaehlerLogik.ErzeugeParzellenUebersicht
@@ -368,12 +368,12 @@ Private Sub VerifikationVereinsParzelleIntakt()
             vereinParzelleRow = lRow
             vereinRowNachname = Trim(ws.Cells(lRow, M_COL_NACHNAME).value)
             
-            ' SICHERHEITSPRÜFUNG: Die Verein-Zeile sollte leer sein oder nur spezielle Marker enthalten
+            ' SICHERHEITSPRUEFUNG: Die Verein-Zeile sollte leer sein oder nur spezielle Marker enthalten
             ' Falls Nachname leer: OK
-            ' Falls Nachname nicht leer: Warnung (zeigt manuell übernommene Daten an)
+            ' Falls Nachname nicht leer: Warnung (zeigt manuell uebernommene Daten an)
             If vereinRowNachname <> "" Then
                 ' Die Zeile hat Mitgliederdaten - dies sollte nicht passieren!
-                Debug.Print "WARNUNG: Verein-Parzelle-Zeile (" & vereinParzelleRow & ") enthält Mitgliederdaten: " & vereinRowNachname
+                Debug.Print "WARNUNG: Verein-Parzelle-Zeile (" & vereinParzelleRow & ") enthaelt Mitgliederdaten: " & vereinRowNachname
             End If
             Exit For
         End If
@@ -381,7 +381,7 @@ Private Sub VerifikationVereinsParzelleIntakt()
 End Sub
 
 ' ***************************************************************
-' HILFSFUNKTION: Prüfen, ob eine UserForm geladen ist
+' HILFSFUNKTION: Pruefen, ob eine UserForm geladen ist
 ' ***************************************************************
 Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     
@@ -397,5 +397,4 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False
     
 End Function
-
 
