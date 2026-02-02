@@ -2,15 +2,12 @@ Attribute VB_Name = "mod_Banking_Data"
 Option Explicit
 
 ' ===============================================================
-' MODUL: mod_Banking_Data (FINAL KONSOLIDIERT)
-' VERSION: 2.1 - 02.02.2026
-' KORREKTUR: Blattschutz vor Import aufheben
+' MODUL: mod_Banking_Data
+' VERSION: 2.2 - 02.02.2026
+' KORREKTUR: Doppelte KategorieEngine-Funktionen entfernt
+'            Zebra-Formatierung korrigiert (A-G, I-Z)
 ' ===============================================================
 
-Private Const AMPEL_GRUEN As Long = 13561798
-Private Const AMPEL_GELB As Long = 10025215
-Private Const AMPEL_ROT As Long = 13551359
-Private Const AMPEL_WEISS As Long = 16777215
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
 Private Const RAHMEN_NAME As String = "ImportReport_Rahmen"
 
@@ -48,7 +45,6 @@ Public Sub Importiere_Kontoauszug()
     Application.DisplayAlerts = False
     Application.EnableEvents = False
     
-    ' Arbeitsmappenschutz aufheben falls vorhanden
     On Error Resume Next
     ThisWorkbook.Unprotect PASSWORD:=PASSWORD
     Err.Clear
@@ -56,13 +52,11 @@ Public Sub Importiere_Kontoauszug()
     
     Set wsZiel = ThisWorkbook.Worksheets(WS_BANKKONTO)
     
-    ' Blattschutz aufheben
     On Error Resume Next
     wsZiel.Unprotect PASSWORD:=PASSWORD
     Err.Clear
     On Error GoTo 0
     
-    ' Altes TempSheet loeschen falls vorhanden
     On Error Resume Next
     ThisWorkbook.Worksheets(tempSheetName).Delete
     Err.Clear
@@ -104,7 +98,6 @@ Public Sub Importiere_Kontoauszug()
         End If
     Next i
     
-    ' TempSheet erstellen
     On Error Resume Next
     Set wsTemp = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.Count))
     If Err.Number <> 0 Then
@@ -121,7 +114,6 @@ Public Sub Importiere_Kontoauszug()
     Err.Clear
     On Error GoTo 0
     
-    ' CSV einlesen
     On Error Resume Next
     With wsTemp.QueryTables.Add(Connection:="TEXT;" & strFile, Destination:=wsTemp.Cells(1, 1))
         .Name = "CSV_Import"
@@ -160,6 +152,13 @@ Public Sub Importiere_Kontoauszug()
     Err.Clear
     On Error GoTo 0
     
+    
+    
+'--- Ende Teil 1 ---
+'--- Anfang Teil 2 ---
+
+
+
     For lRowTemp = 2 To lastRowTemp
         
         betragString = CStr(wsTemp.Cells(lRowTemp, CSV_COL_BETRAG).value)
@@ -266,15 +265,16 @@ ImportAbschluss:
     End If
     
 End Sub
+
 ' ===============================================================
-' 1b. ZEBRA-FORMATIERUNG
+' 2. ZEBRA-FORMATIERUNG (A-G und I-Z, Spalte H ausgenommen)
 ' ===============================================================
 Private Sub Anwende_Zebra_Bankkonto(ByVal ws As Worksheet)
     
     Dim lastRow As Long
     Dim lRow As Long
-    Dim rngRowPart1 As Range
-    Dim rngRowPart2 As Range
+    Dim rngPart1 As Range
+    Dim rngPart2 As Range
     
     If ws Is Nothing Then Exit Sub
     
@@ -282,22 +282,32 @@ Private Sub Anwende_Zebra_Bankkonto(ByVal ws As Worksheet)
     If lastRow < BK_START_ROW Then Exit Sub
     
     For lRow = BK_START_ROW To lastRow
-        Set rngRowPart1 = ws.Range(ws.Cells(lRow, 1), ws.Cells(lRow, 7))
-        Set rngRowPart2 = ws.Range(ws.Cells(lRow, 13), ws.Cells(lRow, 26))
+        ' Teil 1: Spalten A-G (1-7)
+        Set rngPart1 = ws.Range(ws.Cells(lRow, 1), ws.Cells(lRow, 7))
+        ' Teil 2: Spalten I-Z (9-26) - Spalte H (8) ausgenommen!
+        Set rngPart2 = ws.Range(ws.Cells(lRow, 9), ws.Cells(lRow, 26))
         
         If (lRow - BK_START_ROW) Mod 2 = 1 Then
-            rngRowPart1.Interior.color = ZEBRA_COLOR
-            rngRowPart2.Interior.color = ZEBRA_COLOR
+            rngPart1.Interior.color = ZEBRA_COLOR
+            rngPart2.Interior.color = ZEBRA_COLOR
         Else
-            rngRowPart1.Interior.ColorIndex = xlNone
-            rngRowPart2.Interior.ColorIndex = xlNone
+            rngPart1.Interior.ColorIndex = xlNone
+            rngPart2.Interior.ColorIndex = xlNone
         End If
     Next lRow
     
 End Sub
 
+
+
+'--- Ende Teil 2 ---
+'--- Anfang Teil 3 ---
+
+
+
+
 ' ===============================================================
-' 1c. RAHMEN-FORMATIERUNG
+' 3. RAHMEN-FORMATIERUNG
 ' ===============================================================
 Private Sub Anwende_Border_Bankkonto(ByVal ws As Worksheet)
     
@@ -350,7 +360,7 @@ Private Sub SetBorders(ByVal rng As Range)
 End Sub
 
 ' ===============================================================
-' 1d. ALLGEMEINE FORMATIERUNG
+' 4. ALLGEMEINE FORMATIERUNG
 ' ===============================================================
 Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     
@@ -378,7 +388,7 @@ Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
 End Sub
 
 ' ===============================================================
-' 2. SORTIERUNG NACH DATUM
+' 5. SORTIERUNG NACH DATUM
 ' ===============================================================
 Public Sub Sortiere_Bankkonto_nach_Datum()
     
@@ -417,7 +427,7 @@ Public Sub Sortiere_Bankkonto_nach_Datum()
 End Sub
 
 ' ===============================================================
-' 3. MONAT/PERIODE SETZEN
+' 6. MONAT/PERIODE SETZEN
 ' ===============================================================
 Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     
@@ -442,8 +452,15 @@ Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     
 End Sub
 
+
+
+'--- Ende Teil 3 ---
+'--- Anfang Teil 4 ---
+
+
+
 ' ===============================================================
-' 4. IMPORT REPORT LISTBOX
+' 7. IMPORT REPORT LISTBOX
 ' ===============================================================
 Public Sub Initialize_ImportReport_ListBox()
     
@@ -503,7 +520,7 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
 End Sub
 
 ' ===============================================================
-' 5. IBAN IMPORT AUS BANKKONTO
+' 8. IBAN IMPORT AUS BANKKONTO
 ' ===============================================================
 Public Sub ImportiereIBANsAusBankkonto()
     
@@ -517,8 +534,6 @@ Public Sub ImportiereIBANsAusBankkonto()
     Dim currentIBAN As String
     Dim currentKontoName As String
     Dim currentDatum As Variant
-    Dim anzahlNeu As Long
-    Dim anzahlBereitsVorhanden As Long
     
     On Error GoTo ErrorHandler
     
@@ -545,9 +560,7 @@ Public Sub ImportiereIBANsAusBankkonto()
         End If
     Next r
     
-    anzahlBereitsVorhanden = dictIBANs.Count
     nextRowD = lastRowD + 1
-    anzahlNeu = 0
     
     For r = BK_START_ROW To lastRowBK
         currentDatum = wsBK.Cells(r, BK_COL_DATUM).value
@@ -564,157 +577,21 @@ Public Sub ImportiereIBANsAusBankkonto()
             
             dictIBANs(currentIBAN & "|" & currentKontoName) = True
             nextRowD = nextRowD + 1
-            anzahlNeu = anzahlNeu + 1
         End If
         
 NextRowIBAN:
     Next r
     
     wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    
     Exit Sub
     
 ErrorHandler:
     On Error Resume Next
     wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    Debug.Print "Fehler in ImportiereIBANsAusBankkonto: " & Err.Description
 End Sub
 
 ' ===============================================================
-' 6. KATEGORIE ENGINE PIPELINE
-' ===============================================================
-Public Sub KategorieEngine_Pipeline(ByVal ws As Worksheet)
-    
-    Dim lastRow As Long
-    Dim r As Long
-    
-    If ws Is Nothing Then Exit Sub
-    
-    lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
-    If lastRow < BK_START_ROW Then Exit Sub
-    
-    For r = BK_START_ROW To lastRow
-        If ws.Cells(r, BK_COL_KATEGORIE).value = "" Then
-            Call VerarbeiteZeile(ws, r)
-        End If
-    Next r
-    
-End Sub
-
-Private Sub VerarbeiteZeile(ByVal ws As Worksheet, ByVal zeile As Long)
-    
-    Dim suchText As String
-    Dim betrag As Double
-    Dim kategorie As String
-    Dim zielspalte As Long
-    
-    suchText = LCase(Trim(ws.Cells(zeile, BK_COL_NAME).value) & " " & _
-                     Trim(ws.Cells(zeile, BK_COL_VERWENDUNGSZWECK).value) & " " & _
-                     Trim(ws.Cells(zeile, BK_COL_BUCHUNGSTEXT).value))
-    
-    betrag = ws.Cells(zeile, BK_COL_BETRAG).value
-    
-    kategorie = SucheKategorie(suchText, betrag)
-    
-    If kategorie <> "" Then
-        ws.Cells(zeile, BK_COL_KATEGORIE).value = kategorie
-        
-        zielspalte = ErmittleZielspalte(kategorie, betrag)
-        If zielspalte > 0 Then
-            ws.Cells(zeile, zielspalte).value = Abs(betrag)
-        End If
-    End If
-    
-End Sub
-
-Private Function SucheKategorie(ByVal suchText As String, ByVal betrag As Double) As String
-    
-    Dim wsD As Worksheet
-    Dim lastRow As Long
-    Dim r As Long
-    Dim keyword As String
-    Dim kategorie As String
-    Dim einAus As String
-    Dim prioritaet As Long
-    Dim bestePrioritaet As Long
-    Dim besteKategorie As String
-    
-    Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
-    
-    lastRow = wsD.Cells(wsD.Rows.Count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
-    If lastRow < DATA_START_ROW Then
-        SucheKategorie = ""
-        Exit Function
-    End If
-    
-    bestePrioritaet = 9999
-    besteKategorie = ""
-    
-    For r = DATA_START_ROW To lastRow
-        kategorie = Trim(wsD.Cells(r, DATA_CAT_COL_KATEGORIE).value)
-        keyword = LCase(Trim(wsD.Cells(r, DATA_CAT_COL_KEYWORD).value))
-        einAus = UCase(Trim(wsD.Cells(r, DATA_CAT_COL_EINAUS).value))
-        prioritaet = Val(wsD.Cells(r, DATA_CAT_COL_PRIORITAET).value)
-        
-        If prioritaet = 0 Then prioritaet = 100
-        
-        If keyword <> "" And InStr(suchText, keyword) > 0 Then
-            If (einAus = "E" And betrag > 0) Or (einAus = "A" And betrag < 0) Or einAus = "" Then
-                If prioritaet < bestePrioritaet Then
-                    bestePrioritaet = prioritaet
-                    besteKategorie = kategorie
-                End If
-            End If
-        End If
-    Next r
-    
-    SucheKategorie = besteKategorie
-    
-End Function
-
-Private Function ErmittleZielspalte(ByVal kategorie As String, ByVal betrag As Double) As Long
-    
-    Dim wsD As Worksheet
-    Dim wsBK As Worksheet
-    Dim lastRow As Long
-    Dim r As Long
-    Dim kat As String
-    Dim einAus As String
-    Dim zielName As String
-    Dim col As Long
-    
-    Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
-    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
-    
-    ErmittleZielspalte = 0
-    
-    lastRow = wsD.Cells(wsD.Rows.Count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
-    If lastRow < DATA_START_ROW Then Exit Function
-    
-    For r = DATA_START_ROW To lastRow
-        kat = Trim(wsD.Cells(r, DATA_CAT_COL_KATEGORIE).value)
-        einAus = UCase(Trim(wsD.Cells(r, DATA_CAT_COL_EINAUS).value))
-        zielName = Trim(wsD.Cells(r, DATA_CAT_COL_ZIELSPALTE).value)
-        
-        If kat = kategorie Then
-            If (einAus = "E" And betrag > 0) Or (einAus = "A" And betrag < 0) Then
-                If zielName <> "" Then
-                    For col = BK_COL_MITGL_BEITR To BK_COL_AUSZAHL_KASSE
-                        If Trim(wsBK.Cells(BK_HEADER_ROW, col).value) = zielName Then
-                            ErmittleZielspalte = col
-                            Exit Function
-                        End If
-                    Next col
-                End If
-            End If
-            Exit For
-        End If
-    Next r
-    
-End Function
-
-' ===============================================================
-' 7. HILFSFUNKTIONEN
+' 9. HILFSFUNKTIONEN
 ' ===============================================================
 Public Sub LoescheAlleBankkontoZeilen()
     
@@ -769,7 +646,7 @@ Public Sub AktualisiereFormatierungBankkonto()
 End Sub
 
 ' ===============================================================
-' 8. SORTIERE TABELLEN DATEN
+' 10. SORTIERE TABELLEN DATEN
 ' ===============================================================
 Public Sub Sortiere_Tabellen_Daten()
 
@@ -814,5 +691,7 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
