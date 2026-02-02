@@ -23,12 +23,13 @@ Public Const WS_VEREINSKASSE As String = "Vereinskasse"
 Public Const RANGE_KATEGORIE_REGELN As String = "rng_KategorieRegeln"
 
 ' ===============================================================
-' C. DATEN-BLATT STAMMDATEN (Spalte B, D, F, H)
+' C. DATEN – TEMPORÄRE HILFSSPALTEN (ALLE -1)
 ' ===============================================================
-Public Const DATA_COL_VEREINSFUNKTIONEN As Long = 2   ' B - Vereinsfunktionen
-Public Const DATA_COL_ANREDEFORMEN As Long = 4        ' D - Anredeformen
-Public Const DATA_COL_PARZELLEN As Long = 6           ' F - Parzellen
-Public Const DATA_COL_SEITE As Long = 8               ' H - Seite (links/rechts/zentral)
+Public Const DATA_TEMP_COL_KEY As Long = 25       ' war 26 (Z -> Y)
+Public Const DATA_TEMP_COL_NAME As Long = 26      ' war 27 (AA -> Z)
+Public Const DATA_TEMP_COL_KONTONAME As Long = 27 ' war 28 (AB -> AA)
+Public Const DATA_TEMP_COL_IBAN As Long = 28      ' war 29 (AC -> AB)
+
 
 ' ===============================================================
 ' D. MITGLIEDERLISTE - STRUKTUR
@@ -116,20 +117,17 @@ Public Const BK_COL_AUSGABEN_ENDE As Long = 26
 Public Const BK_COL_ENTITY_KEY As Long = 22
 
 ' ===============================================================
-' F. DATEN - KATEGORIE-TABELLE (Spalten J-P)
+' F. DATEN – ENTITY / MAPPING (ALTE WERTE -> NEUE WERTE)
 ' ===============================================================
-Public Const DATA_START_ROW As Long = 4
-Public Const DATA_HEADER_ROW As Long = 3
+Public Const DATA_MAP_COL_ENTITYKEY As Long = 18     ' war 19 (S -> R)
+Public Const DATA_MAP_COL_IBAN_OLD As Long = 19      ' war 20 (T -> S)
+Public Const DATA_MAP_COL_KTONAME As Long = 20       ' war 21 (U -> T)
+Public Const DATA_MAP_COL_ZUORDNUNG As Long = 21     ' war 22 (V -> U)
+Public Const DATA_MAP_COL_PARZELLE As Long = 22      ' war 23 (W -> V)
+Public Const DATA_MAP_COL_ENTITYROLE As Long = 23    ' war 24 (X -> W)
+Public Const DATA_MAP_COL_DEBUG As Long = 24         ' war 25 (Y -> X)
+Public Const DATA_MAP_COL_LAST As Long = 24          ' war 25
 
-Public Const DATA_CAT_COL_START As Long = 10
-Public Const DATA_CAT_COL_KATEGORIE As Long = 10    ' J - Kategorie
-Public Const DATA_CAT_COL_EINAUS As Long = 11       ' K - Einnahme/Ausgabe (E/A)
-Public Const DATA_CAT_COL_KEYWORD As Long = 12      ' L - Keyword
-Public Const DATA_CAT_COL_PRIORITAET As Long = 13   ' M - Prioritaet
-Public Const DATA_CAT_COL_ZIELSPALTE As Long = 14   ' N - Zielspalte Bankkonto
-Public Const DATA_CAT_COL_FAELLIGKEIT As Long = 15  ' O - Faelligkeit
-Public Const DATA_CAT_COL_KOMMENTAR As Long = 16    ' P - Kommentar
-Public Const DATA_CAT_COL_END As Long = 16
 
 ' ===============================================================
 ' G. DATEN - ENTITYKEY-TABELLE (Spalten R-X)
@@ -221,9 +219,10 @@ Public Const PROTOCOL_RANGE_START As String = "A1"
 Public Const MAX_LISTBOX_LINES As Long = 60
 
 ' ===============================================================
-' L. ENTITY ROLE - Dynamischer Bereich auf AD
+' L. ENTITY ROLE (Dropdown-Bereich -1)
 ' ===============================================================
-Public Const ROLE_RANGE As String = "AD4:AD20"
+Public Const ROLE_RANGE As String = "AD4:AD8"     ' war "AE4:AE8"
+
 
 ' ===============================================================
 ' M. MITGLIEDERHISTORIE - STRUKTUR
