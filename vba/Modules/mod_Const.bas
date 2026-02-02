@@ -2,10 +2,8 @@ Attribute VB_Name = "mod_Const"
 ' ***************************************************************
 ' MODUL: mod_Const
 ' ZWECK: Zentrale Konstanten fuer das gesamte Projekt
-' VERSION: 2.2 - 02.02.2026
-' AENDERUNG: Alle Spalten korrigiert nach Nutzer-Feedback
-'            EntityRole-DropDown auf AD (30)
-'            Hilfszelle fuer Bankkonto-Filter auf AE (31)
+' VERSION: 2.3 - 02.02.2026
+' AENDERUNG: DATA_COL_DD_PARZELLE hinzugefuegt
 ' ***************************************************************
 
 ' ===============================================================
@@ -188,6 +186,7 @@ Public Const DATA_COL_MONAT_PERIODE As Long = 34     ' AH - Monat/Periode Liste
 Public Const DATA_COL_EINNAHMEN As Long = DATA_COL_KAT_EINNAHMEN  ' 32 = AF
 Public Const DATA_COL_AUSGABEN As Long = DATA_COL_KAT_AUSGABEN    ' 33 = AG
 Public Const DATA_COL_DD_ROLE As Long = DATA_COL_DD_ENTITYROLE    ' 30 = AD
+Public Const DATA_COL_DD_PARZELLE As Long = 6                     ' F - Parzellen-Dropdown Quelle
 
 ' ===============================================================
 ' I. CSV-IMPORT (SPARKASSE)
