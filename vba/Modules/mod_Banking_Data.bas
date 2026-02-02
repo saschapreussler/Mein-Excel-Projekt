@@ -3,6 +3,8 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Data (FINAL KONSOLIDIERT)
+' VERSION: 2.1 - 02.02.2026
+' KORREKTUR: Blattschutz vor Import aufheben
 ' ===============================================================
 
 Private Const AMPEL_GRUEN As Long = 13561798
@@ -45,6 +47,11 @@ Public Sub Importiere_Kontoauszug()
     tempSheetName = "TempImport"
     
     Set wsZiel = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    
+    On Error Resume Next
+    wsZiel.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
     Set dictUmsaetze = CreateObject("Scripting.Dictionary")
     
     rowsProcessed = 0
@@ -65,6 +72,7 @@ Public Sub Importiere_Kontoauszug()
     If strFile = False Then
         Application.ScreenUpdating = True
         Application.DisplayAlerts = True
+        wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
         Call Initialize_ImportReport_ListBox
         Exit Sub
     End If
@@ -86,19 +94,10 @@ Public Sub Importiere_Kontoauszug()
     Next i
     
     debugStep = "Schritt 2: CSV-Datei einlesen"
-    
-    On Error Resume Next
+
     Set wsTemp = ThisWorkbook.Worksheets.Add(After:=wsZiel)
-    If Err.Number <> 0 Then
-        Err.Clear
-        On Error GoTo ImportFehler
-        GoTo ImportFehler
-    End If
     wsTemp.Name = tempSheetName
-    Err.Clear
-    On Error GoTo ImportFehler
     
-    On Error Resume Next
     With wsTemp.QueryTables.Add(Connection:="TEXT;" & strFile, Destination:=wsTemp.Cells(1, 1))
         .Name = "CSV_Import"
         .FieldNames = True
@@ -108,33 +107,6 @@ Public Sub Importiere_Kontoauszug()
         .TextFileSemicolonDelimiter = True
         .Refresh BackgroundQuery:=False
     End With
-    
-    If Err.Number <> 0 Then
-        debugStep = "Schritt 2: CSV-Datei einlesen (QueryTable Fehler)"
-        Dim errDesc As String
-        Dim errNum As Long
-        errDesc = Err.Description
-        errNum = Err.Number
-        Err.Clear
-        On Error GoTo 0
-        
-        Application.DisplayAlerts = True
-        Application.ScreenUpdating = True
-        
-        If Not wsTemp Is Nothing Then
-            Application.DisplayAlerts = False
-            wsTemp.Delete
-            Application.DisplayAlerts = True
-        End If
-        
-        MsgBox "FEHLER beim Einlesen der CSV-Datei." & vbCrLf & vbCrLf & _
-               "Schritt: " & debugStep & vbCrLf & _
-               "Fehler: " & errDesc & vbCrLf & _
-               "Fehler-Nr: " & errNum, vbCritical
-        Exit Sub
-    End If
-    Err.Clear
-    On Error GoTo ImportFehler
     
     lastRowTemp = wsTemp.Cells(wsTemp.Rows.Count, 1).End(xlUp).Row
     rowsTotalInFile = lastRowTemp - 1
@@ -150,7 +122,13 @@ Public Sub Importiere_Kontoauszug()
     wsTemp.QueryTables(1).Delete
     Err.Clear
     On Error GoTo ImportFehler
-        For lRowTemp = 2 To lastRowTemp
+        
+        
+'--- Ende TEIL 1 ---
+'--- Anfang Teil 2 ---
+
+
+    For lRowTemp = 2 To lastRowTemp
         
         betragString = CStr(wsTemp.Cells(lRowTemp, CSV_COL_BETRAG).value)
         
@@ -259,6 +237,8 @@ ImportEnde:
     Call Setze_Monat_Periode(wsZiel)
     
     debugStep = "Schritt 13: Fertig"
+    
+    wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     wsZiel.Activate
 
     Application.DisplayAlerts = True
@@ -278,6 +258,10 @@ ImportFehlerNachImport:
     Application.DisplayAlerts = True
     Application.ScreenUpdating = True
     
+    On Error Resume Next
+    wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
     MsgBox "FEHLER nach CSV-Import bei: " & debugStep & vbCrLf & vbCrLf & _
            "Fehler: " & Err.Description & vbCrLf & _
            "Fehler-Nr: " & Err.Number, vbCritical, "Fehler nach Import"
@@ -288,6 +272,10 @@ ImportFehlerNachImport:
 ImportFehler:
     Application.DisplayAlerts = True
     Application.ScreenUpdating = True
+    
+    On Error Resume Next
+    wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
     
     If rowsTotalInFile = 0 Then
         rowsFailedImport = 1
@@ -313,6 +301,10 @@ ImportFehler:
 End Sub
 
 
+'--- Ende Teil 2 ---
+'--- Anfang Teil 3 ---
+
+
 ' ===============================================================
 ' 1b. ZEBRA-FORMATIERUNG
 ' ===============================================================
@@ -328,278 +320,506 @@ Private Sub Anwende_Zebra_Bankkonto(ByVal ws As Worksheet)
     lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    On Error Resume Next
-    ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 7)).Interior.ColorIndex = xlNone
-    ws.Range(ws.Cells(BK_START_ROW, 9), ws.Cells(lastRow, 26)).Interior.ColorIndex = xlNone
-    On Error GoTo 0
-    
     For lRow = BK_START_ROW To lastRow
-        If ws.Cells(lRow, BK_COL_DATUM).value <> "" Then
-            If (lRow - BK_START_ROW) Mod 2 = 1 Then
-                Set rngRowPart1 = ws.Range(ws.Cells(lRow, 1), ws.Cells(lRow, 7))
-                rngRowPart1.Interior.color = ZEBRA_COLOR
-                
-                Set rngRowPart2 = ws.Range(ws.Cells(lRow, 9), ws.Cells(lRow, 26))
-                rngRowPart2.Interior.color = ZEBRA_COLOR
-            End If
+        Set rngRowPart1 = ws.Range(ws.Cells(lRow, 1), ws.Cells(lRow, 7))
+        Set rngRowPart2 = ws.Range(ws.Cells(lRow, 13), ws.Cells(lRow, 26))
+        
+        If (lRow - BK_START_ROW) Mod 2 = 1 Then
+            rngRowPart1.Interior.color = ZEBRA_COLOR
+            rngRowPart2.Interior.color = ZEBRA_COLOR
+        Else
+            rngRowPart1.Interior.ColorIndex = xlNone
+            rngRowPart2.Interior.ColorIndex = xlNone
         End If
     Next lRow
     
 End Sub
 
-
 ' ===============================================================
-' 1c. BORDER-FORMATIERUNG
+' 1c. RAHMEN-FORMATIERUNG
 ' ===============================================================
 Private Sub Anwende_Border_Bankkonto(ByVal ws As Worksheet)
     
     Dim lastRow As Long
-    Dim rngTable As Range
+    Dim rngPart1 As Range
+    Dim rngPart2 As Range
     
     If ws Is Nothing Then Exit Sub
     
     lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    Set rngTable = ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 26))
+    Set rngPart1 = ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 12))
+    Set rngPart2 = ws.Range(ws.Cells(BK_START_ROW, 13), ws.Cells(lastRow, 26))
     
-    On Error Resume Next
-    
-    With rngTable.Borders(xlEdgeLeft)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .ColorIndex = xlAutomatic
-    End With
-    
-    With rngTable.Borders(xlEdgeTop)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .ColorIndex = xlAutomatic
-    End With
-    
-    With rngTable.Borders(xlEdgeBottom)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .ColorIndex = xlAutomatic
-    End With
-    
-    With rngTable.Borders(xlEdgeRight)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .ColorIndex = xlAutomatic
-    End With
-    
-    With rngTable.Borders(xlInsideVertical)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .ColorIndex = xlAutomatic
-    End With
-    
-    With rngTable.Borders(xlInsideHorizontal)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .ColorIndex = xlAutomatic
-    End With
-    
-    On Error GoTo 0
+    Call SetBorders(rngPart1)
+    Call SetBorders(rngPart2)
     
 End Sub
 
-'--- Ende Teil 1 ---
-'--- Anfang Teil 2 ---
+Private Sub SetBorders(ByVal rng As Range)
+    
+    If rng Is Nothing Then Exit Sub
+    
+    With rng.Borders(xlEdgeLeft)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
+    With rng.Borders(xlEdgeTop)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
+    With rng.Borders(xlEdgeBottom)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
+    With rng.Borders(xlEdgeRight)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
+    With rng.Borders(xlInsideVertical)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
+    With rng.Borders(xlInsideHorizontal)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
+    
+End Sub
 
 ' ===============================================================
-' 1d. FORMATIERUNG (Datum, Waehrung, DropDowns)
+' 1d. ALLGEMEINE FORMATIERUNG
 ' ===============================================================
 Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     
     Dim lastRow As Long
-    Dim rngMonatPeriode As Range
-    Dim lRow As Long
     Dim euroFormat As String
     
     If ws Is Nothing Then Exit Sub
     
+    euroFormat = "#,##0.00 " & ChrW(8364)
+    
     lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    euroFormat = "#,##0.00 " & ChrW(8364)
+    ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), ws.Cells(lastRow, BK_COL_BETRAG)).NumberFormat = euroFormat
+    ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
     
-    Application.ScreenUpdating = False
-    
-    ws.Range(ws.Cells(BK_START_ROW, BK_COL_DATUM), _
-             ws.Cells(lastRow, BK_COL_DATUM)).NumberFormat = "DD.MM.YYYY"
-    
-    ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), _
-             ws.Cells(lastRow, BK_COL_BETRAG)).NumberFormat = euroFormat
-    
-    ws.Range(ws.Cells(BK_START_ROW, BK_COL_INTERNE_NR), _
-             ws.Cells(lastRow, BK_COL_INTERNE_NR)).HorizontalAlignment = xlCenter
-    
-    With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), _
-                  ws.Cells(lastRow, BK_COL_BEMERKUNG))
+    With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), ws.Cells(lastRow, BK_COL_BEMERKUNG))
         .WrapText = True
         .VerticalAlignment = xlCenter
     End With
     
-    ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), _
-             ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
-    
+    ws.Cells.VerticalAlignment = xlCenter
     ws.Rows(BK_START_ROW & ":" & lastRow).AutoFit
-    
-    Dim hasEinnahmenList As Boolean
-    Dim hasAusgabenList As Boolean
-    hasEinnahmenList = NamedRangeExistsLocal("lst_KategorienEinnahmen")
-    hasAusgabenList = NamedRangeExistsLocal("lst_KategorienAusgaben")
-    
-    If hasEinnahmenList And hasAusgabenList Then
-        For lRow = BK_START_ROW To lastRow
-            Dim betrag As Double
-            betrag = ws.Cells(lRow, BK_COL_BETRAG).value
-            
-            On Error Resume Next
-            ws.Cells(lRow, BK_COL_KATEGORIE).Validation.Delete
-            On Error GoTo 0
-            
-            If betrag > 0 Then
-                On Error Resume Next
-                With ws.Cells(lRow, BK_COL_KATEGORIE).Validation
-                    .Add Type:=xlValidateList, _
-                         AlertStyle:=xlValidAlertWarning, _
-                         Formula1:="=lst_KategorienEinnahmen"
-                    .IgnoreBlank = True
-                    .InCellDropdown = True
-                End With
-                On Error GoTo 0
-            ElseIf betrag < 0 Then
-                On Error Resume Next
-                With ws.Cells(lRow, BK_COL_KATEGORIE).Validation
-                    .Add Type:=xlValidateList, _
-                         AlertStyle:=xlValidAlertWarning, _
-                         Formula1:="=lst_KategorienAusgaben"
-                    .IgnoreBlank = True
-                    .InCellDropdown = True
-                End With
-                On Error GoTo 0
-            End If
-        Next lRow
-    End If
-    
-    If NamedRangeExistsLocal("lst_MonatPeriode") Then
-        Set rngMonatPeriode = ws.Range(ws.Cells(BK_START_ROW, BK_COL_MONAT_PERIODE), _
-                                        ws.Cells(lastRow, BK_COL_MONAT_PERIODE))
-        
-        On Error Resume Next
-        rngMonatPeriode.Validation.Delete
-        On Error GoTo 0
-        
-        On Error Resume Next
-        With rngMonatPeriode.Validation
-            .Add Type:=xlValidateList, _
-                 AlertStyle:=xlValidAlertWarning, _
-                 Formula1:="=lst_MonatPeriode"
-            .IgnoreBlank = True
-            .InCellDropdown = True
-        End With
-        On Error GoTo 0
-    End If
-    
-    Application.ScreenUpdating = True
     
 End Sub
 
-
-Private Function NamedRangeExistsLocal(ByVal rangeName As String) As Boolean
-    Dim nm As Name
-    NamedRangeExistsLocal = False
+' ===============================================================
+' 2. SORTIERUNG NACH DATUM
+' ===============================================================
+Public Sub Sortiere_Bankkonto_nach_Datum()
+    
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim sortRange As Range
+    
+    Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
     
     On Error Resume Next
-    Set nm = ThisWorkbook.Names(rangeName)
-    If Not nm Is Nothing Then
-        NamedRangeExistsLocal = True
-    End If
+    ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
-End Function
-
+    
+    lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        Exit Sub
+    End If
+    
+    Set sortRange = ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 26))
+    
+    ws.Sort.SortFields.Clear
+    ws.Sort.SortFields.Add key:=ws.Range(ws.Cells(BK_START_ROW, BK_COL_DATUM), ws.Cells(lastRow, BK_COL_DATUM)), _
+                           SortOn:=xlSortOnValues, Order:=xlDescending, DataOption:=xlSortNormal
+    
+    With ws.Sort
+        .SetRange sortRange
+        .Header = xlNo
+        .MatchCase = False
+        .Orientation = xlTopToBottom
+        .Apply
+    End With
+    
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+End Sub
 
 ' ===============================================================
-' 1e. MONAT/PERIODE AUTOMATISCH SETZEN
+' 3. MONAT/PERIODE SETZEN
 ' ===============================================================
 Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     
     Dim lastRow As Long
-    Dim lRow As Long
-    Dim buchungsDatum As Date
-    Dim buchungsMonat As Long
-    Dim periodeText As String
-    
-    Dim monate(1 To 12) As String
-    monate(1) = "Januar"
-    monate(2) = "Februar"
-    monate(3) = "Maerz"
-    monate(4) = "April"
-    monate(5) = "Mai"
-    monate(6) = "Juni"
-    monate(7) = "Juli"
-    monate(8) = "August"
-    monate(9) = "September"
-    monate(10) = "Oktober"
-    monate(11) = "November"
-    monate(12) = "Dezember"
+    Dim r As Long
+    Dim monatWert As Variant
+    Dim datumWert As Variant
     
     If ws Is Nothing Then Exit Sub
     
     lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    For lRow = BK_START_ROW To lastRow
-        If Trim(ws.Cells(lRow, BK_COL_MONAT_PERIODE).value) = "" Then
-            If IsDate(ws.Cells(lRow, BK_COL_DATUM).value) Then
-                buchungsDatum = ws.Cells(lRow, BK_COL_DATUM).value
-                buchungsMonat = Month(buchungsDatum)
-                periodeText = monate(buchungsMonat)
-                ws.Cells(lRow, BK_COL_MONAT_PERIODE).value = periodeText
-            End If
+    For r = BK_START_ROW To lastRow
+        datumWert = ws.Cells(r, BK_COL_DATUM).value
+        monatWert = ws.Cells(r, BK_COL_MONAT_PERIODE).value
+        
+        If IsDate(datumWert) And (IsEmpty(monatWert) Or monatWert = "") Then
+            ws.Cells(r, BK_COL_MONAT_PERIODE).value = MonthName(Month(datumWert))
         End If
-    Next lRow
+    Next r
     
 End Sub
 
 
-' ===============================================================
-' 2. SORTIERUNG
-' ===============================================================
-Public Sub Sortiere_Bankkonto_nach_Datum()
-    On Error GoTo SortError
+'--- Ende Teil 3 ---
+'--- Anfang Teil 4 ---
 
+
+' ===============================================================
+' 4. IMPORT REPORT LISTBOX
+' ===============================================================
+Public Sub Initialize_ImportReport_ListBox()
+    
     Dim ws As Worksheet
-    Dim lr As Long
+    Dim shp As Shape
+    Dim rahmenFound As Boolean
+    
+    Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    rahmenFound = False
+    
+    For Each shp In ws.Shapes
+        If shp.Name = RAHMEN_NAME Then
+            rahmenFound = True
+            Exit For
+        End If
+    Next shp
+    
+    If Not rahmenFound Then Exit Sub
+    
+    shp.TextFrame2.TextRange.Characters.text = _
+        "Import-Bericht:" & vbCrLf & _
+        "----------------" & vbCrLf & _
+        "Zeilen in CSV: 0" & vbCrLf & _
+        "Importiert: 0" & vbCrLf & _
+        "Duplikate: 0" & vbCrLf & _
+        "Fehler: 0"
+    
+End Sub
+
+Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported As Long, _
+                                         ByVal dupes As Long, ByVal failed As Long)
+    
+    Dim ws As Worksheet
+    Dim shp As Shape
+    Dim rahmenFound As Boolean
+    
+    Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    rahmenFound = False
+    
+    For Each shp In ws.Shapes
+        If shp.Name = RAHMEN_NAME Then
+            rahmenFound = True
+            Exit For
+        End If
+    Next shp
+    
+    If Not rahmenFound Then Exit Sub
+    
+    shp.TextFrame2.TextRange.Characters.text = _
+        "Import-Bericht:" & vbCrLf & _
+        "----------------" & vbCrLf & _
+        "Zeilen in CSV: " & totalRows & vbCrLf & _
+        "Importiert: " & imported & vbCrLf & _
+        "Duplikate: " & dupes & vbCrLf & _
+        "Fehler: " & failed
+    
+End Sub
+
+' ===============================================================
+' 5. IBAN IMPORT AUS BANKKONTO
+' ===============================================================
+Public Sub ImportiereIBANsAusBankkonto()
+    
+    Dim wsBK As Worksheet
+    Dim wsD As Worksheet
+    Dim dictIBANs As Object
+    Dim r As Long
+    Dim lastRowBK As Long
+    Dim lastRowD As Long
+    Dim nextRowD As Long
+    Dim currentIBAN As String
+    Dim currentKontoName As String
+    Dim currentDatum As Variant
+    Dim anzahlNeu As Long
+    Dim anzahlBereitsVorhanden As Long
+    
+    On Error GoTo ErrorHandler
+    
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    On Error Resume Next
+    wsD.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo ErrorHandler
+    
+    Set dictIBANs = CreateObject("Scripting.Dictionary")
+    
+    lastRowBK = wsBK.Cells(wsBK.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    If lastRowBK < BK_START_ROW Then lastRowBK = BK_START_ROW
+    
+    lastRowD = wsD.Cells(wsD.Rows.Count, EK_COL_IBAN).End(xlUp).Row
+    If lastRowD < EK_START_ROW Then lastRowD = EK_START_ROW - 1
+    
+    For r = EK_START_ROW To lastRowD
+        currentIBAN = Trim(wsD.Cells(r, EK_COL_IBAN).value)
+        currentKontoName = Trim(wsD.Cells(r, EK_COL_KONTONAME).value)
+        If currentIBAN <> "" Or currentKontoName <> "" Then
+            dictIBANs(currentIBAN & "|" & currentKontoName) = True
+        End If
+    Next r
+    
+    anzahlBereitsVorhanden = dictIBANs.Count
+    nextRowD = lastRowD + 1
+    anzahlNeu = 0
+    
+    For r = BK_START_ROW To lastRowBK
+        currentDatum = wsBK.Cells(r, BK_COL_DATUM).value
+        If IsEmpty(currentDatum) Or currentDatum = "" Then GoTo NextRowIBAN
+        
+        currentIBAN = Trim(wsBK.Cells(r, BK_COL_IBAN).value)
+        currentKontoName = Trim(wsBK.Cells(r, BK_COL_NAME).value)
+        
+        If currentIBAN = "" And currentKontoName = "" Then GoTo NextRowIBAN
+        
+        If Not dictIBANs.Exists(currentIBAN & "|" & currentKontoName) Then
+            wsD.Cells(nextRowD, EK_COL_IBAN).value = currentIBAN
+            wsD.Cells(nextRowD, EK_COL_KONTONAME).value = currentKontoName
+            
+            dictIBANs(currentIBAN & "|" & currentKontoName) = True
+            nextRowD = nextRowD + 1
+            anzahlNeu = anzahlNeu + 1
+        End If
+        
+NextRowIBAN:
+    Next r
+    
+    wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    Exit Sub
+    
+ErrorHandler:
+    On Error Resume Next
+    wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    Debug.Print "Fehler in ImportiereIBANsAusBankkonto: " & Err.Description
+End Sub
+
+' ===============================================================
+' 6. KATEGORIE ENGINE PIPELINE
+' ===============================================================
+Public Sub KategorieEngine_Pipeline(ByVal ws As Worksheet)
+    
+    Dim lastRow As Long
+    Dim r As Long
+    
+    If ws Is Nothing Then Exit Sub
+    
+    lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Sub
+    
+    For r = BK_START_ROW To lastRow
+        If ws.Cells(r, BK_COL_KATEGORIE).value = "" Then
+            Call VerarbeiteZeile(ws, r)
+        End If
+    Next r
+    
+End Sub
+
+Private Sub VerarbeiteZeile(ByVal ws As Worksheet, ByVal zeile As Long)
+    
+    Dim suchText As String
+    Dim betrag As Double
+    Dim kategorie As String
+    Dim zielspalte As Long
+    
+    suchText = LCase(Trim(ws.Cells(zeile, BK_COL_NAME).value) & " " & _
+                     Trim(ws.Cells(zeile, BK_COL_VERWENDUNGSZWECK).value) & " " & _
+                     Trim(ws.Cells(zeile, BK_COL_BUCHUNGSTEXT).value))
+    
+    betrag = ws.Cells(zeile, BK_COL_BETRAG).value
+    
+    kategorie = SucheKategorie(suchText, betrag)
+    
+    If kategorie <> "" Then
+        ws.Cells(zeile, BK_COL_KATEGORIE).value = kategorie
+        
+        zielspalte = ErmittleZielspalte(kategorie, betrag)
+        If zielspalte > 0 Then
+            ws.Cells(zeile, zielspalte).value = Abs(betrag)
+        End If
+    End If
+    
+End Sub
+
+
+'--- Ende Teil 4 ---
+'--- Anfang Tei 5 ---
+
+
+Private Function SucheKategorie(ByVal suchText As String, ByVal betrag As Double) As String
+    
+    Dim wsD As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim keyword As String
+    Dim kategorie As String
+    Dim einAus As String
+    Dim prioritaet As Long
+    Dim bestePrioritaet As Long
+    Dim besteKategorie As String
+    
+    Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    lastRow = wsD.Cells(wsD.Rows.Count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    If lastRow < DATA_START_ROW Then
+        SucheKategorie = ""
+        Exit Function
+    End If
+    
+    bestePrioritaet = 9999
+    besteKategorie = ""
+    
+    For r = DATA_START_ROW To lastRow
+        kategorie = Trim(wsD.Cells(r, DATA_CAT_COL_KATEGORIE).value)
+        keyword = LCase(Trim(wsD.Cells(r, DATA_CAT_COL_KEYWORD).value))
+        einAus = UCase(Trim(wsD.Cells(r, DATA_CAT_COL_EINAUS).value))
+        prioritaet = Val(wsD.Cells(r, DATA_CAT_COL_PRIORITAET).value)
+        
+        If prioritaet = 0 Then prioritaet = 100
+        
+        If keyword <> "" And InStr(suchText, keyword) > 0 Then
+            If (einAus = "E" And betrag > 0) Or (einAus = "A" And betrag < 0) Or einAus = "" Then
+                If prioritaet < bestePrioritaet Then
+                    bestePrioritaet = prioritaet
+                    besteKategorie = kategorie
+                End If
+            End If
+        End If
+    Next r
+    
+    SucheKategorie = besteKategorie
+    
+End Function
+
+Private Function ErmittleZielspalte(ByVal kategorie As String, ByVal betrag As Double) As Long
+    
+    Dim wsD As Worksheet
+    Dim wsBK As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim kat As String
+    Dim einAus As String
+    Dim zielName As String
+    Dim col As Long
+    
+    Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    
+    ErmittleZielspalte = 0
+    
+    lastRow = wsD.Cells(wsD.Rows.Count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    If lastRow < DATA_START_ROW Then Exit Function
+    
+    For r = DATA_START_ROW To lastRow
+        kat = Trim(wsD.Cells(r, DATA_CAT_COL_KATEGORIE).value)
+        einAus = UCase(Trim(wsD.Cells(r, DATA_CAT_COL_EINAUS).value))
+        zielName = Trim(wsD.Cells(r, DATA_CAT_COL_ZIELSPALTE).value)
+        
+        If kat = kategorie Then
+            If (einAus = "E" And betrag > 0) Or (einAus = "A" And betrag < 0) Then
+                If zielName <> "" Then
+                    For col = BK_COL_MITGL_BEITR To BK_COL_AUSZAHL_KASSE
+                        If Trim(wsBK.Cells(BK_HEADER_ROW, col).value) = zielName Then
+                            ErmittleZielspalte = col
+                            Exit Function
+                        End If
+                    Next col
+                End If
+            End If
+            Exit For
+        End If
+    Next r
+    
+End Function
+
+' ===============================================================
+' 7. HILFSFUNKTIONEN
+' ===============================================================
+Public Sub LoescheAlleBankkontoZeilen()
+    
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim antwort As VbMsgBoxResult
+    
+    antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden geloescht!" & vbCrLf & vbCrLf & _
+                     "Fortfahren?", vbYesNo + vbCritical, "Alle Daten loeschen?")
+    
+    If antwort <> vbYes Then Exit Sub
     
     Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
     
-    lr = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
     
-    If lr < BK_START_ROW Or IsEmpty(ws.Cells(BK_START_ROW, BK_COL_DATUM).value) Then
-        Exit Sub
+    lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    
+    If lastRow >= BK_START_ROW Then
+        ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 26)).ClearContents
+        ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 26)).Interior.ColorIndex = xlNone
     End If
-
-    With ws.Sort
-        .SortFields.Clear
-        .SortFields.Add key:=ws.Cells(BK_START_ROW, BK_COL_DATUM), _
-                             SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
-        .SetRange ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lr, BK_COL_AUSZAHL_KASSE))
-        .Header = xlNo
-        .Apply
-    End With
     
-    Exit Sub
-
-SortError:
-    MsgBox "Sortierung konnte nicht durchgefuehrt werden: " & Err.Description, vbCritical
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    Call Initialize_ImportReport_ListBox
+    
+    MsgBox "Alle Daten wurden geloescht.", vbInformation
     
 End Sub
 
+Public Sub AktualisiereFormatierungBankkonto()
+    
+    Dim ws As Worksheet
+    
+    Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    Call Anwende_Zebra_Bankkonto(ws)
+    Call Anwende_Border_Bankkonto(ws)
+    Call Anwende_Formatierung_Bankkonto(ws)
+    
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    MsgBox "Formatierung aktualisiert!", vbInformation
+    
+End Sub
 
+' ===============================================================
+' 8. SORTIERE TABELLEN DATEN
+' ===============================================================
 Public Sub Sortiere_Tabellen_Daten()
 
     Dim ws As Worksheet
@@ -609,6 +829,10 @@ Public Sub Sortiere_Tabellen_Daten()
     On Error GoTo ExitClean
 
     Set ws = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo ExitClean
 
     lr = ws.Cells(ws.Rows.Count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     If lr >= DATA_START_ROW Then
@@ -622,327 +846,21 @@ Public Sub Sortiere_Tabellen_Daten()
         End With
     End If
 
-    lr = ws.Cells(ws.Rows.Count, DATA_MAP_COL_ENTITYKEY).End(xlUp).Row
-    If lr >= DATA_START_ROW Then
+    lr = ws.Cells(ws.Rows.Count, EK_COL_ENTITYKEY).End(xlUp).Row
+    If lr >= EK_START_ROW Then
         With ws.Sort
             .SortFields.Clear
-            .SortFields.Add key:=ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYKEY), _
+            .SortFields.Add key:=ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
                                  Order:=xlAscending
-            .SetRange ws.Range(ws.Cells(DATA_START_ROW, DATA_MAP_COL_ENTITYKEY), ws.Cells(lr, DATA_MAP_COL_LAST))
+            .SetRange ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), ws.Cells(lr, EK_COL_DEBUG))
             .Header = xlNo
             .Apply
         End With
     End If
+    
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
 
 ExitClean:
     Application.EnableEvents = True
 End Sub
-
-
-' ===============================================================
-' 3. PROTOKOLLIERUNG (ListBox)
-' ===============================================================
-Private Function Get_Protocol_Temp_Sheet() As Worksheet
-    
-    On Error Resume Next
-    Set Get_Protocol_Temp_Sheet = ThisWorkbook.Worksheets(WS_PROTOCOL_TEMP)
-    On Error GoTo 0
-    
-    If Get_Protocol_Temp_Sheet Is Nothing Then
-        Set Get_Protocol_Temp_Sheet = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.Count))
-        Get_Protocol_Temp_Sheet.Name = WS_PROTOCOL_TEMP
-        Get_Protocol_Temp_Sheet.Visible = xlSheetVeryHidden
-    End If
-    
-    Get_Protocol_Temp_Sheet.Columns(1).NumberFormat = "@"
-    
-End Function
-
-
-Private Sub SetzeListBoxHintergrundfarbe(ByVal wsZiel As Worksheet, ByVal farbe As Long)
-    
-    On Error Resume Next
-    
-    Dim oleObj As OLEObject
-    Set oleObj = wsZiel.OLEObjects(FORM_LISTBOX_NAME)
-    If Not oleObj Is Nothing Then
-        oleObj.Object.BackColor = farbe
-        If Err.Number = 0 Then Exit Sub
-        Err.Clear
-    End If
-    
-    Dim shp As Shape
-    Set shp = wsZiel.Shapes(FORM_LISTBOX_NAME)
-    If Not shp Is Nothing Then
-        shp.DrawingObject.Interior.color = farbe
-        If Err.Number = 0 Then Exit Sub
-        Err.Clear
-    End If
-    
-    Call SetzeListBoxRahmenFarbe(wsZiel, farbe)
-    
-    On Error GoTo 0
-End Sub
-
-
-Private Sub SetzeListBoxRahmenFarbe(ByVal wsZiel As Worksheet, ByVal farbe As Long)
-    
-    On Error Resume Next
-    Dim shpRahmen As Shape
-    Set shpRahmen = wsZiel.Shapes(RAHMEN_NAME)
-    If Not shpRahmen Is Nothing Then
-        shpRahmen.Fill.ForeColor.RGB = farbe
-    End If
-    On Error GoTo 0
-    
-End Sub
-
-
-Private Function ErmittleAmpelFarbe(ByVal duplicates As Long, ByVal errors As Long) As Long
-    If errors > 0 Then
-        ErmittleAmpelFarbe = AMPEL_ROT
-    ElseIf duplicates > 0 Then
-        ErmittleAmpelFarbe = AMPEL_GELB
-    Else
-        ErmittleAmpelFarbe = AMPEL_GRUEN
-    End If
-End Function
-
-
-Private Function ExtrahiereZahl(ByVal text As String) As Long
-    Dim i As Long
-    Dim numStr As String
-    
-    numStr = ""
-    For i = 1 To Len(text)
-        If Mid(text, i, 1) >= "0" And Mid(text, i, 1) <= "9" Then
-            numStr = numStr & Mid(text, i, 1)
-        End If
-    Next i
-    
-    If numStr <> "" Then
-        ExtrahiereZahl = CLng(numStr)
-    Else
-        ExtrahiereZahl = 0
-    End If
-End Function
-
-'--- Ende Teil 2 ---
-'--- Anfang Teil 3 ---
-
-Public Sub Initialize_ImportReport_ListBox()
-    
-    Dim wsZiel As Worksheet
-    Dim wsDaten As Worksheet
-    Dim wsTemp As Worksheet
-    Dim protocolRange As String
-    Dim k As Long
-    
-    Const HISTORY_DELIMITER As String = "|REPORT_DELIMITER|"
-    Const PART_DELIMITER As String = "|PART|"
-    
-    Set wsZiel = ThisWorkbook.Worksheets(WS_BANKKONTO)
-    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
-    Set wsTemp = Get_Protocol_Temp_Sheet()
-
-    Application.ScreenUpdating = False
-    
-    wsTemp.Cells.ClearContents
-    
-    If CStr(wsDaten.Range(CELL_IMPORT_PROTOKOLL).value) <> "" Then
-        Dim historyString As String
-        Dim reports() As String
-        Dim reportParts() As String
-        Dim i As Long
-        Dim lastDuplicates As Long
-        Dim lastErrors As Long
-        
-        historyString = CStr(wsDaten.Range(CELL_IMPORT_PROTOKOLL).value)
-        reports = Split(historyString, HISTORY_DELIMITER)
-        
-        k = 1
-        
-        For i = 0 To UBound(reports)
-            reportParts = Split(reports(i), PART_DELIMITER)
-            
-            If i = 0 Then
-                If UBound(reportParts) >= 2 Then lastDuplicates = ExtrahiereZahl(reportParts(2))
-                If UBound(reportParts) >= 3 Then lastErrors = ExtrahiereZahl(reportParts(3))
-            End If
-            
-            If UBound(reportParts) >= 0 Then
-                wsTemp.Cells(k, 1).value = Trim(reportParts(0))
-                k = k + 1
-            End If
-            If UBound(reportParts) >= 1 Then
-                wsTemp.Cells(k, 1).value = "  " & Trim(reportParts(1))
-                k = k + 1
-            End If
-            If UBound(reportParts) >= 2 Then
-                wsTemp.Cells(k, 1).value = "  " & Trim(reportParts(2))
-                k = k + 1
-            End If
-            If UBound(reportParts) >= 3 Then
-                wsTemp.Cells(k, 1).value = "  " & Trim(reportParts(3))
-                k = k + 1
-            End If
-            
-            wsTemp.Cells(k, 1).value = "--------------------------------"
-            k = k + 1
-            
-            If k >= MAX_LISTBOX_LINES Then Exit For
-        Next i
-        
-        Call SetzeListBoxHintergrundfarbe(wsZiel, ErmittleAmpelFarbe(lastDuplicates, lastErrors))
-        
-    Else
-        wsTemp.Range(PROTOCOL_RANGE_START).value = "--------------------------------"
-        wsTemp.Range(PROTOCOL_RANGE_START).Offset(1, 0).value = " Kein Import-Bericht verfuegbar."
-        wsTemp.Range(PROTOCOL_RANGE_START).Offset(2, 0).value = " Fuehren Sie einen CSV-Import"
-        wsTemp.Range(PROTOCOL_RANGE_START).Offset(3, 0).value = " durch, um den Bericht hier"
-        wsTemp.Range(PROTOCOL_RANGE_START).Offset(4, 0).value = " anzuzeigen."
-        wsTemp.Range(PROTOCOL_RANGE_START).Offset(5, 0).value = "--------------------------------"
-        k = 7
-        
-        Call SetzeListBoxHintergrundfarbe(wsZiel, AMPEL_WEISS)
-    End If
-    
-    On Error Resume Next
-    If k > 1 Then
-        protocolRange = wsTemp.Range(wsTemp.Cells(1, 1), wsTemp.Cells(k - 1, 1)).Address(External:=False)
-    Else
-        protocolRange = wsTemp.Range("A1:A6").Address(External:=False)
-    End If
-    wsZiel.Shapes(FORM_LISTBOX_NAME).ControlFormat.ListFillRange = "'" & WS_PROTOCOL_TEMP & "'!" & protocolRange
-    On Error GoTo 0
-    
-    Application.ScreenUpdating = True
-End Sub
-
-
-Public Sub Update_ImportReport_ListBox(ByVal totalEntries As Long, ByVal importedEntries As Long, ByVal duplicateEntries As Long, ByVal errorEntries As Long)
-
-    Dim wsZiel As Worksheet
-    Dim wsDaten As Worksheet
-    Dim wsTemp As Worksheet
-    Dim protocolRange As String
-    
-    Dim strDateTime As String
-    Dim currentHistory() As String
-    Dim historyString As String
-    Dim newHistoryString As String
-    Dim i As Long, k As Long
-    
-    Const HISTORY_DELIMITER As String = "|REPORT_DELIMITER|"
-    Const PART_DELIMITER As String = "|PART|"
-    
-    Set wsZiel = ThisWorkbook.Worksheets(WS_BANKKONTO)
-    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
-    Set wsTemp = Get_Protocol_Temp_Sheet()
-    
-    strDateTime = Format(Now, "dd.mm.yyyy hh:nn:ss")
-    
-    Application.ScreenUpdating = False
-    
-    Dim part1 As String: part1 = strDateTime
-    Dim part2 As String: part2 = importedEntries & " / " & totalEntries & " Datensaetze importiert"
-    Dim part3 As String: part3 = "Duplikate: " & duplicateEntries
-    Dim part4 As String: part4 = "Fehler: " & errorEntries
-    
-    Dim newReportEntry As String
-    newReportEntry = part1 & PART_DELIMITER & part2 & PART_DELIMITER & part3 & PART_DELIMITER & part4
-    
-    historyString = CStr(wsDaten.Range(CELL_IMPORT_PROTOKOLL).value)
-    newHistoryString = newReportEntry & IIf(historyString <> "", HISTORY_DELIMITER & historyString, "")
-    
-    With wsDaten.Range(CELL_IMPORT_PROTOKOLL)
-        .value = newHistoryString
-        .WrapText = True
-    End With
-
-    wsTemp.Cells.ClearContents
-    k = 1
-    
-    currentHistory = Split(newHistoryString, HISTORY_DELIMITER)
-    
-    For i = 0 To UBound(currentHistory)
-        
-        Dim reportParts() As String
-        reportParts = Split(currentHistory(i), PART_DELIMITER)
-        
-        If UBound(reportParts) >= 0 Then
-            wsTemp.Cells(k, 1).value = Trim(reportParts(0))
-            k = k + 1
-        End If
-        If UBound(reportParts) >= 1 Then
-            wsTemp.Cells(k, 1).value = "  " & Trim(reportParts(1))
-            k = k + 1
-        End If
-        If UBound(reportParts) >= 2 Then
-            wsTemp.Cells(k, 1).value = "  " & Trim(reportParts(2))
-            k = k + 1
-        End If
-        If UBound(reportParts) >= 3 Then
-            wsTemp.Cells(k, 1).value = "  " & Trim(reportParts(3))
-            k = k + 1
-        End If
-
-        wsTemp.Cells(k, 1).value = "--------------------------------"
-        k = k + 1
-        
-        If k >= MAX_LISTBOX_LINES Then Exit For
-    Next i
-    
-    On Error Resume Next
-    If Not wsZiel.Shapes(FORM_LISTBOX_NAME) Is Nothing Then
-        protocolRange = wsTemp.Range(wsTemp.Cells(1, 1), wsTemp.Cells(k - 1, 1)).Address(External:=False)
-        wsZiel.Shapes(FORM_LISTBOX_NAME).ControlFormat.ListFillRange = "'" & WS_PROTOCOL_TEMP & "'!" & protocolRange
-    End If
-    On Error GoTo 0
-    
-    Call SetzeListBoxHintergrundfarbe(wsZiel, ErmittleAmpelFarbe(duplicateEntries, errorEntries))
-    
-    Application.ScreenUpdating = True
-End Sub
-
-
-' ===============================================================
-' 4. KATEGORISIERUNG (ZENTRALE STEUERUNG)
-' ===============================================================
-Public Sub Kategorisiere_Umsaetze()
-    
-    Dim wsBK As Worksheet
-    Dim lngLastRow As Long
-    
-    Application.ScreenUpdating = False
-    Application.EnableEvents = False
-    
-    On Error GoTo CategorizationError
-
-    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
-    lngLastRow = wsBK.Cells(wsBK.Rows.Count, BK_COL_DATUM).End(xlUp).Row
-    
-    If lngLastRow < BK_START_ROW Then
-        MsgBox "Keine Banktransaktionen zum Kategorisieren gefunden.", vbInformation
-        GoTo ExitClean
-    End If
-    
-    Call ImportiereIBANsAusBankkonto
-    
-    Call KategorieEngine_Pipeline(wsBK)
-
-    Call Sortiere_Bankkonto_nach_Datum
-
-    MsgBox "Die Kategorisierung der Banktransaktionen wurde abgeschlossen.", vbInformation
-
-ExitClean:
-    Application.ScreenUpdating = True
-    Application.EnableEvents = True
-    Exit Sub
-    
-CategorizationError:
-    MsgBox "Ein Fehler ist bei der Kategorisierung aufgetreten: " & Err.Description, vbCritical
-    Resume ExitClean
-End Sub
-
 
