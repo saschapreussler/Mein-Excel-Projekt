@@ -1,12 +1,10 @@
 Attribute VB_Name = "mod_Banking_Data"
-' filepath: c:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\Modules\mod_Banking_Data.bas
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Data
-' VERSION: 2.3 - 03.02.2026
-' ÄNDERUNG: AktualisiereAlleEntityKeys nach IBAN-Import
-'           Sortierung auf AUFSTEIGEND (Januar oben)
+' VERSION: 2.4 - 03.02.2026
+' ÄNDERUNG: ImportiereIBANsAusBankkonto entfernt (existiert in mod_EntityKey_Manager)
 ' ===============================================================
 
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
@@ -234,14 +232,15 @@ ImportAbschluss:
     
     ' ============================================================
     ' WICHTIG: Reihenfolge der Nachbearbeitung nach CSV-Import
+    ' EXPLIZITE Modulangabe um Mehrdeutigkeiten zu vermeiden!
     ' ============================================================
     On Error Resume Next
     
     ' 1. IBANs aus Bankkonto in EntityKey-Tabelle importieren
-    Call ImportiereIBANsAusBankkonto
+    Call mod_EntityKey_Manager.ImportiereIBANsAusBankkonto
     
     ' 2. EntityKeys aktualisieren (GUIDs, Zuordnungen, Ampel, Formatierung)
-    Call AktualisiereAlleEntityKeys
+    Call mod_EntityKey_Manager.AktualisiereAlleEntityKeys
     
     ' 3. Bankkonto sortieren (AUFSTEIGEND - Januar oben)
     Call Sortiere_Bankkonto_nach_Datum
@@ -397,7 +396,6 @@ End Sub
 
 
 
-' filepath: c:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\Modules\mod_Banking_Data.bas
 ' ===============================================================
 ' 5. SORTIERUNG NACH DATUM (AUFSTEIGEND - Januar oben)
 ' ===============================================================
@@ -524,16 +522,7 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
 End Sub
 
 ' ===============================================================
-' 8. IBAN IMPORT AUS BANKKONTO (vereinfacht - Details in mod_EntityKey_Manager)
-' ===============================================================
-Public Sub ImportiereIBANsAusBankkonto()
-    ' Diese Funktion ruft jetzt die vollständige Version aus mod_EntityKey_Manager auf
-    ' Die dortige Version ist umfangreicher und behandelt alle Edge-Cases
-    Call mod_EntityKey_Manager.ImportiereIBANsAusBankkonto
-End Sub
-
-' ===============================================================
-' 9. HILFSFUNKTIONEN
+' 8. HILFSFUNKTIONEN
 ' ===============================================================
 Public Sub LoescheAlleBankkontoZeilen()
     
@@ -588,7 +577,7 @@ Public Sub AktualisiereFormatierungBankkonto()
 End Sub
 
 ' ===============================================================
-' 10. SORTIERE TABELLEN DATEN
+' 9. SORTIERE TABELLEN DATEN
 ' ===============================================================
 Public Sub Sortiere_Tabellen_Daten()
 
