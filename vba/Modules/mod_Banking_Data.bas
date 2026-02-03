@@ -1,11 +1,12 @@
 Attribute VB_Name = "mod_Banking_Data"
+' filepath: c:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\Modules\mod_Banking_Data.bas
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Data
-' VERSION: 2.2 - 02.02.2026
-' KORREKTUR: Doppelte KategorieEngine-Funktionen entfernt
-'            Zebra-Formatierung korrigiert (A-G, I-Z)
+' VERSION: 2.3 - 03.02.2026
+' ÄNDERUNG: AktualisiereAlleEntityKeys nach IBAN-Import
+'           Sortierung auf AUFSTEIGEND (Januar oben)
 ' ===============================================================
 
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
@@ -152,13 +153,6 @@ Public Sub Importiere_Kontoauszug()
     Err.Clear
     On Error GoTo 0
     
-    
-    
-'--- Ende Teil 1 ---
-'--- Anfang Teil 2 ---
-
-
-
     For lRowTemp = 2 To lastRowTemp
         
         betragString = CStr(wsTemp.Cells(lRowTemp, CSV_COL_BETRAG).value)
@@ -238,14 +232,31 @@ ImportAbschluss:
     Err.Clear
     On Error GoTo 0
     
+    ' ============================================================
+    ' WICHTIG: Reihenfolge der Nachbearbeitung nach CSV-Import
+    ' ============================================================
     On Error Resume Next
+    
+    ' 1. IBANs aus Bankkonto in EntityKey-Tabelle importieren
     Call ImportiereIBANsAusBankkonto
+    
+    ' 2. EntityKeys aktualisieren (GUIDs, Zuordnungen, Ampel, Formatierung)
+    Call AktualisiereAlleEntityKeys
+    
+    ' 3. Bankkonto sortieren (AUFSTEIGEND - Januar oben)
     Call Sortiere_Bankkonto_nach_Datum
+    
+    ' 4. Formatierungen anwenden
     Call Anwende_Zebra_Bankkonto(wsZiel)
     Call Anwende_Border_Bankkonto(wsZiel)
     Call Anwende_Formatierung_Bankkonto(wsZiel)
+    
+    ' 5. Kategorie-Engine nur bei neuen Zeilen
     If rowsProcessed > 0 Then Call KategorieEngine_Pipeline(wsZiel)
+    
+    ' 6. Monat/Periode setzen
     Call Setze_Monat_Periode(wsZiel)
+    
     Err.Clear
     On Error GoTo 0
     
@@ -297,14 +308,6 @@ Private Sub Anwende_Zebra_Bankkonto(ByVal ws As Worksheet)
     Next lRow
     
 End Sub
-
-
-
-'--- Ende Teil 2 ---
-'--- Anfang Teil 3 ---
-
-
-
 
 ' ===============================================================
 ' 3. RAHMEN-FORMATIERUNG
@@ -387,8 +390,16 @@ Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     
 End Sub
 
+
+
+'--- Ende Teil 1 ---
+'--- Anfang Teil 2 ---
+
+
+
+' filepath: c:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\Modules\mod_Banking_Data.bas
 ' ===============================================================
-' 5. SORTIERUNG NACH DATUM
+' 5. SORTIERUNG NACH DATUM (AUFSTEIGEND - Januar oben)
 ' ===============================================================
 Public Sub Sortiere_Bankkonto_nach_Datum()
     
@@ -412,7 +423,7 @@ Public Sub Sortiere_Bankkonto_nach_Datum()
     
     ws.Sort.SortFields.Clear
     ws.Sort.SortFields.Add key:=ws.Range(ws.Cells(BK_START_ROW, BK_COL_DATUM), ws.Cells(lastRow, BK_COL_DATUM)), _
-                           SortOn:=xlSortOnValues, Order:=xlDescending, DataOption:=xlSortNormal
+                           SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
     
     With ws.Sort
         .SetRange sortRange
@@ -451,13 +462,6 @@ Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     Next r
     
 End Sub
-
-
-
-'--- Ende Teil 3 ---
-'--- Anfang Teil 4 ---
-
-
 
 ' ===============================================================
 ' 7. IMPORT REPORT LISTBOX
@@ -520,74 +524,12 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
 End Sub
 
 ' ===============================================================
-' 8. IBAN IMPORT AUS BANKKONTO
+' 8. IBAN IMPORT AUS BANKKONTO (vereinfacht - Details in mod_EntityKey_Manager)
 ' ===============================================================
 Public Sub ImportiereIBANsAusBankkonto()
-    
-    Dim wsBK As Worksheet
-    Dim wsD As Worksheet
-    Dim dictIBANs As Object
-    Dim r As Long
-    Dim lastRowBK As Long
-    Dim lastRowD As Long
-    Dim nextRowD As Long
-    Dim currentIBAN As String
-    Dim currentKontoName As String
-    Dim currentDatum As Variant
-    
-    On Error GoTo ErrorHandler
-    
-    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
-    Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
-    
-    On Error Resume Next
-    wsD.Unprotect PASSWORD:=PASSWORD
-    On Error GoTo ErrorHandler
-    
-    Set dictIBANs = CreateObject("Scripting.Dictionary")
-    
-    lastRowBK = wsBK.Cells(wsBK.Rows.Count, BK_COL_DATUM).End(xlUp).Row
-    If lastRowBK < BK_START_ROW Then lastRowBK = BK_START_ROW
-    
-    lastRowD = wsD.Cells(wsD.Rows.Count, EK_COL_IBAN).End(xlUp).Row
-    If lastRowD < EK_START_ROW Then lastRowD = EK_START_ROW - 1
-    
-    For r = EK_START_ROW To lastRowD
-        currentIBAN = Trim(wsD.Cells(r, EK_COL_IBAN).value)
-        currentKontoName = Trim(wsD.Cells(r, EK_COL_KONTONAME).value)
-        If currentIBAN <> "" Or currentKontoName <> "" Then
-            dictIBANs(currentIBAN & "|" & currentKontoName) = True
-        End If
-    Next r
-    
-    nextRowD = lastRowD + 1
-    
-    For r = BK_START_ROW To lastRowBK
-        currentDatum = wsBK.Cells(r, BK_COL_DATUM).value
-        If IsEmpty(currentDatum) Or currentDatum = "" Then GoTo NextRowIBAN
-        
-        currentIBAN = Trim(wsBK.Cells(r, BK_COL_IBAN).value)
-        currentKontoName = Trim(wsBK.Cells(r, BK_COL_NAME).value)
-        
-        If currentIBAN = "" And currentKontoName = "" Then GoTo NextRowIBAN
-        
-        If Not dictIBANs.Exists(currentIBAN & "|" & currentKontoName) Then
-            wsD.Cells(nextRowD, EK_COL_IBAN).value = currentIBAN
-            wsD.Cells(nextRowD, EK_COL_KONTONAME).value = currentKontoName
-            
-            dictIBANs(currentIBAN & "|" & currentKontoName) = True
-            nextRowD = nextRowD + 1
-        End If
-        
-NextRowIBAN:
-    Next r
-    
-    wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    Exit Sub
-    
-ErrorHandler:
-    On Error Resume Next
-    wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ' Diese Funktion ruft jetzt die vollständige Version aus mod_EntityKey_Manager auf
+    ' Die dortige Version ist umfangreicher und behandelt alle Edge-Cases
+    Call mod_EntityKey_Manager.ImportiereIBANsAusBankkonto
 End Sub
 
 ' ===============================================================
@@ -691,7 +633,4 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
-
-
-
 
