@@ -1461,27 +1461,29 @@ End Function
 
 ' ---------------------------------------------------------------------
 ' SetzeAmpelFarbe - Setzt die Hintergrundfarbe basierend auf Status
+' KORRIGIERT: Akzeptiert (Worksheet, Zeile, Status) mit Status als Long
+'   1 = Grün, 2 = Gelb, 3 = Rot, 0 = Weiß
 ' ---------------------------------------------------------------------
-Private Sub SetzeAmpelFarbe(ByVal zeile As Long, ByVal wsDaten As Worksheet, ByVal status As String)
+Private Sub SetzeAmpelFarbe(ByRef ws As Worksheet, ByVal zeile As Long, ByVal ampelStatus As Long)
     Dim rngZeile As Range
     Dim farbe As Long
     
-    Set rngZeile = wsDaten.Range(wsDaten.Cells(zeile, EK_COL_ENTITYKEY), wsDaten.Cells(zeile, EK_COL_DEBUG))
+    On Error Resume Next
+    Set rngZeile = ws.Range(ws.Cells(zeile, EK_COL_ENTITYKEY), ws.Cells(zeile, EK_COL_DEBUG))
     
-    Select Case UCase(status)
-        Case "GRUEN", "GRÜN", "GREEN", "OK"
-            farbe = RGB(198, 239, 206)  ' Hellgrün
-        Case "GELB", "YELLOW", "WARNUNG"
-            farbe = RGB(255, 235, 156)  ' Hellgelb
-        Case "ROT", "RED", "FEHLER"
-            farbe = RGB(255, 199, 206)  ' Hellrot
-        Case "WEISS", "WHITE", "NEUTRAL"
-            farbe = RGB(255, 255, 255)  ' Weiß
-        Case Else
-            farbe = RGB(255, 255, 255)  ' Standard: Weiß
+    Select Case ampelStatus
+        Case 1  ' Grün - OK
+            farbe = RGB(198, 239, 206)
+        Case 2  ' Gelb - Warnung
+            farbe = RGB(255, 235, 156)
+        Case 3  ' Rot - Fehler
+            farbe = RGB(255, 199, 206)
+        Case Else  ' 0 oder andere = Weiß
+            farbe = RGB(255, 255, 255)
     End Select
     
     rngZeile.Interior.color = farbe
+    On Error GoTo 0
 End Sub
 
 ' ---------------------------------------------------------------------
@@ -1556,7 +1558,7 @@ End Sub
 Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long, ByVal wsDaten As Worksheet)
     Dim role As String
     Dim parzelle As Variant
-    Dim status As String
+    Dim ampelStatus As Long
     
     On Error GoTo ErrorHandler
     
@@ -1564,21 +1566,22 @@ Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long, ByVal wsDaten As Worksh
     parzelle = wsDaten.Cells(zeile, EK_COL_PARZELLE).value
     
     ' Status bestimmen basierend auf Role und Zuordnung
-    If role = ROLE_MITGLIED Then
+    If InStr(role, "MITGLIED") > 0 Then
         If IsNumeric(parzelle) And parzelle >= 1 And parzelle <= 14 Then
-            status = "GRUEN"
+            ampelStatus = 1  ' Grün
         Else
-            status = "GELB"
+            ampelStatus = 2  ' Gelb
         End If
     ElseIf role = ROLE_VERSORGER Or role = ROLE_BANK Or role = ROLE_SHOP Then
-        status = "GRUEN"
+        ampelStatus = 1  ' Grün
     ElseIf role = ROLE_SONSTIGE Then
-        status = "GELB"
+        ampelStatus = 2  ' Gelb
     Else
-        status = "ROT"
+        ampelStatus = 3  ' Rot
     End If
     
-    SetzeAmpelFarbe zeile, wsDaten, status
+    ' KORRIGIERT: Parameter-Reihenfolge (ws, zeile, ampelStatus)
+    SetzeAmpelFarbe wsDaten, zeile, ampelStatus
     
     ' Zuordnung zentrieren wenn Parzelle
     If IsNumeric(parzelle) Then
@@ -1593,6 +1596,7 @@ Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long, ByVal wsDaten As Worksh
 ErrorHandler:
     Debug.Print "FEHLER in FormatiereEntityKeyZeile (Zeile " & zeile & "): " & Err.Description
 End Sub
+
 
 ' ---------------------------------------------------------------------
 ' VerarbeiteManuelleRoleAenderung - Reagiert auf manuelle Änderungen
