@@ -40,7 +40,7 @@ Public Sub Fuelle_MemberIDs_Wenn_Fehlend()
     wasProtected = wsM.ProtectContents
     If wasProtected Then wsM.Unprotect PASSWORD:=PASSWORD
     
-    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = wsM.Cells(wsM.Rows.count, M_COL_NACHNAME).End(xlUp).Row
     
     If lastRow < M_START_ROW Then GoTo Cleanup
     
@@ -152,7 +152,7 @@ Public Sub Sortiere_Mitgliederliste_Nach_Parzelle()
     wasProtected = ws.ProtectContents
     If wasProtected Then ws.Unprotect PASSWORD:=PASSWORD
     
-    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, M_COL_NACHNAME).End(xlUp).Row
     
     If lastRow < M_START_ROW Then GoTo Cleanup
     
@@ -205,7 +205,7 @@ Public Function GetEntityKeyByParzelle(ByVal ParzelleNr As String) As String
     Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
     If wsD Is Nothing Then GoTo ErrorHandler
     
-    lastRow = wsD.Cells(wsD.Rows.Count, DATA_MAP_COL_PARZELLE).End(xlUp).Row
+    lastRow = wsD.Cells(wsD.Rows.count, DATA_MAP_COL_PARZELLE).End(xlUp).Row
     Set rngFind = wsD.Range(wsD.Cells(DATA_START_ROW, DATA_MAP_COL_PARZELLE), wsD.Cells(lastRow, DATA_MAP_COL_PARZELLE))
     
     Set rngFind = rngFind.Find(What:=ParzelleNr, LookIn:=xlValues, LookAt:=xlWhole)
@@ -262,7 +262,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     
     ' --- 1. HISTORIE SPEICHERN ---
     wsH.Unprotect PASSWORD:=PASSWORD
-    NextRow = wsH.Cells(wsH.Rows.Count, H_COL_PARZELLE).End(xlUp).Row + 1
+    NextRow = wsH.Cells(wsH.Rows.count, H_COL_PARZELLE).End(xlUp).Row + 1
     If NextRow < H_START_ROW Then NextRow = H_START_ROW
     
     wsH.Cells(NextRow, H_COL_PARZELLE).value = OldParzelle
@@ -315,7 +315,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     On Error Resume Next
     Call mod_Hilfsfunktionen.AktualisiereNamedRange_MitgliederNamen
     Call Sortiere_Mitgliederliste_Nach_Parzelle
-    Call ImportiereIBANsAusBankkonto
+    Call mod_EntityKey_Manager.ImportiereIBANsAusBankkonto
     Call mod_Banking_Data.Sortiere_Tabellen_Daten
     Call mod_ZaehlerLogik.Ermittle_Kennzahlen_Mitgliederliste
     Call mod_ZaehlerLogik.ErzeugeParzellenUebersicht
@@ -363,7 +363,7 @@ Private Sub VerifikationVereinsParzelleIntakt()
     vereinParzelleRow = 0
     
     ' Finde die Zeile mit "Verein"-Parzelle
-    For lRow = M_START_ROW To ws.Cells(ws.Rows.Count, M_COL_PARZELLE).End(xlUp).Row
+    For lRow = M_START_ROW To ws.Cells(ws.Rows.count, M_COL_PARZELLE).End(xlUp).Row
         If Trim(ws.Cells(lRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
             vereinParzelleRow = lRow
             vereinRowNachname = Trim(ws.Cells(lRow, M_COL_NACHNAME).value)

@@ -45,7 +45,7 @@ Public Sub OeffneMitgliedsDetails()
     lRow = 0
     
     Dim r As Long
-    For r = 6 To ws.Cells(ws.Rows.Count, 2).End(xlUp).Row
+    For r = 6 To ws.Cells(ws.Rows.count, 2).End(xlUp).Row
         If StrComp(Trim(ws.Cells(r, 2).value), ParzelleToFind, vbTextCompare) = 0 And _
            StrComp(Trim(ws.Cells(r, 5).value), NachnameToFind, vbTextCompare) = 0 Then
              lRow = r
@@ -132,7 +132,7 @@ Private Sub LoadListBoxData()
     AnzArr = 0
     
     With Worksheets("Mitgliederliste")
-        For iZeile = 6 To .Cells(.Rows.Count, 2).End(xlUp).Row
+        For iZeile = 6 To .Cells(.Rows.count, 2).End(xlUp).Row
             If Trim(.Cells(iZeile, 2).value) <> "" And _
                StrComp(Trim(.Cells(iZeile, 2).value), "Verein", vbTextCompare) <> 0 And _
                Trim(.Cells(iZeile, M_COL_PACHTENDE).value) = "" Then
@@ -149,7 +149,7 @@ Private Sub LoadListBoxData()
         
         AnzArr = 0
         
-        For iZeile = 6 To .Cells(.Rows.Count, 2).End(xlUp).Row
+        For iZeile = 6 To .Cells(.Rows.count, 2).End(xlUp).Row
             If Trim(.Cells(iZeile, 2).value) <> "" And _
                StrComp(Trim(.Cells(iZeile, 2).value), "Verein", vbTextCompare) <> 0 And _
                Trim(.Cells(iZeile, M_COL_PACHTENDE).value) = "" Then

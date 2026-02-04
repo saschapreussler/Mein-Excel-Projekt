@@ -142,7 +142,7 @@ Private Sub cmd_OK_Click()
             selectedName = Me.cbo_Nachpaechter.value
             
             ' Suche Member ID anhand des Namens
-            lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+            lastRow = ws.Cells(ws.Rows.count, M_COL_NACHNAME).End(xlUp).Row
             For lRow = M_START_ROW To lastRow
                 Dim fullName As String
                 fullName = ws.Cells(lRow, M_COL_NACHNAME).value & ", " & ws.Cells(lRow, M_COL_VORNAME).value
@@ -200,7 +200,7 @@ Private Sub FuelleNachpaechterComboBox()
     
     Me.cbo_Nachpaechter.Clear
     
-    lastRow = ws.Cells(ws.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, M_COL_NACHNAME).End(xlUp).Row
     
     For lRow = M_START_ROW To lastRow
         ' Nur aktive Mitglieder (Pachtende leer) und nicht "Verein"

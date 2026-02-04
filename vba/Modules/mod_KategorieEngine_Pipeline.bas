@@ -15,7 +15,7 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
     Set wsData = ThisWorkbook.Worksheets(WS_DATEN)
     Set rngRules = wsData.Range(RANGE_KATEGORIE_REGELN)
 
-    lastRowBK = wsBK.Cells(wsBK.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    lastRowBK = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRowBK < BK_START_ROW Then Exit Sub
 
     Application.ScreenUpdating = False

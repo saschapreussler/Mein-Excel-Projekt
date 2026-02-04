@@ -64,7 +64,7 @@ Private Function GetTargetHeaderByCategory(ByVal category As String) As String
     Set wsRules = ThisWorkbook.Worksheets(WS_DATEN)
 
     Dim lastRow As Long
-    lastRow = wsRules.Cells(wsRules.Rows.Count, 10).End(xlUp).Row
+    lastRow = wsRules.Cells(wsRules.Rows.count, 10).End(xlUp).Row
 
     Dim r As Long
     For r = DATA_START_ROW To lastRow

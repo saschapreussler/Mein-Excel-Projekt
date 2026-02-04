@@ -72,7 +72,7 @@ Public Function FuzzyMemberSearch(ByVal nameToSearch As String, ByVal wsMembers 
     normSearchName = NormalizeString(nameToSearch)
     
     ' HINWEIS: Wir verwenden nun die in mod_Const neu definierten MEMBER_COL_ Konstanten.
-    lastRowM = wsMembers.Cells(wsMembers.Rows.Count, MEMBER_COL_NACHNAME).End(xlUp).Row
+    lastRowM = wsMembers.Cells(wsMembers.Rows.count, MEMBER_COL_NACHNAME).End(xlUp).Row
     
     If lastRowM < M_START_ROW Then GoTo EndSearch
     

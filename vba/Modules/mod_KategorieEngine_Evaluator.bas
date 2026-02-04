@@ -71,7 +71,7 @@ Private Function GetEntityRoleByIBAN(ByVal strIBAN As String) As String
     Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
 
     Dim lastRow As Long
-    lastRow = wsD.Cells(wsD.Rows.Count, DATA_MAP_COL_IBAN).End(xlUp).Row
+    lastRow = wsD.Cells(wsD.Rows.count, DATA_MAP_COL_IBAN).End(xlUp).Row
 
     Dim ibanClean As String
     ibanClean = UCase(Replace(strIBAN, " ", ""))
@@ -247,7 +247,7 @@ NextRule:
     ' PHASE 3: ERGEBNIS AUSWERTEN
     ' ================================
     
-    If hitCategories.Count > 1 Then
+    If hitCategories.count > 1 Then
         If ctx("EntityRole") = "MITGLIED" And ctx("IsEinnahme") Then
             wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
                 "Mehrere Positionen erkannt: " & Join(hitCategories.Keys, " | ")

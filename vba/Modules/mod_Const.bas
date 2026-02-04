@@ -4,8 +4,8 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Const
 ' ZWECK: Zentrale Konstanten fuer das gesamte Projekt
-' VERSION: 2.4 - 02.02.2026
-' AENDERUNG: Doppelte Definitionen entfernt, Spalten korrigiert
+' VERSION: 2.5 - 02.02.2026
+' AENDERUNG: EK_* Konstanten hinzugefuegt, Struktur optimiert
 ' ***************************************************************
 
 ' ===============================================================
@@ -150,6 +150,18 @@ Public Const DATA_MAP_COL_IBAN_OLD As Long = 19
 Public Const DATA_MAP_COL_PARZ_KEY As Long = 22
 Public Const DATA_MAP_COL_NAME As Long = 21
 Public Const DATA_MAP_COL_KONTONAME As Long = 20
+
+' ===============================================================
+' G2. ENTITYKEY-TABELLE - ALIASE FUER mod_Formatierung
+' ===============================================================
+Public Const EK_START_ROW As Long = 4
+Public Const EK_COL_ENTITYKEY As Long = 18
+Public Const EK_COL_IBAN As Long = 19
+Public Const EK_COL_KONTONAME As Long = 20
+Public Const EK_COL_ZUORDNUNG As Long = 21
+Public Const EK_COL_PARZELLE As Long = 22
+Public Const EK_COL_ROLE As Long = 23
+Public Const EK_COL_DEBUG As Long = 24
 
 ' ===============================================================
 ' H. DATEN - DROPDOWN-FUELLBEREICHE (Spalten Y-AH)

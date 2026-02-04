@@ -84,7 +84,7 @@ Public Sub Importiere_Kontoauszug()
         Exit Sub
     End If
     
-    lRowZiel = wsZiel.Cells(wsZiel.Rows.Count, BK_COL_BETRAG).End(xlUp).Row
+    lRowZiel = wsZiel.Cells(wsZiel.Rows.count, BK_COL_BETRAG).End(xlUp).Row
     If lRowZiel < BK_START_ROW Then lRowZiel = BK_START_ROW - 1
     
     For i = BK_START_ROW To lRowZiel
@@ -98,7 +98,7 @@ Public Sub Importiere_Kontoauszug()
     Next i
     
     On Error Resume Next
-    Set wsTemp = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.Count))
+    Set wsTemp = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.count))
     If Err.Number <> 0 Then
         MsgBox "Fehler beim Erstellen des Temp-Blatts: " & Err.Description & vbCrLf & vbCrLf & _
                "Bitte pruefen Sie ob die Arbeitsmappe geschuetzt ist.", vbCritical
@@ -138,7 +138,7 @@ Public Sub Importiere_Kontoauszug()
     Err.Clear
     On Error GoTo 0
     
-    lastRowTemp = wsTemp.Cells(wsTemp.Rows.Count, 1).End(xlUp).Row
+    lastRowTemp = wsTemp.Cells(wsTemp.Rows.count, 1).End(xlUp).Row
     rowsTotalInFile = lastRowTemp - 1
     
     If lastRowTemp <= 1 Then
@@ -192,7 +192,7 @@ Public Sub Importiere_Kontoauszug()
             GoTo NextRowImport
         End If
         
-        lRowZiel = wsZiel.Cells(wsZiel.Rows.Count, BK_COL_DATUM).End(xlUp).Row + 1
+        lRowZiel = wsZiel.Cells(wsZiel.Rows.count, BK_COL_DATUM).End(xlUp).Row + 1
         dictUmsaetze.Add sKey, True
         
         wsZiel.Cells(lRowZiel, BK_COL_DATUM).value = dDatum
@@ -288,7 +288,7 @@ Private Sub Anwende_Zebra_Bankkonto(ByVal ws As Worksheet)
     
     If ws Is Nothing Then Exit Sub
     
-    lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
     For lRow = BK_START_ROW To lastRow
@@ -319,7 +319,7 @@ Private Sub Anwende_Border_Bankkonto(ByVal ws As Worksheet)
     
     If ws Is Nothing Then Exit Sub
     
-    lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
     Set rngPart1 = ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 12))
@@ -373,7 +373,7 @@ Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     
     euroFormat = "#,##0.00 " & ChrW(8364)
     
-    lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), ws.Cells(lastRow, BK_COL_BETRAG)).NumberFormat = euroFormat
@@ -411,7 +411,7 @@ Public Sub Sortiere_Bankkonto_nach_Datum()
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
-    lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then
         ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
         Exit Sub
@@ -447,7 +447,7 @@ Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     
     If ws Is Nothing Then Exit Sub
     
-    lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
     For r = BK_START_ROW To lastRow
@@ -541,7 +541,7 @@ Public Sub LoescheAlleBankkontoZeilen()
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
-    lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     
     If lastRow >= BK_START_ROW Then
         ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 26)).ClearContents
@@ -593,7 +593,7 @@ Public Sub Sortiere_Tabellen_Daten()
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ExitClean
 
-    lr = ws.Cells(ws.Rows.Count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    lr = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     If lr >= DATA_START_ROW Then
         With ws.Sort
             .SortFields.Clear
@@ -605,7 +605,7 @@ Public Sub Sortiere_Tabellen_Daten()
         End With
     End If
 
-    lr = ws.Cells(ws.Rows.Count, EK_COL_ENTITYKEY).End(xlUp).Row
+    lr = ws.Cells(ws.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
     If lr >= EK_START_ROW Then
         With ws.Sort
             .SortFields.Clear

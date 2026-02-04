@@ -140,7 +140,7 @@ Sub ErzeugeParzellenUebersicht()
     wsZiel.Unprotect
     On Error GoTo 0
     
-    lastRow = wsQuelle.Cells(wsQuelle.Rows.Count, 2).End(xlUp).Row
+    lastRow = wsQuelle.Cells(wsQuelle.Rows.count, 2).End(xlUp).Row
     maxParzelle = 14
     
     For i = 6 To lastRow
@@ -151,7 +151,7 @@ Sub ErzeugeParzellenUebersicht()
         End If
     Next i
     
-    With wsZiel.Range("B5:C" & wsZiel.Rows.Count)
+    With wsZiel.Range("B5:C" & wsZiel.Rows.count)
         .UnMerge
         .ClearContents
         .Locked = True
@@ -230,7 +230,7 @@ Sub AktualisiereZaehlerTabellenSpalteA()
     zielZeileStrom = 8
     zielZeileWasser = 10
 
-    lastRowQuelle = wsQuelle.Cells(wsQuelle.Rows.Count, 2).End(xlUp).Row
+    lastRowQuelle = wsQuelle.Cells(wsQuelle.Rows.count, 2).End(xlUp).Row
     
     On Error Resume Next
     wsStrom.Unprotect
@@ -401,8 +401,8 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
         
         Set lo = ws.ListObjects(HIST_TABLE_NAME)
         If Not lo Is Nothing Then
-            If lo.Range.Columns.Count <> COLUMN_COUNT Then
-                lo.Resize ws.Range("A1:K" & lo.Range.Rows.Count)
+            If lo.Range.Columns.count <> COLUMN_COUNT Then
+                lo.Resize ws.Range("A1:K" & lo.Range.Rows.count)
             End If
             
             ws.Range("E1").value = "Zähler-Nr. (ID) alt"
@@ -869,7 +869,7 @@ Public Sub SchreibeHistorie( _
     Set newRow = lo.ListRows.Add(AlwaysInsert:=True)
     
     With newRow.Range
-        .Cells(1, COL_HIST_ID).value = lo.ListRows.Count
+        .Cells(1, COL_HIST_ID).value = lo.ListRows.count
         .Cells(1, COL_HIST_DATUM).value = DatumW
         .Cells(1, COL_HIST_PARZELLE).value = parzelle
         .Cells(1, COL_HIST_MEDIUM).value = Medium
@@ -1043,7 +1043,7 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
     wsStart.Unprotect
     On Error GoTo 0
     
-    lastRowQuelle = wsQuelle.Cells(wsQuelle.Rows.Count, 2).End(xlUp).Row
+    lastRowQuelle = wsQuelle.Cells(wsQuelle.Rows.count, 2).End(xlUp).Row
     
     ZaehlerBelegteParzellen = 0
     ZaehlerMitgliederGesamt = 0

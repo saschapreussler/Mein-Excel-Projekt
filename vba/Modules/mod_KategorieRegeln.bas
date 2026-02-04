@@ -70,7 +70,7 @@ Private Function FindeErsteKategorieZeile(ws As Worksheet, _
                                          katName As String, _
                                          excludeRow As Long) As Long
     Dim lastRow As Long
-    lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
 
     Dim r As Long
     For r = DATA_START_ROW To lastRow

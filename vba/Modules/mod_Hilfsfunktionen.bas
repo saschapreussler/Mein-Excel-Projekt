@@ -54,7 +54,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
     wasProtected = wsM.ProtectContents
     If wasProtected Then wsM.Unprotect PASSWORD:=PASSWORD
     
-    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = wsM.Cells(wsM.Rows.count, M_COL_NACHNAME).End(xlUp).Row
     
     If lastRow >= M_START_ROW Then
         
@@ -80,7 +80,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
         wsM.AutoFilterMode = False ' Filter aufheben
         
         ' 3. Kombinierte Namen-Liste erstellen (Nachname, Vorname)
-        tempRow = wsTemp.Cells(wsTemp.Rows.Count, 1).End(xlUp).Row
+        tempRow = wsTemp.Cells(wsTemp.Rows.count, 1).End(xlUp).Row
         
         If tempRow > 1 Then ' Zeile 1 enthält die Header/Erste Zeile des kopierten Bereichs
             For i = 2 To tempRow
@@ -176,7 +176,7 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     Dim i As Long
     
     ' Gehe alle geladenen UserForms in der VBA-Collection durch
-    For i = 0 To VBA.UserForms.Count - 1
+    For i = 0 To VBA.UserForms.count - 1
         ' Vergleiche den Klassennamen des geladenen Formulars mit dem gesuchten Namen
         If StrComp(VBA.UserForms.item(i).Name, FormName, vbTextCompare) = 0 Then
             IsFormLoaded = True ' Formular gefunden und ist geladen

@@ -103,7 +103,7 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         wsBK.Unprotect PASSWORD:=PASSWORD
         On Error GoTo ErrorHandler
         
-        lastRowBK = wsBK.Cells(wsBK.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+        lastRowBK = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
         If lastRowBK < BK_START_ROW Then lastRowBK = BK_START_ROW
         
         With wsBK.Range(wsBK.Cells(BK_START_ROW, BK_COL_BEMERKUNG), _
@@ -204,7 +204,7 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
     
     If ws Is Nothing Then Set ws = ThisWorkbook.Worksheets(WS_DATEN)
     
-    lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     If lastRow < DATA_START_ROW Then Exit Sub
     
     Set rngTable = ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
@@ -331,7 +331,7 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
     Set dictEinnahmen = CreateObject("Scripting.Dictionary")
     Set dictAusgaben = CreateObject("Scripting.Dictionary")
     
-    lastRow = ws.Cells(ws.Rows.Count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     If lastRow < DATA_START_ROW Then Exit Sub
     
     For r = DATA_START_ROW To lastRow
@@ -428,7 +428,7 @@ Private Sub FormatiereEntityKeyTabelleKomplett(ByRef ws As Worksheet)
     
     Dim lastRow As Long
     
-    lastRow = ws.Cells(ws.Rows.Count, EK_COL_ENTITYKEY).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
     
     If lastRow >= EK_START_ROW Then
         Call FormatiereEntityKeyTabelle(ws, lastRow)
@@ -550,7 +550,7 @@ Public Sub FormatiereBlattBankkonto()
     
     ws.Cells.VerticalAlignment = xlCenter
     
-    lastRow = ws.Cells(ws.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then lastRow = BK_START_ROW
     
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), _

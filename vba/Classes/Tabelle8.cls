@@ -7,8 +7,6 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
-' Nach Option Explicit in Tabelle8 (Daten) einfuegen:
-
 Private Sub Worksheet_Change(ByVal Target As Range)
 
     Dim rng_KategorieRegeln As Range
@@ -18,13 +16,6 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Dim targetValue As Variant
     Dim zeile As Long
     Dim spalte As Long
-    
-    ' AKTUALISIERT: Spaltennummern nach Loeschung von Spalte O (Guthabenfaehig)
-    Const COL_KATEGORIE As Long = 10  ' J
-    Const COL_EINAUS As Long = 11     ' K
-    Const COL_ZIELSPALTE As Long = 14 ' N
-    Const COL_FAELLIGKEIT As Long = 15 ' O
-    Const COL_KOMMENTAR As Long = 16   ' P
 
     On Error GoTo ExitPoint
     If Application.EnableEvents = False Then Exit Sub
@@ -48,7 +39,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     ' === KATEGORIE-TABELLE VERARBEITUNG (Spalten J-P, ab Zeile 4) ===
     If zeile >= DATA_START_ROW And spalte >= DATA_CAT_COL_KATEGORIE And spalte <= DATA_CAT_COL_END Then
-        If spalte = COL_KATEGORIE Or spalte = COL_EINAUS Then
+        If spalte = DATA_CAT_COL_KATEGORIE Or spalte = DATA_CAT_COL_EINAUS Then
             Call mod_Formatierung.OnKategorieChange(Target)
         End If
     End If
@@ -62,7 +53,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     If rng_KategorieRegeln Is Nothing Then Exit Sub
 
     Select Case Target.Column
-        Case COL_EINAUS, COL_ZIELSPALTE, COL_FAELLIGKEIT
+        Case DATA_CAT_COL_EINAUS, DATA_CAT_COL_ZIELSPALTE, DATA_CAT_COL_FAELLIGKEIT
             If Intersect(Target, rng_KategorieRegeln) Is Nothing Then
                 Exit Sub
             End If
@@ -70,14 +61,14 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             Exit Sub
     End Select
     
-    cat = Trim(CStr(Me.Cells(Target.Row, COL_KATEGORIE).value))
+    cat = Trim(CStr(Me.Cells(Target.Row, DATA_CAT_COL_KATEGORIE).value))
     If cat = "" Then Exit Sub
-    
+
     targetValue = Me.Cells(Target.Row, Target.Column).value
 
     refValue = ""
     
-    For Each r In Intersect(Me.Columns(COL_KATEGORIE), rng_KategorieRegeln).Cells
+    For Each r In Intersect(Me.Columns(DATA_CAT_COL_KATEGORIE), rng_KategorieRegeln).Cells
         
         If Trim(CStr(r.value)) = cat Then
             
@@ -117,6 +108,4 @@ Private Function ColName(ByVal colNum As Long) As String
     Loop While colNum > 0
     ColName = temp
 End Function
-
-
 
