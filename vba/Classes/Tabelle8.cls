@@ -33,7 +33,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         End If
         
         ' Zeile formatieren
-        Call mod_EntityKey_Manager.VerarbeiteManuelleRoleAenderung(Target)
+        Call mod_EntityKey_Manager.FormatiereEntityKeyZeile(zeile, Me)
         GoTo ExitPoint
     End If
     
