@@ -379,7 +379,7 @@ Public Sub AktualisiereAlleEntityKeys()
 NextRow:
     Next r
     
-    Call FormatiereEntityKeyTabelle(wsD, lastRow)
+    Call FormatiereEntityKeyTabelle
     Call SortiereEntityKeyTabelle(wsD)
     
     wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
