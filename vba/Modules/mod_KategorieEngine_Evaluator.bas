@@ -27,15 +27,15 @@ Public Function BuildKategorieContext(ByVal wsBK As Worksheet, _
     Dim entityRole As String
     entityRole = GetEntityRoleByIBAN(iban)
 
-    Dim kontoName As String
-    kontoName = LCase(Trim(wsBK.Cells(rowBK, BK_COL_NAME).value))
+    Dim kontoname As String
+    kontoname = LCase(Trim(wsBK.Cells(rowBK, BK_COL_NAME).value))
     
     Dim buchungsText As String
     buchungsText = LCase(Trim(wsBK.Cells(rowBK, BK_COL_BUCHUNGSTEXT).value))
 
     ctx("Amount") = amount
     ctx("NormText") = normText
-    ctx("KontoName") = kontoName
+    ctx("KontoName") = kontoname
     ctx("IBAN") = iban
     ctx("BuchungsText") = buchungsText
 
