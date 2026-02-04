@@ -33,6 +33,7 @@ Private Const PREFIX_EHEMALIG As String = "EX-"
 Private Const PREFIX_SONSTIGE As String = "SONST-"
 
 ' EntityRole Werte - OHNE UNTERSTRICHE (mit Leerzeichen)
+Private Const ROLE_MITGLIED As String = "MITGLIED"
 Private Const ROLE_MITGLIED_MIT_PACHT As String = "MITGLIED MIT PACHT"
 Private Const ROLE_MITGLIED_OHNE_PACHT As String = "MITGLIED OHNE PACHT"
 Private Const ROLE_EHEMALIGES_MITGLIED As String = "EHEMALIGES MITGLIED"
@@ -1623,7 +1624,10 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
     
     ' Validierung der neuen Role
     Select Case neueRole
-        Case ROLE_MITGLIED, ROLE_VERSORGER, ROLE_BANK, ROLE_SHOP, ROLE_SONSTIGE
+    
+        Case ROLE_MITGLIED_MIT_PACHT, ROLE_MITGLIED_OHNE_PACHT, ROLE_EHEMALIGES_MITGLIED, _
+     ROLE_VORSTAND, ROLE_EHRENMITGLIED, ROLE_VERSORGER, ROLE_BANK, ROLE_SHOP, ROLE_SONSTIGE
+     
             ' Gültige Role - nichts zu tun
         Case Else
             MsgBox "Ungültige EntityRole: " & neueRole & vbCrLf & vbCrLf & _
