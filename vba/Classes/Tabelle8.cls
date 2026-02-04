@@ -29,11 +29,11 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         
         ' Bei Role-Aenderung: EntityKey anpassen
         If spalte = EK_COL_ROLE Then
-            Call mod_EntityKey_Manager.VerarbeiteManuelleRoleAenderung(zeile)
+            Call mod_EntityKey_Manager.VerarbeiteManuelleRoleAenderung(Target)
         End If
         
         ' Zeile formatieren
-        Call mod_EntityKey_Manager.FormatiereEntityKeyZeile(zeile)
+        Call mod_EntityKey_Manager.VerarbeiteManuelleRoleAenderung(Target)
         GoTo ExitPoint
     End If
     

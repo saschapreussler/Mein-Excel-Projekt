@@ -1648,16 +1648,15 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
     FormatiereEntityKeyZeile zeile, wsDaten
     
     ' Parzellen-Dropdown anpassen
-    If neueRole = ROLE_MITGLIED Or neueRole = ROLE_SONSTIGE Then
-        SetupParzellenDropdown wsDaten.Cells(zeile, EK_COL_PARZELLE)
+    If DarfParzelleHaben(neueRole) Then
+        SetupParzellenDropdown wsDaten, zeile, neueRole
     Else
         ' Dropdown entfernen und Zelle leeren
-        With wsDaten.Cells(zeile, EK_COL_PARZELLE)
-            .Validation.Delete
-            .value = ""
-        End With
+        On Error Resume Next
+        wsDaten.Cells(zeile, EK_COL_PARZELLE).Validation.Delete
+        wsDaten.Cells(zeile, EK_COL_PARZELLE).value = ""
+        On Error GoTo 0
     End If
-    
     Debug.Print "VerarbeiteManuelleRoleAenderung: Zeile " & zeile & " -> " & neueRole
     Exit Sub
     
