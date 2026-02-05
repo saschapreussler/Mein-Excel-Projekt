@@ -7,6 +7,8 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
+Option Explicit
+
 Private Sub Worksheet_Change(ByVal Target As Range)
 
     Dim rng_KategorieRegeln As Range
@@ -108,4 +110,6 @@ Private Function ColName(ByVal colNum As Long) As String
     Loop While colNum > 0
     ColName = temp
 End Function
+
+
 

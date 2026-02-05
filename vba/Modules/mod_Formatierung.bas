@@ -4,8 +4,8 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Formatierung
 ' ZWECK: Formatierung und DropDown-Listen-Verwaltung
-' VERSION: 1.4 - 02.02.2026
-' KORREKTUR: Fehlende FormatiereEntityKeyTabelleKomplett hinzugefuegt
+' VERSION: 1.5 - 02.02.2026
+' KORREKTUR: SetzeZellschutzFuerZeile hinzugefuegt
 ' ***************************************************************
 
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
@@ -210,32 +210,7 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
     Set rngTable = ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
                             ws.Cells(lastRow, DATA_CAT_COL_END))
     
-    With rngTable.Borders(xlEdgeLeft)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .ColorIndex = xlAutomatic
-    End With
-    With rngTable.Borders(xlEdgeTop)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .ColorIndex = xlAutomatic
-    End With
-    With rngTable.Borders(xlEdgeBottom)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .ColorIndex = xlAutomatic
-    End With
-    With rngTable.Borders(xlEdgeRight)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .ColorIndex = xlAutomatic
-    End With
-    With rngTable.Borders(xlInsideVertical)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .ColorIndex = xlAutomatic
-    End With
-    With rngTable.Borders(xlInsideHorizontal)
+    With rngTable.Borders
         .LineStyle = xlContinuous
         .Weight = xlThin
         .ColorIndex = xlAutomatic
@@ -273,9 +248,6 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
              ws.Cells(lastRow, DATA_CAT_COL_END)).EntireColumn.AutoFit
     
 End Sub
-
-'--- Ende Teil 1 ---
-'--- Anfang Teil 2 ---
 
 ' ===============================================================
 ' ZIELSPALTE-DROPDOWN SETZEN (abhaengig von E/A)
@@ -359,13 +331,13 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
     
     nextRowE = 4
     For Each key In dictEinnahmen.Keys
-        ws.Cells(nextRowE, DATA_COL_EINNAHMEN).value = key
+        ws.Cells(nextRowE, DATA_COL_KAT_EINNAHMEN).value = key
         nextRowE = nextRowE + 1
     Next key
     
     nextRowA = 4
     For Each key In dictAusgaben.Keys
-        ws.Cells(nextRowA, DATA_COL_AUSGABEN).value = key
+        ws.Cells(nextRowA, DATA_COL_KAT_AUSGABEN).value = key
         nextRowA = nextRowA + 1
     Next key
     
@@ -526,6 +498,47 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     Next r
     
     ws.Rows(EK_START_ROW & ":" & lastRow).AutoFit
+    
+End Sub
+
+' ===============================================================
+' HILFSPROZEDUR: Setzt Zellschutz basierend auf EntityRole
+' ===============================================================
+Private Sub SetzeZellschutzFuerZeile(ByRef ws As Worksheet, ByVal zeile As Long, ByVal currentRole As String)
+    
+    Dim rngEditierbar As Range
+    Dim rngGesperrt As Range
+    
+    On Error Resume Next
+    
+    ' Spalten R-T (EntityKey, IBAN, Kontoname) sind immer gesperrt
+    Set rngGesperrt = ws.Range(ws.Cells(zeile, EK_COL_ENTITYKEY), ws.Cells(zeile, EK_COL_KONTONAME))
+    rngGesperrt.Locked = True
+    
+    ' Spalten U-X (Zuordnung, Parzelle, Role, Debug) abhaengig von Role
+    Set rngEditierbar = ws.Range(ws.Cells(zeile, EK_COL_ZUORDNUNG), ws.Cells(zeile, EK_COL_DEBUG))
+    
+    Select Case UCase(Trim(currentRole))
+        Case "MITGLIED"
+            ' Bei MITGLIED: Zuordnung, Parzelle, Role gesperrt; nur Debug editierbar
+            ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = True
+            ws.Cells(zeile, EK_COL_PARZELLE).Locked = True
+            ws.Cells(zeile, EK_COL_ROLE).Locked = True
+            ws.Cells(zeile, EK_COL_DEBUG).Locked = False
+            
+        Case "UNBEKANNT", ""
+            ' Bei UNBEKANNT: Alles editierbar fuer manuelle Zuordnung
+            rngEditierbar.Locked = False
+            
+        Case Else
+            ' Bei anderen Roles (DIENSTLEISTER, BEHOERDE, etc.): Role gesperrt, Rest editierbar
+            ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = False
+            ws.Cells(zeile, EK_COL_PARZELLE).Locked = True
+            ws.Cells(zeile, EK_COL_ROLE).Locked = True
+            ws.Cells(zeile, EK_COL_DEBUG).Locked = False
+    End Select
+    
+    On Error GoTo 0
     
 End Sub
 

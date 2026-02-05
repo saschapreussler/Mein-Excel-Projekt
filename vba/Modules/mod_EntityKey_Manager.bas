@@ -4,25 +4,19 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_EntityKey_Manager
 ' ZWECK: Verwaltung und Zuordnung von EntityKeys für Bankverkehr
-' VERSION: 3.0 - 04.02.2026
-' ÄNDERUNGEN:
-'   - Sortierung: Parzelle 1-14, dann VERSORGER, BANK, SHOP
-'   - Gemeinschaftskonto: Alle Namen aus Kontoname suchen
-'   - EntityRole ohne Unterstriche (Leerzeichen statt _)
-'   - IstVersorger/IstShop komplett überarbeitet
-'   - Doppelte Leerzeichen in Kontoname entfernen
-'   - Dynamische Role-Dropdown
+' VERSION: 3.1 - 04.02.2026
+' SICHERHEIT:
+'   - KEINE automatische Formatierung
+'   - KEINE automatische Sortierung
+'   - NUR Spalten R-X werden befüllt
+'   - Spalten Y-AE werden NIEMALS berührt
+'   - Bestehende Formatierung bleibt erhalten
 ' ***************************************************************
 
 ' ===============================================================
-' KONSTANTEN
+' KONSTANTEN (lokal - zusätzlich zu mod_Const)
 ' ===============================================================
-Private Const EK_ROLE_DROPDOWN_COL As Long = 30
-Private Const EK_PARZELLE_START_ROW As Long = 4
-Private Const EK_PARZELLE_END_ROW As Long = 17
-Private Const EK_PARZELLE_COL As Long = 6
-
-Private Const ZEBRA_COLOR As Long = &HDEE5E3
+Private Const EK_ROLE_DROPDOWN_COL As Long = 30  ' Spalte AD für Role-Dropdown-Quelle
 
 ' EntityKey Präfixe
 Private Const PREFIX_SHARE As String = "SHARE-"
@@ -46,8 +40,6 @@ Private Const ROLE_SONSTIGE As String = "SONSTIGE"
 
 ' ===============================================================
 ' HILFSFUNKTION: Prüft ob Role eine Parzelle haben darf
-' Erlaubt für: Mitglieder, Vorstand, Ehrenmitglieder, SONSTIGE
-' Nicht erlaubt für: VERSORGER, BANK, SHOP oder LEER
 ' ===============================================================
 Private Function DarfParzelleHaben(ByVal role As String) As Boolean
     Dim normRole As String
@@ -59,7 +51,6 @@ Private Function DarfParzelleHaben(ByVal role As String) As Boolean
     
     normRole = UCase(Trim(role))
     
-    ' Erlaubt für Mitglieder-Typen und SONSTIGE
     If InStr(normRole, "MITGLIED") > 0 Then
         DarfParzelleHaben = True
     ElseIf InStr(normRole, "VORSTAND") > 0 Then
@@ -69,7 +60,6 @@ Private Function DarfParzelleHaben(ByVal role As String) As Boolean
     ElseIf normRole = "SONSTIGE" Then
         DarfParzelleHaben = True
     Else
-        ' VERSORGER, BANK, SHOP = keine Parzelle
         DarfParzelleHaben = False
     End If
 End Function
@@ -87,7 +77,26 @@ Private Function EntferneMehrfacheLeerzeichen(ByVal s As String) As String
 End Function
 
 ' ===============================================================
+' HILFSFUNKTION: Normalisiert IBAN
+' ===============================================================
+Private Function NormalisiereIBAN(ByVal iban As Variant) As String
+    Dim result As String
+    
+    If IsNull(iban) Or IsEmpty(iban) Then
+        NormalisiereIBAN = ""
+        Exit Function
+    End If
+    
+    result = UCase(Trim(CStr(iban)))
+    result = Replace(result, " ", "")
+    result = Replace(result, "-", "")
+    
+    NormalisiereIBAN = result
+End Function
+
+' ===============================================================
 ' ÖFFENTLICHE PROZEDUR: Importiert IBANs aus Bankkonto
+' SICHER: Ändert NUR Spalten R-T, keine Formatierung
 ' ===============================================================
 Public Sub ImportiereIBANsAusBankkonto()
     
@@ -125,6 +134,7 @@ Public Sub ImportiereIBANsAusBankkonto()
     anzahlNeu = 0
     anzahlAktualisiert = 0
     
+    ' Bestehende IBANs sammeln
     lastRowD = wsD.Cells(wsD.Rows.count, EK_COL_IBAN).End(xlUp).Row
     
     If lastRowD >= EK_START_ROW Then
@@ -138,6 +148,7 @@ Public Sub ImportiereIBANsAusBankkonto()
         Next r
     End If
     
+    ' IBANs aus Bankkonto sammeln
     lastRowBK = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     
     For r = BK_START_ROW To lastRowBK
@@ -150,18 +161,12 @@ Public Sub ImportiereIBANsAusBankkonto()
             If currentIBAN <> "" And currentIBAN <> "N.A." And Len(currentIBAN) >= 15 Then
                 If Not dictIBANs.Exists(currentIBAN) Then
                     dictIBANs.Add currentIBAN, currentKontoName
-                Else
-                    If currentKontoName <> "" Then
-                        existingKontoName = dictIBANs(currentIBAN)
-                        If InStr(existingKontoName, currentKontoName) = 0 Then
-                            dictIBANs(currentIBAN) = existingKontoName & vbLf & currentKontoName
-                        End If
-                    End If
                 End If
             End If
         End If
     Next r
     
+    ' Neue IBANs einfügen
     If lastRowD < EK_START_ROW Then
         nextRowD = EK_START_ROW
     Else
@@ -172,21 +177,10 @@ Public Sub ImportiereIBANsAusBankkonto()
         currentIBAN = CStr(ibanKey)
         currentKontoName = EntferneMehrfacheLeerzeichen(dictIBANs(ibanKey))
         
-        If dictExisting.Exists(currentIBAN) Then
-            r = dictExisting(currentIBAN)
-            existingKontoName = Trim(wsD.Cells(r, EK_COL_KONTONAME).value)
-            
-            Dim neueNamen As String
-            neueNamen = MergeKontonamen(existingKontoName, currentKontoName)
-            
-            If neueNamen <> existingKontoName Then
-                wsD.Cells(r, EK_COL_KONTONAME).value = neueNamen
-                anzahlAktualisiert = anzahlAktualisiert + 1
-            End If
-        Else
+        If Not dictExisting.Exists(currentIBAN) Then
+            ' NUR Spalten S und T befüllen - KEINE Formatierung!
             wsD.Cells(nextRowD, EK_COL_IBAN).value = currentIBAN
             wsD.Cells(nextRowD, EK_COL_KONTONAME).value = currentKontoName
-            
             anzahlNeu = anzahlNeu + 1
             nextRowD = nextRowD + 1
         End If
@@ -198,7 +192,8 @@ Public Sub ImportiereIBANsAusBankkonto()
     Application.EnableEvents = True
     Application.ScreenUpdating = True
     
-    Debug.Print "IBAN-Import: " & anzahlNeu & " neue, " & anzahlAktualisiert & " aktualisiert"
+    MsgBox "IBAN-Import abgeschlossen!" & vbCrLf & vbCrLf & _
+           "Neue IBANs: " & anzahlNeu, vbInformation, "Import"
     
     Exit Sub
     
@@ -212,67 +207,8 @@ ErrorHandler:
 End Sub
 
 ' ===============================================================
-' HILFSFUNKTION: Führt Kontonamen zusammen (ohne Duplikate)
-' ===============================================================
-Private Function MergeKontonamen(ByVal existing As String, ByVal neu As String) As String
-    Dim result As String
-    Dim existingNames() As String
-    Dim newNames() As String
-    Dim dictNames As Object
-    Dim i As Long
-    Dim Name As String
-    
-    Set dictNames = CreateObject("Scripting.Dictionary")
-    result = ""
-    
-    If existing <> "" Then
-        existingNames = Split(existing, vbLf)
-        For i = LBound(existingNames) To UBound(existingNames)
-            Name = EntferneMehrfacheLeerzeichen(Trim(existingNames(i)))
-            If Name <> "" And Not dictNames.Exists(Name) Then
-                dictNames.Add Name, True
-                If result <> "" Then result = result & vbLf
-                result = result & Name
-            End If
-        Next i
-    End If
-    
-    If neu <> "" Then
-        newNames = Split(neu, vbLf)
-        For i = LBound(newNames) To UBound(newNames)
-            Name = EntferneMehrfacheLeerzeichen(Trim(newNames(i)))
-            If Name <> "" And Not dictNames.Exists(Name) Then
-                dictNames.Add Name, True
-                If result <> "" Then result = result & vbLf
-                result = result & Name
-            End If
-        Next i
-    End If
-    
-    MergeKontonamen = result
-End Function
-
-' ===============================================================
-' HILFSFUNKTION: Normalisiert IBAN
-' ===============================================================
-Private Function NormalisiereIBAN(ByVal iban As Variant) As String
-    Dim result As String
-    
-    If IsNull(iban) Or IsEmpty(iban) Then
-        NormalisiereIBAN = ""
-        Exit Function
-    End If
-    
-    result = UCase(Trim(CStr(iban)))
-    result = Replace(result, " ", "")
-    result = Replace(result, "-", "")
-    
-    NormalisiereIBAN = result
-End Function
-
-' ===============================================================
-' HAUPTPROZEDUR: Aktualisiert alle EntityKeys in der Tabelle
-' WICHTIG: Bereits manuell zugeordnete Zeilen werden NICHT überschrieben
+' HAUPTPROZEDUR: Aktualisiert alle EntityKeys
+' SICHER: NUR Spalten R-X, KEINE Formatierung, KEINE Sortierung
 ' ===============================================================
 Public Sub AktualisiereAlleEntityKeys()
     
@@ -287,7 +223,6 @@ Public Sub AktualisiereAlleEntityKeys()
     Dim currentZuordnung As String
     Dim currentParzelle As String
     Dim currentRole As String
-    Dim currentDebug As String
     Dim newEntityKey As String
     Dim zuordnung As String
     Dim parzellen As String
@@ -295,10 +230,9 @@ Public Sub AktualisiereAlleEntityKeys()
     Dim debugInfo As String
     Dim ampelStatus As Long
     Dim mitgliederGefunden As Collection
-    Dim zeilenRot As Collection
-    Dim zeilenGelb As Collection
     Dim zeilenNeu As Long
     Dim zeilenUnveraendert As Long
+    Dim zeilenProbleme As Long
     
     Application.ScreenUpdating = False
     Application.EnableEvents = False
@@ -308,11 +242,10 @@ Public Sub AktualisiereAlleEntityKeys()
     Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
-    Set zeilenRot = New Collection
-    Set zeilenGelb = New Collection
     
     zeilenNeu = 0
     zeilenUnveraendert = 0
+    zeilenProbleme = 0
     
     On Error Resume Next
     wsD.Unprotect PASSWORD:=PASSWORD
@@ -321,81 +254,74 @@ Public Sub AktualisiereAlleEntityKeys()
     lastRow = wsD.Cells(wsD.Rows.count, EK_COL_IBAN).End(xlUp).Row
     If lastRow < EK_START_ROW Then lastRow = EK_START_ROW
     
-    Call SetupEntityRoleDropdown(wsD, lastRow)
-    
     For r = EK_START_ROW To lastRow
         iban = Trim(wsD.Cells(r, EK_COL_IBAN).value)
         kontoname = EntferneMehrfacheLeerzeichen(Trim(wsD.Cells(r, EK_COL_KONTONAME).value))
         
-        ' Doppelte Leerzeichen in Spalte T bereinigen
-        wsD.Cells(r, EK_COL_KONTONAME).value = kontoname
+        ' Doppelte Leerzeichen in Spalte T bereinigen (nur Wert, keine Formatierung!)
+        If wsD.Cells(r, EK_COL_KONTONAME).value <> kontoname Then
+            wsD.Cells(r, EK_COL_KONTONAME).value = kontoname
+        End If
         
         currentEntityKey = Trim(wsD.Cells(r, EK_COL_ENTITYKEY).value)
         currentZuordnung = Trim(wsD.Cells(r, EK_COL_ZUORDNUNG).value)
         currentParzelle = Trim(wsD.Cells(r, EK_COL_PARZELLE).value)
         currentRole = Trim(wsD.Cells(r, EK_COL_ROLE).value)
-        currentDebug = Trim(wsD.Cells(r, EK_COL_DEBUG).value)
         
         If iban = "" And kontoname = "" Then GoTo NextRow
         
         ' WICHTIG: Bereits manuell zugeordnete Zeilen NICHT überschreiben
         If HatBereitsGueltigeDaten(currentEntityKey, currentZuordnung, currentRole) Then
             zeilenUnveraendert = zeilenUnveraendert + 1
-            If currentRole <> "" Then
-                Call SetzeAmpelFarbe(wsD, r, 1)
-            End If
-            Call SetupParzellenDropdown(wsD, r, currentRole)
-            Call SetzeZellschutzFuerZeile(wsD, r, currentRole)
             GoTo NextRow
         End If
         
         zeilenNeu = zeilenNeu + 1
         
-        ' Suche ALLE Mitglieder im Kontonamen (für Gemeinschaftskonten)
+        ' Suche Mitglieder im Kontonamen
         Set mitgliederGefunden = SucheMitgliederZuKontoname(kontoname, wsM, wsH)
         
+        ' Generiere EntityKey und Zuordnung
         Call GeneriereEntityKeyUndZuordnung(mitgliederGefunden, kontoname, wsM, _
                                              newEntityKey, zuordnung, parzellen, entityRole, debugInfo, ampelStatus)
         
-        If currentEntityKey = "" And newEntityKey <> "" Then wsD.Cells(r, EK_COL_ENTITYKEY).value = newEntityKey
-        If currentZuordnung = "" And zuordnung <> "" Then wsD.Cells(r, EK_COL_ZUORDNUNG).value = zuordnung
+        ' NUR leere Zellen befüllen - NIEMALS überschreiben!
+        If currentEntityKey = "" And newEntityKey <> "" Then
+            wsD.Cells(r, EK_COL_ENTITYKEY).value = newEntityKey
+        End If
+        
+        If currentZuordnung = "" And zuordnung <> "" Then
+            wsD.Cells(r, EK_COL_ZUORDNUNG).value = zuordnung
+        End If
         
         If currentParzelle = "" And parzellen <> "" And DarfParzelleHaben(entityRole) Then
             wsD.Cells(r, EK_COL_PARZELLE).value = parzellen
         End If
         
-        If currentRole = "" And entityRole <> "" Then wsD.Cells(r, EK_COL_ROLE).value = entityRole
-        If currentDebug = "" Then wsD.Cells(r, EK_COL_DEBUG).value = debugInfo
-        
-        Call SetzeAmpelFarbe(wsD, r, ampelStatus)
-        Call SetzeZellschutzFuerZeile(wsD, r, entityRole)
-        Call SetupParzellenDropdown(wsD, r, entityRole)
-        
-        If ampelStatus = 3 Then
-            zeilenRot.Add r
-        ElseIf ampelStatus = 2 Then
-            zeilenGelb.Add r
+        If currentRole = "" And entityRole <> "" Then
+            wsD.Cells(r, EK_COL_ROLE).value = entityRole
         End If
+        
+        ' Debug-Info nur wenn leer
+        If Trim(wsD.Cells(r, EK_COL_DEBUG).value) = "" Then
+            wsD.Cells(r, EK_COL_DEBUG).value = debugInfo
+        End If
+        
+        If ampelStatus = 3 Then zeilenProbleme = zeilenProbleme + 1
         
 NextRow:
     Next r
-    
-    Call FormatiereEntityKeyTabelle
-    Call SortiereEntityKeyTabelle(wsD)
     
     wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
     Application.EnableEvents = True
     Application.ScreenUpdating = True
     
-    If zeilenRot.count > 0 Or zeilenGelb.count > 0 Then
-        Call ZeigeEingriffsHinweis(wsD, zeilenRot, zeilenGelb, zeilenNeu, zeilenUnveraendert)
-    Else
-        MsgBox "EntityKey-Aktualisierung abgeschlossen!" & vbCrLf & vbCrLf & _
-               "Neue Zeilen verarbeitet: " & zeilenNeu & vbCrLf & _
-               "Bestehende Zeilen unverändert: " & zeilenUnveraendert & vbCrLf & vbCrLf & _
-               "Alle Zuordnungen sind vollständig (GRÜN).", vbInformation, "Aktualisierung abgeschlossen"
-    End If
+    MsgBox "EntityKey-Aktualisierung abgeschlossen!" & vbCrLf & vbCrLf & _
+           "Neue Zeilen verarbeitet: " & zeilenNeu & vbCrLf & _
+           "Bestehende Zeilen unverändert: " & zeilenUnveraendert & vbCrLf & _
+           "Zeilen mit Problemen (ROT): " & zeilenProbleme & vbCrLf & vbCrLf & _
+           "HINWEIS: Formatierung wurde NICHT geändert.", vbInformation, "Aktualisierung"
     
     Exit Sub
     
@@ -408,189 +334,7 @@ ErrorHandler:
 End Sub
 
 ' ===============================================================
-' SORTIERUNG: Parzelle 1-14, dann VERSORGER, dann BANK, dann SHOP
-' ===============================================================
-Public Sub SortiereEntityKeyTabelle(Optional ByRef ws As Worksheet = Nothing)
-    
-    Dim lastRow As Long
-    Dim r As Long
-    Dim sortKey As String
-    Dim role As String
-    Dim parzelle As String
-    
-    If ws Is Nothing Then
-        Set ws = ThisWorkbook.Worksheets(WS_DATEN)
-    End If
-    
-    On Error Resume Next
-    ws.Unprotect PASSWORD:=PASSWORD
-    On Error GoTo 0
-    
-    lastRow = ws.Cells(ws.Rows.count, EK_COL_IBAN).End(xlUp).Row
-    If lastRow < EK_START_ROW Then
-        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-        Exit Sub
-    End If
-    
-    ' Hilfsspalte für Sortierung erstellen (Spalte AE = 31)
-    Const SORT_HELPER_COL As Long = 31
-    
-    For r = EK_START_ROW To lastRow
-        parzelle = Trim(ws.Cells(r, EK_COL_PARZELLE).value)
-        role = UCase(Trim(ws.Cells(r, EK_COL_ROLE).value))
-        
-        ' Sortierreihenfolge: 1=Parzellen, 2=VERSORGER, 3=BANK, 4=SHOP, 5=Rest
-        If parzelle <> "" And IsNumeric(Left(parzelle, 2)) Then
-            ' Parzelle 1-14: Sortierkey "1" + zweistellige Parzellennummer
-            sortKey = "1" & Format(Val(parzelle), "00")
-        ElseIf InStr(role, "VERSORGER") > 0 Then
-            sortKey = "2000"
-        ElseIf InStr(role, "BANK") > 0 Then
-            sortKey = "3000"
-        ElseIf InStr(role, "SHOP") > 0 Then
-            sortKey = "4000"
-        Else
-            sortKey = "5000"
-        End If
-        
-        ws.Cells(r, SORT_HELPER_COL).value = sortKey
-    Next r
-    
-    ' Sortieren nach Hilfsspalte
-    Dim sortRange As Range
-    Set sortRange = ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), ws.Cells(lastRow, SORT_HELPER_COL))
-    
-    ws.Sort.SortFields.Clear
-    ws.Sort.SortFields.Add key:=ws.Range(ws.Cells(EK_START_ROW, SORT_HELPER_COL), ws.Cells(lastRow, SORT_HELPER_COL)), _
-                           SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
-    
-    With ws.Sort
-        .SetRange sortRange
-        .Header = xlNo
-        .MatchCase = False
-        .Orientation = xlTopToBottom
-        .SortMethod = xlPinYin
-        .Apply
-    End With
-    
-    ' Hilfsspalte löschen
-    ws.Columns(SORT_HELPER_COL).ClearContents
-    
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    
-End Sub
-
-
-
-'--- Ende Teil 1 von 3 ---
-'--- Anfang Teil 2 von 3 ---
-
-
-
-' ===============================================================
-' HILFSPROZEDUR: Setzt Parzellen-Dropdown
-' NUR wenn Role gefüllt UND Parzelle erlaubt ist
-' ===============================================================
-Private Sub SetupParzellenDropdown(ByRef ws As Worksheet, ByVal zeile As Long, ByVal role As String)
-    
-    Dim cell As Range
-    Dim dropdownSource As String
-    
-    Set cell = ws.Cells(zeile, EK_COL_PARZELLE)
-    
-    On Error Resume Next
-    cell.Validation.Delete
-    On Error GoTo 0
-    
-    ' Dropdown NUR wenn Role gefüllt UND für diesen Typ erlaubt
-    If DarfParzelleHaben(role) Then
-        dropdownSource = "=$F$" & EK_PARZELLE_START_ROW & ":$F$" & EK_PARZELLE_END_ROW
-        
-        On Error Resume Next
-        With cell.Validation
-            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
-                 Operator:=xlBetween, Formula1:=dropdownSource
-            .IgnoreBlank = True
-            .InCellDropdown = True
-            .ShowInput = False
-            .ShowError = True
-            .ErrorTitle = "Ungültige Eingabe"
-            .ErrorMessage = "Bitte wählen Sie eine Parzelle aus der Liste."
-        End With
-        On Error GoTo 0
-        
-        cell.Locked = False
-    Else
-        ' Keine Dropdown, Zelle sperren, Inhalt löschen
-        cell.Locked = True
-        cell.value = ""
-    End If
-    
-End Sub
-
-' ===============================================================
-' HILFSPROZEDUR: Setzt Dropdown für EntityRole (DYNAMISCH aus AD)
-' Der Nutzer kann die Liste in Spalte AD jederzeit erweitern
-' ===============================================================
-Private Sub SetupEntityRoleDropdown(ByRef ws As Worksheet, ByVal lastRow As Long)
-    
-    Dim rngDropdown As Range
-    Dim dropdownSource As String
-    Dim lastRoleRow As Long
-    Dim dropdownEndRow As Long
-    
-    ' Dynamisch: Letzte gefüllte Zeile in Spalte AD ermitteln
-    lastRoleRow = ws.Cells(ws.Rows.count, EK_ROLE_DROPDOWN_COL).End(xlUp).Row
-    If lastRoleRow < 4 Then lastRoleRow = 12 ' Mindestens 12 Zeilen für Standardrollen
-    
-    ' Dynamischer Bereich - Nutzer kann erweitern
-    dropdownSource = "=$AD$4:$AD$" & lastRoleRow
-    
-    dropdownEndRow = lastRow + 100 ' Genug Reserve für neue Einträge
-    
-    Set rngDropdown = ws.Range(ws.Cells(EK_START_ROW, EK_COL_ROLE), _
-                               ws.Cells(dropdownEndRow, EK_COL_ROLE))
-    
-    On Error Resume Next
-    With rngDropdown.Validation
-        .Delete
-        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
-             Operator:=xlBetween, Formula1:=dropdownSource
-        .IgnoreBlank = True
-        .InCellDropdown = True
-        .ShowInput = False
-        .ShowError = True
-        .ErrorTitle = "Ungültige Eingabe"
-        .ErrorMessage = "Bitte wählen Sie einen Wert aus der Liste oder erweitern Sie die Liste in Spalte AD."
-    End With
-    On Error GoTo 0
-    
-End Sub
-
-' ===============================================================
-' HILFSPROZEDUR: Setzt Zellschutz basierend auf Role-Typ
-' Spalten U, W, X sind IMMER bearbeitbar
-' Spalte V nur wenn Role gefüllt UND erlaubt
-' ===============================================================
-Public Sub SetzeZellschutzFuerZeile(ByRef ws As Worksheet, ByVal zeile As Long, ByVal role As String)
-    
-    ' Spalten U (Zuordnung), W (Role), X (Debug) IMMER bearbeitbar
-    ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = False
-    ws.Cells(zeile, EK_COL_ROLE).Locked = False
-    ws.Cells(zeile, EK_COL_DEBUG).Locked = False
-    
-    ' Spalte V (Parzelle) nur bearbeitbar wenn Role gefüllt UND erlaubt
-    If DarfParzelleHaben(role) Then
-        ws.Cells(zeile, EK_COL_PARZELLE).Locked = False
-    Else
-        ws.Cells(zeile, EK_COL_PARZELLE).Locked = True
-    End If
-    
-End Sub
-
-' ===============================================================
 ' HILFSFUNKTION: Prüft ob Zeile bereits gültige Daten hat
-' Wenn ja, wird diese Zeile NICHT automatisch überschrieben
 ' ===============================================================
 Private Function HatBereitsGueltigeDaten(ByVal entityKey As String, _
                                           ByVal zuordnung As String, _
@@ -598,7 +342,6 @@ Private Function HatBereitsGueltigeDaten(ByVal entityKey As String, _
     
     HatBereitsGueltigeDaten = False
     
-    ' Wenn EntityKey vorhanden und kein reiner Zahlenstring
     If entityKey <> "" Then
         If Not IsNumeric(entityKey) Then
             HatBereitsGueltigeDaten = True
@@ -606,60 +349,14 @@ Private Function HatBereitsGueltigeDaten(ByVal entityKey As String, _
         End If
     End If
     
-    ' Wenn sowohl Zuordnung als auch Role vorhanden
     If zuordnung <> "" And role <> "" Then
         HatBereitsGueltigeDaten = True
         Exit Function
     End If
-    
 End Function
 
 ' ===============================================================
-' HILFSPROZEDUR: Zeigt Hinweis für Zeilen mit erforderlichem Eingriff
-' ===============================================================
-Private Sub ZeigeEingriffsHinweis(ByRef ws As Worksheet, ByRef zeilenRot As Collection, _
-                                   ByRef zeilenGelb As Collection, _
-                                   ByVal zeilenNeu As Long, ByVal zeilenUnveraendert As Long)
-    
-    Dim msg As String
-    Dim antwort As VbMsgBoxResult
-    Dim ersteZeile As Long
-    
-    msg = "EntityKey-Aktualisierung abgeschlossen!" & vbCrLf & vbCrLf
-    msg = msg & "Neue Zeilen verarbeitet: " & zeilenNeu & vbCrLf
-    msg = msg & "Bestehende Zeilen unverändert: " & zeilenUnveraendert & vbCrLf & vbCrLf
-    
-    If zeilenRot.count > 0 Then
-        msg = msg & "ROT: " & zeilenRot.count & " Zeile(n) - Manuelle Zuordnung erforderlich!" & vbCrLf
-    End If
-    
-    If zeilenGelb.count > 0 Then
-        msg = msg & "GELB: " & zeilenGelb.count & " Zeile(n) - Nur Nachname gefunden, bitte prüfen!" & vbCrLf
-    End If
-    
-    msg = msg & vbCrLf & "Möchten Sie jetzt zur ersten betroffenen Zeile springen?"
-    
-    antwort = MsgBox(msg, vbYesNo + vbExclamation, "Zuordnung prüfen")
-    
-    If antwort = vbYes Then
-        If zeilenRot.count > 0 Then
-            ersteZeile = zeilenRot(1)
-        ElseIf zeilenGelb.count > 0 Then
-            ersteZeile = zeilenGelb(1)
-        Else
-            Exit Sub
-        End If
-        
-        ws.Activate
-        ws.Cells(ersteZeile, EK_COL_ZUORDNUNG).Select
-    End If
-    
-End Sub
-
-' ===============================================================
-' HILFSFUNKTION: Sucht ALLE Mitglieder im Kontonamen
-' WICHTIG: Durchsucht den GESAMTEN String nach allen Mitgliedernamen
-' Für Gemeinschaftskonten wie "Juliane Kelm, Julian Peter"
+' HILFSFUNKTION: Sucht Mitglieder im Kontonamen
 ' ===============================================================
 Private Function SucheMitgliederZuKontoname(ByVal kontoname As String, _
                                               ByRef wsM As Worksheet, _
@@ -675,20 +372,16 @@ Private Function SucheMitgliederZuKontoname(ByVal kontoname As String, _
     Dim funktion As String
     Dim kontoNameNorm As String
     Dim mitgliedInfo(0 To 8) As Variant
-    Dim nameKombiniert As String
-    Dim nameParts() As String
-    Dim austrittsDatum As Date
     Dim matchResult As Long
     
     Set SucheMitgliederZuKontoname = gefunden
     
     If kontoname = "" Then Exit Function
     
-    ' Gesamten Kontonamen normalisieren (NICHT in Zeilen splitten!)
     kontoNameNorm = NormalisiereStringFuerVergleich(kontoname)
     If kontoNameNorm = "" Then Exit Function
     
-    ' === AKTIVE MITGLIEDER DURCHSUCHEN ===
+    ' === AKTIVE MITGLIEDER ===
     lastRow = wsM.Cells(wsM.Rows.count, M_COL_NACHNAME).End(xlUp).Row
     
     For r = M_START_ROW To lastRow
@@ -699,7 +392,6 @@ Private Function SucheMitgliederZuKontoname(ByVal kontoname As String, _
             parzelle = Trim(wsM.Cells(r, M_COL_PARZELLE).value)
             funktion = Trim(wsM.Cells(r, M_COL_FUNKTION).value)
             
-            ' Prüfe ob dieser Name im Kontonamen vorkommt
             matchResult = PruefeNamensMatch(nachname, vorname, kontoNameNorm)
             
             If matchResult > 0 Then
@@ -710,7 +402,7 @@ Private Function SucheMitgliederZuKontoname(ByVal kontoname As String, _
                     mitgliedInfo(3) = parzelle
                     mitgliedInfo(4) = funktion
                     mitgliedInfo(5) = r
-                    mitgliedInfo(6) = False ' nicht ehemalig
+                    mitgliedInfo(6) = False
                     mitgliedInfo(7) = CDate("01.01.1900")
                     mitgliedInfo(8) = matchResult
                     gefunden.Add mitgliedInfo
@@ -719,92 +411,36 @@ Private Function SucheMitgliederZuKontoname(ByVal kontoname As String, _
         End If
     Next r
     
-    ' === EHEMALIGE MITGLIEDER DURCHSUCHEN ===
-    lastRow = wsH.Cells(wsH.Rows.count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row
-    
-    For r = H_START_ROW To lastRow
-        nameKombiniert = Trim(wsH.Cells(r, H_COL_NAME_EHEM_PAECHTER).value)
-        memberID = Trim(wsH.Cells(r, H_COL_MEMBER_ID_ALT).value)
-        parzelle = Trim(wsH.Cells(r, H_COL_PARZELLE).value)
-        
-        On Error Resume Next
-        austrittsDatum = wsH.Cells(r, H_COL_AUST_DATUM).value
-        If Err.Number <> 0 Then austrittsDatum = CDate("01.01.1900")
-        On Error GoTo 0
-        
-        If InStr(nameKombiniert, ",") > 0 Then
-            nameParts = Split(nameKombiniert, ",")
-            nachname = Trim(nameParts(0))
-            If UBound(nameParts) >= 1 Then
-                vorname = Trim(nameParts(1))
-            Else
-                vorname = ""
-            End If
-        Else
-            nachname = nameKombiniert
-            vorname = ""
-        End If
-        
-        matchResult = PruefeNamensMatch(nachname, vorname, kontoNameNorm)
-        
-        If matchResult > 0 Then
-            If Not IstMitgliedBereitsGefunden(gefunden, memberID, True) Then
-                mitgliedInfo(0) = memberID
-                mitgliedInfo(1) = nachname
-                mitgliedInfo(2) = vorname
-                mitgliedInfo(3) = parzelle
-                mitgliedInfo(4) = "Ehemaliges Mitglied"
-                mitgliedInfo(5) = r
-                mitgliedInfo(6) = True ' ehemalig
-                mitgliedInfo(7) = austrittsDatum
-                mitgliedInfo(8) = matchResult
-                gefunden.Add mitgliedInfo
-            End If
-        End If
-    Next r
-    
     Set SucheMitgliederZuKontoname = gefunden
-    
 End Function
 
 ' ===============================================================
-' HILFSFUNKTION: Prüft ob Name im Kontonamen enthalten ist
+' HILFSFUNKTION: Prüft Namens-Match
 ' ===============================================================
 Private Function PruefeNamensMatch(ByVal nachname As String, ByVal vorname As String, _
                                      ByVal kontoNameNorm As String) As Long
     
     Dim nachnameNorm As String
     Dim vornameNorm As String
-    Dim nachnameGefunden As Boolean
-    Dim vornameGefunden As Boolean
     
     PruefeNamensMatch = 0
     
     nachnameNorm = NormalisiereStringFuerVergleich(nachname)
     vornameNorm = NormalisiereStringFuerVergleich(vorname)
     
-    If nachnameNorm = "" Then Exit Function
-    If Len(nachnameNorm) < 3 Then Exit Function
+    If nachnameNorm = "" Or Len(nachnameNorm) < 3 Then Exit Function
     
-    nachnameGefunden = (InStr(kontoNameNorm, nachnameNorm) > 0)
-    
-    If Not nachnameGefunden Then
-        PruefeNamensMatch = 0
-        Exit Function
-    End If
-    
-    vornameGefunden = False
+    If InStr(kontoNameNorm, nachnameNorm) = 0 Then Exit Function
     
     If vornameNorm <> "" And Len(vornameNorm) >= 2 Then
-        vornameGefunden = (InStr(kontoNameNorm, vornameNorm) > 0)
+        If InStr(kontoNameNorm, vornameNorm) > 0 Then
+            PruefeNamensMatch = 2  ' Exakt
+        Else
+            PruefeNamensMatch = 1  ' Nur Nachname
+        End If
+    Else
+        PruefeNamensMatch = 1
     End If
-    
-    If nachnameGefunden And vornameGefunden Then
-        PruefeNamensMatch = 2 ' Exakter Treffer
-    ElseIf nachnameGefunden Then
-        PruefeNamensMatch = 1 ' Nur Nachname
-    End If
-    
 End Function
 
 ' ===============================================================
@@ -817,12 +453,10 @@ Private Function NormalisiereStringFuerVergleich(ByVal s As String) As String
     result = Replace(result, ",", " ")
     result = Replace(result, ".", " ")
     result = Replace(result, "-", " ")
-    
     result = Replace(result, "ä", "ae")
     result = Replace(result, "ö", "oe")
     result = Replace(result, "ü", "ue")
     result = Replace(result, "ß", "ss")
-    
     result = Replace(result, "ae", "a")
     result = Replace(result, "oe", "o")
     result = Replace(result, "ue", "u")
@@ -830,13 +464,12 @@ Private Function NormalisiereStringFuerVergleich(ByVal s As String) As String
     Do While InStr(result, "  ") > 0
         result = Replace(result, "  ", " ")
     Loop
-    result = Trim(result)
     
-    NormalisiereStringFuerVergleich = result
+    NormalisiereStringFuerVergleich = Trim(result)
 End Function
 
 ' ===============================================================
-' HILFSFUNKTION: Prüft ob MemberID bereits in Collection ist
+' HILFSFUNKTION: Prüft ob MemberID bereits gefunden
 ' ===============================================================
 Private Function IstMitgliedBereitsGefunden(ByRef col As Collection, _
                                               ByVal memberID As String, _
@@ -853,9 +486,17 @@ Private Function IstMitgliedBereitsGefunden(ByRef col As Collection, _
     Next item
 End Function
 
+
+
+'--- Ende Teil 1 ---
+'--- Anfang Teil 2 ---
+
+
+
+' filepath: c:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\Modules\mod_EntityKey_Manager.bas
+
 ' ===============================================================
 ' HILFSPROZEDUR: Generiert EntityKey und Zuordnung
-' Bei Gemeinschaftskonten: Alle Namen mit "Nachname, Vorname" + vbLf
 ' ===============================================================
 Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
                                              ByVal kontoname As String, _
@@ -871,10 +512,7 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
     Dim i As Long
     Dim memberIDs As String
     Dim uniqueMemberIDs As Object
-    Dim hatAktiveMitglieder As Boolean
-    Dim hatEhemaligeMitglieder As Boolean
     Dim key As Variant
-    
     Dim mitgliederExakt As New Collection
     Dim mitgliederNurNachname As New Collection
     
@@ -887,9 +525,9 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
     outDebugInfo = ""
     outAmpelStatus = 1
     
+    ' Treffer sortieren nach Qualität
     For i = 1 To mitglieder.count
         mitgliedInfo = mitglieder(i)
-        
         If mitgliedInfo(8) = 2 Then
             mitgliederExakt.Add mitgliedInfo
         ElseIf mitgliedInfo(8) = 1 Then
@@ -898,154 +536,84 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
     Next i
     
     ' ============================================================
-    ' Fall 1: Keine exakten Treffer gefunden
+    ' Fall 1: Keine exakten Treffer
     ' ============================================================
     If mitgliederExakt.count = 0 Then
+        
         ' WICHTIG: Erst SHOP prüfen (hat Vorrang vor VERSORGER)
         If IstShop(kontoname) Then
             outEntityKey = PREFIX_SHOP & CreateGUID()
             outEntityRole = ROLE_SHOP
             outZuordnung = ExtrahiereAnzeigeName(kontoname)
-            outParzellen = ""
             outDebugInfo = "Automatisch als SHOP erkannt"
             outAmpelStatus = 1
             Exit Sub
-        ElseIf IstVersorger(kontoname) Then
+        End If
+        
+        If IstVersorger(kontoname) Then
             outEntityKey = PREFIX_VERSORGER & CreateGUID()
             outEntityRole = ROLE_VERSORGER
             outZuordnung = ExtrahiereAnzeigeName(kontoname)
-            outParzellen = ""
             outDebugInfo = "Automatisch als VERSORGER erkannt"
             outAmpelStatus = 1
             Exit Sub
-        ElseIf IstBank(kontoname) Then
+        End If
+        
+        If IstBank(kontoname) Then
             outEntityKey = PREFIX_BANK & CreateGUID()
             outEntityRole = ROLE_BANK
             outZuordnung = ExtrahiereAnzeigeName(kontoname)
-            outParzellen = ""
             outDebugInfo = "Automatisch als BANK erkannt"
             outAmpelStatus = 1
             Exit Sub
         End If
         
+        ' Nur Nachname gefunden?
         If mitgliederNurNachname.count > 0 Then
-            outEntityKey = ""
-            outZuordnung = ""
-            outParzellen = ""
-            outEntityRole = ""
-            outDebugInfo = "NUR NACHNAME GEFUNDEN - Bitte prüfen! Mögliche Treffer:"
+            outDebugInfo = "NUR NACHNAME - Bitte prüfen!"
             outAmpelStatus = 2
-            
-            For i = 1 To mitgliederNurNachname.count
-                mitgliedInfo = mitgliederNurNachname(i)
-                outDebugInfo = outDebugInfo & vbLf & "  ? " & mitgliedInfo(1) & ", " & mitgliedInfo(2) & " (Parz. " & mitgliedInfo(3) & ")"
-            Next i
-            Exit Sub
-        Else
-            outEntityKey = ""
-            outZuordnung = ""
-            outParzellen = ""
-            outEntityRole = ""
-            outDebugInfo = "KEIN MITGLIED GEFUNDEN - Manuelle Zuordnung erforderlich"
-            outAmpelStatus = 3
             Exit Sub
         End If
+        
+        ' Nichts gefunden
+        outDebugInfo = "KEIN TREFFER - Manuelle Zuordnung"
+        outAmpelStatus = 3
+        Exit Sub
     End If
     
     ' ============================================================
     ' Fall 2: Exakte Treffer vorhanden
     ' ============================================================
-    hatAktiveMitglieder = False
-    hatEhemaligeMitglieder = False
     
+    ' Sammle unique MemberIDs
     For i = 1 To mitgliederExakt.count
         mitgliedInfo = mitgliederExakt(i)
-        
-        If mitgliedInfo(6) = False Then
-            hatAktiveMitglieder = True
+        If mitgliedInfo(6) = False Then  ' Nicht ehemalig
             If Not uniqueMemberIDs.Exists(CStr(mitgliedInfo(0))) Then
                 uniqueMemberIDs.Add CStr(mitgliedInfo(0)), CStr(mitgliedInfo(0))
             End If
-        Else
-            hatEhemaligeMitglieder = True
         End If
     Next i
     
-    ' Fall 2a: NUR ehemalige Mitglieder
-    If hatEhemaligeMitglieder And Not hatAktiveMitglieder Then
-        Set uniqueMemberIDs = CreateObject("Scripting.Dictionary")
-        For i = 1 To mitgliederExakt.count
-            mitgliedInfo = mitgliederExakt(i)
-            If Not uniqueMemberIDs.Exists(CStr(mitgliedInfo(0))) Then
-                uniqueMemberIDs.Add CStr(mitgliedInfo(0)), CStr(mitgliedInfo(0))
-            End If
-        Next i
-        
-        If uniqueMemberIDs.count = 1 Then
-            mitgliedInfo = mitgliederExakt(1)
-            outEntityKey = PREFIX_EHEMALIG & mitgliedInfo(0)
-            outZuordnung = mitgliedInfo(1) & ", " & mitgliedInfo(2)
-            outParzellen = mitgliedInfo(3) & " (bis " & Format(mitgliedInfo(7), "dd.mm.yyyy") & ")"
-            outEntityRole = ROLE_EHEMALIGES_MITGLIED
-            outDebugInfo = "Ehemaliges Mitglied - exakter Treffer"
-            outAmpelStatus = 1
-        Else
-            memberIDs = ""
-            For Each key In uniqueMemberIDs.Keys
-                If memberIDs <> "" Then memberIDs = memberIDs & "_"
-                memberIDs = memberIDs & key
-            Next key
-            
-            outEntityKey = PREFIX_SHARE & PREFIX_EHEMALIG & memberIDs
-            outEntityRole = ROLE_EHEMALIGES_MITGLIED
-            outDebugInfo = "Ehem. Gemeinschaftskonto - " & uniqueMemberIDs.count & " Personen"
-            outAmpelStatus = 1
-            
-            Dim bereitsHinzu As Object
-            Set bereitsHinzu = CreateObject("Scripting.Dictionary")
-            
-            For i = 1 To mitgliederExakt.count
-                mitgliedInfo = mitgliederExakt(i)
-                If Not bereitsHinzu.Exists(CStr(mitgliedInfo(0))) Then
-                    bereitsHinzu.Add CStr(mitgliedInfo(0)), True
-                    ' Format: "Nachname, Vorname" mit vbLf
-                    If outZuordnung <> "" Then outZuordnung = outZuordnung & vbLf
-                    outZuordnung = outZuordnung & mitgliedInfo(1) & ", " & mitgliedInfo(2)
-                    
-                    If InStr(outParzellen, CStr(mitgliedInfo(3))) = 0 Then
-                        If outParzellen <> "" Then outParzellen = outParzellen & vbLf
-                        outParzellen = outParzellen & CStr(mitgliedInfo(3))
-                    End If
-                End If
-            Next i
-        End If
-        Exit Sub
-    End If
-    
-    ' Fall 2b: Aktive Mitglieder - genau 1
+    ' Fall 2a: Genau 1 aktives Mitglied
     If uniqueMemberIDs.count = 1 Then
         For i = 1 To mitgliederExakt.count
             mitgliedInfo = mitgliederExakt(i)
             If mitgliedInfo(6) = False Then
                 outEntityKey = CStr(mitgliedInfo(0))
+                ' Format: "Nachname, Vorname"
                 outZuordnung = mitgliedInfo(1) & ", " & mitgliedInfo(2)
+                outParzellen = CStr(mitgliedInfo(3))
                 outEntityRole = ErmittleEntityRoleVonFunktion(CStr(mitgliedInfo(4)))
-                outDebugInfo = "Eindeutiger Treffer (Vor- und Nachname)"
+                outDebugInfo = "Eindeutiger Treffer"
                 outAmpelStatus = 1
                 Exit For
             End If
         Next i
-        
-        outParzellen = HoleAlleParzellen(CStr(mitgliedInfo(0)), wsM)
-        
-        If hatEhemaligeMitglieder Then
-            outDebugInfo = outDebugInfo & " (+ ehem. Einträge in Historie)"
-        End If
-        
         Exit Sub
     End If
     
-    ' Fall 2c: Mehrere aktive Mitglieder = GEMEINSCHAFTSKONTO
+    ' Fall 2b: Mehrere aktive Mitglieder = GEMEINSCHAFTSKONTO
     If uniqueMemberIDs.count > 1 Then
         memberIDs = ""
         For Each key In uniqueMemberIDs.Keys
@@ -1058,43 +626,34 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
         outDebugInfo = "Gemeinschaftskonto - " & uniqueMemberIDs.count & " Personen"
         outAmpelStatus = 1
         
-        Dim bereitsHinzugefuegteMitglieder As Object
-        Set bereitsHinzugefuegteMitglieder = CreateObject("Scripting.Dictionary")
+        ' Alle Namen mit "Nachname, Vorname" und vbLf
+        Dim bereitsHinzu As Object
+        Set bereitsHinzu = CreateObject("Scripting.Dictionary")
         
-        ' WICHTIG: Alle gefundenen Mitglieder mit "Nachname, Vorname" + vbLf ausgeben
         For i = 1 To mitgliederExakt.count
             mitgliedInfo = mitgliederExakt(i)
             If mitgliedInfo(6) = False Then
-                If Not bereitsHinzugefuegteMitglieder.Exists(CStr(mitgliedInfo(0))) Then
-                    bereitsHinzugefuegteMitglieder.Add CStr(mitgliedInfo(0)), True
+                If Not bereitsHinzu.Exists(CStr(mitgliedInfo(0))) Then
+                    bereitsHinzu.Add CStr(mitgliedInfo(0)), True
                     
-                    ' Format: "Nachname, Vorname" mit vbLf zwischen den Namen
                     If outZuordnung <> "" Then outZuordnung = outZuordnung & vbLf
                     outZuordnung = outZuordnung & mitgliedInfo(1) & ", " & mitgliedInfo(2)
                     
-                    Dim dieseParzellen As String
-                    dieseParzellen = HoleAlleParzellen(CStr(mitgliedInfo(0)), wsM)
-                    
-                    Dim parzArr() As String
-                    Dim p As Long
-                    parzArr = Split(dieseParzellen, vbLf)
-                    For p = LBound(parzArr) To UBound(parzArr)
-                        If Trim(parzArr(p)) <> "" Then
-                            If InStr(outParzellen, Trim(parzArr(p))) = 0 Then
-                                If outParzellen <> "" Then outParzellen = outParzellen & vbLf
-                                outParzellen = outParzellen & Trim(parzArr(p))
-                            End If
+                    If outParzellen <> "" Then
+                        If InStr(outParzellen, CStr(mitgliedInfo(3))) = 0 Then
+                            outParzellen = outParzellen & ", " & CStr(mitgliedInfo(3))
                         End If
-                    Next p
+                    Else
+                        outParzellen = CStr(mitgliedInfo(3))
+                    End If
                 End If
             End If
         Next i
     End If
-    
 End Sub
 
 ' ===============================================================
-' HILFSFUNKTION: Extrahiert Anzeigename aus Kontoname
+' HILFSFUNKTION: Extrahiert Anzeigename
 ' ===============================================================
 Private Function ExtrahiereAnzeigeName(ByVal kontoname As String) As String
     Dim zeilen() As String
@@ -1116,47 +675,9 @@ Private Function ExtrahiereAnzeigeName(ByVal kontoname As String) As String
 End Function
 
 ' ===============================================================
-' HILFSFUNKTION: Holt ALLE Parzellen eines Mitglieds
-' ===============================================================
-Private Function HoleAlleParzellen(ByVal memberID As String, ByRef wsM As Worksheet) As String
-    Dim r As Long
-    Dim lastRow As Long
-    Dim currentMemberID As String
-    Dim parzelle As String
-    Dim result As String
-    
-    result = ""
-    
-    If memberID = "" Then
-        HoleAlleParzellen = ""
-        Exit Function
-    End If
-    
-    lastRow = wsM.Cells(wsM.Rows.count, M_COL_MEMBER_ID).End(xlUp).Row
-    
-    For r = M_START_ROW To lastRow
-        currentMemberID = Trim(wsM.Cells(r, M_COL_MEMBER_ID).value)
-        
-        If currentMemberID = memberID Then
-            parzelle = Trim(wsM.Cells(r, M_COL_PARZELLE).value)
-            If parzelle <> "" Then
-                If InStr(result, parzelle) = 0 Then
-                    If result <> "" Then result = result & vbLf
-                    result = result & parzelle
-                End If
-            End If
-        End If
-    Next r
-    
-    HoleAlleParzellen = result
-End Function
-
-' ===============================================================
 ' HILFSFUNKTION: Ermittelt EntityRole aus Funktion
-' OHNE UNTERSTRICHE - mit Leerzeichen
 ' ===============================================================
 Private Function ErmittleEntityRoleVonFunktion(ByVal funktion As String) As String
-    
     Dim funktionUpper As String
     funktionUpper = UCase(funktion)
     
@@ -1174,585 +695,189 @@ Private Function ErmittleEntityRoleVonFunktion(ByVal funktion As String) As Stri
     Else
         ErmittleEntityRoleVonFunktion = ROLE_MITGLIED_MIT_PACHT
     End If
-    
 End Function
 
-
-
-'--- Ende Teil 2 von 3 ---
-'--- Anfang Teil 3 von 3 ---
-
-
-
-' =====================================================================
-' TEIL 3 VON 3 - KLASSIFIZIERUNG UND FORMATIERUNG
-' =====================================================================
-
-' ---------------------------------------------------------------------
-' IstVersorger - Prüft ob Kontoname ein ECHTER Versorger ist
-' WICHTIG: Nur Strom, Gas, Wasser, Versicherungen - KEINE Shops!
-' ---------------------------------------------------------------------
-Private Function IstVersorger(ByVal kontoname As String) As Boolean
-    Dim nameUpper As String
-    nameUpper = UCase(Trim(kontoname))
-    
-    If Len(nameUpper) = 0 Then
-        IstVersorger = False
-        Exit Function
-    End If
-    
-    ' Energieversorger (Strom, Gas)
-    If InStr(1, nameUpper, "STADTWERK", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "ENERGIE", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "STROM", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "GAS", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "VATTENFALL", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "E.ON", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "EON", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "ENVIA", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "RWE", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "ENBW", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "GASAG", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "ENTEGA", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "MAINOVA", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "PFALZWERKE", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "SYNA", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "LICHTBLICK", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "YELLO", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "NATURSTROM", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "GREENPEACE ENERGY", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "POLARSTERN", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    
-    ' Wasserversorger
-    If InStr(1, nameUpper, "WASSER", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "ABWASSER", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "WASSERWERK", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "WASSERVERBAND", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "ZWECKVERBAND", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "BERLINWASSER", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "BERLINER WASSERBETRIEBE", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "BWB", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    
-    ' Versicherungen
-    If InStr(1, nameUpper, "VERSICHERUNG", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "ALLIANZ", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "ERGO", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "DEVK", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "HUK", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "AXA", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "GENERALI", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "ZURICH", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "GOTHAER", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "PROVINZIAL", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    
-    ' Telekommunikation
-    If InStr(1, nameUpper, "TELEKOM", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "VODAFONE", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "O2", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "1&1", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "UNITYMEDIA", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "KABEL DEUTSCHLAND", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "CONGSTAR", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    
-    ' Entsorgung
-    If InStr(1, nameUpper, "BSR", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "STADTREINIGUNG", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "ENTSORGUNG", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "ABFALLWIRTSCHAFT", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "AWB", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "REMONDIS", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "ALBA", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    
-    ' GEZ/Rundfunk
-    If InStr(1, nameUpper, "RUNDFUNK", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "BEITRAGSSERVICE", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "GEZ", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    If InStr(1, nameUpper, "ARD ZDF", vbTextCompare) > 0 Then IstVersorger = True: Exit Function
-    
-    IstVersorger = False
-End Function
-
-' ---------------------------------------------------------------------
-' IstShop - Prüft ob Kontoname ein Shop/Händler ist
+' ===============================================================
+' IstShop - Prüft ob Kontoname ein Shop ist
 ' WICHTIG: Wird VOR IstVersorger geprüft!
-' ---------------------------------------------------------------------
+' ===============================================================
 Private Function IstShop(ByVal kontoname As String) As Boolean
-    Dim nameUpper As String
-    nameUpper = UCase(Trim(kontoname))
-    
-    If Len(nameUpper) = 0 Then
-        IstShop = False
-        Exit Function
-    End If
-    
-    ' Supermärkte und Discounter
-    If InStr(1, nameUpper, "LIDL", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "ALDI", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "REWE", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "EDEKA", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "PENNY", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "NETTO", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "KAUFLAND", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "REAL", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "GLOBUS", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "NORMA", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    
-    ' Baumärkte
-    If InStr(1, nameUpper, "BAUHAUS", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "HORNBACH", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "OBI", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "HAGEBAU", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "TOOM", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "HELLWEG", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "BAUMARKT", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    
-    ' Online-Händler
-    If InStr(1, nameUpper, "AMAZON", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "EBAY", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "ZALANDO", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "OTTO", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "MEDIAMARKT", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "MEDIA MARKT", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "SATURN", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "CONRAD", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "REICHELT", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "THOMANN", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    
-    ' Drogerien
-    If InStr(1, nameUpper, "DM", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "ROSSMANN", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "MUELLER", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "MÜLLER", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    
-    ' Möbelhäuser
-    If InStr(1, nameUpper, "IKEA", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "POCO", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "ROLLER", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "XXXLUTZ", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "HÖFFNER", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "HOEFFNER", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    
-    ' Gartenmärkte
-    If InStr(1, nameUpper, "DEHNER", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "GARTENCENTER", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "GARTENMARKT", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "PFLANZEN", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    
-    ' Tankstellen
-    If InStr(1, nameUpper, "ARAL", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "SHELL", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "ESSO", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "TOTAL", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "JET", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "TANKSTELLE", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    
-    ' Bezahldienste / Payment
-    If InStr(1, nameUpper, "PAYPAL", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "KLARNA", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "PAYDIREKT", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    
-    ' Apotheken
-    If InStr(1, nameUpper, "APOTHEKE", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "DOCMORRIS", vbTextCompare) > 0 Then IstShop = True: Exit Function
-    If InStr(1, nameUpper, "SHOP APOTHEKE", vbTextCompare) > 0 Then IstShop = True: Exit Function
+    Dim n As String
+    n = UCase(Trim(kontoname))
     
     IstShop = False
+    If Len(n) = 0 Then Exit Function
+    
+    ' Supermärkte/Discounter
+    If InStr(n, "LIDL") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "ALDI") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "REWE") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "EDEKA") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "PENNY") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "NETTO") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "KAUFLAND") > 0 Then IstShop = True: Exit Function
+    
+    ' Baumärkte
+    If InStr(n, "BAUHAUS") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "HORNBACH") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "OBI") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "HAGEBAU") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "TOOM") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "HELLWEG") > 0 Then IstShop = True: Exit Function
+    
+    ' Online-Händler
+    If InStr(n, "AMAZON") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "EBAY") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "ZALANDO") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "OTTO") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "MEDIAMARKT") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "SATURN") > 0 Then IstShop = True: Exit Function
+    
+    ' Drogerien
+    If InStr(n, "ROSSMANN") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "MUELLER") > 0 Or InStr(n, "MÜLLER") > 0 Then IstShop = True: Exit Function
+    
+    ' Möbel/Garten
+    If InStr(n, "IKEA") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "DEHNER") > 0 Then IstShop = True: Exit Function
+    
+    ' Tankstellen
+    If InStr(n, "ARAL") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "SHELL") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "TANKSTELLE") > 0 Then IstShop = True: Exit Function
+    
+    ' Payment
+    If InStr(n, "PAYPAL") > 0 Then IstShop = True: Exit Function
+    If InStr(n, "KLARNA") > 0 Then IstShop = True: Exit Function
 End Function
 
-' ---------------------------------------------------------------------
+' ===============================================================
+' IstVersorger - Prüft ob Kontoname ein Versorger ist
+' ===============================================================
+Private Function IstVersorger(ByVal kontoname As String) As Boolean
+    Dim n As String
+    n = UCase(Trim(kontoname))
+    
+    IstVersorger = False
+    If Len(n) = 0 Then Exit Function
+    
+    ' Energie
+    If InStr(n, "STADTWERK") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "ENERGIE") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "STROM") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "VATTENFALL") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "E.ON") > 0 Or InStr(n, "EON") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "RWE") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "ENVIA") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "GASAG") > 0 Then IstVersorger = True: Exit Function
+    
+    ' Wasser
+    If InStr(n, "WASSER") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "ABWASSER") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "BWB") > 0 Then IstVersorger = True: Exit Function
+    
+    ' Versicherung
+    If InStr(n, "VERSICHERUNG") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "ALLIANZ") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "DEVK") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "HUK") > 0 Then IstVersorger = True: Exit Function
+    
+    ' Telekommunikation
+    If InStr(n, "TELEKOM") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "VODAFONE") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "1&1") > 0 Then IstVersorger = True: Exit Function
+    
+    ' Entsorgung
+    If InStr(n, "BSR") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "ENTSORGUNG") > 0 Then IstVersorger = True: Exit Function
+    
+    ' Rundfunk
+    If InStr(n, "RUNDFUNK") > 0 Then IstVersorger = True: Exit Function
+    If InStr(n, "BEITRAGSSERVICE") > 0 Then IstVersorger = True: Exit Function
+End Function
+
+' ===============================================================
 ' IstBank - Prüft ob Kontoname eine Bank ist
-' ---------------------------------------------------------------------
+' ===============================================================
 Private Function IstBank(ByVal kontoname As String) As Boolean
-    Dim nameUpper As String
-    nameUpper = UCase(Trim(kontoname))
-    
-    If Len(nameUpper) = 0 Then
-        IstBank = False
-        Exit Function
-    End If
-    
-    ' Deutsche Großbanken
-    If InStr(1, nameUpper, "SPARKASSE", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "VOLKSBANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "RAIFFEISENBANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "COMMERZBANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "DEUTSCHE BANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "POSTBANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "HYPOVEREINSBANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "UNICREDIT", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "TARGOBANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "SANTANDER", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    
-    ' Direktbanken
-    If InStr(1, nameUpper, "ING", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "DKB", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "COMDIRECT", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "CONSORSBANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "N26", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "NORISBANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    
-    ' Genossenschaftsbanken
-    If InStr(1, nameUpper, "VR BANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "VR-BANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "PSD BANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "SPARDA", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "GLS BANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "ETHIKBANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    
-    ' Landesbanken
-    If InStr(1, nameUpper, "LANDESBANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "LBBW", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "HELABA", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "NORD/LB", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "BAYERNLB", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    
-    ' Berliner Banken
-    If InStr(1, nameUpper, "BERLINER SPARKASSE", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "BERLINER VOLKSBANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "WEBERBANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "INVESTITIONSBANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "IBB", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    
-    ' Bausparkassen
-    If InStr(1, nameUpper, "BAUSPARKASSE", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "LBS", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "SCHWÄBISCH HALL", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "WÜSTENROT", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    
-    ' Allgemeine Begriffe
-    If InStr(1, nameUpper, "BANK", vbTextCompare) > 0 Then IstBank = True: Exit Function
-    If InStr(1, nameUpper, "KREDITINSTITUT", vbTextCompare) > 0 Then IstBank = True: Exit Function
+    Dim n As String
+    n = UCase(Trim(kontoname))
     
     IstBank = False
+    If Len(n) = 0 Then Exit Function
+    
+    If InStr(n, "SPARKASSE") > 0 Then IstBank = True: Exit Function
+    If InStr(n, "VOLKSBANK") > 0 Then IstBank = True: Exit Function
+    If InStr(n, "RAIFFEISENBANK") > 0 Then IstBank = True: Exit Function
+    If InStr(n, "COMMERZBANK") > 0 Then IstBank = True: Exit Function
+    If InStr(n, "DEUTSCHE BANK") > 0 Then IstBank = True: Exit Function
+    If InStr(n, "POSTBANK") > 0 Then IstBank = True: Exit Function
+    If InStr(n, "ING") > 0 Then IstBank = True: Exit Function
+    If InStr(n, "DKB") > 0 Then IstBank = True: Exit Function
+    If InStr(n, "BANK") > 0 Then IstBank = True: Exit Function
 End Function
 
-' ---------------------------------------------------------------------
-' CreateGUID - Erzeugt eine neue GUID für EntityKeys
-' ---------------------------------------------------------------------
+' ===============================================================
+' CreateGUID - Erzeugt eine GUID
+' ===============================================================
 Private Function CreateGUID() As String
-    ' Einfache GUID-Generierung basierend auf Zeit und Zufall
     Dim guid As String
     Dim i As Integer
     
     Randomize Timer
-    
     guid = ""
-    For i = 1 To 8
-        guid = guid & Hex(Int(Rnd * 16))
-    Next i
+    
+    For i = 1 To 8: guid = guid & Hex(Int(Rnd * 16)): Next i
     guid = guid & "-"
-    For i = 1 To 4
-        guid = guid & Hex(Int(Rnd * 16))
-    Next i
+    For i = 1 To 4: guid = guid & Hex(Int(Rnd * 16)): Next i
     guid = guid & "-"
-    For i = 1 To 4
-        guid = guid & Hex(Int(Rnd * 16))
-    Next i
+    For i = 1 To 4: guid = guid & Hex(Int(Rnd * 16)): Next i
     guid = guid & "-"
-    For i = 1 To 4
-        guid = guid & Hex(Int(Rnd * 16))
-    Next i
+    For i = 1 To 4: guid = guid & Hex(Int(Rnd * 16)): Next i
     guid = guid & "-"
-    For i = 1 To 12
-        guid = guid & Hex(Int(Rnd * 16))
-    Next i
+    For i = 1 To 12: guid = guid & Hex(Int(Rnd * 16)): Next i
     
     CreateGUID = LCase(guid)
 End Function
 
-' ---------------------------------------------------------------------
-' SetzeAmpelFarbe - Setzt die Hintergrundfarbe basierend auf Status
-' KORRIGIERT: Akzeptiert (Worksheet, Zeile, Status) mit Status als Long
-'   1 = Grün, 2 = Gelb, 3 = Rot, 0 = Weiß
-' ---------------------------------------------------------------------
-Private Sub SetzeAmpelFarbe(ByRef ws As Worksheet, ByVal zeile As Long, ByVal ampelStatus As Long)
-    Dim rngZeile As Range
-    Dim farbe As Long
-    
-    On Error Resume Next
-    Set rngZeile = ws.Range(ws.Cells(zeile, EK_COL_ENTITYKEY), ws.Cells(zeile, EK_COL_DEBUG))
-    
-    Select Case ampelStatus
-        Case 1  ' Grün - OK
-            farbe = RGB(198, 239, 206)
-        Case 2  ' Gelb - Warnung
-            farbe = RGB(255, 235, 156)
-        Case 3  ' Rot - Fehler
-            farbe = RGB(255, 199, 206)
-        Case Else  ' 0 oder andere = Weiß
-            farbe = RGB(255, 255, 255)
-    End Select
-    
-    rngZeile.Interior.color = farbe
-    On Error GoTo 0
-End Sub
-
-' ---------------------------------------------------------------------
-' FormatiereEntityKeyTabelle - Formatiert die gesamte EntityKey-Tabelle
-' ---------------------------------------------------------------------
-Public Sub FormatiereEntityKeyTabelle()
-    Dim wsDaten As Worksheet
-    Dim lastRow As Long
-    Dim zeile As Long
-    Dim rngHeader As Range
-    Dim rngTabelle As Range
-    
-    On Error GoTo ErrorHandler
-    
-    Set wsDaten = ThisWorkbook.Worksheets("Daten")
-    lastRow = wsDaten.Cells(wsDaten.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
-    
-    If lastRow < EK_START_ROW Then
-        Debug.Print "FormatiereEntityKeyTabelle: Keine Daten zum Formatieren"
-        Exit Sub
-    End If
-    
-    Application.ScreenUpdating = False
-    
-    ' Header formatieren (Zeile 3)
-    Set rngHeader = wsDaten.Range(wsDaten.Cells(3, EK_COL_ENTITYKEY), wsDaten.Cells(3, EK_COL_DEBUG))
-    With rngHeader
-        .Font.Bold = True
-        .Interior.color = RGB(68, 114, 196)  ' Blau
-        .Font.color = RGB(255, 255, 255)     ' Weiß
-        .HorizontalAlignment = xlCenter
-    End With
-    
-    ' Datenbereich formatieren
-    Set rngTabelle = wsDaten.Range(wsDaten.Cells(EK_START_ROW, EK_COL_ENTITYKEY), wsDaten.Cells(lastRow, EK_COL_DEBUG))
-    
-    With rngTabelle
-        .Font.Name = "Calibri"
-        .Font.Size = 10
-        .Borders.LineStyle = xlContinuous
-        .Borders.Weight = xlThin
-        .Borders.color = RGB(180, 180, 180)
-    End With
-    
-    ' Spaltenbreiten anpassen
-    wsDaten.Columns(EK_COL_ENTITYKEY).ColumnWidth = 38     ' EntityKey
-    wsDaten.Columns(EK_COL_IBAN).ColumnWidth = 24          ' IBAN
-    wsDaten.Columns(EK_COL_KONTONAME).ColumnWidth = 30     ' Kontoname
-    wsDaten.Columns(EK_COL_ZUORDNUNG).ColumnWidth = 25     ' Zuordnung
-    wsDaten.Columns(EK_COL_PARZELLE).ColumnWidth = 10      ' Parzelle
-    wsDaten.Columns(EK_COL_ROLE).ColumnWidth = 14          ' Role
-    wsDaten.Columns(EK_COL_DEBUG).ColumnWidth = 40         ' Debug
-    
-    ' Jede Zeile einzeln formatieren
-    For zeile = EK_START_ROW To lastRow
-        FormatiereEntityKeyZeile zeile, wsDaten
-    Next zeile
-    
-    Application.ScreenUpdating = True
-    
-    Debug.Print "FormatiereEntityKeyTabelle: " & (lastRow - EK_START_ROW + 1) & " Zeilen formatiert"
-    Exit Sub
-    
-ErrorHandler:
-    Application.ScreenUpdating = True
-    Debug.Print "FEHLER in FormatiereEntityKeyTabelle: " & Err.Description
-End Sub
-
-' ---------------------------------------------------------------------
-' FormatiereEntityKeyZeile - Formatiert eine einzelne Zeile
-' ---------------------------------------------------------------------
-Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long, ByVal wsDaten As Worksheet)
-    Dim role As String
-    Dim parzelle As Variant
-    Dim ampelStatus As Long
-    
-    On Error GoTo ErrorHandler
-    
-    role = Trim(CStr(wsDaten.Cells(zeile, EK_COL_ROLE).value))
-    parzelle = wsDaten.Cells(zeile, EK_COL_PARZELLE).value
-    
-    ' Status bestimmen basierend auf Role und Zuordnung
-    If InStr(role, "MITGLIED") > 0 Then
-        If IsNumeric(parzelle) And parzelle >= 1 And parzelle <= 14 Then
-            ampelStatus = 1  ' Grün
-        Else
-            ampelStatus = 2  ' Gelb
-        End If
-    ElseIf role = ROLE_VERSORGER Or role = ROLE_BANK Or role = ROLE_SHOP Then
-        ampelStatus = 1  ' Grün
-    ElseIf role = ROLE_SONSTIGE Then
-        ampelStatus = 2  ' Gelb
-    Else
-        ampelStatus = 3  ' Rot
-    End If
-    
-    ' KORRIGIERT: Parameter-Reihenfolge (ws, zeile, ampelStatus)
-    SetzeAmpelFarbe wsDaten, zeile, ampelStatus
-    
-    ' Zuordnung zentrieren wenn Parzelle
-    If IsNumeric(parzelle) Then
-        wsDaten.Cells(zeile, EK_COL_PARZELLE).HorizontalAlignment = xlCenter
-    End If
-    
-    ' Role zentrieren
-    wsDaten.Cells(zeile, EK_COL_ROLE).HorizontalAlignment = xlCenter
-    
-    Exit Sub
-    
-ErrorHandler:
-    Debug.Print "FEHLER in FormatiereEntityKeyZeile (Zeile " & zeile & "): " & Err.Description
-End Sub
-
-
-' ---------------------------------------------------------------------
-' VerarbeiteManuelleRoleAenderung - Reagiert auf manuelle Änderungen
-' Wird von Worksheet_Change aufgerufen
-' ---------------------------------------------------------------------
+' ===============================================================
+' ÖFFENTLICH: Verarbeitet manuelle Role-Änderung
+' SICHER: Ändert NUR die betroffene Zelle, keine Formatierung
+' ===============================================================
 Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
     Dim wsDaten As Worksheet
     Dim zeile As Long
     Dim neueRole As String
-    Dim entityKey As String
     
     On Error GoTo ErrorHandler
     
-    ' Nur wenn Änderung in Role-Spalte
     If Target.Column <> EK_COL_ROLE Then Exit Sub
     If Target.Row < EK_START_ROW Then Exit Sub
     
     Set wsDaten = Target.Worksheet
     zeile = Target.Row
     neueRole = Trim(CStr(Target.value))
-    entityKey = Trim(CStr(wsDaten.Cells(zeile, EK_COL_ENTITYKEY).value))
     
-    If Len(entityKey) = 0 Then Exit Sub
-    
-    ' Validierung der neuen Role
-    Select Case neueRole
-    
-        Case ROLE_MITGLIED_MIT_PACHT, ROLE_MITGLIED_OHNE_PACHT, ROLE_EHEMALIGES_MITGLIED, _
-     ROLE_VORSTAND, ROLE_EHRENMITGLIED, ROLE_VERSORGER, ROLE_BANK, ROLE_SHOP, ROLE_SONSTIGE
-     
-            ' Gültige Role - nichts zu tun
-        Case Else
-            MsgBox "Ungültige EntityRole: " & neueRole & vbCrLf & vbCrLf & _
-                   "Gültige Werte:" & vbCrLf & _
-                   "- " & ROLE_MITGLIED & vbCrLf & _
-                   "- " & ROLE_VERSORGER & vbCrLf & _
-                   "- " & ROLE_BANK & vbCrLf & _
-                   "- " & ROLE_SHOP & vbCrLf & _
-                   "- " & ROLE_SONSTIGE, _
-                   vbExclamation, "EntityRole-Fehler"
-            Exit Sub
-    End Select
-    
-    ' Debug-Info aktualisieren
+    ' Debug-Info aktualisieren (nur Wert, keine Formatierung!)
     wsDaten.Cells(zeile, EK_COL_DEBUG).value = "Manuell: " & neueRole & " (" & Format(Now, "dd.mm.yyyy hh:mm") & ")"
     
-    ' Zeile neu formatieren
-    FormatiereEntityKeyZeile zeile, wsDaten
-    
-    ' Parzellen-Dropdown anpassen
-    If DarfParzelleHaben(neueRole) Then
-        SetupParzellenDropdown wsDaten, zeile, neueRole
-    Else
-        ' Dropdown entfernen und Zelle leeren
-        On Error Resume Next
-        wsDaten.Cells(zeile, EK_COL_PARZELLE).Validation.Delete
+    ' Parzelle leeren wenn nicht erlaubt
+    If Not DarfParzelleHaben(neueRole) Then
         wsDaten.Cells(zeile, EK_COL_PARZELLE).value = ""
-        On Error GoTo 0
     End If
-    Debug.Print "VerarbeiteManuelleRoleAenderung: Zeile " & zeile & " -> " & neueRole
+    
     Exit Sub
     
 ErrorHandler:
     Debug.Print "FEHLER in VerarbeiteManuelleRoleAenderung: " & Err.Description
 End Sub
 
-' ---------------------------------------------------------------------
-' GetEntityKeyStatistik - Gibt Statistik über EntityKeys zurück
-' ---------------------------------------------------------------------
-Public Function GetEntityKeyStatistik() As String
-    Dim wsDaten As Worksheet
-    Dim lastRow As Long
-    Dim zeile As Long
-    Dim role As String
-    Dim cntMitglied As Long, cntVersorger As Long, cntBank As Long
-    Dim cntShop As Long, cntSonstige As Long, cntGesamt As Long
-    
-    On Error GoTo ErrorHandler
-    
-    Set wsDaten = ThisWorkbook.Worksheets("Daten")
-    lastRow = wsDaten.Cells(wsDaten.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
-    
-    For zeile = EK_START_ROW To lastRow
-        role = Trim(CStr(wsDaten.Cells(zeile, EK_COL_ROLE).value))
-        cntGesamt = cntGesamt + 1
-        
-        Select Case role
-            Case ROLE_MITGLIED: cntMitglied = cntMitglied + 1
-            Case ROLE_VERSORGER: cntVersorger = cntVersorger + 1
-            Case ROLE_BANK: cntBank = cntBank + 1
-            Case ROLE_SHOP: cntShop = cntShop + 1
-            Case ROLE_SONSTIGE: cntSonstige = cntSonstige + 1
-        End Select
-    Next zeile
-    
-    GetEntityKeyStatistik = "EntityKey-Statistik:" & vbCrLf & _
-                            "===================" & vbCrLf & _
-                            "Gesamt:    " & cntGesamt & vbCrLf & _
-                            "Mitglied:  " & cntMitglied & vbCrLf & _
-                            "Versorger: " & cntVersorger & vbCrLf & _
-                            "Bank:      " & cntBank & vbCrLf & _
-                            "Shop:      " & cntShop & vbCrLf & _
-                            "Sonstige:  " & cntSonstige
-    Exit Function
-    
-ErrorHandler:
-    GetEntityKeyStatistik = "FEHLER: " & Err.Description
-End Function
-
-' ---------------------------------------------------------------------
-' ZeigeEntityKeyStatistik - Zeigt Statistik in MsgBox
-' ---------------------------------------------------------------------
-Public Sub ZeigeEntityKeyStatistik()
-    MsgBox GetEntityKeyStatistik(), vbInformation, "EntityKey-Statistik"
+' ===============================================================
+' ÖFFENTLICH: Formatiert eine einzelne Zeile
+' HINWEIS: Tut NICHTS mehr - Formatierung bleibt unverändert!
+' ===============================================================
+Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long, Optional ByVal ws As Worksheet = Nothing)
+    ' BEWUSST LEER - Formatierung wird NICHT mehr geändert!
+    ' Diese Funktion existiert nur noch für Kompatibilität mit Tabelle8.cls
 End Sub
-
-' ---------------------------------------------------------------------
-' ResetEntityKeyTabelle - Löscht alle EntityKey-Daten (mit Warnung!)
-' ---------------------------------------------------------------------
-Public Sub ResetEntityKeyTabelle()
-    Dim wsDaten As Worksheet
-    Dim lastRow As Long
-    Dim antwort As VbMsgBoxResult
-    
-    antwort = MsgBox("ACHTUNG: Alle EntityKey-Daten werden gelöscht!" & vbCrLf & vbCrLf & _
-                     "Dieser Vorgang kann NICHT rückgängig gemacht werden!" & vbCrLf & vbCrLf & _
-                     "Wirklich fortfahren?", _
-                     vbExclamation + vbYesNo + vbDefaultButton2, _
-                     "EntityKey-Tabelle zurücksetzen")
-    
-    If antwort <> vbYes Then
-        MsgBox "Abgebrochen.", vbInformation, "Reset abgebrochen"
-        Exit Sub
-    End If
-    
-    On Error GoTo ErrorHandler
-    
-    Set wsDaten = ThisWorkbook.Worksheets("Daten")
-    lastRow = wsDaten.Cells(wsDaten.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
-    
-    If lastRow >= EK_START_ROW Then
-        wsDaten.Range(wsDaten.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
-                      wsDaten.Cells(lastRow, EK_COL_DEBUG)).ClearContents
-        wsDaten.Range(wsDaten.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
-                      wsDaten.Cells(lastRow, EK_COL_DEBUG)).Interior.ColorIndex = xlNone
-    End If
-    
-    MsgBox "EntityKey-Tabelle wurde zurückgesetzt.", vbInformation, "Reset erfolgreich"
-    Exit Sub
-    
-ErrorHandler:
-    MsgBox "FEHLER beim Reset: " & Err.Description, vbCritical, "Fehler"
-End Sub
-
-' =====================================================================
-' ENDE DES MODULS mod_EntityKey_Manager
-' =====================================================================
 
