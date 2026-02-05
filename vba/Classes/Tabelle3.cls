@@ -57,7 +57,7 @@ Private Sub cbo_RechnungsMonat_Change()
     Dim monatsIndex As Long
     Dim letzteDatenZeile As Long
     
-    Const ersteDatenzeile As Long = 28
+    Const ersteDatenZeile As Long = 28
     Const ersteZeileFilterbereich As Long = 27
     
     Dim rngFilterBereich As Range
@@ -114,7 +114,7 @@ Private Sub cbo_RechnungsMonat_Change()
         ' Letzte Datenzeile ermitteln
         letzteDatenZeile = .Cells(.Rows.count, "A").End(xlUp).Row
         
-        If letzteDatenZeile < ersteDatenzeile Then
+        If letzteDatenZeile < ersteDatenZeile Then
             MsgBox "Keine Kontoauszüge für diesen Monat vorhanden.", vbInformation
             Me.cbo_RechnungsMonat.ListIndex = 0
             wsDaten.Range("AG4").value = 0 ' zurück auf ganzes Jahr
