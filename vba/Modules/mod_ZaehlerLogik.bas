@@ -602,13 +602,13 @@ Private Sub CalculateSingleZaehler( _
     einheit = IIf(LCase(ZaehlerTyp) = "strom", "kWh", "m³")
     
     ' 0. Startwerte lesen
-    If IsNumeric(startCell.value) And Not IsEmpty(startCell.value) Then
+    If IsNumeric(startCell.value) And Not isEmpty(startCell.value) Then
         standAnfangCurrent = CDbl(startCell.value)
     Else
         standAnfangCurrent = 0
     End If
     
-    If IsNumeric(endCell.value) And Not IsEmpty(endCell.value) Then
+    If IsNumeric(endCell.value) And Not isEmpty(endCell.value) Then
         standEndeCurrent = CDbl(endCell.value)
     Else
         standEndeCurrent = 0

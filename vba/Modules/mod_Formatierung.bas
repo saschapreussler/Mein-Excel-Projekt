@@ -4,15 +4,13 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Formatierung
 ' ZWECK: Formatierung und DropDown-Listen-Verwaltung
-' VERSION: 2.9 - 06.02.2026
-' NEU: Eingabezeilen unterhalb lastRow entsperrt fuer neue Eintraege
+' VERSION: 3.0 - 06.02.2026
+' NEU: Nur 1 Eingabezeile, bestehende Daten editierbar,
+'      Luecken entfernen, Parzellen-Dropdown bei EHEMALIGES MITGLIED
 ' ***************************************************************
 
 Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiss
 Private Const ZEBRA_COLOR_2 As Long = &HDEE5E3  ' Hellgrau
-
-' Anzahl leerer Zeilen die unterhalb der Daten entsperrt werden
-Private Const EINGABE_PUFFER As Long = 3
 
 ' ===============================================================
 ' NEU: Zentriert ALLE Zellen auf ALLEN Blaettern vertikal
@@ -97,7 +95,7 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         Call AktualisiereKategorieDropdownListen(wsD)
         Call SortiereKategorieTabelle(wsD)
         Call SortiereEntityKeyTabelle(wsD)
-        Call EntspeerreNaechsteEingabezeilen(wsD)
+        Call EntspeerreEditierbareSpalten(wsD)
         
         wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     End If
@@ -181,7 +179,7 @@ Public Sub FormatiereBlattDaten()
     Call AktualisiereKategorieDropdownListen(ws)
     Call SortiereKategorieTabelle(ws)
     Call SortiereEntityKeyTabelle(ws)
-    Call EntspeerreNaechsteEingabezeilen(ws)
+    Call EntspeerreEditierbareSpalten(ws)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
@@ -194,7 +192,7 @@ Public Sub FormatiereBlattDaten()
            "- Kategorie-Tabelle formatiert und sortiert" & vbCrLf & _
            "- EntityKey-Tabelle formatiert und sortiert" & vbCrLf & _
            "- DropDown-Listen aktualisiert" & vbCrLf & _
-           "- Eingabezeilen fuer neue Eintraege entsperrt", vbInformation
+           "- Editierbare Spalten und Eingabezeile entsperrt", vbInformation
     
     Exit Sub
     
@@ -208,17 +206,14 @@ End Sub
 
 ' ===============================================================
 ' NEU: Formatiert ALLE Einzel-Spalten auf Daten-Blatt
-' Spalten: B, D, F, H, Z, AA, AB, AC, AD, AE, AF, AG, AH
 ' ===============================================================
 Private Sub FormatiereAlleDatenSpalten(ByRef ws As Worksheet)
     
-    ' Einzelspalten mit Zebra
     Call FormatiereSingleSpalte(ws, 2, True)   ' Spalte B - Vereinsfunktionen
     Call FormatiereSingleSpalte(ws, 4, True)   ' Spalte D - Anredeformen
     Call FormatiereSingleSpalte(ws, 6, True)   ' Spalte F - Parzelle
     Call FormatiereSingleSpalte(ws, 8, True)   ' Spalte H - Seite
     
-    ' Helper-Spalten mit Zebra
     Call FormatiereSingleSpalte(ws, 26, True)  ' Spalte Z - Einnahme/Ausgabe
     Call FormatiereSingleSpalte(ws, 27, True)  ' Spalte AA - Prioritaet
     Call FormatiereSingleSpalte(ws, 28, True)  ' Spalte AB - Ja/Nein
@@ -232,8 +227,7 @@ Private Sub FormatiereAlleDatenSpalten(ByRef ws As Worksheet)
 End Sub
 
 ' ===============================================================
-' NEU: Formatiert eine einzelne Spalte mit Zebra + Rahmen
-' FIX: Inside-Borders + Zentrierung Z/AA
+' Formatiert eine einzelne Spalte mit Zebra + Rahmen
 ' ===============================================================
 Private Sub FormatiereSingleSpalte(ByRef ws As Worksheet, ByVal colIndex As Long, ByVal mitZebra As Boolean)
     
@@ -241,26 +235,19 @@ Private Sub FormatiereSingleSpalte(ByRef ws As Worksheet, ByVal colIndex As Long
     Dim rng As Range
     Dim r As Long
     
-    ' Letzte Zeile mit Daten ermitteln
     lastRow = ws.Cells(ws.Rows.count, colIndex).End(xlUp).Row
     If lastRow < DATA_START_ROW Then Exit Sub
     
-    ' Datenbereich festlegen
     Set rng = ws.Range(ws.Cells(DATA_START_ROW, colIndex), ws.Cells(lastRow, colIndex))
     
-    ' Formatierung loeschen
     rng.Interior.ColorIndex = xlNone
     rng.Borders.LineStyle = xlNone
-    
-    ' Vertikale Zentrierung
     rng.VerticalAlignment = xlCenter
     
-    ' Horizontale Zentrierung fuer Spalte Z (26) und AA (27)
     If colIndex = 26 Or colIndex = 27 Then
         rng.HorizontalAlignment = xlCenter
     End If
     
-    ' Zebra-Formatierung anwenden
     If mitZebra Then
         For r = DATA_START_ROW To lastRow
             If (r - DATA_START_ROW) Mod 2 = 0 Then
@@ -271,7 +258,6 @@ Private Sub FormatiereSingleSpalte(ByRef ws As Worksheet, ByVal colIndex As Long
         Next r
     End If
     
-    ' Aussere Rahmen setzen
     With rng
         .Borders(xlEdgeTop).LineStyle = xlContinuous
         .Borders(xlEdgeTop).Weight = xlThin
@@ -290,7 +276,6 @@ Private Sub FormatiereSingleSpalte(ByRef ws As Worksheet, ByVal colIndex As Long
         .Borders(xlEdgeRight).color = RGB(0, 0, 0)
     End With
     
-    ' Innere horizontale Trennlinien setzen (zwischen jeder Zelle)
     If lastRow > DATA_START_ROW Then
         With rng.Borders(xlInsideHorizontal)
             .LineStyle = xlContinuous
@@ -299,13 +284,12 @@ Private Sub FormatiereSingleSpalte(ByRef ws As Worksheet, ByVal colIndex As Long
         End With
     End If
     
-    ' Spaltenbreite anpassen
     ws.Columns(colIndex).AutoFit
     
 End Sub
 
 ' ===============================================================
-' PUBLIC WRAPPER FUER TABELLE8: Formatiert Kategorie-Tabelle komplett
+' PUBLIC WRAPPER: Formatiert Kategorie-Tabelle komplett
 ' ===============================================================
 Public Sub FormatKategorieTableComplete(ByRef ws As Worksheet)
     
@@ -313,9 +297,10 @@ Public Sub FormatKategorieTableComplete(ByRef ws As Worksheet)
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
+    Call VerdichteSpalteOhneLuecken(ws, DATA_CAT_COL_KATEGORIE, DATA_CAT_COL_START, DATA_CAT_COL_END)
     Call FormatiereKategorieTabelle(ws)
     Call SortiereKategorieTabelle(ws)
-    Call EntspeerreNaechsteEingabezeilen(ws)
+    Call EntspeerreEditierbareSpalten(ws)
     
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -324,7 +309,7 @@ Public Sub FormatKategorieTableComplete(ByRef ws As Worksheet)
 End Sub
 
 ' ===============================================================
-' PUBLIC WRAPPER FUER TABELLE8: Formatiert EntityKey-Tabelle komplett
+' PUBLIC WRAPPER: Formatiert EntityKey-Tabelle komplett
 ' ===============================================================
 Public Sub FormatEntityKeyTableComplete(ByRef ws As Worksheet)
     
@@ -332,9 +317,10 @@ Public Sub FormatEntityKeyTableComplete(ByRef ws As Worksheet)
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
+    Call VerdichteSpalteOhneLuecken(ws, EK_COL_ENTITYKEY, EK_COL_ENTITYKEY, EK_COL_DEBUG)
     Call FormatiereEntityKeyTabelleKomplett(ws)
     Call SortiereEntityKeyTabelle(ws)
-    Call EntspeerreNaechsteEingabezeilen(ws)
+    Call EntspeerreEditierbareSpalten(ws)
     
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -343,8 +329,7 @@ Public Sub FormatEntityKeyTableComplete(ByRef ws As Worksheet)
 End Sub
 
 ' ===============================================================
-' PUBLIC WRAPPER FUER TABELLE8: Formatiert eine einzelne Spalte
-' FIX: Raeumt Formatierung unterhalb lastRow auf (geloeschte Eintraege)
+' PUBLIC WRAPPER: Formatiert eine einzelne Spalte
 ' ===============================================================
 Public Sub FormatSingleColumnComplete(ByRef ws As Worksheet, ByVal colIndex As Long)
     
@@ -356,9 +341,12 @@ Public Sub FormatSingleColumnComplete(ByRef ws As Worksheet, ByVal colIndex As L
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
+    ' Luecken entfernen (Einzelspalte: Start=End=colIndex)
+    Call VerdichteSpalteOhneLuecken(ws, colIndex, colIndex, colIndex)
+    
     Call FormatiereSingleSpalte(ws, colIndex, True)
     
-    ' Aufraumen: Formatierung unterhalb der letzten Datenzeile entfernen
+    ' Aufraumen unterhalb lastRow
     lastRow = ws.Cells(ws.Rows.count, colIndex).End(xlUp).Row
     If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
     
@@ -371,8 +359,7 @@ Public Sub FormatSingleColumnComplete(ByRef ws As Worksheet, ByVal colIndex As L
         rngClean.Borders.LineStyle = xlNone
     End If
     
-    ' Eingabezeilen entsperren
-    Call EntspeerreNaechsteEingabezeilen(ws)
+    Call EntspeerreEditierbareSpalten(ws)
     
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -381,18 +368,93 @@ Public Sub FormatSingleColumnComplete(ByRef ws As Worksheet, ByVal colIndex As L
 End Sub
 
 ' ===============================================================
-' NEU: Entsperrt die naechsten leeren Zeilen unterhalb der Daten
-' fuer manuelle Eingaben durch den Benutzer
-' Betrifft: B, D, F, H, J-P (Kategorie), W (+ R-X EntityKey),
-'           AB, AC, AD, AH
+' NEU: Entfernt Luecken (leere Zeilen) in einer Tabelle/Spalte
+' Verschiebt alle Daten nach oben, sodass keine Leerzeilen bleiben
+' checkCol = Spalte die auf Leerheit geprueft wird
+' startCol/endCol = Bereich der verschoben wird
 ' ===============================================================
-Private Sub EntspeerreNaechsteEingabezeilen(ByRef ws As Worksheet)
+Private Sub VerdichteSpalteOhneLuecken(ByRef ws As Worksheet, ByVal checkCol As Long, _
+                                       ByVal startCol As Long, ByVal endCol As Long)
+    
+    Dim lastRow As Long
+    Dim schreibZeile As Long
+    Dim leseZeile As Long
+    Dim numCols As Long
+    Dim col As Long
+    
+    ' Letzte Zeile im gesamten Bereich ermitteln (ueber alle Spalten)
+    Dim maxRow As Long
+    maxRow = DATA_START_ROW - 1
+    For col = startCol To endCol
+        lastRow = ws.Cells(ws.Rows.count, col).End(xlUp).Row
+        If lastRow > maxRow Then maxRow = lastRow
+    Next col
+    
+    If maxRow < DATA_START_ROW Then Exit Sub
+    
+    lastRow = maxRow
+    numCols = endCol - startCol + 1
+    
+    ' Daten in Array einlesen
+    Dim arrData() As Variant
+    Dim arrResult() As Variant
+    Dim totalRows As Long
+    Dim resultCount As Long
+    Dim isEmpty As Boolean
+    
+    totalRows = lastRow - DATA_START_ROW + 1
+    ReDim arrData(1 To totalRows, 1 To numCols)
+    ReDim arrResult(1 To totalRows, 1 To numCols)
+    
+    ' Daten einlesen
+    Dim r As Long, c As Long
+    For r = 1 To totalRows
+        For c = 1 To numCols
+            arrData(r, c) = ws.Cells(DATA_START_ROW + r - 1, startCol + c - 1).value
+        Next c
+    Next r
+    
+    ' Nicht-leere Zeilen sammeln (geprueft ueber checkCol)
+    resultCount = 0
+    Dim checkIdx As Long
+    checkIdx = checkCol - startCol + 1
+    
+    For r = 1 To totalRows
+        If Trim(CStr(arrData(r, checkIdx))) <> "" Then
+            resultCount = resultCount + 1
+            For c = 1 To numCols
+                arrResult(resultCount, c) = arrData(r, c)
+            Next c
+        End If
+    Next r
+    
+    ' Bereich loeschen und verdichtete Daten zurueckschreiben
+    If resultCount > 0 Then
+        ws.Range(ws.Cells(DATA_START_ROW, startCol), _
+                 ws.Cells(lastRow, endCol)).ClearContents
+        
+        For r = 1 To resultCount
+            For c = 1 To numCols
+                ws.Cells(DATA_START_ROW + r - 1, startCol + c - 1).value = arrResult(r, c)
+            Next c
+        Next r
+    Else
+        ' Alles leer - Bereich leeren
+        ws.Range(ws.Cells(DATA_START_ROW, startCol), _
+                 ws.Cells(lastRow, endCol)).ClearContents
+    End If
+    
+End Sub
+
+' ===============================================================
+' NEU: Entsperrt bestehende Daten + genau 1 naechste freie Zeile
+' Betrifft: B, D, F, H, J-P, R-X (via W), AB, AC, AD, AH
+' ===============================================================
+Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     
     Dim lastRow As Long
     Dim nextRow As Long
-    Dim pufferEnd As Long
     Dim r As Long
-    Dim einAusWert As String
     
     On Error Resume Next
     
@@ -405,104 +467,134 @@ Private Sub EntspeerreNaechsteEingabezeilen(ByRef ws As Worksheet)
         lastRow = ws.Cells(ws.Rows.count, singleCols(c)).End(xlUp).Row
         If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
         nextRow = lastRow + 1
-        pufferEnd = nextRow + EINGABE_PUFFER - 1
         
-        ' Puffer-Zeilen entsperren
-        ws.Range(ws.Cells(nextRow, singleCols(c)), _
-                 ws.Cells(pufferEnd, singleCols(c))).Locked = False
-        
-        ' Sicherheitshalber Zeilen darueber wieder sperren (Datenbereich)
+        ' Bestehende Daten entsperren (editierbar)
         If lastRow >= DATA_START_ROW Then
             ws.Range(ws.Cells(DATA_START_ROW, singleCols(c)), _
-                     ws.Cells(lastRow, singleCols(c))).Locked = True
+                     ws.Cells(lastRow, singleCols(c))).Locked = False
         End If
+        
+        ' Genau 1 naechste freie Zeile entsperren
+        ws.Cells(nextRow, singleCols(c)).Locked = False
+        
+        ' Zeile danach sperren (Sicherheit)
+        ws.Cells(nextRow + 1, singleCols(c)).Locked = True
     Next c
     
     ' === KATEGORIE-TABELLE: J-P (10-16) ===
-    ' Eingabe startet in J, aber ganze Zeile J-P muss editierbar sein
     lastRow = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
     nextRow = lastRow + 1
-    pufferEnd = nextRow + EINGABE_PUFFER - 1
     
-    ' Puffer-Zeilen J-P entsperren fuer neue Eintraege
-    ws.Range(ws.Cells(nextRow, DATA_CAT_COL_START), _
-             ws.Cells(pufferEnd, DATA_CAT_COL_END)).Locked = False
-    
-    ' DropDowns fuer die Puffer-Zeilen setzen (O=Zielspalte)
-    For r = nextRow To pufferEnd
-        Call SetzeZielspalteDropdown(ws, r, "")
-        
-        ' Dropdown fuer Spalte K (E/A) - Einnahme/Ausgabe
-        ws.Cells(r, DATA_CAT_COL_EINAUS).Validation.Delete
-        With ws.Cells(r, DATA_CAT_COL_EINAUS).Validation
-            .Add Type:=xlValidateList, _
-                 AlertStyle:=xlValidAlertWarning, _
-                 Formula1:="E,A"
-            .IgnoreBlank = True
-            .InCellDropdown = True
-            .ShowInput = False
-            .ShowError = True
-        End With
-        
-        ' Dropdown fuer Spalte M (Prioritaet)
-        ws.Cells(r, DATA_CAT_COL_PRIORITAET).Validation.Delete
-        With ws.Cells(r, DATA_CAT_COL_PRIORITAET).Validation
-            .Add Type:=xlValidateList, _
-                 AlertStyle:=xlValidAlertWarning, _
-                 Formula1:="=" & WS_DATEN & "!$AA$4:$AA$" & _
-                            ws.Cells(ws.Rows.count, DATA_COL_DD_PRIORITAET).End(xlUp).Row
-            .IgnoreBlank = True
-            .InCellDropdown = True
-            .ShowInput = False
-            .ShowError = True
-        End With
-        
-        ' Dropdown fuer Spalte O (Faelligkeit)
-        ws.Cells(r, DATA_CAT_COL_FAELLIGKEIT).Validation.Delete
-        With ws.Cells(r, DATA_CAT_COL_FAELLIGKEIT).Validation
-            .Add Type:=xlValidateList, _
-                 AlertStyle:=xlValidAlertWarning, _
-                 Formula1:="=" & WS_DATEN & "!$AC$4:$AC$" & _
-                            ws.Cells(ws.Rows.count, DATA_COL_DD_FAELLIGKEIT).End(xlUp).Row
-            .IgnoreBlank = True
-            .InCellDropdown = True
-            .ShowInput = False
-            .ShowError = True
-        End With
-    Next r
-    
-    ' Datenbereich J-P wieder sperren (ausser U-X, das macht SetzeZellschutzFuerZeile)
+    ' Bestehende Daten J-P entsperren (editierbar)
     If lastRow >= DATA_START_ROW Then
         ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
-                 ws.Cells(lastRow, DATA_CAT_COL_END)).Locked = True
+                 ws.Cells(lastRow, DATA_CAT_COL_END)).Locked = False
     End If
     
-    ' === ENTITYKEY-TABELLE: Eingabe ueber W (Role, Spalte 23) ===
-    ' Wenn W editiert wird, soll die ganze Zeile R-X editierbar sein
+    ' Genau 1 naechste freie Zeile J-P entsperren
+    ws.Range(ws.Cells(nextRow, DATA_CAT_COL_START), _
+             ws.Cells(nextRow, DATA_CAT_COL_END)).Locked = False
+    
+    ' Zeile danach sperren
+    ws.Range(ws.Cells(nextRow + 1, DATA_CAT_COL_START), _
+             ws.Cells(nextRow + 1, DATA_CAT_COL_END)).Locked = True
+    
+    ' DropDowns fuer die Eingabezeile setzen
+    Call SetzeZielspalteDropdown(ws, nextRow, "")
+    
+    ' Dropdown K (E/A)
+    ws.Cells(nextRow, DATA_CAT_COL_EINAUS).Validation.Delete
+    With ws.Cells(nextRow, DATA_CAT_COL_EINAUS).Validation
+        .Add Type:=xlValidateList, _
+             AlertStyle:=xlValidAlertWarning, _
+             Formula1:="E,A"
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .ShowInput = False
+        .ShowError = True
+    End With
+    
+    ' Dropdown M (Prioritaet)
+    ws.Cells(nextRow, DATA_CAT_COL_PRIORITAET).Validation.Delete
+    With ws.Cells(nextRow, DATA_CAT_COL_PRIORITAET).Validation
+        .Add Type:=xlValidateList, _
+             AlertStyle:=xlValidAlertWarning, _
+             Formula1:="=" & WS_DATEN & "!$AA$4:$AA$" & _
+                        ws.Cells(ws.Rows.count, DATA_COL_DD_PRIORITAET).End(xlUp).Row
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .ShowInput = False
+        .ShowError = True
+    End With
+    
+    ' Dropdown O (Faelligkeit)
+    ws.Cells(nextRow, DATA_CAT_COL_FAELLIGKEIT).Validation.Delete
+    With ws.Cells(nextRow, DATA_CAT_COL_FAELLIGKEIT).Validation
+        .Add Type:=xlValidateList, _
+             AlertStyle:=xlValidAlertWarning, _
+             Formula1:="=" & WS_DATEN & "!$AC$4:$AC$" & _
+                        ws.Cells(ws.Rows.count, DATA_COL_DD_FAELLIGKEIT).End(xlUp).Row
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .ShowInput = False
+        .ShowError = True
+    End With
+    
+    ' === ENTITYKEY-TABELLE: R-X (18-24) ===
     lastRow = ws.Cells(ws.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
     If lastRow < EK_START_ROW Then lastRow = EK_START_ROW - 1
     nextRow = lastRow + 1
-    pufferEnd = nextRow + EINGABE_PUFFER - 1
     
-    ' Puffer-Zeilen R-X komplett entsperren fuer neue Eintraege
+    ' Bestehende Daten R-X: Schutz wird durch SetzeZellschutzFuerZeile gesteuert
+    ' Hier nur sicherstellen dass editierbare Zellen auch editierbar bleiben
+    ' (SetzeZellschutzFuerZeile wird bereits in FormatiereEntityKeyTabelle aufgerufen)
+    
+    ' Genau 1 naechste freie Zeile R-X entsperren
     ws.Range(ws.Cells(nextRow, EK_COL_ENTITYKEY), _
-             ws.Cells(pufferEnd, EK_COL_DEBUG)).Locked = False
+             ws.Cells(nextRow, EK_COL_DEBUG)).Locked = False
     
-    ' Dropdown fuer Spalte W (EntityRole) in Puffer-Zeilen
-    For r = nextRow To pufferEnd
-        ws.Cells(r, EK_COL_ROLE).Validation.Delete
-        With ws.Cells(r, EK_COL_ROLE).Validation
-            .Add Type:=xlValidateList, _
-                 AlertStyle:=xlValidAlertWarning, _
-                 Formula1:="=" & WS_DATEN & "!$AD$4:$AD$" & _
-                            ws.Cells(ws.Rows.count, DATA_COL_DD_ENTITYROLE).End(xlUp).Row
-            .IgnoreBlank = True
-            .InCellDropdown = True
-            .ShowInput = False
-            .ShowError = True
-        End With
-    Next r
+    ' Zeile danach sperren
+    ws.Range(ws.Cells(nextRow + 1, EK_COL_ENTITYKEY), _
+             ws.Cells(nextRow + 1, EK_COL_DEBUG)).Locked = True
+    
+    ' Dropdown W (EntityRole) fuer Eingabezeile
+    ws.Cells(nextRow, EK_COL_ROLE).Validation.Delete
+    With ws.Cells(nextRow, EK_COL_ROLE).Validation
+        .Add Type:=xlValidateList, _
+             AlertStyle:=xlValidAlertWarning, _
+             Formula1:="=" & WS_DATEN & "!$AD$4:$AD$" & _
+                        ws.Cells(ws.Rows.count, DATA_COL_DD_ENTITYROLE).End(xlUp).Row
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .ShowInput = False
+        .ShowError = True
+    End With
+    
+    ' Parzellen-Dropdown fuer Spalte V bei EHEMALIGES MITGLIED
+    ' (fuer bestehende Zeilen + Eingabezeile)
+    Dim lastRowParzelle As Long
+    lastRowParzelle = ws.Cells(ws.Rows.count, DATA_COL_DD_PARZELLE).End(xlUp).Row
+    If lastRowParzelle < DATA_START_ROW Then lastRowParzelle = DATA_START_ROW
+    
+    If lastRow >= EK_START_ROW Then
+        For r = EK_START_ROW To lastRow
+            If UCase(Trim(ws.Cells(r, EK_COL_ROLE).value)) = "EHEMALIGES MITGLIED" Then
+                ws.Cells(r, EK_COL_PARZELLE).Validation.Delete
+                With ws.Cells(r, EK_COL_PARZELLE).Validation
+                    .Add Type:=xlValidateList, _
+                         AlertStyle:=xlValidAlertWarning, _
+                         Formula1:="=" & WS_DATEN & "!$F$4:$F$" & lastRowParzelle
+                    .IgnoreBlank = True
+                    .InCellDropdown = True
+                    .ShowInput = False
+                    .ShowError = True
+                End With
+                ' Parzelle editierbar machen
+                ws.Cells(r, EK_COL_PARZELLE).Locked = False
+            End If
+        Next r
+    End If
     
     ' === HELPER-SPALTEN: AB (28), AC (29), AD (30), AH (34) ===
     Dim helperCols As Variant
@@ -512,17 +604,18 @@ Private Sub EntspeerreNaechsteEingabezeilen(ByRef ws As Worksheet)
         lastRow = ws.Cells(ws.Rows.count, helperCols(c)).End(xlUp).Row
         If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
         nextRow = lastRow + 1
-        pufferEnd = nextRow + EINGABE_PUFFER - 1
         
-        ' Puffer-Zeilen entsperren
-        ws.Range(ws.Cells(nextRow, helperCols(c)), _
-                 ws.Cells(pufferEnd, helperCols(c))).Locked = False
-        
-        ' Datenbereich wieder sperren
+        ' Bestehende Daten entsperren (editierbar)
         If lastRow >= DATA_START_ROW Then
             ws.Range(ws.Cells(DATA_START_ROW, helperCols(c)), _
-                     ws.Cells(lastRow, helperCols(c))).Locked = True
+                     ws.Cells(lastRow, helperCols(c))).Locked = False
         End If
+        
+        ' Genau 1 naechste freie Zeile entsperren
+        ws.Cells(nextRow, helperCols(c)).Locked = False
+        
+        ' Zeile danach sperren
+        ws.Cells(nextRow + 1, helperCols(c)).Locked = True
     Next c
     
     On Error GoTo 0
@@ -534,6 +627,7 @@ End Sub
 
 '--- Ende Teil 1 von 3 ---
 '--- Anfang Teil 2 von 3 ---
+
 
 
 
@@ -556,11 +650,9 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
     Set rngTable = ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
                             ws.Cells(lastRow, DATA_CAT_COL_END))
     
-    ' Formatierung loeschen
     rngTable.Interior.ColorIndex = xlNone
     rngTable.Borders.LineStyle = xlNone
     
-    ' Zebra-Formatierung fuer gesamte Zeile J-P
     For r = DATA_START_ROW To lastRow
         If (r - DATA_START_ROW) Mod 2 = 0 Then
             ws.Range(ws.Cells(r, DATA_CAT_COL_START), ws.Cells(r, DATA_CAT_COL_END)).Interior.color = ZEBRA_COLOR_1
@@ -569,7 +661,6 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
         End If
     Next r
     
-    ' Rahmen setzen
     With rngTable.Borders
         .LineStyle = xlContinuous
         .Weight = xlThin
@@ -578,7 +669,6 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
     
     rngTable.VerticalAlignment = xlCenter
     
-    ' Horizontale Ausrichtungen
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KATEGORIE), _
              ws.Cells(lastRow, DATA_CAT_COL_KATEGORIE)).HorizontalAlignment = xlLeft
     
@@ -600,20 +690,18 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KOMMENTAR), _
              ws.Cells(lastRow, DATA_CAT_COL_KOMMENTAR)).HorizontalAlignment = xlLeft
     
-    ' Dropdowns setzen
     For r = DATA_START_ROW To lastRow
         einAusWert = UCase(Trim(ws.Cells(r, DATA_CAT_COL_EINAUS).value))
         Call SetzeZielspalteDropdown(ws, r, einAusWert)
     Next r
     
-    ' Spaltenbreite anpassen
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
              ws.Cells(lastRow, DATA_CAT_COL_END)).EntireColumn.AutoFit
     
 End Sub
 
 ' ===============================================================
-' NEU: Sortiert die Kategorie-Tabelle nach Spalte J (A-Z)
+' Sortiert die Kategorie-Tabelle nach Spalte J (A-Z)
 ' ===============================================================
 Public Sub SortiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
     
@@ -647,9 +735,7 @@ Public Sub SortiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
 End Sub
 
 ' ===============================================================
-' NEU: Sortiert die EntityKey-Tabelle
-' Sortierung: Parzelle 1-14, dann EX-, VERS-, BANK-, Rest
-' NUR Spalten R bis X - keine anderen Spalten!
+' Sortiert die EntityKey-Tabelle
 ' ===============================================================
 Public Sub SortiereEntityKeyTabelle(Optional ByRef ws As Worksheet = Nothing)
     
@@ -674,23 +760,20 @@ Public Sub SortiereEntityKeyTabelle(Optional ByRef ws As Worksheet = Nothing)
     Dim tempRow As Variant
     
     numRows = lastRow - EK_START_ROW + 1
-    
     If numRows < 1 Then Exit Sub
     
-    ' Daten aus R-X in Array einlesen (7 Spalten: R, S, T, U, V, W, X)
     ReDim arrData(1 To numRows, 1 To 7)
     
     For r = EK_START_ROW To lastRow
-        arrData(r - EK_START_ROW + 1, 1) = ws.Cells(r, EK_COL_ENTITYKEY).value       ' R
-        arrData(r - EK_START_ROW + 1, 2) = ws.Cells(r, EK_COL_IBAN).value            ' S
-        arrData(r - EK_START_ROW + 1, 3) = ws.Cells(r, EK_COL_KONTONAME).value       ' T
-        arrData(r - EK_START_ROW + 1, 4) = ws.Cells(r, EK_COL_ZUORDNUNG).value       ' U
-        arrData(r - EK_START_ROW + 1, 5) = ws.Cells(r, EK_COL_PARZELLE).value        ' V
-        arrData(r - EK_START_ROW + 1, 6) = ws.Cells(r, EK_COL_ROLE).value            ' W
-        arrData(r - EK_START_ROW + 1, 7) = ws.Cells(r, EK_COL_DEBUG).value           ' X
+        arrData(r - EK_START_ROW + 1, 1) = ws.Cells(r, EK_COL_ENTITYKEY).value
+        arrData(r - EK_START_ROW + 1, 2) = ws.Cells(r, EK_COL_IBAN).value
+        arrData(r - EK_START_ROW + 1, 3) = ws.Cells(r, EK_COL_KONTONAME).value
+        arrData(r - EK_START_ROW + 1, 4) = ws.Cells(r, EK_COL_ZUORDNUNG).value
+        arrData(r - EK_START_ROW + 1, 5) = ws.Cells(r, EK_COL_PARZELLE).value
+        arrData(r - EK_START_ROW + 1, 6) = ws.Cells(r, EK_COL_ROLE).value
+        arrData(r - EK_START_ROW + 1, 7) = ws.Cells(r, EK_COL_DEBUG).value
     Next r
     
-    ' Bubble Sort mit benutzerdefinierter Sortierlogik
     For i = 1 To numRows - 1
         swap = False
         For j = 1 To numRows - i
@@ -708,7 +791,6 @@ Public Sub SortiereEntityKeyTabelle(Optional ByRef ws As Worksheet = Nothing)
         If Not swap Then Exit For
     Next i
     
-    ' Sortierte Daten zurueckschreiben NUR in Spalten R-X
     For r = EK_START_ROW To lastRow
         ws.Cells(r, EK_COL_ENTITYKEY).value = arrData(r - EK_START_ROW + 1, 1)
         ws.Cells(r, EK_COL_IBAN).value = arrData(r - EK_START_ROW + 1, 2)
@@ -722,7 +804,7 @@ Public Sub SortiereEntityKeyTabelle(Optional ByRef ws As Worksheet = Nothing)
 End Sub
 
 ' ===============================================================
-' HILFSFUNKTION: Vergleicht zwei EntityKey-Zeilen fuer Sortierung
+' Vergleicht zwei EntityKey-Zeilen fuer Sortierung
 ' ===============================================================
 Private Function VergleicheEntityKeyZeilen(entityKey1 As Variant, parzelle1 As Variant, _
                                             entityKey2 As Variant, parzelle2 As Variant) As Long
@@ -810,6 +892,7 @@ End Sub
 
 
 
+
 '--- Ende Teil 2 von 3 ---
 '--- Anfang Teil 3 von 3 ---
 
@@ -889,7 +972,6 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
     
     Call ErstelleKategorieNamedRanges(ws, nextRowE - 1, nextRowA - 1)
     
-    ' Formatiere Helper-Spalten nach Update
     Call FormatiereSingleSpalte(ws, 32, True)  ' AF
     Call FormatiereSingleSpalte(ws, 33, True)  ' AG
     Call FormatiereSingleSpalte(ws, 34, True)  ' AH
@@ -946,7 +1028,7 @@ Private Sub FormatiereEntityKeyTabelleKomplett(ByRef ws As Worksheet)
 End Sub
 
 ' ===============================================================
-' HILFSPROZEDUR: Formatiert die EntityKey-Tabelle
+' Formatiert die EntityKey-Tabelle
 ' R-T mit Zebra, U-X nur Rahmen (Ampel-Farben bleiben)
 ' ===============================================================
 Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As Long)
@@ -962,7 +1044,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     Set rngTable = ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
                             ws.Cells(lastRow, EK_COL_DEBUG))
     
-    ' Rahmen fuer gesamte Tabelle
     With rngTable.Borders
         .LineStyle = xlContinuous
         .Weight = xlThin
@@ -971,7 +1052,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     
     rngTable.VerticalAlignment = xlCenter
     
-    ' Spaltenformatierung
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
                   ws.Cells(lastRow, EK_COL_ENTITYKEY))
         .WrapText = False
@@ -1025,13 +1105,11 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
              ws.Cells(lastRow, EK_COL_KONTONAME)).Locked = True
     
-    ' Zebra-Formatierung NUR fuer R-T, U-X bleiben ohne Zebra (Ampel)
     For r = EK_START_ROW To lastRow
         currentRole = Trim(ws.Cells(r, EK_COL_ROLE).value)
         
         Call SetzeZellschutzFuerZeile(ws, r, currentRole)
         
-        ' Zebra nur fuer R-T (EntityKey, IBAN, Kontoname)
         Set rngZebra = ws.Range(ws.Cells(r, EK_COL_ENTITYKEY), ws.Cells(r, EK_COL_KONTONAME))
         
         If (r - EK_START_ROW) Mod 2 = 0 Then
@@ -1040,7 +1118,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
             rngZebra.Interior.color = ZEBRA_COLOR_2
         End If
         
-        ' U-X: NUR Rahmen, KEINE Zebra-Formatierung (Ampel bleibt)
         Set rngBorderOnly = ws.Range(ws.Cells(r, EK_COL_ZUORDNUNG), ws.Cells(r, EK_COL_DEBUG))
     Next r
     
@@ -1049,7 +1126,7 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
 End Sub
 
 ' ===============================================================
-' HILFSPROZEDUR: Setzt Zellschutz basierend auf EntityRole
+' Setzt Zellschutz basierend auf EntityRole
 ' ===============================================================
 Private Sub SetzeZellschutzFuerZeile(ByRef ws As Worksheet, ByVal zeile As Long, ByVal currentRole As String)
     
@@ -1067,6 +1144,12 @@ Private Sub SetzeZellschutzFuerZeile(ByRef ws As Worksheet, ByVal zeile As Long,
         Case "MITGLIED"
             ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = True
             ws.Cells(zeile, EK_COL_PARZELLE).Locked = True
+            ws.Cells(zeile, EK_COL_ROLE).Locked = True
+            ws.Cells(zeile, EK_COL_DEBUG).Locked = False
+            
+        Case "EHEMALIGES MITGLIED"
+            ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = False
+            ws.Cells(zeile, EK_COL_PARZELLE).Locked = False  ' Editierbar fuer Parzellen-Dropdown
             ws.Cells(zeile, EK_COL_ROLE).Locked = True
             ws.Cells(zeile, EK_COL_DEBUG).Locked = False
             
@@ -1142,7 +1225,7 @@ ErrorHandler:
 End Sub
 
 ' ===============================================================
-' HILFSFUNKTION: Prueft ob Named Range existiert
+' Prueft ob Named Range existiert
 ' ===============================================================
 Public Function NamedRangeExists(ByVal rangeName As String) As Boolean
     Dim nm As Name
@@ -1177,8 +1260,7 @@ Public Sub OnKategorieChange(ByVal Target As Range)
 End Sub
 
 ' ===============================================================
-' NEU: WORKSHEET_CHANGE HANDLER fuer dynamische Formatierung
-' Wird von Tabelle8 (Daten) Worksheet_Change aufgerufen
+' WORKSHEET_CHANGE HANDLER fuer dynamische Formatierung
 ' ===============================================================
 Public Sub OnDatenChange(ByVal Target As Range, ByVal ws As Worksheet)
     
@@ -1187,7 +1269,6 @@ Public Sub OnDatenChange(ByVal Target As Range, ByVal ws As Worksheet)
     Application.EnableEvents = False
     Application.ScreenUpdating = False
     
-    ' Einzelspalten B, D, F, H
     If Not Intersect(Target, ws.Columns(2)) Is Nothing Then
         Call FormatiereSingleSpalte(ws, 2, True)
     End If
@@ -1204,20 +1285,17 @@ Public Sub OnDatenChange(ByVal Target As Range, ByVal ws As Worksheet)
         Call FormatiereSingleSpalte(ws, 8, True)
     End If
     
-    ' Kategorie-Tabelle J-P
     If Not Intersect(Target, ws.Range("J:P")) Is Nothing Then
         Call FormatiereKategorieTabelle(ws)
         Call SortiereKategorieTabelle(ws)
         Call OnKategorieChange(Target)
     End If
     
-    ' EntityKey-Tabelle R-X
     If Not Intersect(Target, ws.Range("R:X")) Is Nothing Then
         Call FormatiereEntityKeyTabelleKomplett(ws)
         Call SortiereEntityKeyTabelle(ws)
     End If
     
-    ' Helper-Spalten Z-AH
     If Not Intersect(Target, ws.Columns(26)) Is Nothing Then
         Call FormatiereSingleSpalte(ws, 26, True)
     End If
@@ -1262,7 +1340,4 @@ ErrorHandler:
     End If
     
 End Sub
-
-
-
 

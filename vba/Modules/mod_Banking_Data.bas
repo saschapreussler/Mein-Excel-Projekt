@@ -454,7 +454,7 @@ Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
         datumWert = ws.Cells(r, BK_COL_DATUM).value
         monatWert = ws.Cells(r, BK_COL_MONAT_PERIODE).value
         
-        If IsDate(datumWert) And (IsEmpty(monatWert) Or monatWert = "") Then
+        If IsDate(datumWert) And (isEmpty(monatWert) Or monatWert = "") Then
             ws.Cells(r, BK_COL_MONAT_PERIODE).value = MonthName(Month(datumWert))
         End If
     Next r

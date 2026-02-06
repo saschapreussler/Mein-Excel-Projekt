@@ -98,12 +98,12 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                 Set AustrittsZelle = Me.Cells(cCell.Row, M_COL_AUSTRITT)
                 
                 If StrComp(Trim(CStr(cCell.value)), AUSTRITT_STATUS, vbTextCompare) = 0 Then
-                    If IsEmpty(AustrittsZelle.value) Then
+                    If isEmpty(AustrittsZelle.value) Then
                         AustrittsZelle.value = Date
                         AustrittsZelle.NumberFormat = "DD.MM.YYYY"
                     End If
                 Else
-                    If Not IsEmpty(AustrittsZelle.value) Then
+                    If Not isEmpty(AustrittsZelle.value) Then
                         AustrittsZelle.ClearContents
                     End If
                 End If

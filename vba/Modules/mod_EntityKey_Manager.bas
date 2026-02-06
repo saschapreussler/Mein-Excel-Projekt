@@ -82,7 +82,7 @@ End Function
 Private Function NormalisiereIBAN(ByVal iban As Variant) As String
     Dim result As String
     
-    If IsNull(iban) Or IsEmpty(iban) Then
+    If IsNull(iban) Or isEmpty(iban) Then
         NormalisiereIBAN = ""
         Exit Function
     End If
@@ -154,7 +154,7 @@ Public Sub ImportiereIBANsAusBankkonto()
     For r = BK_START_ROW To lastRowBK
         currentDatum = wsBK.Cells(r, BK_COL_DATUM).value
         
-        If Not IsEmpty(currentDatum) And currentDatum <> "" Then
+        If Not isEmpty(currentDatum) And currentDatum <> "" Then
             currentIBAN = NormalisiereIBAN(wsBK.Cells(r, BK_COL_IBAN).value)
             currentKontoName = EntferneMehrfacheLeerzeichen(Trim(wsBK.Cells(r, BK_COL_NAME).value))
             
