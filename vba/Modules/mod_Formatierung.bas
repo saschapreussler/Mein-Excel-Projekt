@@ -635,27 +635,49 @@ Public Sub OnKategorieChange(ByVal Target As Range)
 End Sub
 
 
-' ===============================================================
-' NEUE PROZEDUR: Formatiert das GESAMTE Daten-Blatt konsistent
-' ===============================================================
-' ZWECK: Wendet einheitliches Zebra-Striping, Rahmen und AutoFilter
-'        auf ALLE Tabellen des "Daten"-Blatts an
-' AUTOR: [Platzhalter]
-' DATUM: 06.02.2026
-' AUSNAHMEN:
-'   - Spalten U-X (EK_COL_ZUORDNUNG bis EK_COL_DEBUG) behalten
-'     ihre Ampel-Formatierung und erhalten KEIN Zebra-Striping
-'   - Spaltenbreiten werden NICHT geaendert
-'   - Textausrichtung wird NICHT geaendert
-'   - Datenvalidierung (Dropdowns) bleibt erhalten
-' ===============================================================
-Public Sub FormatiereDatenBlattKomplett()
+
+'================================================================================
+' Prozedur: ApplyDatenSheetFormatting
+' Zweck:    Wendet einheitliche Zebra-Streifen, Rahmen, Spaltenbreiten und
+'           AutoFilter auf ALLE Tabellen des "Daten"-Blatts an
+' Autor:    [Platzhalter]
+' Datum:    06.02.2026
+' Hinweise:
+'   - Erhält Ampel-Formatierung in Spalten U-X (KEIN Zebra dort!)
+'   - Liest Zebra-Farben aus Mitgliederliste (Zeile 6 und 7)
+'   - Formatiert: B, D, F, H, J-P, R-T, Z-AH
+'   - Spalten U-X: NUR Rahmen, KEIN Zebra
+'   - Y100 WrapText wird erhalten
+'
+' Tabellen-Bereiche:
+'   - Einzelspalten: B, D, F, H
+'   - Kategorie: J-P (7 Spalten)
+'   - EntityKey: R-X (7 Spalten, aber U-X ohne Zebra)
+'   - Helper: Z-AH (9 Spalten)
+'
+' Spaltenbreiten (aus Dokumentation):
+'   - AutoFit: B, D, F, H, J, K, L, M, N, O, P, S, W, Z-AH
+'   - Fest 11.00: R
+'   - Fest 36.00: T
+'   - Fest 28.00: U
+'   - Fest 9.00: V
+'   - Fest 42.00: X
+'
+' Ausrichtung:
+'   - Zentriert: F, K, M, V
+'   - Links: Alle anderen
+'================================================================================
+Public Sub ApplyDatenSheetFormatting(Optional ByVal formatType As String = "ALL")
     
+    ' === VARIABLENDEKLARATION ===
     Dim ws As Worksheet
+    Dim wsRef As Worksheet
     Dim lastRowB As Long, lastRowD As Long, lastRowF As Long, lastRowH As Long
     Dim lastRowKat As Long, lastRowEK As Long, lastRowHelper As Long
-    Dim maxLastRow As Long
     Dim r As Long
+    Dim zebraColor1 As Long  ' Farbe für gerade Zeilen (4, 6, 8...)
+    Dim zebraColor2 As Long  ' Farbe für ungerade Zeilen (5, 7, 9...)
+    Dim rngRow As Range
     
     On Error GoTo ErrorHandler
     
@@ -664,314 +686,413 @@ Public Sub FormatiereDatenBlattKomplett()
     Application.Calculation = xlCalculationManual
     Application.EnableEvents = False
     
+    ' === ARBEITSBLÄTTER REFERENZIEREN ===
     Set ws = ThisWorkbook.Worksheets(WS_DATEN)
     
+    ' Zebra-Farben aus Mitgliederliste lesen
+    On Error Resume Next
+    Set wsRef = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    If wsRef Is Nothing Then
+        Set wsRef = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
+    End If
+    On Error GoTo ErrorHandler
+    
+    ' Farben aus Referenz-Blatt ermitteln (Zeile 6 = gerade, Zeile 7 = ungerade)
+    If Not wsRef Is Nothing Then
+        zebraColor1 = wsRef.Range("A6").Interior.color  ' Gerade Zeilen
+        zebraColor2 = wsRef.Range("A7").Interior.color  ' Ungerade Zeilen
+        ' Falls keine Farbe gesetzt, Standardwerte verwenden
+        If zebraColor1 = 16777215 Then zebraColor1 = RGB(255, 255, 255)  ' Weiß
+        If zebraColor2 = 16777215 Then zebraColor2 = ZEBRA_COLOR         ' Hellgrün
+    Else
+        ' Fallback-Farben
+        zebraColor1 = RGB(255, 255, 255)  ' Weiß
+        zebraColor2 = ZEBRA_COLOR          ' Hellgrün (&HDEE5E3)
+    End If
+    
+    Debug.Print "=== ApplyDatenSheetFormatting gestartet ==="
+    Debug.Print "Zebra-Farbe 1 (gerade): " & Hex(zebraColor1)
+    Debug.Print "Zebra-Farbe 2 (ungerade): " & Hex(zebraColor2)
+    
+    ' === BLATTSCHUTZ AUFHEBEN ===
     On Error Resume Next
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ErrorHandler
     
     ' === LETZTE ZEILEN ERMITTELN ===
-    lastRowB = GetLastDataRow(ws, 2)       ' Spalte B - Vereinsfunktionen
-    lastRowD = GetLastDataRow(ws, 4)       ' Spalte D - Anredeformen
-    lastRowF = GetLastDataRow(ws, 6)       ' Spalte F - Parzelle
-    lastRowH = GetLastDataRow(ws, 8)       ' Spalte H - Seite
-    lastRowKat = GetLastDataRow(ws, DATA_CAT_COL_KATEGORIE)  ' Spalte J - Kategorie
-    lastRowEK = GetLastDataRow(ws, EK_COL_IBAN)              ' Spalte S - EntityKey
-    lastRowHelper = GetLastDataRow(ws, DATA_COL_KAT_EINNAHMEN) ' Spalte AF
+    lastRowB = GetLastDataRowSafe(ws, 2)        ' Spalte B
+    lastRowD = GetLastDataRowSafe(ws, 4)        ' Spalte D
+    lastRowF = GetLastDataRowSafe(ws, 6)        ' Spalte F
+    lastRowH = GetLastDataRowSafe(ws, 8)        ' Spalte H
+    lastRowKat = GetLastDataRowSafe(ws, 10)     ' Spalte J (Kategorie)
+    lastRowEK = GetLastDataRowSafe(ws, 19)      ' Spalte S (EntityKey IBAN)
+    lastRowHelper = GetLastDataRowSafe(ws, 26)  ' Spalte Z (Helper)
     
-    ' Maximale Zeilenanzahl fuer uebergreifende Operationen
-    maxLastRow = Application.WorksheetFunction.Max(lastRowB, lastRowD, lastRowF, _
-                                                    lastRowH, lastRowKat, lastRowEK, lastRowHelper)
+    Debug.Print "LastRows: B=" & lastRowB & ", D=" & lastRowD & ", F=" & lastRowF & _
+                ", H=" & lastRowH & ", Kat=" & lastRowKat & ", EK=" & lastRowEK & ", Helper=" & lastRowHelper
     
-    Debug.Print "=== FormatiereDatenBlattKomplett gestartet ==="
-    Debug.Print "LastRow B: " & lastRowB & ", D: " & lastRowD & ", F: " & lastRowF & ", H: " & lastRowH
-    Debug.Print "LastRow Kategorie: " & lastRowKat & ", EntityKey: " & lastRowEK & ", Helper: " & lastRowHelper
-    
-    ' === TABELLE 1: Vereinsfunktionen (Spalte B) ===
-    If lastRowB >= DATA_START_ROW Then
-        Call ApplyZebraAndBorders(ws, DATA_START_ROW, lastRowB, 2, 2, True)
-        Call ApplyAutoFilter(ws, DATA_HEADER_ROW, 2, 2)
-    End If
-    
-    ' === TABELLE 2: Anredeformen (Spalte D) ===
-    If lastRowD >= DATA_START_ROW Then
-        Call ApplyZebraAndBorders(ws, DATA_START_ROW, lastRowD, 4, 4, True)
-        Call ApplyAutoFilter(ws, DATA_HEADER_ROW, 4, 4)
-    End If
-    
-    ' === TABELLE 3: Parzelle (Spalte F) ===
-    If lastRowF >= DATA_START_ROW Then
-        Call ApplyZebraAndBorders(ws, DATA_START_ROW, lastRowF, 6, 6, True)
-        Call ApplyAutoFilter(ws, DATA_HEADER_ROW, 6, 6)
-    End If
-    
-    ' === TABELLE 4: Seite (Spalte H) ===
-    If lastRowH >= DATA_START_ROW Then
-        Call ApplyZebraAndBorders(ws, DATA_START_ROW, lastRowH, 8, 8, True)
-        Call ApplyAutoFilter(ws, DATA_HEADER_ROW, 8, 8)
-    End If
-    
-    ' === TABELLE 5: Kategorie-Tabelle (Spalten J-P) ===
-    If lastRowKat >= DATA_START_ROW Then
-        Call ApplyZebraAndBorders(ws, DATA_START_ROW, lastRowKat, DATA_CAT_COL_START, DATA_CAT_COL_END, True)
-        Call ApplyAutoFilter(ws, DATA_HEADER_ROW, DATA_CAT_COL_START, DATA_CAT_COL_END)
-    End If
-    
-    ' === TABELLE 6: EntityKey-Tabelle (Spalten R-X) ===
-    ' WICHTIG: Spalten U-X (21-24) erhalten KEIN Zebra wegen Ampel-Formatierung!
-    If lastRowEK >= EK_START_ROW Then
-        ' Teil 1: Spalten R-T (18-20) MIT Zebra
-        Call ApplyZebraAndBorders(ws, EK_START_ROW, lastRowEK, EK_COL_ENTITYKEY, EK_COL_KONTONAME, True)
+    ' ===================================================================
+    ' SCHRITT 1: SPALTENBREITEN SETZEN
+    ' ===================================================================
+    If formatType = "ALL" Or formatType = "WIDTHS" Then
+        Debug.Print "Setze Spaltenbreiten..."
         
-        ' Teil 2: Spalten U-X (21-24) NUR Rahmen, KEIN Zebra (Ampel-Bereich)
-        Call ApplyZebraAndBorders(ws, EK_START_ROW, lastRowEK, EK_COL_ZUORDNUNG, EK_COL_DEBUG, False)
+        ' Feste Breiten (laut Dokumentation)
+        ws.Columns("R").ColumnWidth = 11#       ' EntityKey
+        ws.Columns("T").ColumnWidth = 36#       ' Zahler/Empfänger
+        ws.Columns("U").ColumnWidth = 28#       ' Zuordnung
+        ws.Columns("V").ColumnWidth = 9#        ' Parzelle
+        ws.Columns("X").ColumnWidth = 42#       ' Debug
         
-        ' AutoFilter fuer gesamte EntityKey-Tabelle
-        Call ApplyAutoFilter(ws, DATA_HEADER_ROW, EK_COL_ENTITYKEY, EK_COL_DEBUG)
+        ' AutoFit Spalten
+        ws.Columns("B").AutoFit    ' Vereinsfunktionen
+        ws.Columns("D").AutoFit    ' Anredeformen
+        ws.Columns("F").AutoFit    ' Parzelle
+        ws.Columns("H").AutoFit    ' Seite
+        ws.Columns("J").AutoFit    ' Kategorie
+        ws.Columns("K").AutoFit    ' Einnahme/Ausgabe
+        ws.Columns("L").AutoFit    ' Keyword
+        ws.Columns("M").AutoFit    ' Priorität
+        ws.Columns("N").AutoFit    ' Zielspalte
+        ws.Columns("O").AutoFit    ' Fälligkeit
+        ws.Columns("P").AutoFit    ' Kommentar
+        ws.Columns("S").AutoFit    ' IBAN
+        ws.Columns("W").AutoFit    ' EntityRole
+        ws.Columns("Z").AutoFit    ' Helper Z
+        ws.Columns("AA").AutoFit   ' Helper AA
+        ws.Columns("AB").AutoFit   ' Helper AB
+        ws.Columns("AC").AutoFit   ' Helper AC
+        ws.Columns("AD").AutoFit   ' Helper AD
+        ws.Columns("AE").AutoFit   ' Helper AE
+        ws.Columns("AF").AutoFit   ' Kat Einnahme
+        ws.Columns("AG").AutoFit   ' Kat Ausgabe
+        ws.Columns("AH").AutoFit   ' Monat/Periode
     End If
     
-    ' === HELPER-SPALTEN (Y-AH) - Optional formatieren ===
-    ' Diese Spalten dienen als Dropdown-Quellen, daher nur minimale Formatierung
-    If lastRowHelper >= DATA_START_ROW Then
-        ' Nur Rahmen, kein Zebra fuer Helper-Spalten
-        Call ApplyZebraAndBorders(ws, DATA_START_ROW, lastRowHelper, 25, 34, False)
+    ' ===================================================================
+    ' SCHRITT 2: TEXTAUSRICHTUNG SETZEN
+    ' ===================================================================
+    If formatType = "ALL" Or formatType = "ALIGNMENT" Then
+        Debug.Print "Setze Textausrichtung..."
+        
+        ' Zentrierte Spalten: F, K, M, V
+        ws.Columns("F").HorizontalAlignment = xlCenter
+        ws.Columns("K").HorizontalAlignment = xlCenter
+        ws.Columns("M").HorizontalAlignment = xlCenter
+        ws.Columns("V").HorizontalAlignment = xlCenter
+        
+        ' Linksbündige Spalten (explizit setzen)
+        ws.Columns("B").HorizontalAlignment = xlLeft
+        ws.Columns("D").HorizontalAlignment = xlLeft
+        ws.Columns("H").HorizontalAlignment = xlLeft
+        ws.Columns("J").HorizontalAlignment = xlLeft
+        ws.Columns("L").HorizontalAlignment = xlLeft
+        ws.Columns("N").HorizontalAlignment = xlLeft
+        ws.Columns("O").HorizontalAlignment = xlLeft
+        ws.Columns("P").HorizontalAlignment = xlLeft
+        ws.Columns("R").HorizontalAlignment = xlLeft
+        ws.Columns("S").HorizontalAlignment = xlLeft
+        ws.Columns("T").HorizontalAlignment = xlLeft
+        ws.Columns("U").HorizontalAlignment = xlLeft
+        ws.Columns("W").HorizontalAlignment = xlLeft
+        ws.Columns("X").HorizontalAlignment = xlLeft
+        
+        ' Vertikale Zentrierung für alle Zellen
+        ws.Cells.VerticalAlignment = xlCenter
     End If
     
-    ' === VERTIKALE ZENTRIERUNG ===
-    ws.Cells.VerticalAlignment = xlCenter
+    ' ===================================================================
+    ' SCHRITT 3: ZEBRA-STREIFEN ANWENDEN
+    ' ===================================================================
+    If formatType = "ALL" Or formatType = "ZEBRA" Then
+        Debug.Print "Wende Zebra-Streifen an..."
+        
+        ' --- Tabelle B (Vereinsfunktionen) ---
+        If lastRowB >= DATA_START_ROW Then
+            For r = DATA_START_ROW To lastRowB
+                If (r Mod 2) = 0 Then
+                    ws.Cells(r, 2).Interior.color = zebraColor1
+                Else
+                    ws.Cells(r, 2).Interior.color = zebraColor2
+                End If
+            Next r
+        End If
+        
+        ' --- Tabelle D (Anredeformen) ---
+        If lastRowD >= DATA_START_ROW Then
+            For r = DATA_START_ROW To lastRowD
+                If (r Mod 2) = 0 Then
+                    ws.Cells(r, 4).Interior.color = zebraColor1
+                Else
+                    ws.Cells(r, 4).Interior.color = zebraColor2
+                End If
+            Next r
+        End If
+        
+        ' --- Tabelle F (Parzelle) ---
+        If lastRowF >= DATA_START_ROW Then
+            For r = DATA_START_ROW To lastRowF
+                If (r Mod 2) = 0 Then
+                    ws.Cells(r, 6).Interior.color = zebraColor1
+                Else
+                    ws.Cells(r, 6).Interior.color = zebraColor2
+                End If
+            Next r
+        End If
+        
+        ' --- Tabelle H (Seite) ---
+        If lastRowH >= DATA_START_ROW Then
+            For r = DATA_START_ROW To lastRowH
+                If (r Mod 2) = 0 Then
+                    ws.Cells(r, 8).Interior.color = zebraColor1
+                Else
+                    ws.Cells(r, 8).Interior.color = zebraColor2
+                End If
+            Next r
+        End If
+        
+        ' --- Kategorie-Tabelle J-P (7 Spalten) ---
+        If lastRowKat >= DATA_START_ROW Then
+            For r = DATA_START_ROW To lastRowKat
+                Set rngRow = ws.Range(ws.Cells(r, 10), ws.Cells(r, 16))  ' J-P
+                If (r Mod 2) = 0 Then
+                    rngRow.Interior.color = zebraColor1
+                Else
+                    rngRow.Interior.color = zebraColor2
+                End If
+            Next r
+        End If
+        
+        ' --- EntityKey-Tabelle R-T NUR (3 Spalten) - NICHT U-X! ---
+        If lastRowEK >= DATA_START_ROW Then
+            For r = DATA_START_ROW To lastRowEK
+                Set rngRow = ws.Range(ws.Cells(r, 18), ws.Cells(r, 20))  ' R-T nur
+                If (r Mod 2) = 0 Then
+                    rngRow.Interior.color = zebraColor1
+                Else
+                    rngRow.Interior.color = zebraColor2
+                End If
+            Next r
+            ' WICHTIG: Spalten U-X (21-24) erhalten KEIN Zebra!
+            ' Diese haben Ampel-Formatierung
+            Debug.Print "HINWEIS: Spalten U-X wurden NICHT mit Zebra formatiert (Ampel-Bereich)"
+        End If
+        
+        ' --- Helper-Spalten Z-AH (9 Spalten) ---
+        If lastRowHelper >= DATA_START_ROW Then
+            For r = DATA_START_ROW To lastRowHelper
+                Set rngRow = ws.Range(ws.Cells(r, 26), ws.Cells(r, 34))  ' Z-AH
+                If (r Mod 2) = 0 Then
+                    rngRow.Interior.color = zebraColor1
+                Else
+                    rngRow.Interior.color = zebraColor2
+                End If
+            Next r
+        End If
+    End If
     
-    ' === BLATTSCHUTZ WIEDERHERSTELLEN ===
+    ' ===================================================================
+    ' SCHRITT 4: RAHMEN ANWENDEN
+    ' ===================================================================
+    If formatType = "ALL" Or formatType = "BORDERS" Then
+        Debug.Print "Wende Rahmen an..."
+        
+        ' Tabelle B
+        If lastRowB >= DATA_START_ROW Then
+            Call ApplyBordersToTableRange(ws, DATA_START_ROW, lastRowB, 2, 2)
+        End If
+        
+        ' Tabelle D
+        If lastRowD >= DATA_START_ROW Then
+            Call ApplyBordersToTableRange(ws, DATA_START_ROW, lastRowD, 4, 4)
+        End If
+        
+        ' Tabelle F
+        If lastRowF >= DATA_START_ROW Then
+            Call ApplyBordersToTableRange(ws, DATA_START_ROW, lastRowF, 6, 6)
+        End If
+        
+        ' Tabelle H
+        If lastRowH >= DATA_START_ROW Then
+            Call ApplyBordersToTableRange(ws, DATA_START_ROW, lastRowH, 8, 8)
+        End If
+        
+        ' Kategorie-Tabelle J-P
+        If lastRowKat >= DATA_START_ROW Then
+            Call ApplyBordersToTableRange(ws, DATA_START_ROW, lastRowKat, 10, 16)
+        End If
+        
+        ' EntityKey-Tabelle R-X (ALLE 7 Spalten bekommen Rahmen!)
+        If lastRowEK >= DATA_START_ROW Then
+            Call ApplyBordersToTableRange(ws, DATA_START_ROW, lastRowEK, 18, 24)
+        End If
+        
+        ' Helper-Spalten Z-AH
+        If lastRowHelper >= DATA_START_ROW Then
+            Call ApplyBordersToTableRange(ws, DATA_START_ROW, lastRowHelper, 26, 34)
+        End If
+    End If
+    
+    ' ===================================================================
+    ' SCHRITT 5: AUTOFILTER AKTIVIEREN
+    ' ===================================================================
+    If formatType = "ALL" Or formatType = "FILTER" Then
+        Debug.Print "Aktiviere AutoFilter..."
+        
+        ' Bestehende AutoFilter entfernen
+        On Error Resume Next
+        ws.AutoFilterMode = False
+        On Error GoTo ErrorHandler
+        
+        ' AutoFilter für jede Tabelle separat (nur wenn Daten vorhanden)
+        
+        ' Tabelle B
+        If lastRowB >= DATA_START_ROW Then
+            ws.Range(ws.Cells(DATA_HEADER_ROW, 2), ws.Cells(lastRowB, 2)).AutoFilter
+        End If
+        
+        ' Tabelle D
+        If lastRowD >= DATA_START_ROW Then
+            ws.Range(ws.Cells(DATA_HEADER_ROW, 4), ws.Cells(lastRowD, 4)).AutoFilter
+        End If
+        
+        ' Tabelle F
+        If lastRowF >= DATA_START_ROW Then
+            ws.Range(ws.Cells(DATA_HEADER_ROW, 6), ws.Cells(lastRowF, 6)).AutoFilter
+        End If
+        
+        ' Tabelle H
+        If lastRowH >= DATA_START_ROW Then
+            ws.Range(ws.Cells(DATA_HEADER_ROW, 8), ws.Cells(lastRowH, 8)).AutoFilter
+        End If
+        
+        ' Kategorie J-P
+        If lastRowKat >= DATA_START_ROW Then
+            ws.Range(ws.Cells(DATA_HEADER_ROW, 10), ws.Cells(lastRowKat, 16)).AutoFilter
+        End If
+        
+        ' EntityKey R-X
+        If lastRowEK >= DATA_START_ROW Then
+            ws.Range(ws.Cells(DATA_HEADER_ROW, 18), ws.Cells(lastRowEK, 24)).AutoFilter
+        End If
+        
+        ' Helper Z-AH
+        If lastRowHelper >= DATA_START_ROW Then
+            ws.Range(ws.Cells(DATA_HEADER_ROW, 26), ws.Cells(lastRowHelper, 34)).AutoFilter
+        End If
+    End If
+    
+    ' ===================================================================
+    ' SCHRITT 6: SPEZIELLE FORMATIERUNGEN ERHALTEN
+    ' ===================================================================
+    ' Y100 WrapText erhalten
+    On Error Resume Next
+    ws.Range("Y100").WrapText = True
+    On Error GoTo ErrorHandler
+    
+    ' ===================================================================
+    ' CLEANUP
+    ' ===================================================================
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
-    ' === CLEANUP ===
     Application.EnableEvents = True
     Application.Calculation = xlCalculationAutomatic
     Application.ScreenUpdating = True
     
-    Debug.Print "=== FormatiereDatenBlattKomplett erfolgreich beendet ==="
+    Debug.Print "=== ApplyDatenSheetFormatting erfolgreich beendet ==="
     
     MsgBox "Formatierung des Daten-Blatts abgeschlossen!" & vbCrLf & vbCrLf & _
-           "- Zebra-Streifen angewendet (ausser Spalten U-X)" & vbCrLf & _
-           "- Rahmen gesetzt" & vbCrLf & _
-           "- AutoFilter aktiviert" & vbCrLf & _
-           "- Vertikale Zentrierung angewendet", vbInformation, "Formatierung"
+           "Angewendet:" & vbCrLf & _
+           "- Spaltenbreiten (fest + AutoFit)" & vbCrLf & _
+           "- Textausrichtung (zentriert/links)" & vbCrLf & _
+           "- Zebra-Streifen (außer U-X)" & vbCrLf & _
+           "- Rahmen für alle Tabellen" & vbCrLf & _
+           "- AutoFilter auf Zeile 3", vbInformation, "Formatierung"
     
     Exit Sub
     
 ErrorHandler:
-    Debug.Print "FEHLER in FormatiereDatenBlattKomplett: " & Err.Description & " (Zeile: " & Erl & ")"
+    Debug.Print "FEHLER in ApplyDatenSheetFormatting: " & Err.Description
     Application.EnableEvents = True
     Application.Calculation = xlCalculationAutomatic
     Application.ScreenUpdating = True
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    MsgBox "Fehler bei der Formatierung: " & Err.Description, vbCritical, "Fehler"
+    MsgBox "Formatierungsfehler: " & Err.Description, vbCritical, "Fehler"
 End Sub
 
-' ===============================================================
-' HILFSFUNKTION: Ermittelt die letzte Datenzeile einer Spalte
-' ===============================================================
-Private Function GetLastDataRow(ByRef ws As Worksheet, ByVal col As Long) As Long
+'================================================================================
+' Hilfsfunktion: Ermittelt die letzte Datenzeile einer Spalte (sicher)
+'================================================================================
+Private Function GetLastDataRowSafe(ByRef ws As Worksheet, ByVal col As Long) As Long
     Dim lastRow As Long
     
     On Error Resume Next
     lastRow = ws.Cells(ws.Rows.count, col).End(xlUp).Row
     On Error GoTo 0
     
-    ' Mindestens die Header-Zeile zurueckgeben
-    If lastRow < DATA_HEADER_ROW Then lastRow = DATA_HEADER_ROW
+    ' Wenn nur Header oder leer, DATA_HEADER_ROW zurückgeben
+    If lastRow < DATA_START_ROW Then lastRow = DATA_HEADER_ROW
     
-    GetLastDataRow = lastRow
+    GetLastDataRowSafe = lastRow
 End Function
 
-' ===============================================================
-' HILFSPROZEDUR: Wendet Zebra-Streifen und Rahmen an
-' Parameter:
-'   ws          - Arbeitsblatt
-'   startRow    - Erste Datenzeile
-'   endRow      - Letzte Datenzeile
-'   startCol    - Erste Spalte
-'   endCol      - Letzte Spalte
-'   applyZebra  - True = Zebra-Streifen anwenden, False = nur Rahmen
-' ===============================================================
-Private Sub ApplyZebraAndBorders(ByRef ws As Worksheet, _
-                                  ByVal startRow As Long, _
-                                  ByVal endRow As Long, _
-                                  ByVal startCol As Long, _
-                                  ByVal endCol As Long, _
-                                  ByVal applyZebra As Boolean)
+'================================================================================
+' Hilfsprozedur: Wendet Rahmen auf einen Tabellenbereich an
+'================================================================================
+Private Sub ApplyBordersToTableRange(ByRef ws As Worksheet, _
+                                      ByVal startRow As Long, _
+                                      ByVal endRow As Long, _
+                                      ByVal startCol As Long, _
+                                      ByVal endCol As Long)
     
     Dim rngTable As Range
-    Dim rngRow As Range
-    Dim r As Long
     
     On Error Resume Next
     
     If endRow < startRow Then Exit Sub
     
-    ' Gesamtbereich fuer Rahmen
     Set rngTable = ws.Range(ws.Cells(startRow, startCol), ws.Cells(endRow, endCol))
     
-    ' === RAHMEN ANWENDEN ===
-    With rngTable.Borders
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .ColorIndex = xlAutomatic
-    End With
-    
-    ' Einzelne Rahmenlinien explizit setzen
+    ' Alle Rahmenlinien setzen
     With rngTable.Borders(xlEdgeTop)
         .LineStyle = xlContinuous
         .Weight = xlThin
+        .color = RGB(0, 0, 0)
     End With
+    
     With rngTable.Borders(xlEdgeBottom)
         .LineStyle = xlContinuous
         .Weight = xlThin
+        .color = RGB(0, 0, 0)
     End With
+    
     With rngTable.Borders(xlEdgeLeft)
         .LineStyle = xlContinuous
         .Weight = xlThin
+        .color = RGB(0, 0, 0)
     End With
+    
     With rngTable.Borders(xlEdgeRight)
         .LineStyle = xlContinuous
         .Weight = xlThin
+        .color = RGB(0, 0, 0)
     End With
+    
     With rngTable.Borders(xlInsideHorizontal)
         .LineStyle = xlContinuous
         .Weight = xlThin
+        .color = RGB(0, 0, 0)
     End With
+    
     With rngTable.Borders(xlInsideVertical)
         .LineStyle = xlContinuous
         .Weight = xlThin
+        .color = RGB(0, 0, 0)
     End With
     
-    ' === ZEBRA-STREIFEN ANWENDEN (wenn aktiviert) ===
-    If applyZebra Then
-        For r = startRow To endRow
-            Set rngRow = ws.Range(ws.Cells(r, startCol), ws.Cells(r, endCol))
-            
-            ' Ungerade Zeilen (relativ zu startRow) = Zebra-Farbe
-            If (r - startRow) Mod 2 = 1 Then
-                rngRow.Interior.color = ZEBRA_COLOR
-            Else
-                rngRow.Interior.ColorIndex = xlNone
-            End If
-        Next r
-    End If
-    
     On Error GoTo 0
 End Sub
-
-' ===============================================================
-' HILFSPROZEDUR: Aktiviert AutoFilter fuer einen Bereich
-' ===============================================================
-Private Sub ApplyAutoFilter(ByRef ws As Worksheet, _
-                             ByVal headerRow As Long, _
-                             ByVal startCol As Long, _
-                             ByVal endCol As Long)
-    
-    Dim rngHeader As Range
-    
-    On Error Resume Next
-    
-    ' Header-Bereich definieren
-    Set rngHeader = ws.Range(ws.Cells(headerRow, startCol), ws.Cells(headerRow, endCol))
-    
-    ' Bestehenden AutoFilter entfernen (falls vorhanden)
-    If ws.AutoFilterMode Then
-        ' Pruefen ob der Filter diesen Bereich betrifft
-        ' Hier vorsichtig vorgehen um andere Filter nicht zu stoeren
-    End If
-    
-    ' AutoFilter nur setzen wenn Header nicht leer ist
-    If Application.WorksheetFunction.CountA(rngHeader) > 0 Then
-        ' AutoFilter auf den Datenbereich anwenden
-        Dim lastDataRow As Long
-        lastDataRow = GetLastDataRow(ws, startCol)
-        
-        If lastDataRow > headerRow Then
-            Dim rngData As Range
-            Set rngData = ws.Range(ws.Cells(headerRow, startCol), ws.Cells(lastDataRow, endCol))
-            
-            ' AutoFilter aktivieren (falls noch nicht aktiv)
-            If Not rngData.Parent.AutoFilterMode Then
-                rngData.AutoFilter
-            End If
-        End If
-    End If
-    
-    On Error GoTo 0
-End Sub
-
-' ===============================================================
-' OEFFENTLICHE PROZEDUR: Aktualisiert nur die Zebra-Formatierung
-' Nuetzlich nach Hinzufuegen/Loeschen von Zeilen
-' ===============================================================
-Public Sub AktualisiereZebraFormatierung()
-    
-    Dim ws As Worksheet
-    Dim lastRowKat As Long, lastRowEK As Long
-    
-    On Error GoTo ErrorHandler
-    
-    Application.ScreenUpdating = False
-    
-    Set ws = ThisWorkbook.Worksheets(WS_DATEN)
-    
-    On Error Resume Next
-    ws.Unprotect PASSWORD:=PASSWORD
-    On Error GoTo ErrorHandler
-    
-    ' Kategorie-Tabelle (J-P)
-    lastRowKat = GetLastDataRow(ws, DATA_CAT_COL_KATEGORIE)
-    If lastRowKat >= DATA_START_ROW Then
-        Call ApplyZebraOnly(ws, DATA_START_ROW, lastRowKat, DATA_CAT_COL_START, DATA_CAT_COL_END)
-    End If
-    
-    ' EntityKey-Tabelle (R-T nur, NICHT U-X!)
-    lastRowEK = GetLastDataRow(ws, EK_COL_IBAN)
-    If lastRowEK >= EK_START_ROW Then
-        Call ApplyZebraOnly(ws, EK_START_ROW, lastRowEK, EK_COL_ENTITYKEY, EK_COL_KONTONAME)
-    End If
-    
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    
-    Application.ScreenUpdating = True
-    
-    Exit Sub
-    
-ErrorHandler:
-    Application.ScreenUpdating = True
-    Debug.Print "FEHLER in AktualisiereZebraFormatierung: " & Err.Description
-End Sub
-
-' ===============================================================
-' HILFSPROZEDUR: Wendet NUR Zebra-Streifen an (ohne Rahmen)
-' ===============================================================
-Private Sub ApplyZebraOnly(ByRef ws As Worksheet, _
-                            ByVal startRow As Long, _
-                            ByVal endRow As Long, _
-                            ByVal startCol As Long, _
-                            ByVal endCol As Long)
-    
-    Dim rngRow As Range
-    Dim r As Long
-    
-    On Error Resume Next
-    
-    For r = startRow To endRow
-        Set rngRow = ws.Range(ws.Cells(r, startCol), ws.Cells(r, endCol))
-        
-        If (r - startRow) Mod 2 = 1 Then
-            rngRow.Interior.color = ZEBRA_COLOR
-        Else
-            rngRow.Interior.ColorIndex = xlNone
-        End If
-    Next r
-    
-    On Error GoTo 0
-End Sub
-
 
 
 
