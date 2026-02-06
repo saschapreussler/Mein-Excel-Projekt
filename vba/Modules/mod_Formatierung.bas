@@ -4,12 +4,15 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Formatierung
 ' ZWECK: Formatierung und DropDown-Listen-Verwaltung
-' VERSION: 2.8 - 07.02.2026
-' FIX: Inside-Borders, Z/AA zentriert, Cleanup unter lastRow
+' VERSION: 2.9 - 06.02.2026
+' NEU: Eingabezeilen unterhalb lastRow entsperrt fuer neue Eintraege
 ' ***************************************************************
 
 Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiss
 Private Const ZEBRA_COLOR_2 As Long = &HDEE5E3  ' Hellgrau
+
+' Anzahl leerer Zeilen die unterhalb der Daten entsperrt werden
+Private Const EINGABE_PUFFER As Long = 3
 
 ' ===============================================================
 ' NEU: Zentriert ALLE Zellen auf ALLEN Blaettern vertikal
@@ -94,6 +97,7 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         Call AktualisiereKategorieDropdownListen(wsD)
         Call SortiereKategorieTabelle(wsD)
         Call SortiereEntityKeyTabelle(wsD)
+        Call EntspeerreNaechsteEingabezeilen(wsD)
         
         wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     End If
@@ -177,6 +181,7 @@ Public Sub FormatiereBlattDaten()
     Call AktualisiereKategorieDropdownListen(ws)
     Call SortiereKategorieTabelle(ws)
     Call SortiereEntityKeyTabelle(ws)
+    Call EntspeerreNaechsteEingabezeilen(ws)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
@@ -188,7 +193,8 @@ Public Sub FormatiereBlattDaten()
            "- Alle Spalten mit Zebra-Formatierung" & vbCrLf & _
            "- Kategorie-Tabelle formatiert und sortiert" & vbCrLf & _
            "- EntityKey-Tabelle formatiert und sortiert" & vbCrLf & _
-           "- DropDown-Listen aktualisiert", vbInformation
+           "- DropDown-Listen aktualisiert" & vbCrLf & _
+           "- Eingabezeilen fuer neue Eintraege entsperrt", vbInformation
     
     Exit Sub
     
@@ -309,6 +315,7 @@ Public Sub FormatKategorieTableComplete(ByRef ws As Worksheet)
     
     Call FormatiereKategorieTabelle(ws)
     Call SortiereKategorieTabelle(ws)
+    Call EntspeerreNaechsteEingabezeilen(ws)
     
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -327,6 +334,7 @@ Public Sub FormatEntityKeyTableComplete(ByRef ws As Worksheet)
     
     Call FormatiereEntityKeyTabelleKomplett(ws)
     Call SortiereEntityKeyTabelle(ws)
+    Call EntspeerreNaechsteEingabezeilen(ws)
     
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -363,8 +371,160 @@ Public Sub FormatSingleColumnComplete(ByRef ws As Worksheet, ByVal colIndex As L
         rngClean.Borders.LineStyle = xlNone
     End If
     
+    ' Eingabezeilen entsperren
+    Call EntspeerreNaechsteEingabezeilen(ws)
+    
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
+End Sub
+
+' ===============================================================
+' NEU: Entsperrt die naechsten leeren Zeilen unterhalb der Daten
+' fuer manuelle Eingaben durch den Benutzer
+' Betrifft: B, D, F, H, J-P (Kategorie), W (+ R-X EntityKey),
+'           AB, AC, AD, AH
+' ===============================================================
+Private Sub EntspeerreNaechsteEingabezeilen(ByRef ws As Worksheet)
+    
+    Dim lastRow As Long
+    Dim nextRow As Long
+    Dim pufferEnd As Long
+    Dim r As Long
+    Dim einAusWert As String
+    
+    On Error Resume Next
+    
+    ' === EINZELSPALTEN: B (2), D (4), F (6), H (8) ===
+    Dim singleCols As Variant
+    Dim c As Long
+    singleCols = Array(2, 4, 6, 8)
+    
+    For c = LBound(singleCols) To UBound(singleCols)
+        lastRow = ws.Cells(ws.Rows.count, singleCols(c)).End(xlUp).Row
+        If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
+        nextRow = lastRow + 1
+        pufferEnd = nextRow + EINGABE_PUFFER - 1
+        
+        ' Puffer-Zeilen entsperren
+        ws.Range(ws.Cells(nextRow, singleCols(c)), _
+                 ws.Cells(pufferEnd, singleCols(c))).Locked = False
+        
+        ' Sicherheitshalber Zeilen darueber wieder sperren (Datenbereich)
+        If lastRow >= DATA_START_ROW Then
+            ws.Range(ws.Cells(DATA_START_ROW, singleCols(c)), _
+                     ws.Cells(lastRow, singleCols(c))).Locked = True
+        End If
+    Next c
+    
+    ' === KATEGORIE-TABELLE: J-P (10-16) ===
+    ' Eingabe startet in J, aber ganze Zeile J-P muss editierbar sein
+    lastRow = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
+    nextRow = lastRow + 1
+    pufferEnd = nextRow + EINGABE_PUFFER - 1
+    
+    ' Puffer-Zeilen J-P entsperren fuer neue Eintraege
+    ws.Range(ws.Cells(nextRow, DATA_CAT_COL_START), _
+             ws.Cells(pufferEnd, DATA_CAT_COL_END)).Locked = False
+    
+    ' DropDowns fuer die Puffer-Zeilen setzen (O=Zielspalte)
+    For r = nextRow To pufferEnd
+        Call SetzeZielspalteDropdown(ws, r, "")
+        
+        ' Dropdown fuer Spalte K (E/A) - Einnahme/Ausgabe
+        ws.Cells(r, DATA_CAT_COL_EINAUS).Validation.Delete
+        With ws.Cells(r, DATA_CAT_COL_EINAUS).Validation
+            .Add Type:=xlValidateList, _
+                 AlertStyle:=xlValidAlertWarning, _
+                 Formula1:="E,A"
+            .IgnoreBlank = True
+            .InCellDropdown = True
+            .ShowInput = False
+            .ShowError = True
+        End With
+        
+        ' Dropdown fuer Spalte M (Prioritaet)
+        ws.Cells(r, DATA_CAT_COL_PRIORITAET).Validation.Delete
+        With ws.Cells(r, DATA_CAT_COL_PRIORITAET).Validation
+            .Add Type:=xlValidateList, _
+                 AlertStyle:=xlValidAlertWarning, _
+                 Formula1:="=" & WS_DATEN & "!$AA$4:$AA$" & _
+                            ws.Cells(ws.Rows.count, DATA_COL_DD_PRIORITAET).End(xlUp).Row
+            .IgnoreBlank = True
+            .InCellDropdown = True
+            .ShowInput = False
+            .ShowError = True
+        End With
+        
+        ' Dropdown fuer Spalte O (Faelligkeit)
+        ws.Cells(r, DATA_CAT_COL_FAELLIGKEIT).Validation.Delete
+        With ws.Cells(r, DATA_CAT_COL_FAELLIGKEIT).Validation
+            .Add Type:=xlValidateList, _
+                 AlertStyle:=xlValidAlertWarning, _
+                 Formula1:="=" & WS_DATEN & "!$AC$4:$AC$" & _
+                            ws.Cells(ws.Rows.count, DATA_COL_DD_FAELLIGKEIT).End(xlUp).Row
+            .IgnoreBlank = True
+            .InCellDropdown = True
+            .ShowInput = False
+            .ShowError = True
+        End With
+    Next r
+    
+    ' Datenbereich J-P wieder sperren (ausser U-X, das macht SetzeZellschutzFuerZeile)
+    If lastRow >= DATA_START_ROW Then
+        ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
+                 ws.Cells(lastRow, DATA_CAT_COL_END)).Locked = True
+    End If
+    
+    ' === ENTITYKEY-TABELLE: Eingabe ueber W (Role, Spalte 23) ===
+    ' Wenn W editiert wird, soll die ganze Zeile R-X editierbar sein
+    lastRow = ws.Cells(ws.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
+    If lastRow < EK_START_ROW Then lastRow = EK_START_ROW - 1
+    nextRow = lastRow + 1
+    pufferEnd = nextRow + EINGABE_PUFFER - 1
+    
+    ' Puffer-Zeilen R-X komplett entsperren fuer neue Eintraege
+    ws.Range(ws.Cells(nextRow, EK_COL_ENTITYKEY), _
+             ws.Cells(pufferEnd, EK_COL_DEBUG)).Locked = False
+    
+    ' Dropdown fuer Spalte W (EntityRole) in Puffer-Zeilen
+    For r = nextRow To pufferEnd
+        ws.Cells(r, EK_COL_ROLE).Validation.Delete
+        With ws.Cells(r, EK_COL_ROLE).Validation
+            .Add Type:=xlValidateList, _
+                 AlertStyle:=xlValidAlertWarning, _
+                 Formula1:="=" & WS_DATEN & "!$AD$4:$AD$" & _
+                            ws.Cells(ws.Rows.count, DATA_COL_DD_ENTITYROLE).End(xlUp).Row
+            .IgnoreBlank = True
+            .InCellDropdown = True
+            .ShowInput = False
+            .ShowError = True
+        End With
+    Next r
+    
+    ' === HELPER-SPALTEN: AB (28), AC (29), AD (30), AH (34) ===
+    Dim helperCols As Variant
+    helperCols = Array(28, 29, 30, 34)
+    
+    For c = LBound(helperCols) To UBound(helperCols)
+        lastRow = ws.Cells(ws.Rows.count, helperCols(c)).End(xlUp).Row
+        If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
+        nextRow = lastRow + 1
+        pufferEnd = nextRow + EINGABE_PUFFER - 1
+        
+        ' Puffer-Zeilen entsperren
+        ws.Range(ws.Cells(nextRow, helperCols(c)), _
+                 ws.Cells(pufferEnd, helperCols(c))).Locked = False
+        
+        ' Datenbereich wieder sperren
+        If lastRow >= DATA_START_ROW Then
+            ws.Range(ws.Cells(DATA_START_ROW, helperCols(c)), _
+                     ws.Cells(lastRow, helperCols(c))).Locked = True
+        End If
+    Next c
+    
     On Error GoTo 0
     
 End Sub
@@ -534,9 +694,7 @@ Public Sub SortiereEntityKeyTabelle(Optional ByRef ws As Worksheet = Nothing)
     For i = 1 To numRows - 1
         swap = False
         For j = 1 To numRows - i
-            ' Vergleiche Zeile j mit Zeile j+1
             If VergleicheEntityKeyZeilen(arrData(j, 1), arrData(j, 5), arrData(j + 1, 1), arrData(j + 1, 5)) > 0 Then
-                ' Tausche Zeilen
                 ReDim tempRow(1 To 7)
                 Dim k As Long
                 For k = 1 To 7
@@ -547,7 +705,7 @@ Public Sub SortiereEntityKeyTabelle(Optional ByRef ws As Worksheet = Nothing)
                 swap = True
             End If
         Next j
-        If Not swap Then Exit For ' Bereits sortiert
+        If Not swap Then Exit For
     Next i
     
     ' Sortierte Daten zurueckschreiben NUR in Spalten R-X
@@ -565,7 +723,6 @@ End Sub
 
 ' ===============================================================
 ' HILFSFUNKTION: Vergleicht zwei EntityKey-Zeilen fuer Sortierung
-' Rueckgabe: <0 wenn zeile1 < zeile2, 0 wenn gleich, >0 wenn zeile1 > zeile2
 ' ===============================================================
 Private Function VergleicheEntityKeyZeilen(entityKey1 As Variant, parzelle1 As Variant, _
                                             entityKey2 As Variant, parzelle2 As Variant) As Long
@@ -582,33 +739,30 @@ Private Function VergleicheEntityKeyZeilen(entityKey1 As Variant, parzelle1 As V
     entityStr1 = Trim(CStr(entityKey1))
     entityStr2 = Trim(CStr(entityKey2))
     
-    ' Sortier-Order fuer Zeile 1 bestimmen
     If IsNumeric(parzelleStr1) And parzelleStr1 <> "" Then
-        order1 = CLng(parzelleStr1)  ' Parzellen 1-14
+        order1 = CLng(parzelleStr1)
     ElseIf Left(UCase(entityStr1), 3) = "EX-" Then
-        order1 = 100  ' Ehemalige Mitglieder
+        order1 = 100
     ElseIf Left(UCase(entityStr1), 5) = "VERS-" Then
-        order1 = 200  ' Versorger
+        order1 = 200
     ElseIf Left(UCase(entityStr1), 5) = "BANK-" Then
-        order1 = 300  ' Banken
+        order1 = 300
     Else
-        order1 = 400  ' Rest
+        order1 = 400
     End If
     
-    ' Sortier-Order fuer Zeile 2 bestimmen
     If IsNumeric(parzelleStr2) And parzelleStr2 <> "" Then
-        order2 = CLng(parzelleStr2)  ' Parzellen 1-14
+        order2 = CLng(parzelleStr2)
     ElseIf Left(UCase(entityStr2), 3) = "EX-" Then
-        order2 = 100  ' Ehemalige Mitglieder
+        order2 = 100
     ElseIf Left(UCase(entityStr2), 5) = "VERS-" Then
-        order2 = 200  ' Versorger
+        order2 = 200
     ElseIf Left(UCase(entityStr2), 5) = "BANK-" Then
-        order2 = 300  ' Banken
+        order2 = 300
     Else
-        order2 = 400  ' Rest
+        order2 = 400
     End If
     
-    ' Vergleich
     If order1 < order2 Then
         VergleicheEntityKeyZeilen = -1
     ElseIf order1 > order2 Then
@@ -888,7 +1042,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
         
         ' U-X: NUR Rahmen, KEINE Zebra-Formatierung (Ampel bleibt)
         Set rngBorderOnly = ws.Range(ws.Cells(r, EK_COL_ZUORDNUNG), ws.Cells(r, EK_COL_DEBUG))
-        ' Keine Interior-Formatierung fuer U-X
     Next r
     
     ws.Rows(EK_START_ROW & ":" & lastRow).AutoFit
@@ -1109,4 +1262,7 @@ ErrorHandler:
     End If
     
 End Sub
+
+
+
 
