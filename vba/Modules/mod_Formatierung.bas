@@ -947,6 +947,8 @@ End Sub
 
 ' ===============================================================
 ' Vergleicht zwei EntityKey-Zeilen fuer Sortierung
+' FIX v5.3.1: Bei Mehrfach-Parzellen (z.B. "13, 14") nur erste
+'             Parzelle fuer Sortierung verwenden
 ' ===============================================================
 Private Function VergleicheEntityKeyZeilen(entityKey1 As Variant, parzelle1 As Variant, _
                                             entityKey2 As Variant, parzelle2 As Variant) As Long
@@ -962,6 +964,14 @@ Private Function VergleicheEntityKeyZeilen(entityKey1 As Variant, parzelle1 As V
     parzelleStr2 = Trim(CStr(parzelle2))
     entityStr1 = Trim(CStr(entityKey1))
     entityStr2 = Trim(CStr(entityKey2))
+    
+    ' FIX v5.3.1: Bei Mehrfach-Parzellen nur erste Parzelle nutzen
+    If InStr(parzelleStr1, ",") > 0 Then
+        parzelleStr1 = Trim(Left(parzelleStr1, InStr(parzelleStr1, ",") - 1))
+    End If
+    If InStr(parzelleStr2, ",") > 0 Then
+        parzelleStr2 = Trim(Left(parzelleStr2, InStr(parzelleStr2, ",") - 1))
+    End If
     
     If IsNumeric(parzelleStr1) And parzelleStr1 <> "" Then
         order1 = CLng(parzelleStr1)
