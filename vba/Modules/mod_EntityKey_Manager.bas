@@ -4,12 +4,15 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_EntityKey_Manager
 ' ZWECK: Verwaltung und Zuordnung von EntityKeys fuer Bankverkehr
-' VERSION: 5.1 - 06.02.2026
+' VERSION: 5.2 - 06.02.2026
 ' FIX: EntityKey im Format "yyyymmddhhmmss-NNNNN" (wie MemberID-Fallback)
 ' FIX: "Stadt Werder (Havel)" als VERSORGER erkannt
 ' FIX: Debug-Spalte zeigt Versorger-Zweck (Wasser, Grundsteuer, etc.)
 ' FIX: Gemeinschaftskonto Debug zeigt "automatisch erkannt"
 ' FIX: Spalte T WrapText nur bei vbLf-Inhalt
+' NEU: Geldautomat-Abhebung erkannt (GA NR... BLZ...)
+' NEU: EHEMALIGES MITGLIED -> PruefeObInHistorie
+' FIX: Umlaute in allen sichtbaren Texten
 ' ***************************************************************
 
 ' ===============================================================
@@ -463,6 +466,60 @@ Private Function SammelKontonamen(ByRef dictNames As Object) As String
 End Function
 
 ' ===============================================================
+' NEU v5.2: Prueft ob Kontoname eine Geldautomat-Abhebung ist
+' Muster: IBAN="0", Name beginnt mit "GA " und enthaelt "BLZ"
+' ===============================================================
+Private Function IstGeldautomatAbhebung(ByVal iban As String, ByVal kontoname As String) As Boolean
+    Dim normIBAN As String
+    Dim nameUpper As String
+    
+    IstGeldautomatAbhebung = False
+    normIBAN = NormalisiereIBAN(iban)
+    
+    If normIBAN <> "0" Then Exit Function
+    
+    nameUpper = UCase(Trim(kontoname))
+    
+    If Left(nameUpper, 3) = "GA " And InStr(nameUpper, "BLZ") > 0 Then
+        IstGeldautomatAbhebung = True
+    End If
+End Function
+
+' ===============================================================
+' NEU v5.2: Prueft ob ehemaliges Mitglied in Mitgliederhistorie steht
+' Gibt True zurueck wenn in Historie gefunden
+' ===============================================================
+Private Function PruefeObInHistorie(ByVal kontoname As String, ByRef wsH As Worksheet) As Boolean
+    Dim r As Long
+    Dim lastRow As Long
+    Dim nachnameHist As String
+    Dim kontoNameNorm As String
+    Dim nachnameNorm As String
+    
+    PruefeObInHistorie = False
+    
+    If kontoname = "" Then Exit Function
+    
+    kontoNameNorm = NormalisiereStringFuerVergleich(kontoname)
+    If kontoNameNorm = "" Then Exit Function
+    
+    lastRow = wsH.Cells(wsH.Rows.count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row
+    
+    For r = H_START_ROW To lastRow
+        nachnameHist = Trim(wsH.Cells(r, H_COL_NAME_EHEM_PAECHTER).value)
+        If nachnameHist <> "" Then
+            nachnameNorm = NormalisiereStringFuerVergleich(nachnameHist)
+            If nachnameNorm <> "" And Len(nachnameNorm) >= 3 Then
+                If InStr(kontoNameNorm, nachnameNorm) > 0 Then
+                    PruefeObInHistorie = True
+                    Exit Function
+                End If
+            End If
+        End If
+    Next r
+End Function
+
+' ===============================================================
 ' HAUPTPROZEDUR: Aktualisiert alle EntityKeys
 ' ===============================================================
 Public Sub AktualisiereAlleEntityKeys()
@@ -526,11 +583,23 @@ Public Sub AktualisiereAlleEntityKeys()
         
         If iban = "" And kontoname = "" Then GoTo nextRow
         
+        ' NEU v5.2: Pruefe Geldautomat-Abhebung VOR Bankabschluss
+        If currentEntityKey = "" Then
+            If IstGeldautomatAbhebung(iban, kontoname) Then
+                wsD.Cells(r, EK_COL_ENTITYKEY).value = PREFIX_BANK & CreateGUID()
+                wsD.Cells(r, EK_COL_ZUORDNUNG).value = "Bargeldabhebung Geldautomat (Vereinskasse)"
+                wsD.Cells(r, EK_COL_ROLE).value = ROLE_BANK
+                wsD.Cells(r, EK_COL_DEBUG).value = "Geldautomat erkannt (GA + BLZ)"
+                Call SetzeAmpelFarbe(wsD, r, 1)
+                GoTo nextRow
+            End If
+        End If
+        
         ' Pruefe IBAN "0" oder "3529000972" + ABSCHLUSS
         If currentEntityKey = "" Then
             If IstBankAbschluss(iban, wsBK) Then
                 wsD.Cells(r, EK_COL_ENTITYKEY).value = PREFIX_BANK & CreateGUID()
-                wsD.Cells(r, EK_COL_ZUORDNUNG).value = "Bankabschluss / Kontogebuehren"
+                wsD.Cells(r, EK_COL_ZUORDNUNG).value = "Bankabschluss / Kontogeb" & ChrW(252) & "hren"
                 wsD.Cells(r, EK_COL_ROLE).value = ROLE_BANK
                 wsD.Cells(r, EK_COL_DEBUG).value = "BANK erkannt (IBAN=" & iban & " + ABSCHLUSS)"
                 GoTo nextRow
@@ -599,6 +668,7 @@ End Sub
 
 ' ===============================================================
 ' NEU v5.0: Setzt Ampelfarben fuer ALLE Zeilen NACH Sortierung
+' FIX v5.2: Prueft EHEMALIGES MITGLIED gegen Mitgliederhistorie
 ' ===============================================================
 Public Sub SetzeAlleAmpelfarbenNachSortierung(ByRef wsD As Worksheet)
     Dim lastRow As Long
@@ -608,6 +678,12 @@ Public Sub SetzeAlleAmpelfarbenNachSortierung(ByRef wsD As Worksheet)
     Dim role As String
     Dim debugTxt As String
     Dim ampel As Long
+    Dim kontoname As String
+    Dim wsH As Worksheet
+    
+    On Error Resume Next
+    Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
+    On Error GoTo 0
     
     lastRow = wsD.Cells(wsD.Rows.count, EK_COL_IBAN).End(xlUp).Row
     Dim lastRowR As Long
@@ -622,6 +698,24 @@ Public Sub SetzeAlleAmpelfarbenNachSortierung(ByRef wsD As Worksheet)
         debugTxt = Trim(wsD.Cells(r, EK_COL_DEBUG).value)
         
         ampel = BerechneAmpelStatus(entityKey, zuordnung, role, debugTxt)
+        
+        ' NEU v5.2: Bei EHEMALIGES MITGLIED pruefen ob in Historie
+        If UCase(role) = "EHEMALIGES MITGLIED" Then
+            If Not wsH Is Nothing Then
+                kontoname = Trim(CStr(wsD.Cells(r, EK_COL_KONTONAME).value))
+                If Not PruefeObInHistorie(kontoname, wsH) Then
+                    If InStr(debugTxt, "ehem. Mitglied nicht in Historie") = 0 Then
+                        If debugTxt <> "" Then
+                            debugTxt = debugTxt & " | ehem. Mitglied nicht in Historie"
+                        Else
+                            debugTxt = "ehem. Mitglied nicht in Historie"
+                        End If
+                        wsD.Cells(r, EK_COL_DEBUG).value = debugTxt
+                    End If
+                End If
+            End If
+        End If
+        
         Call SetzeAmpelFarbe(wsD, r, ampel)
     Next r
 End Sub
@@ -692,6 +786,7 @@ End Function
 
 ' ===============================================================
 ' Prueft ob IBAN eine Bank-Abschluss-IBAN ist
+' FIX v5.2: Schliesst Geldautomat-Abhebung aus
 ' ===============================================================
 Private Function IstBankAbschluss(ByVal iban As String, ByRef wsBK As Worksheet) As Boolean
     Dim normIBAN As String
@@ -699,6 +794,7 @@ Private Function IstBankAbschluss(ByVal iban As String, ByRef wsBK As Worksheet)
     Dim lastRow As Long
     Dim bkIBAN As String
     Dim buchungstext As String
+    Dim bkKontoname As String
     
     IstBankAbschluss = False
     normIBAN = NormalisiereIBAN(iban)
@@ -710,6 +806,12 @@ Private Function IstBankAbschluss(ByVal iban As String, ByRef wsBK As Worksheet)
     For r = BK_START_ROW To lastRow
         bkIBAN = NormalisiereIBAN(wsBK.Cells(r, BK_COL_IBAN).value)
         If bkIBAN = normIBAN Then
+            ' NEU v5.2: Geldautomat ausschliessen
+            bkKontoname = Trim(CStr(wsBK.Cells(r, BK_COL_NAME).value))
+            If IstGeldautomatAbhebung(CStr(wsBK.Cells(r, BK_COL_IBAN).value), bkKontoname) Then
+                GoTo naechsteZeile
+            End If
+            
             buchungstext = UCase(Trim(CStr(wsBK.Cells(r, BK_COL_BUCHUNGSTEXT).value)))
             If InStr(buchungstext, "ABSCHLUSS") > 0 Or _
                InStr(buchungstext, "ENTGELTABSCHLUSS") > 0 Then
@@ -717,6 +819,7 @@ Private Function IstBankAbschluss(ByVal iban As String, ByRef wsBK As Worksheet)
                 Exit Function
             End If
         End If
+naechsteZeile:
     Next r
 End Function
 
@@ -872,6 +975,7 @@ End Function
 ' Generiert EntityKey und Zuordnung
 ' FIX v5.1: Debug-Spalte zeigt bei VERSORGER den Zweck
 '           Gemeinschaftskonto zeigt "automatisch erkannt"
+' FIX v5.2: Umlaute in sichtbaren Texten
 ' ===============================================================
 Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
                                              ByVal kontoname As String, _
@@ -943,7 +1047,7 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
         End If
         
         If mitgliederNurNachname.count > 0 Then
-            outDebugInfo = "NUR NACHNAME - Bitte pruefen!"
+            outDebugInfo = "NUR NACHNAME - Bitte pr" & ChrW(252) & "fen!"
             outAmpelStatus = 2
             Exit Sub
         End If
@@ -1098,6 +1202,7 @@ End Function
 ' NEU v5.1: ErmittleVersorgerZweck - Gibt den Zweck zurueck
 ' oder "" wenn kein Versorger erkannt.
 ' Ersetzt IstVersorger - prueft UND gibt den Grund zurueck.
+' FIX v5.2: Umlaute in sichtbaren Texten
 ' ===============================================================
 Private Function ErmittleVersorgerZweck(ByVal kontoname As String) As String
     Dim n As String
@@ -1152,7 +1257,7 @@ Private Function ErmittleVersorgerZweck(ByVal kontoname As String) As String
         Exit Function
     End If
     If InStr(n, "FERNWAERME") > 0 Or InStr(n, "HEIZUNG") > 0 Then
-        ErmittleVersorgerZweck = "Fernwaerme/Heizung"
+        ErmittleVersorgerZweck = "Fernw" & ChrW(228) & "rme/Heizung"
         Exit Function
     End If
     
@@ -1224,7 +1329,7 @@ Private Function ErmittleVersorgerZweck(ByVal kontoname As String) As String
     
     ' --- Verband ---
     If InStr(n, "VERBAND") > 0 Or InStr(n, "BEZIRKSVERBAND") > 0 Or InStr(n, "LANDESVERBAND") > 0 Then
-        ErmittleVersorgerZweck = "Verband/Verbaende"
+        ErmittleVersorgerZweck = "Verband/Verb" & ChrW(228) & "nde"
         Exit Function
     End If
     If InStr(n, "VERPACHTUNG") > 0 Or InStr(n, "KLEINGARTENVERBAND") > 0 Then
@@ -1234,7 +1339,7 @@ Private Function ErmittleVersorgerZweck(ByVal kontoname As String) As String
     
     ' --- Miete / Grundstueck ---
     If InStr(n, "GRUNDSTUECKSGESELLSCHAFT") > 0 Or InStr(n, "GRUNDSTUCKSGESELLSCHAFT") > 0 Then
-        ErmittleVersorgerZweck = "Grundstuecks-Miete"
+        ErmittleVersorgerZweck = "Grundst" & ChrW(252) & "cks-Miete"
         Exit Function
     End If
     If InStr(n, "HAUSVERWALTUNG") > 0 Then
@@ -1242,11 +1347,11 @@ Private Function ErmittleVersorgerZweck(ByVal kontoname As String) As String
         Exit Function
     End If
     If InStr(n, "HAUS- UND GRUNDSTUECK") > 0 Or InStr(n, "HAUS UND GRUNDSTUECK") > 0 Then
-        ErmittleVersorgerZweck = "Grundstuecks-Miete"
+        ErmittleVersorgerZweck = "Grundst" & ChrW(252) & "cks-Miete"
         Exit Function
     End If
     If InStr(n, "HUG ") > 0 Or InStr(n, "H.U.G") > 0 Then
-        ErmittleVersorgerZweck = "Grundstuecks-Miete"
+        ErmittleVersorgerZweck = "Grundst" & ChrW(252) & "cks-Miete"
         Exit Function
     End If
     If InStr(n, "MIETE") > 0 Or InStr(n, "MIETVERTRAG") > 0 Then
@@ -1341,10 +1446,12 @@ End Function
 
 ' ===============================================================
 ' Verarbeitet manuelle Role-Aenderung in Spalte W
+' FIX v5.2: EHEMALIGES MITGLIED prueft gegen Historie
 ' ===============================================================
 Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
     Dim wsDaten As Worksheet
     Dim wsM As Worksheet
+    Dim wsH As Worksheet
     Dim zeile As Long
     Dim neueRole As String
     Dim kontoname As String
@@ -1408,6 +1515,16 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
             neueParzelle = ""
             neuerDebug = "Manuell: EHEMALIGES MITGLIED (" & Format(Now, "dd.mm.yyyy hh:mm") & ")"
             ampelStatus = 2
+            
+            ' NEU v5.2: Pruefen ob in Mitgliederhistorie
+            On Error Resume Next
+            Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
+            On Error GoTo ErrorHandler
+            If Not wsH Is Nothing Then
+                If Not PruefeObInHistorie(kontoname, wsH) Then
+                    neuerDebug = neuerDebug & " | ehem. Mitglied nicht in Historie"
+                End If
+            End If
             
         Case "VERSORGER"
             correctPrefix = PREFIX_VERSORGER
