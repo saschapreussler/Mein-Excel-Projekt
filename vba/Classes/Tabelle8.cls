@@ -12,7 +12,8 @@ Option Explicit
 ' ***************************************************************
 ' WORKSHEET: Tabelle8 (Daten)
 ' ZWECK: Automatische Formatierung bei Datenaenderungen
-' VERSION: 2.2 - 06.02.2026
+' VERSION: 2.3 - 06.02.2026
+' FIX v5.3: Spalte L (Keyword) loest OnKategorieChange aus
 ' ***************************************************************
 
 Private Sub Worksheet_Change(ByVal Target As Range)
@@ -57,7 +58,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     ' === KATEGORIE-TABELLE J-P (10-16) ===
     If changedCol >= 10 And changedCol <= 16 Then
         Call mod_Formatierung.FormatKategorieTableComplete(Me)
-        If changedCol = 10 Or changedCol = 11 Then
+        If changedCol = 10 Or changedCol = 11 Or changedCol = 12 Then
             Call mod_Formatierung.OnKategorieChange(Target)
         End If
         GoTo CleanUp
@@ -127,4 +128,3 @@ ErrorHandler:
     Application.EnableEvents = True
     Application.ScreenUpdating = True
 End Sub
-
