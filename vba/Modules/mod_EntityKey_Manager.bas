@@ -1714,7 +1714,7 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
     ' Debug-Spalte X: IMMER aktualisieren bei jeder manuellen Aenderung
     wsDaten.Cells(zeile, EK_COL_DEBUG).value = neuerDebug
     
-    ' Ampelfarbe
+    ' Ampelfarbe (vorlaeufig, wird nach Sortierung nochmal gesetzt)
     Call SetzeAmpelFarbe(wsDaten, zeile, ampelStatus)
     
     ' Dropdowns
@@ -1729,6 +1729,10 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
     wsDaten.Cells(zeile, EK_COL_ROLE).Locked = False
     wsDaten.Cells(zeile, EK_COL_DEBUG).Locked = False
     
+    ' NEU v5.3: Sortierung + Ampelfarben sofort nach manueller Aenderung
+    Call mod_Formatierung.FormatEntityKeyTableComplete(wsDaten)
+    Call SetzeAlleAmpelfarbenNachSortierung(wsDaten)
+    
     wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Application.EnableEvents = True
     
@@ -1740,6 +1744,7 @@ ErrorHandler:
     wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Debug.Print "FEHLER in VerarbeiteManuelleRoleAenderung: " & Err.Description
 End Sub
+
 
 ' ===============================================================
 ' NEU v5.3: Aktualisiert EntityKey-Tabelle bei Mitglied-Austritt
