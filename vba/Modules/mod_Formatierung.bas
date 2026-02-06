@@ -4,10 +4,13 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Formatierung
 ' ZWECK: Formatierung und DropDown-Listen-Verwaltung
-' VERSION: 4.0 - 06.02.2026
+' VERSION: 5.2 - 06.02.2026
 ' NEU: Ampelfarben U-X bleiben erhalten (kein Zebra-Ueberschreiben),
 '      EntityRole-Dropdown fuer ALLE Zeilen, IBAN-basierte lastRow,
 '      lastRowDD dynamisch aus Spalte AD
+' FIX: Spalte U WrapText per Zelle (nur bei vbLf)
+' FIX: Spalte X Breite 62, WrapText erlaubt
+' FIX: Umlaute in allen sichtbaren Texten
 ' ***************************************************************
 
 Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiss
@@ -331,6 +334,7 @@ Public Sub FormatEntityKeyTableComplete(ByRef ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
 ' ===============================================================
 ' PUBLIC WRAPPER: Formatiert eine einzelne Spalte
 ' ===============================================================
@@ -950,6 +954,7 @@ End Sub
 
 ' ===============================================================
 ' DROPDOWN-LISTEN FUER KATEGORIEN AKTUALISIEREN (AF + AG + AH)
+' FIX v5.2: "M" & ChrW(228) & "rz" statt "Maerz"
 ' ===============================================================
 Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = Nothing)
     
@@ -1008,7 +1013,7 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
     
     ws.Cells(4, DATA_COL_MONAT_PERIODE).value = "Januar"
     ws.Cells(5, DATA_COL_MONAT_PERIODE).value = "Februar"
-    ws.Cells(6, DATA_COL_MONAT_PERIODE).value = "Maerz"
+    ws.Cells(6, DATA_COL_MONAT_PERIODE).value = "M" & ChrW(228) & "rz"
     ws.Cells(7, DATA_COL_MONAT_PERIODE).value = "April"
     ws.Cells(8, DATA_COL_MONAT_PERIODE).value = "Mai"
     ws.Cells(9, DATA_COL_MONAT_PERIODE).value = "Juni"
@@ -1086,6 +1091,8 @@ End Sub
 ' FIX v5.1: Spalte T WrapText nur bei vbLf-Inhalt
 '           Spalten U, W, X IMMER editierbar
 '           Spalte V editierbar bei EHEMALIGES MITGLIED / SONSTIGE
+' FIX v5.2: Spalte U WrapText per Zelle (nur bei 2+ Namen mit vbLf)
+'           Spalte X Breite 62, WrapText erlaubt
 ' ===============================================================
 Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As Long)
     
@@ -1095,6 +1102,7 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     Dim r As Long
     Dim currentRole As String
     Dim kontoWert As String
+    Dim zuordnungWert As String
     
     If lastRow < EK_START_ROW Then Exit Sub
     
@@ -1109,6 +1117,7 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     
     rngTable.VerticalAlignment = xlCenter
     
+    ' Spalte R (EntityKey)
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
                   ws.Cells(lastRow, EK_COL_ENTITYKEY))
         .WrapText = False
@@ -1116,6 +1125,7 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_ENTITYKEY).ColumnWidth = 11
     
+    ' Spalte S (IBAN)
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_IBAN), _
                   ws.Cells(lastRow, EK_COL_IBAN))
         .WrapText = False
@@ -1138,13 +1148,21 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     Next r
     ws.Columns(EK_COL_KONTONAME).ColumnWidth = 36
     
-    With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ZUORDNUNG), _
-                  ws.Cells(lastRow, EK_COL_ZUORDNUNG))
-        .WrapText = True
-        .HorizontalAlignment = xlLeft
-    End With
+    ' FIX v5.2: Spalte U (Zuordnung) - WrapText per Zelle (nur bei vbLf-Inhalt)
+    ws.Range(ws.Cells(EK_START_ROW, EK_COL_ZUORDNUNG), _
+             ws.Cells(lastRow, EK_COL_ZUORDNUNG)).HorizontalAlignment = xlLeft
+    
+    For r = EK_START_ROW To lastRow
+        zuordnungWert = CStr(ws.Cells(r, EK_COL_ZUORDNUNG).value)
+        If InStr(zuordnungWert, vbLf) > 0 Then
+            ws.Cells(r, EK_COL_ZUORDNUNG).WrapText = True
+        Else
+            ws.Cells(r, EK_COL_ZUORDNUNG).WrapText = False
+        End If
+    Next r
     ws.Columns(EK_COL_ZUORDNUNG).ColumnWidth = 28
     
+    ' Spalte V (Parzelle)
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_PARZELLE), _
                   ws.Cells(lastRow, EK_COL_PARZELLE))
         .WrapText = True
@@ -1152,6 +1170,7 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_PARZELLE).ColumnWidth = 9
     
+    ' Spalte W (Role)
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ROLE), _
                   ws.Cells(lastRow, EK_COL_ROLE))
         .WrapText = False
@@ -1159,12 +1178,13 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_ROLE).AutoFit
     
+    ' FIX v5.2: Spalte X (Debug) - WrapText erlaubt, Breite 62
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_DEBUG), _
                   ws.Cells(lastRow, EK_COL_DEBUG))
-        .WrapText = False
+        .WrapText = True
         .HorizontalAlignment = xlLeft
     End With
-    ws.Columns(EK_COL_DEBUG).ColumnWidth = 42
+    ws.Columns(EK_COL_DEBUG).ColumnWidth = 62
     
     ' R-T immer gesperrt (EntityKey, IBAN, Kontoname)
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
@@ -1226,6 +1246,7 @@ End Sub
 
 ' ===============================================================
 ' BANKKONTO-BLATT FORMATIEREN
+' FIX v5.2: Umlaute in MsgBox
 ' ===============================================================
 Public Sub FormatiereBlattBankkonto()
     
@@ -1269,8 +1290,8 @@ Public Sub FormatiereBlattBankkonto()
     MsgBox "Formatierung des Bankkonto-Blatts abgeschlossen!" & vbCrLf & vbCrLf & _
            "- Alle Zellen vertikal zentriert" & vbCrLf & _
            "- Spalte L mit Textumbruch" & vbCrLf & _
-           "- Zeilenhoehe angepasst" & vbCrLf & _
-           "- Waehrung mit Euro-Zeichen", vbInformation
+           "- Zeilenh" & ChrW(246) & "he angepasst" & vbCrLf & _
+           "- W" & ChrW(228) & "hrung mit Euro-Zeichen", vbInformation
     
     Exit Sub
     
@@ -1397,5 +1418,3 @@ ErrorHandler:
     End If
     
 End Sub
-
-
