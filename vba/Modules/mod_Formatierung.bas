@@ -589,8 +589,7 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
         .ShowError = True
     End With
     
-    ' NEU: EntityRole-Dropdown fuer ALLE bestehenden Zeilen setzen
-    ' und Parzellen-Dropdown fuer EHEMALIGES MITGLIED
+    ' NEU v5.1: EntityRole-Dropdown und Parzellen-Dropdown fuer ALLE Zeilen
     Dim lastRowParzelle As Long
     lastRowParzelle = ws.Cells(ws.Rows.count, DATA_COL_DD_PARZELLE).End(xlUp).Row
     If lastRowParzelle < DATA_START_ROW Then lastRowParzelle = DATA_START_ROW
@@ -600,24 +599,25 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
             Dim currentRole As String
             currentRole = UCase(Trim(ws.Cells(r, EK_COL_ROLE).value))
             
-            ' EntityRole-Dropdown fuer ALLE Zeilen wo Role editierbar ist
-            ' (UNBEKANNT, leer, oder bestimmte Rollen)
-            If currentRole = "" Or currentRole = "UNBEKANNT" Then
-                ws.Cells(r, EK_COL_ROLE).Validation.Delete
-                With ws.Cells(r, EK_COL_ROLE).Validation
-                    .Add Type:=xlValidateList, _
-                         AlertStyle:=xlValidAlertWarning, _
-                         Formula1:="=" & WS_DATEN & "!$AD$" & DATA_START_ROW & ":$AD$" & lastRowDD
-                    .IgnoreBlank = True
-                    .InCellDropdown = True
-                    .ShowInput = False
-                    .ShowError = True
-                End With
-                ws.Cells(r, EK_COL_ROLE).Locked = False
-            End If
+            ' EntityRole-Dropdown fuer ALLE Zeilen (W immer editierbar)
+            ws.Cells(r, EK_COL_ROLE).Validation.Delete
+            With ws.Cells(r, EK_COL_ROLE).Validation
+                .Add Type:=xlValidateList, _
+                     AlertStyle:=xlValidAlertWarning, _
+                     Formula1:="=" & WS_DATEN & "!$AD$" & DATA_START_ROW & ":$AD$" & lastRowDD
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = False
+                .ShowError = True
+            End With
+            ws.Cells(r, EK_COL_ROLE).Locked = False
             
-            ' Parzellen-Dropdown fuer EHEMALIGES MITGLIED
-            If currentRole = "EHEMALIGES MITGLIED" Then
+            ' U und X immer editierbar
+            ws.Cells(r, EK_COL_ZUORDNUNG).Locked = False
+            ws.Cells(r, EK_COL_DEBUG).Locked = False
+            
+            ' Parzellen-Dropdown fuer EHEMALIGES MITGLIED und SONSTIGE
+            If currentRole = "EHEMALIGES MITGLIED" Or currentRole = "SONSTIGE" Then
                 ws.Cells(r, EK_COL_PARZELLE).Validation.Delete
                 With ws.Cells(r, EK_COL_PARZELLE).Validation
                     .Add Type:=xlValidateList, _
@@ -632,6 +632,7 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
             End If
         Next r
     End If
+    
     
     ' === HELPER-SPALTEN: AB (28), AC (29), AD (30), AH (34) ===
     Dim helperCols As Variant
@@ -1082,6 +1083,9 @@ End Sub
 ' ===============================================================
 ' Formatiert die EntityKey-Tabelle
 ' R-T mit Zebra, U-X NUR Rahmen (Ampelfarben bleiben erhalten!)
+' FIX v5.1: Spalte T WrapText nur bei vbLf-Inhalt
+'           Spalten U, W, X IMMER editierbar
+'           Spalte V editierbar bei EHEMALIGES MITGLIED / SONSTIGE
 ' ===============================================================
 Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As Long)
     
@@ -1090,6 +1094,7 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     Dim rngAmpel As Range
     Dim r As Long
     Dim currentRole As String
+    Dim kontoWert As String
     
     If lastRow < EK_START_ROW Then Exit Sub
     
@@ -1118,11 +1123,19 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_IBAN).AutoFit
     
-    With ws.Range(ws.Cells(EK_START_ROW, EK_COL_KONTONAME), _
-                  ws.Cells(lastRow, EK_COL_KONTONAME))
-        .WrapText = True
-        .HorizontalAlignment = xlLeft
-    End With
+    ' Spalte T: WrapText NUR wenn vbLf im Wert (mehrere Namen)
+    ' Sonst kein Zeilenumbruch
+    ws.Range(ws.Cells(EK_START_ROW, EK_COL_KONTONAME), _
+             ws.Cells(lastRow, EK_COL_KONTONAME)).HorizontalAlignment = xlLeft
+    
+    For r = EK_START_ROW To lastRow
+        kontoWert = CStr(ws.Cells(r, EK_COL_KONTONAME).value)
+        If InStr(kontoWert, vbLf) > 0 Then
+            ws.Cells(r, EK_COL_KONTONAME).WrapText = True
+        Else
+            ws.Cells(r, EK_COL_KONTONAME).WrapText = False
+        End If
+    Next r
     ws.Columns(EK_COL_KONTONAME).ColumnWidth = 36
     
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ZUORDNUNG), _
@@ -1153,7 +1166,7 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_DEBUG).ColumnWidth = 42
     
-    ' Zellschutz fuer R-T
+    ' R-T immer gesperrt (EntityKey, IBAN, Kontoname)
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
              ws.Cells(lastRow, EK_COL_KONTONAME)).Locked = True
     
@@ -1170,10 +1183,6 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
         Else
             rngZebra.Interior.color = ZEBRA_COLOR_2
         End If
-        
-        ' U-X (Spalten 21-24): Farbe NICHT ueberschreiben!
-        ' Ampelfarben werden von mod_EntityKey_Manager gesetzt
-        ' Hier nur Rahmen (oben bereits fuer rngTable gesetzt)
     Next r
     
     ws.Rows(EK_START_ROW & ":" & lastRow).AutoFit
@@ -1182,66 +1191,34 @@ End Sub
 
 ' ===============================================================
 ' Setzt Zellschutz basierend auf EntityRole
-' FIX v5.0: MITGLIED MIT PACHT / MITGLIED OHNE PACHT sperren
-'           Zuordnung+Parzelle+Role bei 100% Treffern
-'           Bei VERSORGER/BANK/SHOP/SONSTIGE: Zuordnung editierbar
+' FIX v5.1: U (Zuordnung), W (Role), X (Debug) IMMER editierbar
+'           V (Parzelle) editierbar bei EHEMALIGES MITGLIED / SONSTIGE
 ' ===============================================================
 Private Sub SetzeZellschutzFuerZeile(ByRef ws As Worksheet, ByVal zeile As Long, ByVal currentRole As String)
-    
-    Dim rngEditierbar As Range
-    Dim rngGesperrt As Range
     
     On Error Resume Next
     
     ' R-T immer gesperrt (EntityKey, IBAN, Kontoname)
-    Set rngGesperrt = ws.Range(ws.Cells(zeile, EK_COL_ENTITYKEY), ws.Cells(zeile, EK_COL_KONTONAME))
-    rngGesperrt.Locked = True
+    ws.Range(ws.Cells(zeile, EK_COL_ENTITYKEY), ws.Cells(zeile, EK_COL_KONTONAME)).Locked = True
     
-    Set rngEditierbar = ws.Range(ws.Cells(zeile, EK_COL_ZUORDNUNG), ws.Cells(zeile, EK_COL_DEBUG))
+    ' U (Zuordnung) = IMMER editierbar
+    ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = False
     
-    Select Case UCase(Trim(currentRole))
-        Case "MITGLIED MIT PACHT", "MITGLIED OHNE PACHT"
-            ' 100% Treffer aus Mitgliederliste -> Zuordnung+Parzelle+Role gesperrt
-            ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = True
-            ws.Cells(zeile, EK_COL_PARZELLE).Locked = True
-            ws.Cells(zeile, EK_COL_ROLE).Locked = True
-            ws.Cells(zeile, EK_COL_DEBUG).Locked = False
-            
-        Case "MITGLIED"
-            ' Generischer MITGLIED -> alles gesperrt
-            ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = True
-            ws.Cells(zeile, EK_COL_PARZELLE).Locked = True
-            ws.Cells(zeile, EK_COL_ROLE).Locked = True
-            ws.Cells(zeile, EK_COL_DEBUG).Locked = False
-            
-        Case "EHEMALIGES MITGLIED"
-            ' Zuordnung editierbar (Nutzer kann aendern)
-            ' Parzelle editierbar (Dropdown)
-            ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = False
-            ws.Cells(zeile, EK_COL_PARZELLE).Locked = False
-            ws.Cells(zeile, EK_COL_ROLE).Locked = True
-            ws.Cells(zeile, EK_COL_DEBUG).Locked = False
-            
-        Case "VERSORGER", "BANK", "SHOP", "SONSTIGE"
-            ' Zuordnung editierbar (Nutzer kann Namen aendern/anpassen)
-            ' Parzelle gesperrt (nicht relevant)
-            ' Role gesperrt (bereits zugeordnet)
-            ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = False
-            ws.Cells(zeile, EK_COL_PARZELLE).Locked = True
-            ws.Cells(zeile, EK_COL_ROLE).Locked = True
-            ws.Cells(zeile, EK_COL_DEBUG).Locked = False
-            
-        Case "UNBEKANNT", ""
-            ' Alles editierbar -> Nutzer muss zuordnen
-            rngEditierbar.Locked = False
-            
-        Case Else
-            ' Unbekannte Role -> Zuordnung editierbar, Rest gesperrt
-            ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = False
-            ws.Cells(zeile, EK_COL_PARZELLE).Locked = True
-            ws.Cells(zeile, EK_COL_ROLE).Locked = True
-            ws.Cells(zeile, EK_COL_DEBUG).Locked = False
-    End Select
+    ' W (Role) = IMMER editierbar (Dropdown)
+    ws.Cells(zeile, EK_COL_ROLE).Locked = False
+    
+    ' X (Debug) = IMMER editierbar
+    ws.Cells(zeile, EK_COL_DEBUG).Locked = False
+    
+    ' V (Parzelle) = nur bei EHEMALIGES MITGLIED oder SONSTIGE editierbar
+    Dim roleUpper As String
+    roleUpper = UCase(Trim(currentRole))
+    
+    If roleUpper = "EHEMALIGES MITGLIED" Or roleUpper = "SONSTIGE" Or roleUpper = "" Or roleUpper = "UNBEKANNT" Then
+        ws.Cells(zeile, EK_COL_PARZELLE).Locked = False
+    Else
+        ws.Cells(zeile, EK_COL_PARZELLE).Locked = True
+    End If
     
     On Error GoTo 0
     
