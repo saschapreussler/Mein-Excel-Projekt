@@ -1553,7 +1553,6 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
             End If
             neueZuordnung = ExtrahiereAnzeigeName(kontoname)
             neueParzelle = ""
-            neuerDebug = "Manuell: EHEMALIGES MITGLIED (" & Format(Now, "dd.mm.yyyy") & ")"
             ampelStatus = 2  ' Default GELB
             
             ' NEU v5.3: Pruefen ob in Mitgliederhistorie
@@ -1569,11 +1568,10 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
                     If historieParzelle <> "" Then
                         neueParzelle = historieParzelle
                     End If
-                    neuerDebug = "Manuell: EHEMALIGES MITGLIED - in Historie gefunden (" & Format(Now, "dd.mm.yyyy") & ")"
+                    neuerDebug = "Manuell: EHEMALIGES MITGLIED - in Historie gefunden; " & Format(Now, "dd.mm.yyyy")
                 Else
                     ' NICHT in Historie -> InputBox fuer Parzelle (1-14)
                     ampelStatus = 2
-                    neuerDebug = neuerDebug & " | ehem. Mitglied nicht in Historie"
                     
                     Dim eingabe As String
                     Dim parzelleGueltig As Boolean
@@ -1606,11 +1604,12 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
                     
                     If parzelleGueltig Then
                         neueParzelle = CStr(parzelleNr)
-                        neuerDebug = "Manuell: EHEMALIGES MITGLIED - Parzelle " & neueParzelle & " (manuell, " & Format(Now, "dd.mm.yyyy") & ") | nicht in Historie"
+                        neuerDebug = "Manuell: EHEMALIGES MITGLIED - Parzelle " & neueParzelle & "; nicht in Historie; " & Format(Now, "dd.mm.yyyy")
+                    Else
+                        neuerDebug = "Manuell: EHEMALIGES MITGLIED; nicht in Historie; " & Format(Now, "dd.mm.yyyy")
                     End If
                 End If
             End If
-            
         Case "VERSORGER"
             correctPrefix = PREFIX_VERSORGER
             If Left(UCase(currentEntityKey), Len(correctPrefix)) <> UCase(correctPrefix) Then
