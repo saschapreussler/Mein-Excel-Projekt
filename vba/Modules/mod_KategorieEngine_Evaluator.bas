@@ -30,14 +30,14 @@ Public Function BuildKategorieContext(ByVal wsBK As Worksheet, _
     Dim kontoname As String
     kontoname = LCase(Trim(wsBK.Cells(rowBK, BK_COL_NAME).value))
     
-    Dim buchungsText As String
-    buchungsText = LCase(Trim(wsBK.Cells(rowBK, BK_COL_BUCHUNGSTEXT).value))
+    Dim buchungstext As String
+    buchungstext = LCase(Trim(wsBK.Cells(rowBK, BK_COL_BUCHUNGSTEXT).value))
 
     ctx("Amount") = amount
     ctx("NormText") = normText
     ctx("KontoName") = kontoname
     ctx("IBAN") = iban
-    ctx("BuchungsText") = buchungsText
+    ctx("BuchungsText") = buchungstext
 
     ctx("IsEinnahme") = (amount > 0)
     ctx("IsAusgabe") = (amount < 0)
@@ -51,8 +51,8 @@ Public Function BuildKategorieContext(ByVal wsBK As Worksheet, _
         (InStr(normText, "entgeltabschluss") > 0) Or _
         (InStr(normText, "kontoabschluss") > 0) Or _
         (InStr(normText, "abschluss") > 0 And InStr(normText, "entgelt") > 0) Or _
-        (buchungsText = "abschluss") Or _
-        (buchungsText = "entgeltabschluss")
+        (buchungstext = "abschluss") Or _
+        (buchungstext = "entgeltabschluss")
 
     ' Bargeldauszahlung-Erkennung
     ctx("IsBargeldauszahlung") = _
