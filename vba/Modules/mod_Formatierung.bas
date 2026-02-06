@@ -4,9 +4,10 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Formatierung
 ' ZWECK: Formatierung und DropDown-Listen-Verwaltung
-' VERSION: 3.0 - 06.02.2026
-' NEU: Nur 1 Eingabezeile, bestehende Daten editierbar,
-'      Luecken entfernen, Parzellen-Dropdown bei EHEMALIGES MITGLIED
+' VERSION: 4.0 - 06.02.2026
+' NEU: Ampelfarben U-X bleiben erhalten (kein Zebra-Ueberschreiben),
+'      EntityRole-Dropdown fuer ALLE Zeilen, IBAN-basierte lastRow,
+'      lastRowDD dynamisch aus Spalte AD
 ' ***************************************************************
 
 Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiss
@@ -452,6 +453,8 @@ End Sub
 ' NEU: Entsperrt bestehende Daten + genau 1 naechste freie Zeile
 ' Sperrt einen Puffer darunter um ungewolltes Editieren zu verhindern
 ' Betrifft: B, D, F, H, J-P, R-X (via W), AB, AC, AD, AH
+' NEU v4.0: EntityRole-Dropdown fuer ALLE bestehenden Zeilen,
+'           lastRow fuer EntityKey-Bereich ueber IBAN ermittelt
 ' ===============================================================
 Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     
@@ -459,6 +462,7 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     Dim nextRow As Long
     Dim lockEnd As Long
     Dim r As Long
+    Dim lastRowDD As Long
     
     On Error Resume Next
     
@@ -549,7 +553,14 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     End With
     
     ' === ENTITYKEY-TABELLE: R-X (18-24) ===
-    lastRow = ws.Cells(ws.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
+    ' WICHTIG: lastRow ueber IBAN (Spalte S) ermitteln, nicht EntityKey (R)
+    ' Denn nach IBAN-Import ist R oft noch leer
+    lastRow = ws.Cells(ws.Rows.count, EK_COL_IBAN).End(xlUp).Row
+    ' Auch R pruefen fuer den Fall dass R weiter reicht als S
+    Dim lastRowR As Long
+    lastRowR = ws.Cells(ws.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
+    If lastRowR > lastRow Then lastRow = lastRowR
+    
     If lastRow < EK_START_ROW Then lastRow = EK_START_ROW - 1
     nextRow = lastRow + 1
     lockEnd = nextRow + 50
@@ -562,32 +573,56 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     ws.Range(ws.Cells(nextRow + 1, EK_COL_ENTITYKEY), _
              ws.Cells(lockEnd, EK_COL_DEBUG)).Locked = True
     
-    ' Dropdown W (EntityRole) fuer Eingabezeile
+    ' EntityRole-Dropdown (W) Quelle: Spalte AD
+    lastRowDD = ws.Cells(ws.Rows.count, DATA_COL_DD_ENTITYROLE).End(xlUp).Row
+    If lastRowDD < DATA_START_ROW Then lastRowDD = DATA_START_ROW
+    
+    ' Dropdown W fuer die Eingabezeile
     ws.Cells(nextRow, EK_COL_ROLE).Validation.Delete
     With ws.Cells(nextRow, EK_COL_ROLE).Validation
         .Add Type:=xlValidateList, _
              AlertStyle:=xlValidAlertWarning, _
-             Formula1:="=" & WS_DATEN & "!$AD$4:$AD$" & _
-                        ws.Cells(ws.Rows.count, DATA_COL_DD_ENTITYROLE).End(xlUp).Row
+             Formula1:="=" & WS_DATEN & "!$AD$" & DATA_START_ROW & ":$AD$" & lastRowDD
         .IgnoreBlank = True
         .InCellDropdown = True
         .ShowInput = False
         .ShowError = True
     End With
     
-    ' Parzellen-Dropdown fuer Spalte V bei EHEMALIGES MITGLIED
+    ' NEU: EntityRole-Dropdown fuer ALLE bestehenden Zeilen setzen
+    ' und Parzellen-Dropdown fuer EHEMALIGES MITGLIED
     Dim lastRowParzelle As Long
     lastRowParzelle = ws.Cells(ws.Rows.count, DATA_COL_DD_PARZELLE).End(xlUp).Row
     If lastRowParzelle < DATA_START_ROW Then lastRowParzelle = DATA_START_ROW
     
     If lastRow >= EK_START_ROW Then
         For r = EK_START_ROW To lastRow
-            If UCase(Trim(ws.Cells(r, EK_COL_ROLE).value)) = "EHEMALIGES MITGLIED" Then
+            Dim currentRole As String
+            currentRole = UCase(Trim(ws.Cells(r, EK_COL_ROLE).value))
+            
+            ' EntityRole-Dropdown fuer ALLE Zeilen wo Role editierbar ist
+            ' (UNBEKANNT, leer, oder bestimmte Rollen)
+            If currentRole = "" Or currentRole = "UNBEKANNT" Then
+                ws.Cells(r, EK_COL_ROLE).Validation.Delete
+                With ws.Cells(r, EK_COL_ROLE).Validation
+                    .Add Type:=xlValidateList, _
+                         AlertStyle:=xlValidAlertWarning, _
+                         Formula1:="=" & WS_DATEN & "!$AD$" & DATA_START_ROW & ":$AD$" & lastRowDD
+                    .IgnoreBlank = True
+                    .InCellDropdown = True
+                    .ShowInput = False
+                    .ShowError = True
+                End With
+                ws.Cells(r, EK_COL_ROLE).Locked = False
+            End If
+            
+            ' Parzellen-Dropdown fuer EHEMALIGES MITGLIED
+            If currentRole = "EHEMALIGES MITGLIED" Then
                 ws.Cells(r, EK_COL_PARZELLE).Validation.Delete
                 With ws.Cells(r, EK_COL_PARZELLE).Validation
                     .Add Type:=xlValidateList, _
                          AlertStyle:=xlValidAlertWarning, _
-                         Formula1:="=" & WS_DATEN & "!$F$4:$F$" & lastRowParzelle
+                         Formula1:="=" & WS_DATEN & "!$F$" & DATA_START_ROW & ":$F$" & lastRowParzelle
                     .IgnoreBlank = True
                     .InCellDropdown = True
                     .ShowInput = False
@@ -625,6 +660,7 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
 
 
 
@@ -949,13 +985,13 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
     On Error GoTo 0
     
     nextRowE = 4
-    For Each key In dictEinnahmen.Keys
+    For Each key In dictEinnahmen.keys
         ws.Cells(nextRowE, DATA_COL_KAT_EINNAHMEN).value = key
         nextRowE = nextRowE + 1
     Next key
     
     nextRowA = 4
-    For Each key In dictAusgaben.Keys
+    For Each key In dictAusgaben.keys
         ws.Cells(nextRowA, DATA_COL_KAT_AUSGABEN).value = key
         nextRowA = nextRowA + 1
     Next key
@@ -993,23 +1029,23 @@ Private Sub ErstelleKategorieNamedRanges(ByRef ws As Worksheet, ByVal lastRowE A
     ThisWorkbook.Names("lst_MonatPeriode").Delete
     
     If lastRowE >= 4 Then
-        ThisWorkbook.Names.Add Name:="lst_KategorienEinnahmen", _
-            RefersTo:="=" & ws.Name & "!$AF$4:$AF$" & lastRowE
+        ThisWorkbook.Names.Add name:="lst_KategorienEinnahmen", _
+            RefersTo:="=" & ws.name & "!$AF$4:$AF$" & lastRowE
     Else
-        ThisWorkbook.Names.Add Name:="lst_KategorienEinnahmen", _
-            RefersTo:="=" & ws.Name & "!$AF$4"
+        ThisWorkbook.Names.Add name:="lst_KategorienEinnahmen", _
+            RefersTo:="=" & ws.name & "!$AF$4"
     End If
     
     If lastRowA >= 4 Then
-        ThisWorkbook.Names.Add Name:="lst_KategorienAusgaben", _
-            RefersTo:="=" & ws.Name & "!$AG$4:$AG$" & lastRowA
+        ThisWorkbook.Names.Add name:="lst_KategorienAusgaben", _
+            RefersTo:="=" & ws.name & "!$AG$4:$AG$" & lastRowA
     Else
-        ThisWorkbook.Names.Add Name:="lst_KategorienAusgaben", _
-            RefersTo:="=" & ws.Name & "!$AG$4"
+        ThisWorkbook.Names.Add name:="lst_KategorienAusgaben", _
+            RefersTo:="=" & ws.name & "!$AG$4"
     End If
     
-    ThisWorkbook.Names.Add Name:="lst_MonatPeriode", _
-        RefersTo:="=" & ws.Name & "!$AH$4:$AH$15"
+    ThisWorkbook.Names.Add name:="lst_MonatPeriode", _
+        RefersTo:="=" & ws.name & "!$AH$4:$AH$15"
     
     On Error GoTo 0
     
@@ -1032,13 +1068,13 @@ End Sub
 
 ' ===============================================================
 ' Formatiert die EntityKey-Tabelle
-' R-T mit Zebra, U-X nur Rahmen (Ampel-Farben bleiben)
+' R-T mit Zebra, U-X NUR Rahmen (Ampelfarben bleiben erhalten!)
 ' ===============================================================
 Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As Long)
     
     Dim rngTable As Range
     Dim rngZebra As Range
-    Dim rngBorderOnly As Range
+    Dim rngAmpel As Range
     Dim r As Long
     Dim currentRole As String
     
@@ -1113,6 +1149,7 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
         
         Call SetzeZellschutzFuerZeile(ws, r, currentRole)
         
+        ' Zebra NUR fuer R-T (Spalten 18-20)
         Set rngZebra = ws.Range(ws.Cells(r, EK_COL_ENTITYKEY), ws.Cells(r, EK_COL_KONTONAME))
         
         If (r - EK_START_ROW) Mod 2 = 0 Then
@@ -1121,7 +1158,9 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
             rngZebra.Interior.color = ZEBRA_COLOR_2
         End If
         
-        Set rngBorderOnly = ws.Range(ws.Cells(r, EK_COL_ZUORDNUNG), ws.Cells(r, EK_COL_DEBUG))
+        ' U-X (Spalten 21-24): Farbe NICHT ueberschreiben!
+        ' Ampelfarben werden von mod_EntityKey_Manager gesetzt
+        ' Hier nur Rahmen (oben bereits fuer rngTable gesetzt)
     Next r
     
     ws.Rows(EK_START_ROW & ":" & lastRow).AutoFit
@@ -1231,7 +1270,7 @@ End Sub
 ' Prueft ob Named Range existiert
 ' ===============================================================
 Public Function NamedRangeExists(ByVal rangeName As String) As Boolean
-    Dim nm As Name
+    Dim nm As name
     NamedRangeExists = False
     
     On Error Resume Next

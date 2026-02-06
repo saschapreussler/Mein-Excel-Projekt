@@ -72,7 +72,7 @@ Public Sub ExportiereAlleVBAKomponenten()
     ' Alle Komponenten durchlaufen
     For Each vbComp In vbProj.VBComponents
         
-        fileName = vbComp.Name
+        fileName = vbComp.name
         
         Select Case vbComp.Type
             
@@ -204,7 +204,7 @@ Public Sub ExportiereNurModule()
     For Each vbComp In vbProj.VBComponents
         If vbComp.Type = 1 Then ' Standard-Modul
             On Error Resume Next
-            vbComp.Export EXPORT_PATH_MODULES & vbComp.Name & ".bas"
+            vbComp.Export EXPORT_PATH_MODULES & vbComp.name & ".bas"
             If Err.Number = 0 Then count = count + 1
             Err.Clear
             On Error GoTo 0
@@ -241,7 +241,7 @@ Public Sub ExportiereNurKlassen()
     For Each vbComp In vbProj.VBComponents
         If vbComp.Type = 2 Or vbComp.Type = 100 Then ' Klasse oder Dokument
             On Error Resume Next
-            vbComp.Export EXPORT_PATH_CLASSES & vbComp.Name & ".cls"
+            vbComp.Export EXPORT_PATH_CLASSES & vbComp.name & ".cls"
             If Err.Number = 0 Then count = count + 1
             Err.Clear
             On Error GoTo 0

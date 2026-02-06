@@ -168,7 +168,7 @@ EndSearch:
     Dim listUniqueNames As Object: Set listUniqueNames = CreateObject("Scripting.Dictionary")
     Dim listUniqueParzellen As Object: Set listUniqueParzellen = CreateObject("Scripting.Dictionary")
     
-    For Each memberName In dictAllMatches.Keys
+    For Each memberName In dictAllMatches.keys
         ' **HIER IST DIE KORREKTUR:** Wir akzeptieren nur Treffer, die dem besten Status entsprechen
         If dictAllMatches.item(memberName) = bestMatchStatus Then
             

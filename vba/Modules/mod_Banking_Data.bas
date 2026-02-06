@@ -109,13 +109,13 @@ Public Sub Importiere_Kontoauszug()
         wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
         Exit Sub
     End If
-    wsTemp.Name = tempSheetName
+    wsTemp.name = tempSheetName
     Err.Clear
     On Error GoTo 0
     
     On Error Resume Next
     With wsTemp.QueryTables.Add(Connection:="TEXT;" & strFile, Destination:=wsTemp.Cells(1, 1))
-        .Name = "CSV_Import"
+        .name = "CSV_Import"
         .FieldNames = True
         .TextFilePlatform = xlUTF8Value
         .TextFileStartRow = 1
@@ -474,7 +474,7 @@ Public Sub Initialize_ImportReport_ListBox()
     rahmenFound = False
     
     For Each shp In ws.Shapes
-        If shp.Name = RAHMEN_NAME Then
+        If shp.name = RAHMEN_NAME Then
             rahmenFound = True
             Exit For
         End If
@@ -503,7 +503,7 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     rahmenFound = False
     
     For Each shp In ws.Shapes
-        If shp.Name = RAHMEN_NAME Then
+        If shp.name = RAHMEN_NAME Then
             rahmenFound = True
             Exit For
         End If

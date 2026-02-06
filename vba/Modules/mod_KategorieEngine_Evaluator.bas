@@ -250,13 +250,13 @@ NextRule:
     If hitCategories.count > 1 Then
         If ctx("EntityRole") = "MITGLIED" And ctx("IsEinnahme") Then
             wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-                "Mehrere Positionen erkannt: " & Join(hitCategories.Keys, " | ")
+                "Mehrere Positionen erkannt: " & Join(hitCategories.keys, " | ")
             ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
                            "Sammelzahlung Mitglied", "GELB"
             Exit Sub
         Else
             wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-                "Mehrere moegliche Kategorien: " & Join(hitCategories.Keys, " | ") & _
+                "Mehrere moegliche Kategorien: " & Join(hitCategories.keys, " | ") & _
                 " - Bitte pruefen!"
             ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GELB"
             Exit Sub
