@@ -677,26 +677,59 @@ End Sub
 
 
 ' ===============================================================
-' KATEGORIE-TABELLE FORMATIEREN (J-P) mit ZEBRA
+' Formatiert die Kategorie-Tabelle (Spalten J-P)
+' FIX v5.3: Spalte K Breite 12, Zebra+Rahmen nur fuer belegte Zeilen,
+'           leere Zeilen unterhalb werden bereinigt
 ' ===============================================================
 Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
     
     Dim lastRow As Long
+    Dim lastRowMax As Long
     Dim rngTable As Range
+    Dim rngLeeren As Range
     Dim r As Long
     Dim einAusWert As String
     
     If ws Is Nothing Then Set ws = ThisWorkbook.Worksheets(WS_DATEN)
     
     lastRow = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    
+    ' Maximale letzte Zeile ueber alle Spalten J-P ermitteln (fuer Bereinigung)
+    lastRowMax = lastRow
+    Dim col As Long
+    For col = DATA_CAT_COL_START To DATA_CAT_COL_END
+        Dim colLastRow As Long
+        colLastRow = ws.Cells(ws.Rows.count, col).End(xlUp).Row
+        If colLastRow > lastRowMax Then lastRowMax = colLastRow
+    Next col
+    
+    ' Bereich UNTERHALB der belegten Zeilen bereinigen (Rahmen + Farbe entfernen)
+    If lastRowMax >= DATA_START_ROW Then
+        Dim cleanStart As Long
+        If lastRow < DATA_START_ROW Then
+            cleanStart = DATA_START_ROW
+        Else
+            cleanStart = lastRow + 1
+        End If
+        
+        If cleanStart <= lastRowMax + 50 Then
+            Set rngLeeren = ws.Range(ws.Cells(cleanStart, DATA_CAT_COL_START), _
+                                     ws.Cells(lastRowMax + 50, DATA_CAT_COL_END))
+            rngLeeren.Interior.ColorIndex = xlNone
+            rngLeeren.Borders.LineStyle = xlNone
+        End If
+    End If
+    
     If lastRow < DATA_START_ROW Then Exit Sub
     
     Set rngTable = ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
                             ws.Cells(lastRow, DATA_CAT_COL_END))
     
+    ' Zuerst alles zuruecksetzen im belegten Bereich
     rngTable.Interior.ColorIndex = xlNone
     rngTable.Borders.LineStyle = xlNone
     
+    ' Zebra-Formatierung NUR fuer belegte Zeilen
     For r = DATA_START_ROW To lastRow
         If (r - DATA_START_ROW) Mod 2 = 0 Then
             ws.Range(ws.Cells(r, DATA_CAT_COL_START), ws.Cells(r, DATA_CAT_COL_END)).Interior.color = ZEBRA_COLOR_1
@@ -705,6 +738,7 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
         End If
     Next r
     
+    ' Rahmenlinien NUR fuer belegte Zeilen
     With rngTable.Borders
         .LineStyle = xlContinuous
         .Weight = xlThin
@@ -739,8 +773,18 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
         Call SetzeZielspalteDropdown(ws, r, einAusWert)
     Next r
     
-    ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
-             ws.Cells(lastRow, DATA_CAT_COL_END)).EntireColumn.AutoFit
+    ' Spaltenbreiten
+    ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KATEGORIE), _
+             ws.Cells(lastRow, DATA_CAT_COL_KATEGORIE)).EntireColumn.AutoFit
+    
+    ' FIX v5.3: Spalte K (E/A) feste Breite 12
+    ws.Columns(DATA_CAT_COL_EINAUS).ColumnWidth = 12
+    
+    ' Restliche Spalten AutoFit
+    Dim autoFitCol As Long
+    For autoFitCol = DATA_CAT_COL_KEYWORD To DATA_CAT_COL_END
+        ws.Columns(autoFitCol).AutoFit
+    Next autoFitCol
     
 End Sub
 
@@ -1318,21 +1362,105 @@ Public Function NamedRangeExists(ByVal rangeName As String) As Boolean
 End Function
 
 ' ===============================================================
-' WORKSHEET_CHANGE HELPER: Aktualisiert Listen bei Aenderung
+' NEU v5.3: Validierung und Reaktion bei Aenderung in Kategorie-Tabelle
+' Prueft: Spalte K (E/A-Konsistenz bei gleicher Kategorie)
+'         Spalte L (Keyword-Duplikat bei gleicher Kategorie)
 ' ===============================================================
 Public Sub OnKategorieChange(ByVal Target As Range)
     
     Dim ws As Worksheet
-    Set ws = Target.Worksheet
+    Dim zeile As Long
+    Dim kategorie As String
+    Dim r As Long
+    Dim lastRow As Long
     
+    Set ws = Target.Worksheet
+    zeile = Target.Row
+    
+    If zeile < DATA_START_ROW Then Exit Sub
+    
+    ' --- Spalte J oder K geaendert: Dropdown-Listen aktualisieren ---
     If Target.Column = DATA_CAT_COL_KATEGORIE Or Target.Column = DATA_CAT_COL_EINAUS Then
         Call AktualisiereKategorieDropdownListen(ws)
     End If
     
+    ' --- Spalte K (E/A) geaendert: Konsistenzpruefung ---
     If Target.Column = DATA_CAT_COL_EINAUS Then
         Dim einAus As String
         einAus = UCase(Trim(Target.value))
-        Call SetzeZielspalteDropdown(ws, Target.Row, einAus)
+        
+        kategorie = Trim(ws.Cells(zeile, DATA_CAT_COL_KATEGORIE).value)
+        
+        If kategorie <> "" And einAus <> "" Then
+            lastRow = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+            
+            Dim bestehenderTyp As String
+            bestehenderTyp = ""
+            
+            ' Suche ob diese Kategorie bereits mit einem Typ existiert
+            For r = DATA_START_ROW To lastRow
+                If r <> zeile Then
+                    If StrComp(Trim(ws.Cells(r, DATA_CAT_COL_KATEGORIE).value), kategorie, vbTextCompare) = 0 Then
+                        Dim vorhandenerEA As String
+                        vorhandenerEA = UCase(Trim(ws.Cells(r, DATA_CAT_COL_EINAUS).value))
+                        If vorhandenerEA <> "" Then
+                            bestehenderTyp = vorhandenerEA
+                            Exit For
+                        End If
+                    End If
+                End If
+            Next r
+            
+            ' Wenn gleiche Kategorie mit anderem Typ existiert -> korrigieren
+            If bestehenderTyp <> "" And bestehenderTyp <> einAus Then
+                Application.EnableEvents = False
+                Target.value = bestehenderTyp
+                Application.EnableEvents = True
+                
+                Dim typBeschreibung As String
+                If bestehenderTyp = "E" Then
+                    typBeschreibung = "Einnahme (E)"
+                Else
+                    typBeschreibung = "Ausgabe (A)"
+                End If
+                
+                MsgBox "Die Kategorie """ & kategorie & """ ist bereits als " & typBeschreibung & " eingetragen." & vbCrLf & vbCrLf & _
+                       "Bei gleicher Kategorie kann nur einheitlich zwischen Einnahme oder Ausgabe gew" & ChrW(228) & "hlt werden." & vbCrLf & _
+                       "Gemischte Angaben sind nicht gestattet." & vbCrLf & vbCrLf & _
+                       "Der Wert wurde automatisch auf """ & bestehenderTyp & """ korrigiert.", _
+                       vbInformation, "Kategorie-Konsistenz"
+            End If
+        End If
+        
+        ' Zielspalte-Dropdown aktualisieren
+        einAus = UCase(Trim(Target.value))
+        Call SetzeZielspalteDropdown(ws, zeile, einAus)
+    End If
+    
+    ' --- Spalte L (Keyword) geaendert: Duplikat-Pruefung ---
+    If Target.Column = DATA_CAT_COL_KEYWORD Then
+        Dim neuesKeyword As String
+        neuesKeyword = Trim(Target.value)
+        
+        If neuesKeyword <> "" Then
+            kategorie = Trim(ws.Cells(zeile, DATA_CAT_COL_KATEGORIE).value)
+            
+            If kategorie <> "" Then
+                lastRow = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+                
+                For r = DATA_START_ROW To lastRow
+                    If r <> zeile Then
+                        If StrComp(Trim(ws.Cells(r, DATA_CAT_COL_KATEGORIE).value), kategorie, vbTextCompare) = 0 Then
+                            If StrComp(Trim(ws.Cells(r, DATA_CAT_COL_KEYWORD).value), neuesKeyword, vbTextCompare) = 0 Then
+                                MsgBox "F" & ChrW(252) & "r die Kategorie """ & kategorie & """ gibt es bereits das gew" & ChrW(228) & "hlte Schl" & ChrW(252) & "sselwort """ & neuesKeyword & """.", _
+                                       vbExclamation, "Doppeltes Schl" & ChrW(252) & "sselwort"
+                                Exit For
+                            End If
+                        End If
+                    End If
+                Next r
+            End If
+        End If
     End If
     
 End Sub
