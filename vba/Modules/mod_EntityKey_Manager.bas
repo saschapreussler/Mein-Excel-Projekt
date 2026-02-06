@@ -4,13 +4,14 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_EntityKey_Manager
 ' ZWECK: Verwaltung und Zuordnung von EntityKeys fuer Bankverkehr
-' VERSION: 5.3 - 07.02.2026
+' VERSION: 5.3.1 - 06.02.2026
 ' FIX: Manuelle SHOP/VERSORGER/BANK/SONSTIGE immer GRUEN
 ' NEU: EHEMALIGES MITGLIED -> InputBox Parzelle 1-14 wenn nicht in Historie
 ' NEU: EHEMALIGES MITGLIED in Historie -> GRUEN
 ' NEU: AktualisiereEntityKeyBeiAustritt (EX-Prefix bei Mitglied-Austritt)
 ' FIX: Debug-Spalte nur Datum (kein Uhrzeit) bei manuellen Zuordnungen
 ' FIX: Spalte X Breite 65 (via mod_Formatierung)
+' FIX: Mehrere Parzellen pro Mitglied werden kommagetrennt in V angezeigt
 ' ***************************************************************
 
 ' ===============================================================
@@ -1015,6 +1016,7 @@ End Function
 ' FIX v5.1: Debug-Spalte zeigt bei VERSORGER den Zweck
 '           Gemeinschaftskonto zeigt "automatisch erkannt"
 ' FIX v5.2: Umlaute in sichtbaren Texten
+' FIX v5.3.1: Alle Parzellen pro Mitglied via HoleAlleParzellen
 ' ===============================================================
 Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
                                              ByVal kontoname As String, _
@@ -1113,7 +1115,8 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
             If mitgliedInfo(6) = False Then
                 outEntityKey = CStr(mitgliedInfo(0))
                 outZuordnung = mitgliedInfo(1) & ", " & mitgliedInfo(2)
-                outParzellen = CStr(mitgliedInfo(3))
+                ' FIX v5.3.1: Alle Parzellen des Mitglieds sammeln (nicht nur erste)
+                outParzellen = HoleAlleParzellen(CStr(mitgliedInfo(0)), wsM)
                 outEntityRole = ErmittleEntityRoleVonFunktion(CStr(mitgliedInfo(4)))
                 outDebugInfo = "Eindeutiger Treffer"
                 outAmpelStatus = 1
@@ -1148,12 +1151,24 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
                     If outZuordnung <> "" Then outZuordnung = outZuordnung & vbLf
                     outZuordnung = outZuordnung & mitgliedInfo(1) & ", " & mitgliedInfo(2)
                     
-                    If outParzellen <> "" Then
-                        If InStr(outParzellen, CStr(mitgliedInfo(3))) = 0 Then
-                            outParzellen = outParzellen & ", " & CStr(mitgliedInfo(3))
+                    ' FIX v5.3.1: Alle Parzellen pro Person sammeln (nicht nur erste)
+                    Dim personParzellen As String
+                    personParzellen = HoleAlleParzellen(CStr(mitgliedInfo(0)), wsM)
+                    
+                    If personParzellen <> "" Then
+                        If outParzellen <> "" Then
+                            ' Nur Parzellen anfuegen die noch nicht enthalten sind
+                            Dim arrP() As String
+                            Dim p As Long
+                            arrP = Split(personParzellen, ", ")
+                            For p = LBound(arrP) To UBound(arrP)
+                                If InStr(outParzellen, Trim(arrP(p))) = 0 Then
+                                    outParzellen = outParzellen & ", " & Trim(arrP(p))
+                                End If
+                            Next p
+                        Else
+                            outParzellen = personParzellen
                         End If
-                    Else
-                        outParzellen = CStr(mitgliedInfo(3))
                     End If
                 End If
             End If
@@ -1448,6 +1463,8 @@ End Function
 
 ' ===============================================================
 ' Holt alle Parzellen fuer eine MemberID
+' Durchsucht die gesamte Mitgliederliste nach allen Zeilen mit
+' gleicher MemberID und sammelt die Parzellen kommagetrennt
 ' ===============================================================
 Private Function HoleAlleParzellen(ByVal memberID As String, _
                                     ByRef wsM As Worksheet) As String
@@ -1937,5 +1954,6 @@ End Sub
 Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long, Optional ByVal ws As Worksheet = Nothing)
     ' BEWUSST LEER
 End Sub
+
 
 
