@@ -1482,7 +1482,8 @@ End Sub
 
 ' ===============================================================
 ' WORKSHEET_CHANGE HANDLER fuer dynamische Formatierung
-' FIX v5.3: Bereinigt leere Bereiche bei allen Spalten/Tabellen
+' FIX v5.3: Bei jeder Aenderung ALLE Spalten neu formatieren,
+'           damit benachbarte Rahmenlinien nicht verloren gehen
 ' ===============================================================
 Public Sub OnDatenChange(ByVal Target As Range, ByVal ws As Worksheet)
     
@@ -1491,67 +1492,20 @@ Public Sub OnDatenChange(ByVal Target As Range, ByVal ws As Worksheet)
     Application.EnableEvents = False
     Application.ScreenUpdating = False
     
-    If Not Intersect(Target, ws.Columns(2)) Is Nothing Then
-        Call FormatiereSingleSpalte(ws, 2, True)
-    End If
+    ' Alle Einzelspalten neu formatieren (B, D, F, H, Z-AH)
+    Call FormatiereAlleDatenSpalten(ws)
     
-    If Not Intersect(Target, ws.Columns(4)) Is Nothing Then
-        Call FormatiereSingleSpalte(ws, 4, True)
-    End If
+    ' Kategorie-Tabelle (J-P)
+    Call FormatiereKategorieTabelle(ws)
+    Call SortiereKategorieTabelle(ws)
     
-    If Not Intersect(Target, ws.Columns(6)) Is Nothing Then
-        Call FormatiereSingleSpalte(ws, 6, True)
-    End If
+    ' EntityKey-Tabelle (R-X)
+    Call FormatiereEntityKeyTabelleKomplett(ws)
+    Call SortiereEntityKeyTabelle(ws)
     
-    If Not Intersect(Target, ws.Columns(8)) Is Nothing Then
-        Call FormatiereSingleSpalte(ws, 8, True)
-    End If
-    
+    ' Spezifische Change-Logik nur wenn in Kategorie-Bereich
     If Not Intersect(Target, ws.Range("J:P")) Is Nothing Then
-        Call FormatiereKategorieTabelle(ws)
-        Call SortiereKategorieTabelle(ws)
         Call OnKategorieChange(Target)
-    End If
-    
-    If Not Intersect(Target, ws.Range("R:X")) Is Nothing Then
-        Call FormatiereEntityKeyTabelleKomplett(ws)
-        Call SortiereEntityKeyTabelle(ws)
-    End If
-    
-    If Not Intersect(Target, ws.Columns(26)) Is Nothing Then
-        Call FormatiereSingleSpalte(ws, 26, True)
-    End If
-    
-    If Not Intersect(Target, ws.Columns(27)) Is Nothing Then
-        Call FormatiereSingleSpalte(ws, 27, True)
-    End If
-    
-    If Not Intersect(Target, ws.Columns(28)) Is Nothing Then
-        Call FormatiereSingleSpalte(ws, 28, True)
-    End If
-    
-    If Not Intersect(Target, ws.Columns(29)) Is Nothing Then
-        Call FormatiereSingleSpalte(ws, 29, True)
-    End If
-    
-    If Not Intersect(Target, ws.Columns(30)) Is Nothing Then
-        Call FormatiereSingleSpalte(ws, 30, True)
-    End If
-    
-    If Not Intersect(Target, ws.Columns(31)) Is Nothing Then
-        Call FormatiereSingleSpalte(ws, 31, True)
-    End If
-    
-    If Not Intersect(Target, ws.Columns(32)) Is Nothing Then
-        Call FormatiereSingleSpalte(ws, 32, True)
-    End If
-    
-    If Not Intersect(Target, ws.Columns(33)) Is Nothing Then
-        Call FormatiereSingleSpalte(ws, 33, True)
-    End If
-    
-    If Not Intersect(Target, ws.Columns(34)) Is Nothing Then
-        Call FormatiereSingleSpalte(ws, 34, True)
     End If
     
 ErrorHandler:
