@@ -1682,6 +1682,8 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
     ' EntityKey setzen
     If neuerEntityKey <> "" Then
         wsDaten.Cells(zeile, EK_COL_ENTITYKEY).value = neuerEntityKey
+    ElseIf neueRole = "" Then
+        wsDaten.Cells(zeile, EK_COL_ENTITYKEY).value = ""
     End If
     
     ' Zuordnung: aus Kontoname wenn leer, Nutzer kann spaeter aendern
@@ -1691,6 +1693,8 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
         If aktuelleZuordnung = "" Then
             wsDaten.Cells(zeile, EK_COL_ZUORDNUNG).value = neueZuordnung
         End If
+    ElseIf neueRole = "" Then
+        wsDaten.Cells(zeile, EK_COL_ZUORDNUNG).value = ""
     End If
     
     ' Parzelle
@@ -1707,9 +1711,8 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
         End If
     End If
     
-    If neuerDebug <> "" Then
-        wsDaten.Cells(zeile, EK_COL_DEBUG).value = neuerDebug
-    End If
+    ' Debug-Spalte X: IMMER aktualisieren bei jeder manuellen Aenderung
+    wsDaten.Cells(zeile, EK_COL_DEBUG).value = neuerDebug
     
     ' Ampelfarbe
     Call SetzeAmpelFarbe(wsDaten, zeile, ampelStatus)
