@@ -739,13 +739,14 @@ Public Sub SetzeAlleAmpelfarbenNachSortierung(ByRef wsD As Worksheet)
                     ' In Historie gefunden -> GRUEN
                     ampel = 1
                 Else
-                    ' Nicht in Historie -> GELB + Hinweis
+                    ' Nicht in Historie -> GELB
                     ampel = 2
-                    If InStr(debugTxt, "ehem. Mitglied nicht in Historie") = 0 Then
+                    ' Hinweis nur anfuegen wenn KEIN "nicht in Historie" bereits im Text
+                    If InStr(debugTxt, "nicht in Historie") = 0 Then
                         If debugTxt <> "" Then
-                            debugTxt = debugTxt & " | ehem. Mitglied nicht in Historie"
+                            debugTxt = debugTxt & " | nicht in Historie"
                         Else
-                            debugTxt = "ehem. Mitglied nicht in Historie"
+                            debugTxt = "nicht in Historie"
                         End If
                         wsD.Cells(r, EK_COL_DEBUG).value = debugTxt
                     End If
