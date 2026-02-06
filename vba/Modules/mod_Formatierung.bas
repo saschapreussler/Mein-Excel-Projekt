@@ -4,8 +4,8 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Formatierung
 ' ZWECK: Formatierung und DropDown-Listen-Verwaltung
-' VERSION: 1.5 - 02.02.2026
-' KORREKTUR: SetzeZellschutzFuerZeile hinzugefuegt
+' VERSION: 2.0 - 06.02.2026
+' KORREKTUR: Fehlende Prozeduren fuer Tabelle8 hinzugefuegt
 ' ***************************************************************
 
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
@@ -190,6 +190,71 @@ ErrorHandler:
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     MsgBox "Fehler bei der Formatierung: " & Err.Description, vbCritical
+End Sub
+
+' ===============================================================
+' PUBLIC WRAPPER FUER TABELLE8: Formatiert Kategorie-Tabelle komplett
+' ===============================================================
+Public Sub FormatKategorieTableComplete(ByRef ws As Worksheet)
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    Call FormatiereKategorieTabelle(ws)
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
+End Sub
+
+' ===============================================================
+' PUBLIC WRAPPER FUER TABELLE8: Formatiert EntityKey-Tabelle komplett
+' ===============================================================
+Public Sub FormatEntityKeyTableComplete(ByRef ws As Worksheet)
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    Call FormatiereEntityKeyTabelleKomplett(ws)
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
+End Sub
+
+' ===============================================================
+' PUBLIC WRAPPER FUER TABELLE8: Formatiert eine einzelne Spalte
+' ===============================================================
+Public Sub FormatSingleColumnComplete(ByRef ws As Worksheet, ByVal colIndex As Long)
+    
+    Dim lastRow As Long
+    Dim rng As Range
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    lastRow = ws.Cells(ws.Rows.count, colIndex).End(xlUp).Row
+    If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW
+    
+    Set rng = ws.Range(ws.Cells(DATA_START_ROW, colIndex), ws.Cells(lastRow, colIndex))
+    
+    With rng
+        .VerticalAlignment = xlCenter
+        .Borders.LineStyle = xlContinuous
+        .Borders.Weight = xlThin
+    End With
+    
+    ws.Columns(colIndex).AutoFit
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
 End Sub
 
 ' ===============================================================
@@ -511,27 +576,22 @@ Private Sub SetzeZellschutzFuerZeile(ByRef ws As Worksheet, ByVal zeile As Long,
     
     On Error Resume Next
     
-    ' Spalten R-T (EntityKey, IBAN, Kontoname) sind immer gesperrt
     Set rngGesperrt = ws.Range(ws.Cells(zeile, EK_COL_ENTITYKEY), ws.Cells(zeile, EK_COL_KONTONAME))
     rngGesperrt.Locked = True
     
-    ' Spalten U-X (Zuordnung, Parzelle, Role, Debug) abhaengig von Role
     Set rngEditierbar = ws.Range(ws.Cells(zeile, EK_COL_ZUORDNUNG), ws.Cells(zeile, EK_COL_DEBUG))
     
     Select Case UCase(Trim(currentRole))
         Case "MITGLIED"
-            ' Bei MITGLIED: Zuordnung, Parzelle, Role gesperrt; nur Debug editierbar
             ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = True
             ws.Cells(zeile, EK_COL_PARZELLE).Locked = True
             ws.Cells(zeile, EK_COL_ROLE).Locked = True
             ws.Cells(zeile, EK_COL_DEBUG).Locked = False
             
         Case "UNBEKANNT", ""
-            ' Bei UNBEKANNT: Alles editierbar fuer manuelle Zuordnung
             rngEditierbar.Locked = False
             
         Case Else
-            ' Bei anderen Roles (DIENSTLEISTER, BEHOERDE, etc.): Role gesperrt, Rest editierbar
             ws.Cells(zeile, EK_COL_ZUORDNUNG).Locked = False
             ws.Cells(zeile, EK_COL_PARZELLE).Locked = True
             ws.Cells(zeile, EK_COL_ROLE).Locked = True
@@ -633,8 +693,4 @@ Public Sub OnKategorieChange(ByVal Target As Range)
     End If
     
 End Sub
-
-
-
-
 
