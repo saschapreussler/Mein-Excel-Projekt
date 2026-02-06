@@ -268,12 +268,12 @@ Public Sub AktualisiereAlleEntityKeys()
         currentParzelle = Trim(wsD.Cells(r, EK_COL_PARZELLE).value)
         currentRole = Trim(wsD.Cells(r, EK_COL_ROLE).value)
         
-        If iban = "" And kontoname = "" Then GoTo NextRow
+        If iban = "" And kontoname = "" Then GoTo nextRow
         
         ' WICHTIG: Bereits manuell zugeordnete Zeilen NICHT überschreiben
         If HatBereitsGueltigeDaten(currentEntityKey, currentZuordnung, currentRole) Then
             zeilenUnveraendert = zeilenUnveraendert + 1
-            GoTo NextRow
+            GoTo nextRow
         End If
         
         zeilenNeu = zeilenNeu + 1
@@ -309,7 +309,7 @@ Public Sub AktualisiereAlleEntityKeys()
         
         If ampelStatus = 3 Then zeilenProbleme = zeilenProbleme + 1
         
-NextRow:
+nextRow:
     Next r
     
     wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True

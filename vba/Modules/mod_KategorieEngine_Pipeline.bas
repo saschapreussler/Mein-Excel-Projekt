@@ -25,7 +25,7 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
 
         Dim normText As String
         normText = NormalizeBankkontoZeile(wsBK, r)
-        If normText = "" Then GoTo NextRow
+        If normText = "" Then GoTo nextRow
 
         ' ------------------------------
         ' Kategorie ermitteln
@@ -38,7 +38,7 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
         ' ------------------------------
         ApplyBetragsZuordnung wsBK, r
 
-NextRow:
+nextRow:
     Next r
 
 SafeExit:
