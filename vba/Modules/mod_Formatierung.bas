@@ -4,8 +4,8 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Formatierung
 ' ZWECK: Formatierung und DropDown-Listen-Verwaltung
-' VERSION: 2.7 - 07.02.2026
-' NEU: Zebra-Formatierung fuer alle Spalten, dynamische Updates
+' VERSION: 2.8 - 07.02.2026
+' FIX: Inside-Borders, Z/AA zentriert, Cleanup unter lastRow
 ' ***************************************************************
 
 Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiss
@@ -227,6 +227,7 @@ End Sub
 
 ' ===============================================================
 ' NEU: Formatiert eine einzelne Spalte mit Zebra + Rahmen
+' FIX: Inside-Borders + Zentrierung Z/AA
 ' ===============================================================
 Private Sub FormatiereSingleSpalte(ByRef ws As Worksheet, ByVal colIndex As Long, ByVal mitZebra As Boolean)
     
@@ -247,6 +248,11 @@ Private Sub FormatiereSingleSpalte(ByRef ws As Worksheet, ByVal colIndex As Long
     
     ' Vertikale Zentrierung
     rng.VerticalAlignment = xlCenter
+    
+    ' Horizontale Zentrierung fuer Spalte Z (26) und AA (27)
+    If colIndex = 26 Or colIndex = 27 Then
+        rng.HorizontalAlignment = xlCenter
+    End If
     
     ' Zebra-Formatierung anwenden
     If mitZebra Then
@@ -277,6 +283,15 @@ Private Sub FormatiereSingleSpalte(ByRef ws As Worksheet, ByVal colIndex As Long
         .Borders(xlEdgeRight).Weight = xlThin
         .Borders(xlEdgeRight).color = RGB(0, 0, 0)
     End With
+    
+    ' Innere horizontale Trennlinien setzen (zwischen jeder Zelle)
+    If lastRow > DATA_START_ROW Then
+        With rng.Borders(xlInsideHorizontal)
+            .LineStyle = xlContinuous
+            .Weight = xlThin
+            .color = RGB(0, 0, 0)
+        End With
+    End If
     
     ' Spaltenbreite anpassen
     ws.Columns(colIndex).AutoFit
@@ -321,8 +336,13 @@ End Sub
 
 ' ===============================================================
 ' PUBLIC WRAPPER FUER TABELLE8: Formatiert eine einzelne Spalte
+' FIX: Raeumt Formatierung unterhalb lastRow auf (geloeschte Eintraege)
 ' ===============================================================
 Public Sub FormatSingleColumnComplete(ByRef ws As Worksheet, ByVal colIndex As Long)
+    
+    Dim lastRow As Long
+    Dim cleanEnd As Long
+    Dim rngClean As Range
     
     On Error Resume Next
     ws.Unprotect PASSWORD:=PASSWORD
@@ -330,11 +350,33 @@ Public Sub FormatSingleColumnComplete(ByRef ws As Worksheet, ByVal colIndex As L
     
     Call FormatiereSingleSpalte(ws, colIndex, True)
     
+    ' Aufraumen: Formatierung unterhalb der letzten Datenzeile entfernen
+    lastRow = ws.Cells(ws.Rows.count, colIndex).End(xlUp).Row
+    If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
+    
+    cleanEnd = lastRow + 50
+    If cleanEnd > ws.Rows.count Then cleanEnd = ws.Rows.count
+    
+    If lastRow + 1 <= cleanEnd Then
+        Set rngClean = ws.Range(ws.Cells(lastRow + 1, colIndex), ws.Cells(cleanEnd, colIndex))
+        rngClean.Interior.ColorIndex = xlNone
+        rngClean.Borders.LineStyle = xlNone
+    End If
+    
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
     
 End Sub
+
+
+
+
+'--- Ende Teil 1 von 3 ---
+'--- Anfang Teil 2 von 3 ---
+
+
+
 
 ' ===============================================================
 ' KATEGORIE-TABELLE FORMATIEREN (J-P) mit ZEBRA
@@ -463,10 +505,6 @@ Public Sub SortiereEntityKeyTabelle(Optional ByRef ws As Worksheet = Nothing)
     
     lastRow = ws.Cells(ws.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
     If lastRow < EK_START_ROW Then Exit Sub
-    
-    ' WICHTIG: Temporaere Hilfsspalte innerhalb R-X verwenden
-    ' Wir nutzen eine temporaere Spalte INNERHALB der EntityKey-Tabelle
-    ' oder besser: Wir kopieren die Daten, sortieren, und schreiben zurueck
     
     Dim arrData() As Variant
     Dim arrSorted() As Variant
@@ -614,6 +652,15 @@ Private Sub SetzeZielspalteDropdown(ByRef ws As Worksheet, ByVal zeile As Long, 
     On Error GoTo 0
     
 End Sub
+
+
+
+
+'--- Ende Teil 2 von 3 ---
+'--- Anfang Teil 3 von 3 ---
+
+
+
 
 ' ===============================================================
 ' DROPDOWN-LISTEN FUER KATEGORIEN AKTUALISIEREN (AF + AG + AH)
