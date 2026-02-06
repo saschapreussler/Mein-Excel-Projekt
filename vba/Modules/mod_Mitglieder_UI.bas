@@ -191,12 +191,12 @@ End Sub
 ' ***************************************************************
 ' FUNKTION: GetEntityKeyByParzelle
 ' ***************************************************************
-Public Function GetEntityKeyByParzelle(ByVal ParzelleNr As String) As String
+Public Function GetEntityKeyByParzelle(ByVal parzelleNr As String) As String
     Dim wsD As Worksheet
     Dim lastRow As Long
     Dim rngFind As Range
     
-    If ParzelleNr = "" Then
+    If parzelleNr = "" Then
         GetEntityKeyByParzelle = ""
         Exit Function
     End If
@@ -208,7 +208,7 @@ Public Function GetEntityKeyByParzelle(ByVal ParzelleNr As String) As String
     lastRow = wsD.Cells(wsD.Rows.count, DATA_MAP_COL_PARZELLE).End(xlUp).Row
     Set rngFind = wsD.Range(wsD.Cells(DATA_START_ROW, DATA_MAP_COL_PARZELLE), wsD.Cells(lastRow, DATA_MAP_COL_PARZELLE))
     
-    Set rngFind = rngFind.Find(What:=ParzelleNr, LookIn:=xlValues, LookAt:=xlWhole)
+    Set rngFind = rngFind.Find(What:=parzelleNr, LookIn:=xlValues, LookAt:=xlWhole)
     
     If Not rngFind Is Nothing Then
         GetEntityKeyByParzelle = wsD.Cells(rngFind.Row, DATA_MAP_COL_ENTITYKEY).value
@@ -283,7 +283,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     If ChangeReason = "Parzellenwechsel" And NewParzelleNr <> "" Then
         ' === SICHERHEITSCHECK 2: NewParzelleNr darf nicht "Verein" sein ===
         If Trim(NewParzelleNr) = PARZELLE_VEREIN Then
-            MsgBox "FEHLER: Austretende Mitglieder dürfen nicht zur Verein-Parzelle wechseln!", vbCritical
+            MsgBox "FEHLER: Austretende Mitglieder d" & ChrW(252) & "rfen nicht zur Verein-Parzelle wechseln!", vbCritical
             wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
             GoTo CleanUp
         End If
@@ -293,7 +293,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ElseIf ChangeReason = "Austritt aus Parzelle" Then
         ' === SICHERHEITSCHECK 3: Stelle sicher, dass wir nicht die Verein-Parzelle antasten ===
         If Trim(wsM.Cells(selectedRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
-            MsgBox "FEHLER: Die Verein-Parzelle kann nicht aufgelöst werden!", vbCritical
+            MsgBox "FEHLER: Die Verein-Parzelle kann nicht aufgel" & ChrW(246) & "st werden!", vbCritical
             wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
             GoTo CleanUp
         End If
@@ -307,6 +307,9 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     
     Call AktualisiereDatenstand
     wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    ' === NEU v5.3: EntityKey-Tabelle aktualisieren (EX-Prefix) ===
+    Call mod_EntityKey_Manager.AktualisiereEntityKeyBeiAustritt(OldMemberID)
     
     ' === SICHERHEITSCHECK 4: Verifikation vor Sortierung ===
     Call VerifikationVereinsParzelleIntakt

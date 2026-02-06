@@ -1178,13 +1178,13 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     End With
     ws.Columns(EK_COL_ROLE).AutoFit
     
-    ' FIX v5.2: Spalte X (Debug) - WrapText erlaubt, Breite 62
+    ' FIX v5.3: Spalte X (Debug) - WrapText erlaubt, Breite 65
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_DEBUG), _
                   ws.Cells(lastRow, EK_COL_DEBUG))
         .WrapText = True
         .HorizontalAlignment = xlLeft
     End With
-    ws.Columns(EK_COL_DEBUG).ColumnWidth = 62
+    ws.Columns(EK_COL_DEBUG).ColumnWidth = 65
     
     ' R-T immer gesperrt (EntityKey, IBAN, Kontoname)
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _

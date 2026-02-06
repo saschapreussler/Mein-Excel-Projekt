@@ -4,15 +4,13 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_EntityKey_Manager
 ' ZWECK: Verwaltung und Zuordnung von EntityKeys fuer Bankverkehr
-' VERSION: 5.2 - 06.02.2026
-' FIX: EntityKey im Format "yyyymmddhhmmss-NNNNN" (wie MemberID-Fallback)
-' FIX: "Stadt Werder (Havel)" als VERSORGER erkannt
-' FIX: Debug-Spalte zeigt Versorger-Zweck (Wasser, Grundsteuer, etc.)
-' FIX: Gemeinschaftskonto Debug zeigt "automatisch erkannt"
-' FIX: Spalte T WrapText nur bei vbLf-Inhalt
-' NEU: Geldautomat-Abhebung erkannt (GA NR... BLZ...)
-' NEU: EHEMALIGES MITGLIED -> PruefeObInHistorie
-' FIX: Umlaute in allen sichtbaren Texten
+' VERSION: 5.3 - 07.02.2026
+' FIX: Manuelle SHOP/VERSORGER/BANK/SONSTIGE immer GRUEN
+' NEU: EHEMALIGES MITGLIED -> InputBox Parzelle 1-14 wenn nicht in Historie
+' NEU: EHEMALIGES MITGLIED in Historie -> GRUEN
+' NEU: AktualisiereEntityKeyBeiAustritt (EX-Prefix bei Mitglied-Austritt)
+' FIX: Debug-Spalte nur Datum (kein Uhrzeit) bei manuellen Zuordnungen
+' FIX: Spalte X Breite 65 (via mod_Formatierung)
 ' ***************************************************************
 
 ' ===============================================================
@@ -520,6 +518,40 @@ Private Function PruefeObInHistorie(ByVal kontoname As String, ByRef wsH As Work
 End Function
 
 ' ===============================================================
+' NEU v5.3: Prueft ob ehemaliges Mitglied in Historie steht
+' und gibt die Parzelle aus der Historie zurueck
+' ===============================================================
+Private Function HoleParzelleFuerEhemaligesAusHistorie(ByVal kontoname As String, ByRef wsH As Worksheet) As String
+    Dim r As Long
+    Dim lastRow As Long
+    Dim nachnameHist As String
+    Dim kontoNameNorm As String
+    Dim nachnameNorm As String
+    
+    HoleParzelleFuerEhemaligesAusHistorie = ""
+    
+    If kontoname = "" Then Exit Function
+    
+    kontoNameNorm = NormalisiereStringFuerVergleich(kontoname)
+    If kontoNameNorm = "" Then Exit Function
+    
+    lastRow = wsH.Cells(wsH.Rows.count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row
+    
+    For r = H_START_ROW To lastRow
+        nachnameHist = Trim(wsH.Cells(r, H_COL_NAME_EHEM_PAECHTER).value)
+        If nachnameHist <> "" Then
+            nachnameNorm = NormalisiereStringFuerVergleich(nachnameHist)
+            If nachnameNorm <> "" And Len(nachnameNorm) >= 3 Then
+                If InStr(kontoNameNorm, nachnameNorm) > 0 Then
+                    HoleParzelleFuerEhemaligesAusHistorie = Trim(CStr(wsH.Cells(r, H_COL_PARZELLE).value))
+                    Exit Function
+                End If
+            End If
+        End If
+    Next r
+End Function
+
+' ===============================================================
 ' HAUPTPROZEDUR: Aktualisiert alle EntityKeys
 ' ===============================================================
 Public Sub AktualisiereAlleEntityKeys()
@@ -668,7 +700,7 @@ End Sub
 
 ' ===============================================================
 ' NEU v5.0: Setzt Ampelfarben fuer ALLE Zeilen NACH Sortierung
-' FIX v5.2: Prueft EHEMALIGES MITGLIED gegen Mitgliederhistorie
+' FIX v5.3: EHEMALIGES MITGLIED in Historie -> GRUEN
 ' ===============================================================
 Public Sub SetzeAlleAmpelfarbenNachSortierung(ByRef wsD As Worksheet)
     Dim lastRow As Long
@@ -699,11 +731,16 @@ Public Sub SetzeAlleAmpelfarbenNachSortierung(ByRef wsD As Worksheet)
         
         ampel = BerechneAmpelStatus(entityKey, zuordnung, role, debugTxt)
         
-        ' NEU v5.2: Bei EHEMALIGES MITGLIED pruefen ob in Historie
+        ' NEU v5.3: Bei EHEMALIGES MITGLIED pruefen ob in Historie
         If UCase(role) = "EHEMALIGES MITGLIED" Then
             If Not wsH Is Nothing Then
                 kontoname = Trim(CStr(wsD.Cells(r, EK_COL_KONTONAME).value))
-                If Not PruefeObInHistorie(kontoname, wsH) Then
+                If PruefeObInHistorie(kontoname, wsH) Then
+                    ' In Historie gefunden -> GRUEN
+                    ampel = 1
+                Else
+                    ' Nicht in Historie -> GELB + Hinweis
+                    ampel = 2
                     If InStr(debugTxt, "ehem. Mitglied nicht in Historie") = 0 Then
                         If debugTxt <> "" Then
                             debugTxt = debugTxt & " | ehem. Mitglied nicht in Historie"
@@ -726,6 +763,7 @@ End Sub
 ' GRUEN (1) = 100% sicher zugeordnet
 ' GELB (2) = Treffer unsicher / Teiluebereinstimmung
 ' ROT (3) = Kein Treffer, Nutzer MUSS manuell in W zuordnen
+' FIX v5.3: EHEMALIGES MITGLIED default GELB (Historie-Check extern)
 ' ===============================================================
 Private Function BerechneAmpelStatus(ByVal entityKey As String, _
                                       ByVal zuordnung As String, _
@@ -764,7 +802,7 @@ Private Function BerechneAmpelStatus(ByVal entityKey As String, _
         Exit Function
     End If
     
-    ' GELB: Ehemaliges Mitglied (Parzelle evtl. noch zuzuordnen)
+    ' GELB: Ehemaliges Mitglied (Historie-Check in SetzeAlleAmpelfarbenNachSortierung)
     If UCase(role) = "EHEMALIGES MITGLIED" Then
         BerechneAmpelStatus = 2
         Exit Function
@@ -1446,7 +1484,9 @@ End Function
 
 ' ===============================================================
 ' Verarbeitet manuelle Role-Aenderung in Spalte W
-' FIX v5.2: EHEMALIGES MITGLIED prueft gegen Historie
+' FIX v5.3: Alle manuellen Zuordnungen GRUEN (ausser EHEMALIGES MITGLIED ohne Historie)
+' NEU v5.3: EHEMALIGES MITGLIED -> InputBox Parzelle wenn nicht in Historie
+' FIX v5.3: Debug-Spalte nur Datum (kein Uhrzeit)
 ' ===============================================================
 Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
     Dim wsDaten As Worksheet
@@ -1494,13 +1534,13 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
                 neuerEntityKey = CStr(bestMatch(0))
                 neueZuordnung = bestMatch(1) & ", " & bestMatch(2)
                 neueParzelle = HoleAlleParzellen(CStr(bestMatch(0)), wsM)
-                neuerDebug = "Manuell: " & neueRole & " -> Mitglied gefunden (" & Format(Now, "dd.mm.yyyy hh:mm") & ")"
+                neuerDebug = "Manuell: " & neueRole & " -> Mitglied gefunden (" & Format(Now, "dd.mm.yyyy") & ")"
                 ampelStatus = 1
             Else
                 neuerEntityKey = currentEntityKey
                 neueZuordnung = ExtrahiereAnzeigeName(kontoname)
                 neueParzelle = ""
-                neuerDebug = "Manuell: " & neueRole & " -> KEIN Mitglied gefunden (" & Format(Now, "dd.mm.yyyy hh:mm") & ")"
+                neuerDebug = "Manuell: " & neueRole & " -> KEIN Mitglied gefunden (" & Format(Now, "dd.mm.yyyy") & ")"
                 ampelStatus = 2
             End If
             
@@ -1513,16 +1553,61 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
             End If
             neueZuordnung = ExtrahiereAnzeigeName(kontoname)
             neueParzelle = ""
-            neuerDebug = "Manuell: EHEMALIGES MITGLIED (" & Format(Now, "dd.mm.yyyy hh:mm") & ")"
-            ampelStatus = 2
+            neuerDebug = "Manuell: EHEMALIGES MITGLIED (" & Format(Now, "dd.mm.yyyy") & ")"
+            ampelStatus = 2  ' Default GELB
             
-            ' NEU v5.2: Pruefen ob in Mitgliederhistorie
+            ' NEU v5.3: Pruefen ob in Mitgliederhistorie
             On Error Resume Next
             Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
             On Error GoTo ErrorHandler
             If Not wsH Is Nothing Then
-                If Not PruefeObInHistorie(kontoname, wsH) Then
+                If PruefeObInHistorie(kontoname, wsH) Then
+                    ' In Historie gefunden -> GRUEN + Parzelle aus Historie
+                    ampelStatus = 1
+                    Dim historieParzelle As String
+                    historieParzelle = HoleParzelleFuerEhemaligesAusHistorie(kontoname, wsH)
+                    If historieParzelle <> "" Then
+                        neueParzelle = historieParzelle
+                    End If
+                    neuerDebug = "Manuell: EHEMALIGES MITGLIED - in Historie gefunden (" & Format(Now, "dd.mm.yyyy") & ")"
+                Else
+                    ' NICHT in Historie -> InputBox fuer Parzelle (1-14)
+                    ampelStatus = 2
                     neuerDebug = neuerDebug & " | ehem. Mitglied nicht in Historie"
+                    
+                    Dim eingabe As String
+                    Dim parzelleGueltig As Boolean
+                    Dim parzelleNr As Long
+                    
+                    parzelleGueltig = False
+                    Do
+                        eingabe = InputBox("Welche Parzelle belegte das ehemalige Mitglied?" & vbCrLf & vbCrLf & _
+                                           "Bitte eine Zahl von 1 bis 14 eingeben:" & vbCrLf & _
+                                           "(Abbrechen = keine Parzelle zuweisen)", _
+                                           "Parzelle f" & ChrW(252) & "r ehemaliges Mitglied", "")
+                        
+                        ' Abbrechen gedrueckt oder leer
+                        If eingabe = "" Then
+                            Exit Do
+                        End If
+                        
+                        ' Pruefen ob gueltige Zahl 1-14
+                        If IsNumeric(eingabe) Then
+                            parzelleNr = CLng(eingabe)
+                            If parzelleNr >= 1 And parzelleNr <= 14 Then
+                                parzelleGueltig = True
+                            Else
+                                MsgBox "Ung" & ChrW(252) & "ltige Eingabe! Bitte eine Zahl zwischen 1 und 14 eingeben.", vbExclamation, "Ung" & ChrW(252) & "ltige Parzelle"
+                            End If
+                        Else
+                            MsgBox "Ung" & ChrW(252) & "ltige Eingabe! Bitte nur eine Zahl eingeben.", vbExclamation, "Ung" & ChrW(252) & "ltige Eingabe"
+                        End If
+                    Loop Until parzelleGueltig
+                    
+                    If parzelleGueltig Then
+                        neueParzelle = CStr(parzelleNr)
+                        neuerDebug = "Manuell: EHEMALIGES MITGLIED - Parzelle " & neueParzelle & " (manuell, " & Format(Now, "dd.mm.yyyy") & ") | nicht in Historie"
+                    End If
                 End If
             End If
             
@@ -1535,7 +1620,7 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
             End If
             neueZuordnung = ExtrahiereAnzeigeName(kontoname)
             neueParzelle = ""
-            neuerDebug = "Manuell: VERSORGER (" & Format(Now, "dd.mm.yyyy hh:mm") & ")"
+            neuerDebug = "Manuell: VERSORGER (" & Format(Now, "dd.mm.yyyy") & ")"
             ampelStatus = 1
             
         Case "BANK"
@@ -1547,7 +1632,7 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
             End If
             neueZuordnung = ExtrahiereAnzeigeName(kontoname)
             neueParzelle = ""
-            neuerDebug = "Manuell: BANK (" & Format(Now, "dd.mm.yyyy hh:mm") & ")"
+            neuerDebug = "Manuell: BANK (" & Format(Now, "dd.mm.yyyy") & ")"
             ampelStatus = 1
             
         Case "SHOP"
@@ -1559,7 +1644,7 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
             End If
             neueZuordnung = ExtrahiereAnzeigeName(kontoname)
             neueParzelle = ""
-            neuerDebug = "Manuell: SHOP (" & Format(Now, "dd.mm.yyyy hh:mm") & ")"
+            neuerDebug = "Manuell: SHOP (" & Format(Now, "dd.mm.yyyy") & ")"
             ampelStatus = 1
             
         Case "SONSTIGE"
@@ -1571,7 +1656,7 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
             End If
             neueZuordnung = ExtrahiereAnzeigeName(kontoname)
             neueParzelle = ""
-            neuerDebug = "Manuell: SONSTIGE (" & Format(Now, "dd.mm.yyyy hh:mm") & ")"
+            neuerDebug = "Manuell: SONSTIGE (" & Format(Now, "dd.mm.yyyy") & ")"
             ampelStatus = 1
             
         Case ""
@@ -1590,7 +1675,7 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
             End If
             neueZuordnung = ExtrahiereAnzeigeName(kontoname)
             neueParzelle = ""
-            neuerDebug = "Manuell: " & neueRole & " (" & Format(Now, "dd.mm.yyyy hh:mm") & ")"
+            neuerDebug = "Manuell: " & neueRole & " (" & Format(Now, "dd.mm.yyyy") & ")"
             ampelStatus = 2
     End Select
     
@@ -1614,7 +1699,12 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
             wsDaten.Cells(zeile, EK_COL_PARZELLE).value = neueParzelle
         End If
     Else
-        wsDaten.Cells(zeile, EK_COL_PARZELLE).value = ""
+        ' NEU v5.3: EHEMALIGES MITGLIED darf Parzelle bekommen (aus Historie oder InputBox)
+        If neueRole = "EHEMALIGES MITGLIED" And neueParzelle <> "" Then
+            wsDaten.Cells(zeile, EK_COL_PARZELLE).value = neueParzelle
+        Else
+            wsDaten.Cells(zeile, EK_COL_PARZELLE).value = ""
+        End If
     End If
     
     If neuerDebug <> "" Then
@@ -1646,6 +1736,113 @@ ErrorHandler:
     On Error Resume Next
     wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Debug.Print "FEHLER in VerarbeiteManuelleRoleAenderung: " & Err.Description
+End Sub
+
+' ===============================================================
+' NEU v5.3: Aktualisiert EntityKey-Tabelle bei Mitglied-Austritt
+' Sucht alle Zeilen mit der alten MemberID und setzt EX-Prefix
+' Wird aufgerufen aus mod_Mitglieder_UI nach Historie-Eintrag
+' ===============================================================
+Public Sub AktualisiereEntityKeyBeiAustritt(ByVal alteMemberID As String)
+    Dim wsD As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim currentEK As String
+    Dim neuerEK As String
+    Dim currentRole As String
+    Dim anzahlAktualisiert As Long
+    
+    On Error GoTo ErrorHandler
+    
+    If alteMemberID = "" Then Exit Sub
+    
+    Set wsD = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    On Error Resume Next
+    wsD.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo ErrorHandler
+    
+    lastRow = wsD.Cells(wsD.Rows.count, EK_COL_IBAN).End(xlUp).Row
+    Dim lastRowR As Long
+    lastRowR = wsD.Cells(wsD.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
+    If lastRowR > lastRow Then lastRow = lastRowR
+    If lastRow < EK_START_ROW Then GoTo CleanUp
+    
+    anzahlAktualisiert = 0
+    
+    For r = EK_START_ROW To lastRow
+        currentEK = Trim(wsD.Cells(r, EK_COL_ENTITYKEY).value)
+        
+        ' Pruefe ob EntityKey die alte MemberID ist (direkt oder als SHARE-Teil)
+        If currentEK = alteMemberID Then
+            ' Einzelne MemberID -> EX-Prefix + neue GUID
+            neuerEK = PREFIX_EHEMALIG & CreateGUID()
+            wsD.Cells(r, EK_COL_ENTITYKEY).value = neuerEK
+            wsD.Cells(r, EK_COL_ROLE).value = ROLE_EHEMALIGES_MITGLIED
+            wsD.Cells(r, EK_COL_DEBUG).value = "Austritt: MemberID ge" & ChrW(228) & "ndert zu EX- (" & Format(Now, "dd.mm.yyyy") & ")"
+            Call SetzeAmpelFarbe(wsD, r, 1)  ' GRUEN - in Historie vorhanden
+            anzahlAktualisiert = anzahlAktualisiert + 1
+            
+        ElseIf Left(currentEK, Len(PREFIX_SHARE)) = PREFIX_SHARE Then
+            ' SHARE-Key: pruefe ob MemberID enthalten
+            If InStr(currentEK, alteMemberID) > 0 Then
+                ' Gemeinschaftskonto mit diesem Mitglied
+                ' MemberID aus SHARE-Key entfernen
+                Dim sharePart As String
+                sharePart = Mid(currentEK, Len(PREFIX_SHARE) + 1)
+                
+                Dim idParts() As String
+                idParts = Split(sharePart, "_")
+                
+                Dim newShareParts As String
+                newShareParts = ""
+                Dim verbleibendeAnzahl As Long
+                verbleibendeAnzahl = 0
+                
+                Dim p As Long
+                For p = LBound(idParts) To UBound(idParts)
+                    If idParts(p) <> alteMemberID Then
+                        If newShareParts <> "" Then newShareParts = newShareParts & "_"
+                        newShareParts = newShareParts & idParts(p)
+                        verbleibendeAnzahl = verbleibendeAnzahl + 1
+                    End If
+                Next p
+                
+                If verbleibendeAnzahl = 1 Then
+                    ' Nur noch 1 Person -> direkte MemberID (kein SHARE mehr)
+                    wsD.Cells(r, EK_COL_ENTITYKEY).value = newShareParts
+                ElseIf verbleibendeAnzahl > 1 Then
+                    ' Noch mehrere -> SHARE beibehalten
+                    wsD.Cells(r, EK_COL_ENTITYKEY).value = PREFIX_SHARE & newShareParts
+                End If
+                
+                ' Zuordnung und Debug aktualisieren
+                Dim altDebug As String
+                altDebug = Trim(wsD.Cells(r, EK_COL_DEBUG).value)
+                If altDebug <> "" Then
+                    wsD.Cells(r, EK_COL_DEBUG).value = altDebug & " | Austritt eines Kontoinhabers (" & Format(Now, "dd.mm.yyyy") & ")"
+                Else
+                    wsD.Cells(r, EK_COL_DEBUG).value = "Austritt eines Kontoinhabers (" & Format(Now, "dd.mm.yyyy") & ")"
+                End If
+                
+                anzahlAktualisiert = anzahlAktualisiert + 1
+            End If
+        End If
+    Next r
+    
+CleanUp:
+    wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    If anzahlAktualisiert > 0 Then
+        Debug.Print "EntityKey-Austritt: " & anzahlAktualisiert & " Zeilen aktualisiert f" & ChrW(252) & "r MemberID " & alteMemberID
+    End If
+    
+    Exit Sub
+    
+ErrorHandler:
+    On Error Resume Next
+    wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    Debug.Print "FEHLER in AktualisiereEntityKeyBeiAustritt: " & Err.Description
 End Sub
 
 ' ===============================================================
@@ -1732,4 +1929,5 @@ End Sub
 Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long, Optional ByVal ws As Worksheet = Nothing)
     ' BEWUSST LEER
 End Sub
+
 
