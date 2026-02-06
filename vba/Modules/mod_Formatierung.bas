@@ -310,6 +310,7 @@ End Sub
 
 ' ===============================================================
 ' PUBLIC WRAPPER: Formatiert EntityKey-Tabelle komplett
+' FIX: Verdichtung prueft IBAN (S) statt EntityKey (R)
 ' ===============================================================
 Public Sub FormatEntityKeyTableComplete(ByRef ws As Worksheet)
     
@@ -317,7 +318,9 @@ Public Sub FormatEntityKeyTableComplete(ByRef ws As Worksheet)
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
-    Call VerdichteSpalteOhneLuecken(ws, EK_COL_ENTITYKEY, EK_COL_ENTITYKEY, EK_COL_DEBUG)
+    ' WICHTIG: Pruefung ueber IBAN (Spalte S=19), NICHT EntityKey (R=18)
+    ' Denn nach IBAN-Import ist R oft noch leer, S aber gefuellt!
+    Call VerdichteSpalteOhneLuecken(ws, EK_COL_IBAN, EK_COL_ENTITYKEY, EK_COL_DEBUG)
     Call FormatiereEntityKeyTabelleKomplett(ws)
     Call SortiereEntityKeyTabelle(ws)
     Call EntspeerreEditierbareSpalten(ws)
@@ -327,7 +330,6 @@ Public Sub FormatEntityKeyTableComplete(ByRef ws As Worksheet)
     On Error GoTo 0
     
 End Sub
-
 ' ===============================================================
 ' PUBLIC WRAPPER: Formatiert eine einzelne Spalte
 ' ===============================================================
