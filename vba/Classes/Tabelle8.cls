@@ -19,6 +19,9 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     Dim changedCol As Long
     
+    ' NEU: Dynamische Formatierung aufrufen
+    Call mod_Formatierung.OnDatenChange(Target, Me)
+    
     On Error GoTo ErrorHandler
     
     ' Nur Einzelzellen-Aenderungen verarbeiten

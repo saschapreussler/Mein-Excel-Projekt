@@ -4,11 +4,12 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Formatierung
 ' ZWECK: Formatierung und DropDown-Listen-Verwaltung
-' VERSION: 2.0 - 06.02.2026
-' KORREKTUR: Fehlende Prozeduren fuer Tabelle8 hinzugefuegt
+' VERSION: 2.7 - 07.02.2026
+' NEU: Zebra-Formatierung fuer alle Spalten, dynamische Updates
 ' ***************************************************************
 
-Private Const ZEBRA_COLOR As Long = &HDEE5E3
+Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiss
+Private Const ZEBRA_COLOR_2 As Long = &HDEE5E3  ' Hellgrau
 
 ' ===============================================================
 ' NEU: Zentriert ALLE Zellen auf ALLEN Blaettern vertikal
@@ -87,9 +88,12 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         wsD.Unprotect PASSWORD:=PASSWORD
         On Error GoTo ErrorHandler
         
+        Call FormatiereAlleDatenSpalten(wsD)
         Call FormatiereKategorieTabelle(wsD)
         Call FormatiereEntityKeyTabelleKomplett(wsD)
         Call AktualisiereKategorieDropdownListen(wsD)
+        Call SortiereKategorieTabelle(wsD)
+        Call SortiereEntityKeyTabelle(wsD)
         
         wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     End If
@@ -167,9 +171,12 @@ Public Sub FormatiereBlattDaten()
     
     ws.Cells.VerticalAlignment = xlCenter
     
+    Call FormatiereAlleDatenSpalten(ws)
     Call FormatiereKategorieTabelle(ws)
     Call FormatiereEntityKeyTabelleKomplett(ws)
     Call AktualisiereKategorieDropdownListen(ws)
+    Call SortiereKategorieTabelle(ws)
+    Call SortiereEntityKeyTabelle(ws)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
@@ -178,8 +185,9 @@ Public Sub FormatiereBlattDaten()
     
     MsgBox "Formatierung des Daten-Blatts abgeschlossen!" & vbCrLf & vbCrLf & _
            "- Alle Zellen vertikal zentriert" & vbCrLf & _
-           "- Kategorie-Tabelle formatiert" & vbCrLf & _
-           "- EntityKey-Tabelle formatiert" & vbCrLf & _
+           "- Alle Spalten mit Zebra-Formatierung" & vbCrLf & _
+           "- Kategorie-Tabelle formatiert und sortiert" & vbCrLf & _
+           "- EntityKey-Tabelle formatiert und sortiert" & vbCrLf & _
            "- DropDown-Listen aktualisiert", vbInformation
     
     Exit Sub
@@ -193,6 +201,89 @@ ErrorHandler:
 End Sub
 
 ' ===============================================================
+' NEU: Formatiert ALLE Einzel-Spalten auf Daten-Blatt
+' Spalten: B, D, F, H, Z, AA, AB, AC, AD, AE, AF, AG, AH
+' ===============================================================
+Private Sub FormatiereAlleDatenSpalten(ByRef ws As Worksheet)
+    
+    ' Einzelspalten mit Zebra
+    Call FormatiereSingleSpalte(ws, 2, True)   ' Spalte B - Vereinsfunktionen
+    Call FormatiereSingleSpalte(ws, 4, True)   ' Spalte D - Anredeformen
+    Call FormatiereSingleSpalte(ws, 6, True)   ' Spalte F - Parzelle
+    Call FormatiereSingleSpalte(ws, 8, True)   ' Spalte H - Seite
+    
+    ' Helper-Spalten mit Zebra
+    Call FormatiereSingleSpalte(ws, 26, True)  ' Spalte Z - Einnahme/Ausgabe
+    Call FormatiereSingleSpalte(ws, 27, True)  ' Spalte AA - Prioritaet
+    Call FormatiereSingleSpalte(ws, 28, True)  ' Spalte AB - Ja/Nein
+    Call FormatiereSingleSpalte(ws, 29, True)  ' Spalte AC - Faelligkeit
+    Call FormatiereSingleSpalte(ws, 30, True)  ' Spalte AD - EntityRole
+    Call FormatiereSingleSpalte(ws, 31, True)  ' Spalte AE - Hilfszelle
+    Call FormatiereSingleSpalte(ws, 32, True)  ' Spalte AF - Kat Einnahmen
+    Call FormatiereSingleSpalte(ws, 33, True)  ' Spalte AG - Kat Ausgaben
+    Call FormatiereSingleSpalte(ws, 34, True)  ' Spalte AH - Monat/Periode
+    
+End Sub
+
+' ===============================================================
+' NEU: Formatiert eine einzelne Spalte mit Zebra + Rahmen
+' ===============================================================
+Private Sub FormatiereSingleSpalte(ByRef ws As Worksheet, ByVal colIndex As Long, ByVal mitZebra As Boolean)
+    
+    Dim lastRow As Long
+    Dim rng As Range
+    Dim r As Long
+    
+    ' Letzte Zeile mit Daten ermitteln
+    lastRow = ws.Cells(ws.Rows.count, colIndex).End(xlUp).Row
+    If lastRow < DATA_START_ROW Then Exit Sub
+    
+    ' Datenbereich festlegen
+    Set rng = ws.Range(ws.Cells(DATA_START_ROW, colIndex), ws.Cells(lastRow, colIndex))
+    
+    ' Formatierung loeschen
+    rng.Interior.ColorIndex = xlNone
+    rng.Borders.LineStyle = xlNone
+    
+    ' Vertikale Zentrierung
+    rng.VerticalAlignment = xlCenter
+    
+    ' Zebra-Formatierung anwenden
+    If mitZebra Then
+        For r = DATA_START_ROW To lastRow
+            If (r - DATA_START_ROW) Mod 2 = 0 Then
+                ws.Cells(r, colIndex).Interior.color = ZEBRA_COLOR_1
+            Else
+                ws.Cells(r, colIndex).Interior.color = ZEBRA_COLOR_2
+            End If
+        Next r
+    End If
+    
+    ' Aussere Rahmen setzen
+    With rng
+        .Borders(xlEdgeTop).LineStyle = xlContinuous
+        .Borders(xlEdgeTop).Weight = xlThin
+        .Borders(xlEdgeTop).color = RGB(0, 0, 0)
+        
+        .Borders(xlEdgeBottom).LineStyle = xlContinuous
+        .Borders(xlEdgeBottom).Weight = xlThin
+        .Borders(xlEdgeBottom).color = RGB(0, 0, 0)
+        
+        .Borders(xlEdgeLeft).LineStyle = xlContinuous
+        .Borders(xlEdgeLeft).Weight = xlThin
+        .Borders(xlEdgeLeft).color = RGB(0, 0, 0)
+        
+        .Borders(xlEdgeRight).LineStyle = xlContinuous
+        .Borders(xlEdgeRight).Weight = xlThin
+        .Borders(xlEdgeRight).color = RGB(0, 0, 0)
+    End With
+    
+    ' Spaltenbreite anpassen
+    ws.Columns(colIndex).AutoFit
+    
+End Sub
+
+' ===============================================================
 ' PUBLIC WRAPPER FUER TABELLE8: Formatiert Kategorie-Tabelle komplett
 ' ===============================================================
 Public Sub FormatKategorieTableComplete(ByRef ws As Worksheet)
@@ -202,6 +293,7 @@ Public Sub FormatKategorieTableComplete(ByRef ws As Worksheet)
     On Error GoTo 0
     
     Call FormatiereKategorieTabelle(ws)
+    Call SortiereKategorieTabelle(ws)
     
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -219,6 +311,7 @@ Public Sub FormatEntityKeyTableComplete(ByRef ws As Worksheet)
     On Error GoTo 0
     
     Call FormatiereEntityKeyTabelleKomplett(ws)
+    Call SortiereEntityKeyTabelle(ws)
     
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -231,25 +324,11 @@ End Sub
 ' ===============================================================
 Public Sub FormatSingleColumnComplete(ByRef ws As Worksheet, ByVal colIndex As Long)
     
-    Dim lastRow As Long
-    Dim rng As Range
-    
     On Error Resume Next
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
-    lastRow = ws.Cells(ws.Rows.count, colIndex).End(xlUp).Row
-    If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW
-    
-    Set rng = ws.Range(ws.Cells(DATA_START_ROW, colIndex), ws.Cells(lastRow, colIndex))
-    
-    With rng
-        .VerticalAlignment = xlCenter
-        .Borders.LineStyle = xlContinuous
-        .Borders.Weight = xlThin
-    End With
-    
-    ws.Columns(colIndex).AutoFit
+    Call FormatiereSingleSpalte(ws, colIndex, True)
     
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -258,7 +337,7 @@ Public Sub FormatSingleColumnComplete(ByRef ws As Worksheet, ByVal colIndex As L
 End Sub
 
 ' ===============================================================
-' KATEGORIE-TABELLE FORMATIEREN (J-P)
+' KATEGORIE-TABELLE FORMATIEREN (J-P) mit ZEBRA
 ' ===============================================================
 Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
     
@@ -275,6 +354,20 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
     Set rngTable = ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
                             ws.Cells(lastRow, DATA_CAT_COL_END))
     
+    ' Formatierung loeschen
+    rngTable.Interior.ColorIndex = xlNone
+    rngTable.Borders.LineStyle = xlNone
+    
+    ' Zebra-Formatierung fuer gesamte Zeile J-P
+    For r = DATA_START_ROW To lastRow
+        If (r - DATA_START_ROW) Mod 2 = 0 Then
+            ws.Range(ws.Cells(r, DATA_CAT_COL_START), ws.Cells(r, DATA_CAT_COL_END)).Interior.color = ZEBRA_COLOR_1
+        Else
+            ws.Range(ws.Cells(r, DATA_CAT_COL_START), ws.Cells(r, DATA_CAT_COL_END)).Interior.color = ZEBRA_COLOR_2
+        End If
+    Next r
+    
+    ' Rahmen setzen
     With rngTable.Borders
         .LineStyle = xlContinuous
         .Weight = xlThin
@@ -283,6 +376,7 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
     
     rngTable.VerticalAlignment = xlCenter
     
+    ' Horizontale Ausrichtungen
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KATEGORIE), _
              ws.Cells(lastRow, DATA_CAT_COL_KATEGORIE)).HorizontalAlignment = xlLeft
     
@@ -304,15 +398,188 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KOMMENTAR), _
              ws.Cells(lastRow, DATA_CAT_COL_KOMMENTAR)).HorizontalAlignment = xlLeft
     
+    ' Dropdowns setzen
     For r = DATA_START_ROW To lastRow
         einAusWert = UCase(Trim(ws.Cells(r, DATA_CAT_COL_EINAUS).value))
         Call SetzeZielspalteDropdown(ws, r, einAusWert)
     Next r
     
+    ' Spaltenbreite anpassen
     ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_START), _
              ws.Cells(lastRow, DATA_CAT_COL_END)).EntireColumn.AutoFit
     
 End Sub
+
+' ===============================================================
+' NEU: Sortiert die Kategorie-Tabelle nach Spalte J (A-Z)
+' ===============================================================
+Public Sub SortiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
+    
+    Dim lastRow As Long
+    Dim sortRange As Range
+    
+    If ws Is Nothing Then Set ws = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    lastRow = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    If lastRow < DATA_START_ROW Then Exit Sub
+    
+    Set sortRange = ws.Range(ws.Cells(DATA_START_ROW - 1, DATA_CAT_COL_START), _
+                             ws.Cells(lastRow, DATA_CAT_COL_END))
+    
+    On Error Resume Next
+    With ws.Sort
+        .SortFields.Clear
+        .SortFields.Add key:=ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KATEGORIE), _
+                                      ws.Cells(lastRow, DATA_CAT_COL_KATEGORIE)), _
+                        SortOn:=xlSortOnValues, _
+                        Order:=xlAscending, _
+                        DataOption:=xlSortNormal
+        .SetRange sortRange
+        .Header = xlYes
+        .MatchCase = False
+        .Orientation = xlTopToBottom
+        .Apply
+    End With
+    On Error GoTo 0
+    
+End Sub
+
+' ===============================================================
+' NEU: Sortiert die EntityKey-Tabelle
+' Sortierung: Parzelle 1-14, dann EX-, VERS-, BANK-, Rest
+' NUR Spalten R bis X - keine anderen Spalten!
+' ===============================================================
+Public Sub SortiereEntityKeyTabelle(Optional ByRef ws As Worksheet = Nothing)
+    
+    Dim lastRow As Long
+    Dim r As Long
+    Dim helperCol As Long
+    Dim parzelleWert As String
+    Dim entityKey As String
+    Dim sortOrder As Long
+    Dim sortRange As Range
+    
+    If ws Is Nothing Then Set ws = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    lastRow = ws.Cells(ws.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
+    If lastRow < EK_START_ROW Then Exit Sub
+    
+    ' WICHTIG: Temporaere Hilfsspalte innerhalb R-X verwenden
+    ' Wir nutzen eine temporaere Spalte INNERHALB der EntityKey-Tabelle
+    ' oder besser: Wir kopieren die Daten, sortieren, und schreiben zurueck
+    
+    Dim arrData() As Variant
+    Dim arrSorted() As Variant
+    Dim i As Long, j As Long
+    Dim numRows As Long
+    Dim swap As Boolean
+    Dim tempRow As Variant
+    
+    numRows = lastRow - EK_START_ROW + 1
+    
+    If numRows < 1 Then Exit Sub
+    
+    ' Daten aus R-X in Array einlesen (7 Spalten: R, S, T, U, V, W, X)
+    ReDim arrData(1 To numRows, 1 To 7)
+    
+    For r = EK_START_ROW To lastRow
+        arrData(r - EK_START_ROW + 1, 1) = ws.Cells(r, EK_COL_ENTITYKEY).value       ' R
+        arrData(r - EK_START_ROW + 1, 2) = ws.Cells(r, EK_COL_IBAN).value            ' S
+        arrData(r - EK_START_ROW + 1, 3) = ws.Cells(r, EK_COL_KONTONAME).value       ' T
+        arrData(r - EK_START_ROW + 1, 4) = ws.Cells(r, EK_COL_ZUORDNUNG).value       ' U
+        arrData(r - EK_START_ROW + 1, 5) = ws.Cells(r, EK_COL_PARZELLE).value        ' V
+        arrData(r - EK_START_ROW + 1, 6) = ws.Cells(r, EK_COL_ROLE).value            ' W
+        arrData(r - EK_START_ROW + 1, 7) = ws.Cells(r, EK_COL_DEBUG).value           ' X
+    Next r
+    
+    ' Bubble Sort mit benutzerdefinierter Sortierlogik
+    For i = 1 To numRows - 1
+        swap = False
+        For j = 1 To numRows - i
+            ' Vergleiche Zeile j mit Zeile j+1
+            If VergleicheEntityKeyZeilen(arrData(j, 1), arrData(j, 5), arrData(j + 1, 1), arrData(j + 1, 5)) > 0 Then
+                ' Tausche Zeilen
+                ReDim tempRow(1 To 7)
+                Dim k As Long
+                For k = 1 To 7
+                    tempRow(k) = arrData(j, k)
+                    arrData(j, k) = arrData(j + 1, k)
+                    arrData(j + 1, k) = tempRow(k)
+                Next k
+                swap = True
+            End If
+        Next j
+        If Not swap Then Exit For ' Bereits sortiert
+    Next i
+    
+    ' Sortierte Daten zurueckschreiben NUR in Spalten R-X
+    For r = EK_START_ROW To lastRow
+        ws.Cells(r, EK_COL_ENTITYKEY).value = arrData(r - EK_START_ROW + 1, 1)
+        ws.Cells(r, EK_COL_IBAN).value = arrData(r - EK_START_ROW + 1, 2)
+        ws.Cells(r, EK_COL_KONTONAME).value = arrData(r - EK_START_ROW + 1, 3)
+        ws.Cells(r, EK_COL_ZUORDNUNG).value = arrData(r - EK_START_ROW + 1, 4)
+        ws.Cells(r, EK_COL_PARZELLE).value = arrData(r - EK_START_ROW + 1, 5)
+        ws.Cells(r, EK_COL_ROLE).value = arrData(r - EK_START_ROW + 1, 6)
+        ws.Cells(r, EK_COL_DEBUG).value = arrData(r - EK_START_ROW + 1, 7)
+    Next r
+    
+End Sub
+
+' ===============================================================
+' HILFSFUNKTION: Vergleicht zwei EntityKey-Zeilen fuer Sortierung
+' Rueckgabe: <0 wenn zeile1 < zeile2, 0 wenn gleich, >0 wenn zeile1 > zeile2
+' ===============================================================
+Private Function VergleicheEntityKeyZeilen(entityKey1 As Variant, parzelle1 As Variant, _
+                                            entityKey2 As Variant, parzelle2 As Variant) As Long
+    
+    Dim order1 As Long
+    Dim order2 As Long
+    Dim parzelleStr1 As String
+    Dim parzelleStr2 As String
+    Dim entityStr1 As String
+    Dim entityStr2 As String
+    
+    parzelleStr1 = Trim(CStr(parzelle1))
+    parzelleStr2 = Trim(CStr(parzelle2))
+    entityStr1 = Trim(CStr(entityKey1))
+    entityStr2 = Trim(CStr(entityKey2))
+    
+    ' Sortier-Order fuer Zeile 1 bestimmen
+    If IsNumeric(parzelleStr1) And parzelleStr1 <> "" Then
+        order1 = CLng(parzelleStr1)  ' Parzellen 1-14
+    ElseIf Left(UCase(entityStr1), 3) = "EX-" Then
+        order1 = 100  ' Ehemalige Mitglieder
+    ElseIf Left(UCase(entityStr1), 5) = "VERS-" Then
+        order1 = 200  ' Versorger
+    ElseIf Left(UCase(entityStr1), 5) = "BANK-" Then
+        order1 = 300  ' Banken
+    Else
+        order1 = 400  ' Rest
+    End If
+    
+    ' Sortier-Order fuer Zeile 2 bestimmen
+    If IsNumeric(parzelleStr2) And parzelleStr2 <> "" Then
+        order2 = CLng(parzelleStr2)  ' Parzellen 1-14
+    ElseIf Left(UCase(entityStr2), 3) = "EX-" Then
+        order2 = 100  ' Ehemalige Mitglieder
+    ElseIf Left(UCase(entityStr2), 5) = "VERS-" Then
+        order2 = 200  ' Versorger
+    ElseIf Left(UCase(entityStr2), 5) = "BANK-" Then
+        order2 = 300  ' Banken
+    Else
+        order2 = 400  ' Rest
+    End If
+    
+    ' Vergleich
+    If order1 < order2 Then
+        VergleicheEntityKeyZeilen = -1
+    ElseIf order1 > order2 Then
+        VergleicheEntityKeyZeilen = 1
+    Else
+        VergleicheEntityKeyZeilen = 0
+    End If
+    
+End Function
 
 ' ===============================================================
 ' ZIELSPALTE-DROPDOWN SETZEN (abhaengig von E/A)
@@ -421,6 +688,11 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
     
     Call ErstelleKategorieNamedRanges(ws, nextRowE - 1, nextRowA - 1)
     
+    ' Formatiere Helper-Spalten nach Update
+    Call FormatiereSingleSpalte(ws, 32, True)  ' AF
+    Call FormatiereSingleSpalte(ws, 33, True)  ' AG
+    Call FormatiereSingleSpalte(ws, 34, True)  ' AH
+    
 End Sub
 
 ' ===============================================================
@@ -459,7 +731,6 @@ End Sub
 
 ' ===============================================================
 ' WRAPPER: Formatiert die EntityKey-Tabelle komplett
-' Ermittelt lastRow automatisch und ruft FormatiereEntityKeyTabelle auf
 ' ===============================================================
 Private Sub FormatiereEntityKeyTabelleKomplett(ByRef ws As Worksheet)
     
@@ -475,11 +746,13 @@ End Sub
 
 ' ===============================================================
 ' HILFSPROZEDUR: Formatiert die EntityKey-Tabelle
+' R-T mit Zebra, U-X nur Rahmen (Ampel-Farben bleiben)
 ' ===============================================================
 Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As Long)
     
     Dim rngTable As Range
     Dim rngZebra As Range
+    Dim rngBorderOnly As Range
     Dim r As Long
     Dim currentRole As String
     
@@ -488,6 +761,7 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     Set rngTable = ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
                             ws.Cells(lastRow, EK_COL_DEBUG))
     
+    ' Rahmen fuer gesamte Tabelle
     With rngTable.Borders
         .LineStyle = xlContinuous
         .Weight = xlThin
@@ -496,40 +770,41 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
     
     rngTable.VerticalAlignment = xlCenter
     
+    ' Spaltenformatierung
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
                   ws.Cells(lastRow, EK_COL_ENTITYKEY))
         .WrapText = False
         .HorizontalAlignment = xlLeft
     End With
-    ws.Columns(EK_COL_ENTITYKEY).ColumnWidth = 9
+    ws.Columns(EK_COL_ENTITYKEY).ColumnWidth = 11
     
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_IBAN), _
                   ws.Cells(lastRow, EK_COL_IBAN))
         .WrapText = False
         .HorizontalAlignment = xlLeft
     End With
-    ws.Columns(EK_COL_IBAN).ColumnWidth = 23
+    ws.Columns(EK_COL_IBAN).AutoFit
     
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_KONTONAME), _
                   ws.Cells(lastRow, EK_COL_KONTONAME))
         .WrapText = True
         .HorizontalAlignment = xlLeft
     End With
-    ws.Columns(EK_COL_KONTONAME).ColumnWidth = 50
+    ws.Columns(EK_COL_KONTONAME).ColumnWidth = 36
     
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ZUORDNUNG), _
                   ws.Cells(lastRow, EK_COL_ZUORDNUNG))
         .WrapText = True
         .HorizontalAlignment = xlLeft
     End With
-    ws.Columns(EK_COL_ZUORDNUNG).ColumnWidth = 30
+    ws.Columns(EK_COL_ZUORDNUNG).ColumnWidth = 28
     
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_PARZELLE), _
                   ws.Cells(lastRow, EK_COL_PARZELLE))
         .WrapText = True
         .HorizontalAlignment = xlCenter
     End With
-    ws.Columns(EK_COL_PARZELLE).ColumnWidth = 10
+    ws.Columns(EK_COL_PARZELLE).ColumnWidth = 9
     
     With ws.Range(ws.Cells(EK_START_ROW, EK_COL_ROLE), _
                   ws.Cells(lastRow, EK_COL_ROLE))
@@ -543,23 +818,30 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
         .WrapText = False
         .HorizontalAlignment = xlLeft
     End With
-    ws.Columns(EK_COL_DEBUG).AutoFit
+    ws.Columns(EK_COL_DEBUG).ColumnWidth = 42
     
+    ' Zellschutz fuer R-T
     ws.Range(ws.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
              ws.Cells(lastRow, EK_COL_KONTONAME)).Locked = True
     
+    ' Zebra-Formatierung NUR fuer R-T, U-X bleiben ohne Zebra (Ampel)
     For r = EK_START_ROW To lastRow
         currentRole = Trim(ws.Cells(r, EK_COL_ROLE).value)
         
         Call SetzeZellschutzFuerZeile(ws, r, currentRole)
         
+        ' Zebra nur fuer R-T (EntityKey, IBAN, Kontoname)
         Set rngZebra = ws.Range(ws.Cells(r, EK_COL_ENTITYKEY), ws.Cells(r, EK_COL_KONTONAME))
         
-        If (r - EK_START_ROW) Mod 2 = 1 Then
-            rngZebra.Interior.color = ZEBRA_COLOR
+        If (r - EK_START_ROW) Mod 2 = 0 Then
+            rngZebra.Interior.color = ZEBRA_COLOR_1
         Else
-            rngZebra.Interior.ColorIndex = xlNone
+            rngZebra.Interior.color = ZEBRA_COLOR_2
         End If
+        
+        ' U-X: NUR Rahmen, KEINE Zebra-Formatierung (Ampel bleibt)
+        Set rngBorderOnly = ws.Range(ws.Cells(r, EK_COL_ZUORDNUNG), ws.Cells(r, EK_COL_DEBUG))
+        ' Keine Interior-Formatierung fuer U-X
     Next r
     
     ws.Rows(EK_START_ROW & ":" & lastRow).AutoFit
@@ -690,6 +972,93 @@ Public Sub OnKategorieChange(ByVal Target As Range)
         Dim einAus As String
         einAus = UCase(Trim(Target.value))
         Call SetzeZielspalteDropdown(ws, Target.Row, einAus)
+    End If
+    
+End Sub
+
+' ===============================================================
+' NEU: WORKSHEET_CHANGE HANDLER fuer dynamische Formatierung
+' Wird von Tabelle8 (Daten) Worksheet_Change aufgerufen
+' ===============================================================
+Public Sub OnDatenChange(ByVal Target As Range, ByVal ws As Worksheet)
+    
+    On Error GoTo ErrorHandler
+    
+    Application.EnableEvents = False
+    Application.ScreenUpdating = False
+    
+    ' Einzelspalten B, D, F, H
+    If Not Intersect(Target, ws.Columns(2)) Is Nothing Then
+        Call FormatiereSingleSpalte(ws, 2, True)
+    End If
+    
+    If Not Intersect(Target, ws.Columns(4)) Is Nothing Then
+        Call FormatiereSingleSpalte(ws, 4, True)
+    End If
+    
+    If Not Intersect(Target, ws.Columns(6)) Is Nothing Then
+        Call FormatiereSingleSpalte(ws, 6, True)
+    End If
+    
+    If Not Intersect(Target, ws.Columns(8)) Is Nothing Then
+        Call FormatiereSingleSpalte(ws, 8, True)
+    End If
+    
+    ' Kategorie-Tabelle J-P
+    If Not Intersect(Target, ws.Range("J:P")) Is Nothing Then
+        Call FormatiereKategorieTabelle(ws)
+        Call SortiereKategorieTabelle(ws)
+        Call OnKategorieChange(Target)
+    End If
+    
+    ' EntityKey-Tabelle R-X
+    If Not Intersect(Target, ws.Range("R:X")) Is Nothing Then
+        Call FormatiereEntityKeyTabelleKomplett(ws)
+        Call SortiereEntityKeyTabelle(ws)
+    End If
+    
+    ' Helper-Spalten Z-AH
+    If Not Intersect(Target, ws.Columns(26)) Is Nothing Then
+        Call FormatiereSingleSpalte(ws, 26, True)
+    End If
+    
+    If Not Intersect(Target, ws.Columns(27)) Is Nothing Then
+        Call FormatiereSingleSpalte(ws, 27, True)
+    End If
+    
+    If Not Intersect(Target, ws.Columns(28)) Is Nothing Then
+        Call FormatiereSingleSpalte(ws, 28, True)
+    End If
+    
+    If Not Intersect(Target, ws.Columns(29)) Is Nothing Then
+        Call FormatiereSingleSpalte(ws, 29, True)
+    End If
+    
+    If Not Intersect(Target, ws.Columns(30)) Is Nothing Then
+        Call FormatiereSingleSpalte(ws, 30, True)
+    End If
+    
+    If Not Intersect(Target, ws.Columns(31)) Is Nothing Then
+        Call FormatiereSingleSpalte(ws, 31, True)
+    End If
+    
+    If Not Intersect(Target, ws.Columns(32)) Is Nothing Then
+        Call FormatiereSingleSpalte(ws, 32, True)
+    End If
+    
+    If Not Intersect(Target, ws.Columns(33)) Is Nothing Then
+        Call FormatiereSingleSpalte(ws, 33, True)
+    End If
+    
+    If Not Intersect(Target, ws.Columns(34)) Is Nothing Then
+        Call FormatiereSingleSpalte(ws, 34, True)
+    End If
+    
+ErrorHandler:
+    Application.EnableEvents = True
+    Application.ScreenUpdating = True
+    If Err.Number <> 0 Then
+        Debug.Print "Fehler in OnDatenChange: " & Err.Description
     End If
     
 End Sub
