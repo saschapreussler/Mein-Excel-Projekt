@@ -20,6 +20,9 @@ Private Sub Workbook_Open()
     
     ' Stelle sicher dass alle Blaetter vertikal zentriert sind
     Call mod_Formatierung.ZentriereAlleZellenVertikal
+    
+    ' NEU v5.3: Hilfsspalten auf Daten-Blatt ausblenden
+    Call mod_Formatierung.BlendeDatenSpaltenAus
 
 End Sub
 

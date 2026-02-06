@@ -4,17 +4,49 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Formatierung
 ' ZWECK: Formatierung und DropDown-Listen-Verwaltung
-' VERSION: 5.2 - 06.02.2026
-' NEU: Ampelfarben U-X bleiben erhalten (kein Zebra-Ueberschreiben),
-'      EntityRole-Dropdown fuer ALLE Zeilen, IBAN-basierte lastRow,
-'      lastRowDD dynamisch aus Spalte AD
-' FIX: Spalte U WrapText per Zelle (nur bei vbLf)
-' FIX: Spalte X Breite 62, WrapText erlaubt
-' FIX: Umlaute in allen sichtbaren Texten
+' VERSION: 5.3 - 06.02.2026
+' NEU: BlendeDatenSpaltenAus (D-I, Z-AB, AE-AH automatisch ausblenden)
+'      OnDatenChange formatiert bei JEDER Aenderung ALLE Spalten
+'      OnKategorieChange: Spalte K Konsistenzpruefung, Spalte L Duplikat
+'      FormatiereKategorieTabelle: Bereinigung unterhalb, K Breite 12
+'      FormatiereSingleSpalte: Bereinigung unterhalb
+'      FormatiereEntityKeyTabelle: Spalte X Breite 65
 ' ***************************************************************
 
 Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiss
 Private Const ZEBRA_COLOR_2 As Long = &HDEE5E3  ' Hellgrau
+
+' ===============================================================
+' NEU v5.3: Blendet Hilfsspalten aus (D-I, Z-AB, AE-AH)
+' ===============================================================
+Public Sub BlendeDatenSpaltenAus()
+    
+    Dim ws As Worksheet
+    
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    
+    If ws Is Nothing Then Exit Sub
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    ' Spalten D-I (4-9) ausblenden
+    ws.Range("D:I").EntireColumn.Hidden = True
+    
+    ' Spalten Z-AB (26-28) ausblenden
+    ws.Range("Z:AB").EntireColumn.Hidden = True
+    
+    ' Spalten AE-AH (31-34) ausblenden
+    ws.Range("AE:AH").EntireColumn.Hidden = True
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
+End Sub
 
 ' ===============================================================
 ' NEU: Zentriert ALLE Zellen auf ALLEN Blaettern vertikal
@@ -58,6 +90,7 @@ End Sub
 
 ' ===============================================================
 ' HAUPTPROZEDUR: Formatiert ALLE relevanten Tabellen neu
+' FIX v5.3: BlendeDatenSpaltenAus am Ende
 ' ===============================================================
 Public Sub Formatiere_Alle_Tabellen_Neu()
     
@@ -145,6 +178,9 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         On Error GoTo ErrorHandler
     End If
     
+    ' NEU v5.3: Hilfsspalten ausblenden
+    Call BlendeDatenSpaltenAus
+    
     Application.EnableEvents = True
     Application.ScreenUpdating = True
     
@@ -162,6 +198,7 @@ End Sub
 
 ' ===============================================================
 ' HAUPTPROZEDUR: Formatiert das gesamte Daten-Blatt
+' FIX v5.3: BlendeDatenSpaltenAus vor MsgBox
 ' ===============================================================
 Public Sub FormatiereBlattDaten()
     
@@ -186,6 +223,9 @@ Public Sub FormatiereBlattDaten()
     Call EntspeerreEditierbareSpalten(ws)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    ' NEU v5.3: Hilfsspalten ausblenden
+    Call BlendeDatenSpaltenAus
     
     Application.EnableEvents = True
     Application.ScreenUpdating = True
@@ -681,16 +721,6 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     
 End Sub
 
-
-
-
-'--- Ende Teil 1 von 3 ---
-'--- Anfang Teil 2 von 3 ---
-
-
-
-
-
 ' ===============================================================
 ' Formatiert die Kategorie-Tabelle (Spalten J-P)
 ' FIX v5.3: Spalte K Breite 12, Zebra+Rahmen nur fuer belegte Zeilen,
@@ -1001,16 +1031,6 @@ Private Sub SetzeZielspalteDropdown(ByRef ws As Worksheet, ByVal zeile As Long, 
     
 End Sub
 
-
-
-
-
-'--- Ende Teil 2 von 3 ---
-'--- Anfang Teil 3 von 3 ---
-
-
-
-
 ' ===============================================================
 ' DROPDOWN-LISTEN FUER KATEGORIEN AKTUALISIEREN (AF + AG + AH)
 ' FIX v5.2: "M" & ChrW(228) & "rz" statt "Maerz"
@@ -1151,7 +1171,7 @@ End Sub
 '           Spalten U, W, X IMMER editierbar
 '           Spalte V editierbar bei EHEMALIGES MITGLIED / SONSTIGE
 ' FIX v5.2: Spalte U WrapText per Zelle (nur bei 2+ Namen mit vbLf)
-'           Spalte X Breite 62, WrapText erlaubt
+' FIX v5.3: Spalte X Breite 65, WrapText erlaubt
 ' ===============================================================
 Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As Long)
     
@@ -1484,6 +1504,7 @@ End Sub
 ' WORKSHEET_CHANGE HANDLER fuer dynamische Formatierung
 ' FIX v5.3: Bei jeder Aenderung ALLE Spalten neu formatieren,
 '           damit benachbarte Rahmenlinien nicht verloren gehen
+'           BlendeDatenSpaltenAus am Ende
 ' ===============================================================
 Public Sub OnDatenChange(ByVal Target As Range, ByVal ws As Worksheet)
     
@@ -1508,6 +1529,9 @@ Public Sub OnDatenChange(ByVal Target As Range, ByVal ws As Worksheet)
         Call OnKategorieChange(Target)
     End If
     
+    ' NEU v5.3: Hilfsspalten ausblenden
+    Call BlendeDatenSpaltenAus
+    
 ErrorHandler:
     Application.EnableEvents = True
     Application.ScreenUpdating = True
@@ -1516,4 +1540,6 @@ ErrorHandler:
     End If
     
 End Sub
+
+
 
