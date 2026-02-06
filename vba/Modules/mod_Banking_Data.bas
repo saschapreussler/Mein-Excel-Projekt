@@ -101,7 +101,7 @@ Public Sub Importiere_Kontoauszug()
     Set wsTemp = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.count))
     If Err.Number <> 0 Then
         MsgBox "Fehler beim Erstellen des Temp-Blatts: " & Err.Description & vbCrLf & vbCrLf & _
-               "Bitte pruefen Sie ob die Arbeitsmappe geschuetzt ist.", vbCritical
+           "Bitte prüfen Sie ob die Arbeitsmappe geschützt ist.", vbCritical
         Err.Clear
         Application.DisplayAlerts = True
         Application.ScreenUpdating = True
@@ -267,11 +267,11 @@ ImportAbschluss:
     Application.EnableEvents = True
     
     If rowsTotalInFile > 0 And rowsProcessed = 0 And rowsIgnoredDupe = rowsTotalInFile And rowsFailedImport = 0 Then
-        MsgBox "Achtung: Die ausgewaehlte CSV-Datei enthaelt ausschliesslich Eintraege, " & _
-               "die bereits in der Datenbank vorhanden sind (" & rowsIgnoredDupe & " Duplikate). " & _
-               "Es wurden keine neuen Datensaetze importiert.", vbExclamation, "100% Duplikate erkannt"
+        MsgBox "Achtung: Die ausgewählte CSV-Datei enthält ausschließlich Einträge, " & _
+           "die bereits in der Datenbank vorhanden sind (" & rowsIgnoredDupe & " Duplikate). " & _
+           "Es wurden keine neuen Datensätze importiert.", vbExclamation, "100% Duplikate erkannt"
     ElseIf rowsProcessed > 0 Then
-        MsgBox "Import abgeschlossen! (" & rowsProcessed & " neue Zeilen hinzugefuegt)", vbInformation
+        MsgBox "Import abgeschlossen! (" & rowsProcessed & " neue Zeilen hinzugefügt)", vbInformation
     End If
     
 End Sub
@@ -530,8 +530,8 @@ Public Sub LoescheAlleBankkontoZeilen()
     Dim lastRow As Long
     Dim antwort As VbMsgBoxResult
     
-    antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden geloescht!" & vbCrLf & vbCrLf & _
-                     "Fortfahren?", vbYesNo + vbCritical, "Alle Daten loeschen?")
+    antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden gelöscht!" & vbCrLf & vbCrLf & _
+                     "Fortfahren?", vbYesNo + vbCritical, "Alle Daten löschen?")
     
     If antwort <> vbYes Then Exit Sub
     
@@ -552,7 +552,7 @@ Public Sub LoescheAlleBankkontoZeilen()
     
     Call Initialize_ImportReport_ListBox
     
-    MsgBox "Alle Daten wurden geloescht.", vbInformation
+    MsgBox "Alle Daten wurden gelöscht.", vbInformation
     
 End Sub
 

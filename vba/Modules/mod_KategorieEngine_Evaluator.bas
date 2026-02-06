@@ -45,7 +45,7 @@ Public Function BuildKategorieContext(ByVal wsBK As Worksheet, _
 
     ctx("EntityRole") = entityRole
 
-    ' Entgeltabschluss-Erkennung (Bankgebuehren)
+    ' Entgeltabschluss-Erkennung (Bankgebühren)
     ' ERWEITERT: Auch bei ABSCHLUSS im Buchungstext
     ctx("IsEntgeltabschluss") = _
         (InStr(normText, "entgeltabschluss") > 0) Or _
@@ -108,10 +108,10 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     ' ================================
     ' PHASE 0: SONDERREGEL FUER 0-EURO-BETRAEGE
     ' ================================
-    ' Bei 0,00 Euro und Buchungstext "ABSCHLUSS" -> Entgeltabschluss (Kontofuehrung)
+    ' Bei 0,00 Euro und Buchungstext "ABSCHLUSS" -> Entgeltabschluss (Kontoführung)
     If ctx("IsNullBetrag") And ctx("IsEntgeltabschluss") Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
-                       "Entgeltabschluss (Kontofuehrung)", "GRUEN"
+                       "Entgeltabschluss (Kontoführung)", "GRUEN"
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = "0-Euro-Abschluss automatisch zugeordnet"
         ' Bei 0 Euro keine Betragszuordnung noetig
         Exit Sub
@@ -121,10 +121,10 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     ' PHASE 1: HARTE SONDERREGELN
     ' ================================
     
-    ' 1a) Entgeltabschluss (Bankgebuehren)
+    ' 1a) Entgeltabschluss (Bankgebühren)
     If ctx("IsEntgeltabschluss") And ctx("IsAusgabe") Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
-                       "Entgeltabschluss (Kontofuehrung)", "GRUEN"
+                       "Entgeltabschluss (Kontoführung)", "GRUEN"
         ApplyBetragsZuordnung wsBK, rowBK
         Exit Sub
     End If
@@ -203,7 +203,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                 If Not (LCase(category) Like "*bank*" Or _
                         LCase(category) Like "*entgelt*" Or _
                         LCase(category) Like "*gebuehr*" Or _
-                        LCase(category) Like "*kontofuehrung*") Then GoTo NextRule
+                        LCase(category) Like "*kontoführung*") Then GoTo NextRule
             End If
         End If
 
