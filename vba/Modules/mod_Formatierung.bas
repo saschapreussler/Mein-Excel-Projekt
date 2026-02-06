@@ -448,12 +448,14 @@ End Sub
 
 ' ===============================================================
 ' NEU: Entsperrt bestehende Daten + genau 1 naechste freie Zeile
+' Sperrt einen Puffer darunter um ungewolltes Editieren zu verhindern
 ' Betrifft: B, D, F, H, J-P, R-X (via W), AB, AC, AD, AH
 ' ===============================================================
 Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     
     Dim lastRow As Long
     Dim nextRow As Long
+    Dim lockEnd As Long
     Dim r As Long
     
     On Error Resume Next
@@ -467,6 +469,7 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
         lastRow = ws.Cells(ws.Rows.count, singleCols(c)).End(xlUp).Row
         If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
         nextRow = lastRow + 1
+        lockEnd = nextRow + 50
         
         ' Bestehende Daten entsperren (editierbar)
         If lastRow >= DATA_START_ROW Then
@@ -477,14 +480,16 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
         ' Genau 1 naechste freie Zeile entsperren
         ws.Cells(nextRow, singleCols(c)).Locked = False
         
-        ' Zeile danach sperren (Sicherheit)
-        ws.Cells(nextRow + 1, singleCols(c)).Locked = True
+        ' Bereich darunter sperren (50 Zeilen Sicherheitspuffer)
+        ws.Range(ws.Cells(nextRow + 1, singleCols(c)), _
+                 ws.Cells(lockEnd, singleCols(c))).Locked = True
     Next c
     
     ' === KATEGORIE-TABELLE: J-P (10-16) ===
     lastRow = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
     nextRow = lastRow + 1
+    lockEnd = nextRow + 50
     
     ' Bestehende Daten J-P entsperren (editierbar)
     If lastRow >= DATA_START_ROW Then
@@ -496,9 +501,9 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     ws.Range(ws.Cells(nextRow, DATA_CAT_COL_START), _
              ws.Cells(nextRow, DATA_CAT_COL_END)).Locked = False
     
-    ' Zeile danach sperren
+    ' Bereich darunter sperren
     ws.Range(ws.Cells(nextRow + 1, DATA_CAT_COL_START), _
-             ws.Cells(nextRow + 1, DATA_CAT_COL_END)).Locked = True
+             ws.Cells(lockEnd, DATA_CAT_COL_END)).Locked = True
     
     ' DropDowns fuer die Eingabezeile setzen
     Call SetzeZielspalteDropdown(ws, nextRow, "")
@@ -545,18 +550,15 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     lastRow = ws.Cells(ws.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
     If lastRow < EK_START_ROW Then lastRow = EK_START_ROW - 1
     nextRow = lastRow + 1
-    
-    ' Bestehende Daten R-X: Schutz wird durch SetzeZellschutzFuerZeile gesteuert
-    ' Hier nur sicherstellen dass editierbare Zellen auch editierbar bleiben
-    ' (SetzeZellschutzFuerZeile wird bereits in FormatiereEntityKeyTabelle aufgerufen)
+    lockEnd = nextRow + 50
     
     ' Genau 1 naechste freie Zeile R-X entsperren
     ws.Range(ws.Cells(nextRow, EK_COL_ENTITYKEY), _
              ws.Cells(nextRow, EK_COL_DEBUG)).Locked = False
     
-    ' Zeile danach sperren
+    ' Bereich darunter sperren
     ws.Range(ws.Cells(nextRow + 1, EK_COL_ENTITYKEY), _
-             ws.Cells(nextRow + 1, EK_COL_DEBUG)).Locked = True
+             ws.Cells(lockEnd, EK_COL_DEBUG)).Locked = True
     
     ' Dropdown W (EntityRole) fuer Eingabezeile
     ws.Cells(nextRow, EK_COL_ROLE).Validation.Delete
@@ -572,7 +574,6 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     End With
     
     ' Parzellen-Dropdown fuer Spalte V bei EHEMALIGES MITGLIED
-    ' (fuer bestehende Zeilen + Eingabezeile)
     Dim lastRowParzelle As Long
     lastRowParzelle = ws.Cells(ws.Rows.count, DATA_COL_DD_PARZELLE).End(xlUp).Row
     If lastRowParzelle < DATA_START_ROW Then lastRowParzelle = DATA_START_ROW
@@ -590,7 +591,6 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
                     .ShowInput = False
                     .ShowError = True
                 End With
-                ' Parzelle editierbar machen
                 ws.Cells(r, EK_COL_PARZELLE).Locked = False
             End If
         Next r
@@ -604,6 +604,7 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
         lastRow = ws.Cells(ws.Rows.count, helperCols(c)).End(xlUp).Row
         If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
         nextRow = lastRow + 1
+        lockEnd = nextRow + 50
         
         ' Bestehende Daten entsperren (editierbar)
         If lastRow >= DATA_START_ROW Then
@@ -614,14 +615,14 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
         ' Genau 1 naechste freie Zeile entsperren
         ws.Cells(nextRow, helperCols(c)).Locked = False
         
-        ' Zeile danach sperren
-        ws.Cells(nextRow + 1, helperCols(c)).Locked = True
+        ' Bereich darunter sperren
+        ws.Range(ws.Cells(nextRow + 1, helperCols(c)), _
+                 ws.Cells(lockEnd, helperCols(c))).Locked = True
     Next c
     
     On Error GoTo 0
     
 End Sub
-
 
 
 
