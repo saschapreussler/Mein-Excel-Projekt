@@ -232,15 +232,30 @@ End Sub
 
 ' ===============================================================
 ' Formatiert eine einzelne Spalte mit Zebra + Rahmen
+' FIX v5.3: Bereinigt leere Zeilen unterhalb (Rahmen + Farbe entfernen)
 ' ===============================================================
 Private Sub FormatiereSingleSpalte(ByRef ws As Worksheet, ByVal colIndex As Long, ByVal mitZebra As Boolean)
     
     Dim lastRow As Long
     Dim rng As Range
     Dim r As Long
+    Dim cleanEnd As Long
     
     lastRow = ws.Cells(ws.Rows.count, colIndex).End(xlUp).Row
-    If lastRow < DATA_START_ROW Then Exit Sub
+    
+    ' Bereich UNTERHALB der belegten Zeilen bereinigen
+    cleanEnd = lastRow + 50
+    If cleanEnd < DATA_START_ROW + 50 Then cleanEnd = DATA_START_ROW + 50
+    If lastRow < DATA_START_ROW Then
+        ' Keine Daten -> alles ab DATA_START_ROW bereinigen
+        ws.Range(ws.Cells(DATA_START_ROW, colIndex), ws.Cells(cleanEnd, colIndex)).Interior.ColorIndex = xlNone
+        ws.Range(ws.Cells(DATA_START_ROW, colIndex), ws.Cells(cleanEnd, colIndex)).Borders.LineStyle = xlNone
+        Exit Sub
+    Else
+        ' Unterhalb der letzten belegten Zeile bereinigen
+        ws.Range(ws.Cells(lastRow + 1, colIndex), ws.Cells(cleanEnd, colIndex)).Interior.ColorIndex = xlNone
+        ws.Range(ws.Cells(lastRow + 1, colIndex), ws.Cells(cleanEnd, colIndex)).Borders.LineStyle = xlNone
+    End If
     
     Set rng = ws.Range(ws.Cells(DATA_START_ROW, colIndex), ws.Cells(lastRow, colIndex))
     
@@ -1467,6 +1482,7 @@ End Sub
 
 ' ===============================================================
 ' WORKSHEET_CHANGE HANDLER fuer dynamische Formatierung
+' FIX v5.3: Bereinigt leere Bereiche bei allen Spalten/Tabellen
 ' ===============================================================
 Public Sub OnDatenChange(ByVal Target As Range, ByVal ws As Worksheet)
     
@@ -1546,3 +1562,4 @@ ErrorHandler:
     End If
     
 End Sub
+
