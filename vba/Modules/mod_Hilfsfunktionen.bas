@@ -104,7 +104,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
     ' *** WICHTIG: Temporäres Worksheet IMMER löschen! ***
     Call LoescheTempWorksheet
     
-Cleanup:
+CleanUp:
     Application.ScreenUpdating = True
     If Not wsM Is Nothing Then
         If wsM.AutoFilterMode Then wsM.AutoFilterMode = False
@@ -116,7 +116,7 @@ ErrorHandler:
     MsgBox "Fehler in AktualisiereNamedRange_MitgliederNamen: " & Err.Description, vbCritical
     ' Versuche trotz Fehler das Temp-Worksheet zu löschen
     Call LoescheTempWorksheet
-    Resume Cleanup
+    Resume CleanUp
 
 End Sub
 

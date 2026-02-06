@@ -917,7 +917,7 @@ Public Sub SchreibeHistorie( _
     If Not wsTarget Is Nothing Then Call CalculateAllZaehlerVerbrauch(wsTarget)
     Call FarbeHistorieEintraege
     
-Cleanup:
+CleanUp:
     IsZaehlerLogicRunning = False
     Application.EnableEvents = True
     
@@ -941,7 +941,7 @@ Fehler_Handler:
         errDesc = "Unbekannter Fehler im Fehler-Handler"
     End If
 
-    Resume Cleanup
+    Resume CleanUp
 
     Err.Raise errNum, "mod_ZaehlerLogik.SchreibeHistorie", errDesc
 End Sub

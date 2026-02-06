@@ -141,7 +141,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         Call UpdateStromblatt
     End If
     
-Cleanup:
+CleanUp:
     Application.EnableEvents = True
     Exit Sub
 
@@ -153,7 +153,7 @@ ErrHandler:
         Me.Protect PASSWORD:="", AllowFormattingCells:=True
         On Error GoTo 0
     End If
-    Resume Cleanup
+    Resume CleanUp
 End Sub
 
 ' ==========================================================
@@ -183,7 +183,7 @@ Private Sub ToggleNettoBrutto_Click()
     
     Application.Calculate ' Sicherstellen, dass alle Excel-Formeln aktualisiert werden
     
-Cleanup:
+CleanUp:
     Application.ScreenUpdating = True
     Application.EnableEvents = True
     If wasProtected Then
@@ -194,7 +194,7 @@ Cleanup:
     
 ErrHandler:
     MsgBox "Fehler beim Toggle-Button: " & Err.Description, vbCritical
-    Resume Cleanup
+    Resume CleanUp
 End Sub
 
 Private Sub SetModus(modus As String)

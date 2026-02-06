@@ -42,7 +42,7 @@ Public Sub Fuelle_MemberIDs_Wenn_Fehlend()
     
     lastRow = wsM.Cells(wsM.Rows.count, M_COL_NACHNAME).End(xlUp).Row
     
-    If lastRow < M_START_ROW Then GoTo Cleanup
+    If lastRow < M_START_ROW Then GoTo CleanUp
     
     Application.ScreenUpdating = False
     
@@ -66,14 +66,14 @@ Public Sub Fuelle_MemberIDs_Wenn_Fehlend()
         .FormulaHidden = True
     End With
     
-Cleanup:
+CleanUp:
     Application.ScreenUpdating = True
     If wasProtected Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Exit Sub
     
 ErrorHandler:
     MsgBox "Fehler beim Fuellen der MemberIDs: " & Err.Description, vbCritical
-    Resume Cleanup
+    Resume CleanUp
 End Sub
 
 ' ***************************************************************
@@ -154,7 +154,7 @@ Public Sub Sortiere_Mitgliederliste_Nach_Parzelle()
     
     lastRow = ws.Cells(ws.Rows.count, M_COL_NACHNAME).End(xlUp).Row
     
-    If lastRow < M_START_ROW Then GoTo Cleanup
+    If lastRow < M_START_ROW Then GoTo CleanUp
     
     Set rngSort = ws.Range(ws.Cells(M_START_ROW, 1), ws.Cells(lastRow, M_COL_PACHTENDE))
     
@@ -174,7 +174,7 @@ Public Sub Sortiere_Mitgliederliste_Nach_Parzelle()
     Call Reapply_Data_Validation
     Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
     
-Cleanup:
+CleanUp:
     If Not ws Is Nothing Then
         If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     End If
@@ -185,7 +185,7 @@ ErrorHandler:
         If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     End If
     MsgBox "FEHLER BEIM SORTIEREN: " & Err.Description, vbCritical
-    Resume Cleanup
+    Resume CleanUp
 End Sub
 
 ' ***************************************************************
@@ -256,7 +256,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     If selectedRow >= M_START_ROW Then
         If Trim(wsM.Cells(selectedRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
             MsgBox "FEHLER: Die Verein-Parzelle darf nicht geaendert werden!", vbCritical
-            GoTo Cleanup
+            GoTo CleanUp
         End If
     End If
     
@@ -285,7 +285,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
         If Trim(NewParzelleNr) = PARZELLE_VEREIN Then
             MsgBox "FEHLER: Austretende Mitglieder duerfen nicht zur Verein-Parzelle wechseln!", vbCritical
             wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-            GoTo Cleanup
+            GoTo CleanUp
         End If
         
         wsM.Cells(selectedRow, M_COL_PARZELLE).value = NewParzelleNr
@@ -295,7 +295,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
         If Trim(wsM.Cells(selectedRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
             MsgBox "FEHLER: Die Verein-Parzelle kann nicht aufgeloest werden!", vbCritical
             wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-            GoTo Cleanup
+            GoTo CleanUp
         End If
         
         ' Setze Parzelle auf leer (Member ist ausgetreten)
@@ -331,7 +331,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     
     Exit Sub
     
-Cleanup:
+CleanUp:
     If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     If Not wsH Is Nothing Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Application.ScreenUpdating = True
