@@ -4,8 +4,8 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Const
 ' ZWECK: Zentrale Konstanten fuer das gesamte Projekt
-' VERSION: 2.5 - 02.02.2026
-' AENDERUNG: EK_* Konstanten hinzugefuegt, Struktur optimiert
+' VERSION: 2.6 - 03.02.2026
+' AENDERUNG: CELL_IMPORT_PROTOKOLL auf Y500 geaendert
 ' ***************************************************************
 
 ' ===============================================================
@@ -167,7 +167,7 @@ Public Const EK_COL_DEBUG As Long = 24
 ' H. DATEN - DROPDOWN-FUELLBEREICHE (Spalten Y-AH)
 ' ===============================================================
 Public Const DATA_COL_IMPORT_STATUS As Long = 25
-Public Const CELL_IMPORT_PROTOKOLL As String = "Y100"
+Public Const CELL_IMPORT_PROTOKOLL As String = "Y500"
 
 Public Const DATA_COL_DD_EINAUS As Long = 26
 Public Const DATA_COL_DD_PRIORITAET As Long = 27

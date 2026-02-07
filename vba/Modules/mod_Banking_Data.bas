@@ -3,12 +3,24 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Data
-' VERSION: 2.4 - 03.02.2026
-' ÄNDERUNG: ImportiereIBANsAusBankkonto entfernt (existiert in mod_EntityKey_Manager)
+' VERSION: 3.0 - 03.02.2026
+' AENDERUNG: ListBox-Protokoll mit Speicher in Daten!Y500,
+'            Farbcodierung GRUEN/GELB/ROT, 5-Zeilen-Format
 ' ===============================================================
 
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
 Private Const RAHMEN_NAME As String = "ImportReport_Rahmen"
+
+' Farb-Konstanten fuer ListBox-Hintergrund
+Private Const LISTBOX_COLOR_GRUEN As Long = &HC0FFC0   ' hellgruen (RGB 192,255,192)
+Private Const LISTBOX_COLOR_GELB As Long = &HC0FFFF    ' hellgelb  (RGB 255,255,192) - BGR!
+Private Const LISTBOX_COLOR_ROT As Long = &HC0C0FF     ' hellrot   (RGB 255,192,192) - BGR!
+Private Const LISTBOX_COLOR_NEUTRAL As Long = &HFFFFFF  ' weiss
+
+' Trennzeichen fuer Protokoll-Serialisierung in einer Zelle
+Private Const PROTOKOLL_TRENNZEICHEN As String = "||"
+' Maximale Anzahl gespeicherter Import-Bloecke (je 5 Zeilen)
+Private Const MAX_PROTOKOLL_BLOECKE As Long = 12
 
 ' ===============================================================
 ' 1. CSV-KONTOAUSZUG IMPORT
@@ -101,7 +113,7 @@ Public Sub Importiere_Kontoauszug()
     Set wsTemp = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.count))
     If Err.Number <> 0 Then
         MsgBox "Fehler beim Erstellen des Temp-Blatts: " & Err.Description & vbCrLf & vbCrLf & _
-           "Bitte prüfen Sie ob die Arbeitsmappe geschützt ist.", vbCritical
+           "Bitte pruefen Sie ob die Arbeitsmappe geschuetzt ist.", vbCritical
         Err.Clear
         Application.DisplayAlerts = True
         Application.ScreenUpdating = True
@@ -267,11 +279,11 @@ ImportAbschluss:
     Application.EnableEvents = True
     
     If rowsTotalInFile > 0 And rowsProcessed = 0 And rowsIgnoredDupe = rowsTotalInFile And rowsFailedImport = 0 Then
-        MsgBox "Achtung: Die ausgewählte CSV-Datei enthält ausschließlich Einträge, " & _
+        MsgBox "Achtung: Die ausgewaehlte CSV-Datei enthaelt ausschliesslich Eintraege, " & _
            "die bereits in der Datenbank vorhanden sind (" & rowsIgnoredDupe & " Duplikate). " & _
-           "Es wurden keine neuen Datensätze importiert.", vbExclamation, "100% Duplikate erkannt"
+           "Es wurden keine neuen Datensaetze importiert.", vbExclamation, "100% Duplikate erkannt"
     ElseIf rowsProcessed > 0 Then
-        MsgBox "Import abgeschlossen! (" & rowsProcessed & " neue Zeilen hinzugefügt)", vbInformation
+        MsgBox "Import abgeschlossen! (" & rowsProcessed & " neue Zeilen hinzugefuegt)", vbInformation
     End If
     
 End Sub
@@ -462,62 +474,287 @@ Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
 End Sub
 
 ' ===============================================================
-' 7. IMPORT REPORT LISTBOX
+' 7. IMPORT REPORT LISTBOX - MIT PERSISTENTEM PROTOKOLL
 ' ===============================================================
+
+' ---------------------------------------------------------------
+' 7a. Initialize: Laedt gespeichertes Protokoll aus Daten!Y500
+'     und fuellt die ListBox auf dem Bankkonto-Blatt.
+'     Wird aufgerufen bei: Workbook_Open, Worksheet_Activate,
+'     LoescheAlleBankkontoZeilen (Reset)
+' ---------------------------------------------------------------
 Public Sub Initialize_ImportReport_ListBox()
     
-    Dim ws As Worksheet
-    Dim shp As Shape
-    Dim rahmenFound As Boolean
+    Dim wsBK As Worksheet
+    Dim wsDaten As Worksheet
+    Dim lb As MSForms.ListBox
+    Dim gespeichert As String
+    Dim zeilen() As String
+    Dim i As Long
     
-    Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
-    rahmenFound = False
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
     
-    For Each shp In ws.Shapes
-        If shp.Name = RAHMEN_NAME Then
-            rahmenFound = True
-            Exit For
-        End If
-    Next shp
+    If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
     
-    If Not rahmenFound Then Exit Sub
+    ' ListBox-Steuerelement holen
+    Set lb = HoleListBox(wsBK)
+    If lb Is Nothing Then Exit Sub
     
-    shp.TextFrame2.TextRange.Characters.text = _
-        "Import-Bericht:" & vbCrLf & _
-        "----------------" & vbCrLf & _
-        "Zeilen in CSV: 0" & vbCrLf & _
-        "Importiert: 0" & vbCrLf & _
-        "Duplikate: 0" & vbCrLf & _
-        "Fehler: 0"
+    ' ListBox leeren
+    lb.Clear
+    
+    ' Gespeichertes Protokoll aus Daten!Y500 laden
+    gespeichert = CStr(wsDaten.Range(CELL_IMPORT_PROTOKOLL).value)
+    
+    If gespeichert = "" Or gespeichert = "0" Then
+        ' Kein Protokoll vorhanden - Standardtext
+        lb.AddItem "Kein Import-Protokoll vorhanden."
+        lb.AddItem "Starten Sie einen CSV-Import."
+        
+        ' Rahmen-Shape neutral faerben
+        Call FaerbeRahmen(wsBK, LISTBOX_COLOR_NEUTRAL)
+        Exit Sub
+    End If
+    
+    ' Protokoll-Zeilen aufsplitten
+    zeilen = Split(gespeichert, PROTOKOLL_TRENNZEICHEN)
+    
+    For i = LBound(zeilen) To UBound(zeilen)
+        If i >= MAX_LISTBOX_LINES Then Exit For
+        lb.AddItem zeilen(i)
+    Next i
+    
+    ' Farbe aus letztem Import-Status bestimmen
+    Call FaerbeRahmenNachProtokoll(wsBK, zeilen)
     
 End Sub
 
+' ---------------------------------------------------------------
+' 7b. Update: Schreibt neuen Import-Block (5 Zeilen) in den
+'     Protokoll-Speicher (Daten!Y500) und aktualisiert die ListBox.
+'     Format pro Block:
+'       Zeile 1: "Import: DD.MM.YYYY HH:MM:SS"
+'       Zeile 2: "X von Y Datensaetzen importiert"
+'       Zeile 3: "X Duplikate erkannt"
+'       Zeile 4: "X Fehler"
+'       Zeile 5: "----------------------"
+' ---------------------------------------------------------------
 Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported As Long, _
                                          ByVal dupes As Long, ByVal failed As Long)
     
-    Dim ws As Worksheet
-    Dim shp As Shape
-    Dim rahmenFound As Boolean
+    Dim wsBK As Worksheet
+    Dim wsDaten As Worksheet
+    Dim lb As MSForms.ListBox
+    Dim altesProtokoll As String
+    Dim neuerBlock As String
+    Dim gesamt As String
+    Dim zeilen() As String
+    Dim anzahlBloecke As Long
+    Dim maxZeilen As Long
+    Dim i As Long
     
-    Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
-    rahmenFound = False
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    
+    If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
+    
+    ' --- 5-Zeilen-Block zusammenbauen ---
+    neuerBlock = "Import: " & Format(Now, "DD.MM.YYYY HH:MM:SS") & _
+                 PROTOKOLL_TRENNZEICHEN & _
+                 imported & " von " & totalRows & " Datensaetzen importiert" & _
+                 PROTOKOLL_TRENNZEICHEN & _
+                 dupes & " Duplikate erkannt" & _
+                 PROTOKOLL_TRENNZEICHEN & _
+                 failed & " Fehler" & _
+                 PROTOKOLL_TRENNZEICHEN & _
+                 "----------------------"
+    
+    ' --- Altes Protokoll laden und neuen Block OBEN anfuegen ---
+    altesProtokoll = CStr(wsDaten.Range(CELL_IMPORT_PROTOKOLL).value)
+    
+    If altesProtokoll = "" Or altesProtokoll = "0" Then
+        gesamt = neuerBlock
+    Else
+        gesamt = neuerBlock & PROTOKOLL_TRENNZEICHEN & altesProtokoll
+    End If
+    
+    ' --- Auf MAX_PROTOKOLL_BLOECKE begrenzen (je 5 Zeilen) ---
+    zeilen = Split(gesamt, PROTOKOLL_TRENNZEICHEN)
+    maxZeilen = MAX_PROTOKOLL_BLOECKE * 5
+    
+    If UBound(zeilen) + 1 > maxZeilen Then
+        gesamt = ""
+        For i = 0 To maxZeilen - 1
+            If i > 0 Then gesamt = gesamt & PROTOKOLL_TRENNZEICHEN
+            gesamt = gesamt & zeilen(i)
+        Next i
+    End If
+    
+    ' --- In Daten!Y500 speichern ---
+    On Error Resume Next
+    wsDaten.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    wsDaten.Range(CELL_IMPORT_PROTOKOLL).value = gesamt
+    
+    On Error Resume Next
+    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
+    ' --- ListBox aktualisieren ---
+    Set lb = HoleListBox(wsBK)
+    If Not lb Is Nothing Then
+        lb.Clear
+        zeilen = Split(gesamt, PROTOKOLL_TRENNZEICHEN)
+        For i = LBound(zeilen) To UBound(zeilen)
+            If i >= MAX_LISTBOX_LINES Then Exit For
+            lb.AddItem zeilen(i)
+        Next i
+    End If
+    
+    ' --- Farbcodierung anwenden ---
+    Call FaerbeRahmenNachImport(wsBK, imported, dupes, failed)
+    
+End Sub
+
+' ---------------------------------------------------------------
+' 7c. Hilfsfunktion: ListBox-Steuerelement auf dem Blatt finden
+' ---------------------------------------------------------------
+Private Function HoleListBox(ByVal ws As Worksheet) As MSForms.ListBox
+    
+    Dim oleObj As OLEObject
+    
+    On Error Resume Next
+    Set oleObj = ws.OLEObjects(FORM_LISTBOX_NAME)
+    On Error GoTo 0
+    
+    If oleObj Is Nothing Then
+        Set HoleListBox = Nothing
+        Exit Function
+    End If
+    
+    On Error Resume Next
+    Set HoleListBox = oleObj.Object
+    On Error GoTo 0
+    
+End Function
+
+' ---------------------------------------------------------------
+' 7d. Farbcodierung: Rahmen-Shape einfaerben
+'     GRUEN  = Alles OK (imported > 0, dupes = 0, failed = 0)
+'     GELB   = Duplikate vorhanden (dupes > 0, failed = 0)
+'     ROT    = Fehler vorhanden (failed > 0)
+' ---------------------------------------------------------------
+Private Sub FaerbeRahmenNachImport(ByVal ws As Worksheet, _
+                                    ByVal imported As Long, _
+                                    ByVal dupes As Long, _
+                                    ByVal failed As Long)
+    Dim farbe As Long
+    
+    If failed > 0 Then
+        farbe = LISTBOX_COLOR_ROT
+    ElseIf dupes > 0 Then
+        farbe = LISTBOX_COLOR_GELB
+    Else
+        farbe = LISTBOX_COLOR_GRUEN
+    End If
+    
+    Call FaerbeRahmen(ws, farbe)
+    
+End Sub
+
+' ---------------------------------------------------------------
+' 7e. Farbcodierung aus gespeichertem Protokoll bestimmen
+'     (fuer Initialize beim Oeffnen der Arbeitsmappe)
+' ---------------------------------------------------------------
+Private Sub FaerbeRahmenNachProtokoll(ByVal ws As Worksheet, ByRef zeilen() As String)
+    
+    Dim i As Long
+    Dim zeile As String
+    Dim dupes As Long
+    Dim failed As Long
+    Dim parts() As String
+    
+    ' Die ersten 5 Zeilen des Protokolls sind der juengste Import-Block
+    ' Zeile 3 (Index 2): "X Duplikate erkannt"
+    ' Zeile 4 (Index 3): "X Fehler"
+    
+    If UBound(zeilen) < 3 Then
+        Call FaerbeRahmen(ws, LISTBOX_COLOR_NEUTRAL)
+        Exit Sub
+    End If
+    
+    ' Duplikate aus Zeile 3 extrahieren
+    zeile = Trim(zeilen(2))
+    dupes = ExtrahiereZahl(zeile)
+    
+    ' Fehler aus Zeile 4 extrahieren
+    zeile = Trim(zeilen(3))
+    failed = ExtrahiereZahl(zeile)
+    
+    If failed > 0 Then
+        Call FaerbeRahmen(ws, LISTBOX_COLOR_ROT)
+    ElseIf dupes > 0 Then
+        Call FaerbeRahmen(ws, LISTBOX_COLOR_GELB)
+    Else
+        Call FaerbeRahmen(ws, LISTBOX_COLOR_GRUEN)
+    End If
+    
+End Sub
+
+' ---------------------------------------------------------------
+' 7f. Zahl am Anfang eines Strings extrahieren ("123 Duplikate" -> 123)
+' ---------------------------------------------------------------
+Private Function ExtrahiereZahl(ByVal text As String) As Long
+    
+    Dim i As Long
+    Dim zahlStr As String
+    
+    zahlStr = ""
+    For i = 1 To Len(text)
+        If Mid(text, i, 1) >= "0" And Mid(text, i, 1) <= "9" Then
+            zahlStr = zahlStr & Mid(text, i, 1)
+        Else
+            If zahlStr <> "" Then Exit For
+        End If
+    Next i
+    
+    If zahlStr <> "" Then
+        ExtrahiereZahl = CLng(zahlStr)
+    Else
+        ExtrahiereZahl = 0
+    End If
+    
+End Function
+
+' ---------------------------------------------------------------
+' 7g. Rahmen-Shape einfaerben (Hintergrund)
+' ---------------------------------------------------------------
+Private Sub FaerbeRahmen(ByVal ws As Worksheet, ByVal farbe As Long)
+    
+    Dim shp As Shape
+    Dim gefunden As Boolean
+    
+    gefunden = False
     
     For Each shp In ws.Shapes
         If shp.Name = RAHMEN_NAME Then
-            rahmenFound = True
+            gefunden = True
             Exit For
         End If
     Next shp
     
-    If Not rahmenFound Then Exit Sub
+    If Not gefunden Then Exit Sub
     
-    shp.TextFrame2.TextRange.Characters.text = _
-        "Import-Bericht:" & vbCrLf & _
-        "----------------" & vbCrLf & _
-        "Zeilen in CSV: " & totalRows & vbCrLf & _
-        "Importiert: " & imported & vbCrLf & _
-        "Duplikate: " & dupes & vbCrLf & _
-        "Fehler: " & failed
+    On Error Resume Next
+    shp.Fill.ForeColor.RGB = farbe
+    shp.Fill.Visible = msoTrue
+    On Error GoTo 0
     
 End Sub
 
@@ -527,11 +764,12 @@ End Sub
 Public Sub LoescheAlleBankkontoZeilen()
     
     Dim ws As Worksheet
+    Dim wsDaten As Worksheet
     Dim lastRow As Long
     Dim antwort As VbMsgBoxResult
     
-    antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden gelöscht!" & vbCrLf & vbCrLf & _
-                     "Fortfahren?", vbYesNo + vbCritical, "Alle Daten löschen?")
+    antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden geloescht!" & vbCrLf & vbCrLf & _
+                     "Fortfahren?", vbYesNo + vbCritical, "Alle Daten loeschen?")
     
     If antwort <> vbYes Then Exit Sub
     
@@ -550,9 +788,19 @@ Public Sub LoescheAlleBankkontoZeilen()
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
+    ' Protokoll-Speicher ebenfalls leeren
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    If Not wsDaten Is Nothing Then
+        wsDaten.Unprotect PASSWORD:=PASSWORD
+        wsDaten.Range(CELL_IMPORT_PROTOKOLL).value = ""
+        wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    End If
+    On Error GoTo 0
+    
     Call Initialize_ImportReport_ListBox
     
-    MsgBox "Alle Daten wurden gelöscht.", vbInformation
+    MsgBox "Alle Daten wurden geloescht.", vbInformation
     
 End Sub
 
