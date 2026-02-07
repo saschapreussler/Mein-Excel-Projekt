@@ -63,7 +63,7 @@ Private Sub cbo_RechnungsMonat_Change()
     Dim rngFilterBereich As Range
     Dim visibleCellsCount As Long
     
-    Set wsStart = ThisWorkbook.Sheets("Startmen?")
+    Set wsStart = ThisWorkbook.Sheets("Startmenü")
     Set wsBank = ThisWorkbook.Sheets("Bankkonto")
     Set wsDaten = ThisWorkbook.Sheets("Daten")
 
