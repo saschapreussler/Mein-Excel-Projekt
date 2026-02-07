@@ -3,11 +3,11 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Data
-' VERSION: 3.4 - 07.02.2026
-' AENDERUNG: ListBox-Position wird ausschliesslich vom Designer
-'            gesteuert (kein Ueberschreiben von Pos/Groesse),
-'            Placement=xlFreeFloating wird nur einmal gesetzt,
-'            MsgBox "Keine Kontoauszuege" entfernt,
+' VERSION: 3.5 - 07.02.2026
+' AENDERUNG: ListBox-Groesse wird VOR dem Befuellen gespeichert
+'            und NACH dem Befuellen wiederhergestellt, da .AddItem
+'            bei ActiveX-ListBox die OLE-Container-Groesse
+'            veraendern kann. Designer bestimmt die Ausgangsgroesse.
 '            MAX_BLOECKE auf 100 erhoeht (500 Zeilen max)
 ' ===============================================================
 
@@ -527,11 +527,10 @@ End Sub
 '    - Max 100 Bloecke = 500 Zeilen Historie
 '    - WICHTIG: EnableEvents=False beim Schreiben in Daten!Y500
 '      um Worksheet_Change-Kaskade zu verhindern
-'    - WICHTIG: Position und Groesse der ListBox werden NIE
-'      per Code geaendert. Der Designer bestimmt allein
-'      Platzierung und Groesse. Nur Placement=xlFreeFloating
-'      wird einmalig gesetzt, damit die LB bei Zeilen-/
-'      Spaltengroessenaenderungen nicht mitwandert.
+'    - WICHTIG: Position/Groesse werden VOR .Clear gesichert
+'      und NACH .AddItem wiederhergestellt, da ActiveX-ListBox
+'      .AddItem die OLE-Container-Groesse veraendern kann.
+'      Der Designer bestimmt die Ausgangsgroesse.
 ' ===============================================================
 
 ' ---------------------------------------------------------------
@@ -544,10 +543,13 @@ Public Sub Initialize_ImportReport_ListBox()
     Dim wsBK As Worksheet
     Dim wsDaten As Worksheet
     Dim lb As MSForms.ListBox
+    Dim oleObj As OLEObject
     Dim gespeichert As String
     Dim zeilen() As String
     Dim anzahl As Long
     Dim i As Long
+    Dim savLeft As Double, savTop As Double
+    Dim savWidth As Double, savHeight As Double
     
     On Error Resume Next
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
@@ -556,11 +558,26 @@ Public Sub Initialize_ImportReport_ListBox()
     
     If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
     
-    ' Placement einmalig sicherstellen (freifliegend)
-    Call StelleFreifliegendSicher(wsBK)
+    ' OLEObject holen und Position/Groesse VORHER sichern
+    On Error Resume Next
+    Set oleObj = wsBK.OLEObjects(FORM_LISTBOX_NAME)
+    On Error GoTo 0
+    If oleObj Is Nothing Then Exit Sub
+    
+    savLeft = oleObj.Left
+    savTop = oleObj.Top
+    savWidth = oleObj.Width
+    savHeight = oleObj.Height
+    
+    ' Placement auf freifliegend setzen
+    On Error Resume Next
+    oleObj.Placement = xlFreeFloating
+    On Error GoTo 0
     
     ' ActiveX ListBox holen
-    Set lb = HoleActiveXListBox(wsBK)
+    On Error Resume Next
+    Set lb = oleObj.Object
+    On Error GoTo 0
     If lb Is Nothing Then Exit Sub
     
     ' ListBox leeren
@@ -574,20 +591,27 @@ Public Sub Initialize_ImportReport_ListBox()
         lb.AddItem "Kein Status Report"
         lb.AddItem "vorhanden."
         lb.BackColor = LB_COLOR_WEISS
-        Exit Sub
+    Else
+        ' Protokoll-Zeilen aus Y500 deserialisieren und einfuegen
+        zeilen = Split(gespeichert, PROTO_SEP)
+        anzahl = UBound(zeilen) + 1
+        If anzahl > MAX_ZEILEN Then anzahl = MAX_ZEILEN
+        
+        For i = 0 To anzahl - 1
+            lb.AddItem zeilen(i)
+        Next i
+        
+        ' Farbe aus juengstem Block bestimmen
+        Call FaerbeListBoxAusProtokoll(lb, zeilen)
     End If
     
-    ' Protokoll-Zeilen aus Y500 deserialisieren und einfuegen
-    zeilen = Split(gespeichert, PROTO_SEP)
-    anzahl = UBound(zeilen) + 1
-    If anzahl > MAX_ZEILEN Then anzahl = MAX_ZEILEN
-    
-    For i = 0 To anzahl - 1
-        lb.AddItem zeilen(i)
-    Next i
-    
-    ' Farbe aus juengstem Block bestimmen
-    Call FaerbeListBoxAusProtokoll(lb, zeilen)
+    ' Position und Groesse WIEDERHERSTELLEN (AddItem kann sie aendern)
+    On Error Resume Next
+    oleObj.Left = savLeft
+    oleObj.Top = savTop
+    oleObj.Width = savWidth
+    oleObj.Height = savHeight
+    On Error GoTo 0
     
 End Sub
 
@@ -601,6 +625,7 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     Dim wsBK As Worksheet
     Dim wsDaten As Worksheet
     Dim lb As MSForms.ListBox
+    Dim oleObj As OLEObject
     Dim altGespeichert As String
     Dim neuerBlock As String
     Dim gesamt As String
@@ -608,6 +633,8 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     Dim anzahl As Long
     Dim i As Long
     Dim eventsWaren As Boolean
+    Dim savLeft As Double, savTop As Double
+    Dim savWidth As Double, savHeight As Double
     
     On Error Resume Next
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
@@ -615,6 +642,22 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     On Error GoTo 0
     
     If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
+    
+    ' OLEObject holen und Position/Groesse VORHER sichern
+    On Error Resume Next
+    Set oleObj = wsBK.OLEObjects(FORM_LISTBOX_NAME)
+    On Error GoTo 0
+    If oleObj Is Nothing Then Exit Sub
+    
+    savLeft = oleObj.Left
+    savTop = oleObj.Top
+    savWidth = oleObj.Width
+    savHeight = oleObj.Height
+    
+    ' Placement auf freifliegend setzen
+    On Error Resume Next
+    oleObj.Placement = xlFreeFloating
+    On Error GoTo 0
     
     ' --- 5-Zeilen-Block zusammenbauen ---
     neuerBlock = "Import: " & Format(Now, "DD.MM.YYYY  HH:MM:SS") & _
@@ -667,11 +710,11 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     ' --- Events wieder herstellen ---
     Application.EnableEvents = eventsWaren
     
-    ' --- Placement sicherstellen ---
-    Call StelleFreifliegendSicher(wsBK)
-    
     ' --- ActiveX ListBox aktualisieren ---
-    Set lb = HoleActiveXListBox(wsBK)
+    On Error Resume Next
+    Set lb = oleObj.Object
+    On Error GoTo 0
+    
     If Not lb Is Nothing Then
         lb.Clear
         zeilen = Split(gesamt, PROTO_SEP)
@@ -682,6 +725,14 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
         ' Farbcodierung
         Call FaerbeListBoxNachImport(lb, imported, dupes, failed)
     End If
+    
+    ' Position und Groesse WIEDERHERSTELLEN (AddItem kann sie aendern)
+    On Error Resume Next
+    oleObj.Left = savLeft
+    oleObj.Top = savTop
+    oleObj.Width = savWidth
+    oleObj.Height = savHeight
+    On Error GoTo 0
     
 End Sub
 
@@ -782,28 +833,6 @@ Private Function ExtrahiereZahl(ByVal text As String) As Long
     End If
     
 End Function
-
-' ---------------------------------------------------------------
-' 7g. Setzt Placement auf xlFreeFloating, damit die ListBox
-'     bei Zeilen-/Spaltengroessenaenderungen nicht mitwandert.
-'     Position und Groesse werden NICHT veraendert - das
-'     bestimmt ausschliesslich der Designer.
-' ---------------------------------------------------------------
-Private Sub StelleFreifliegendSicher(ByVal ws As Worksheet)
-    
-    Dim oleObj As OLEObject
-    
-    On Error Resume Next
-    Set oleObj = ws.OLEObjects(FORM_LISTBOX_NAME)
-    On Error GoTo 0
-    
-    If oleObj Is Nothing Then Exit Sub
-    
-    On Error Resume Next
-    oleObj.Placement = xlFreeFloating
-    On Error GoTo 0
-    
-End Sub
 
 ' ===============================================================
 ' 8. HILFSFUNKTIONEN
@@ -923,4 +952,6 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
