@@ -564,11 +564,11 @@ End Sub
 ' 7b. Update: Schreibt neuen Import-Block (5 Zeilen) in den
 '     Protokoll-Speicher (Daten!Y501ff) und aktualisiert ListBox.
 '     Format pro Block:
-'       Zeile 1: "Import: DD.MM.YYYY HH:MM:SS"
-'       Zeile 2: "X von Y Datensaetzen importiert"
+'       Zeile 1: "Import: DD.MM.YYYY  HH:MM:SS"
+'       Zeile 2: "X von Y Datensätze importiert"
 '       Zeile 3: "X Duplikate erkannt"
 '       Zeile 4: "X Fehler"
-'       Zeile 5: "----------------------"
+'       Zeile 5: "--------------------------------------"
 '     Neuester Block steht OBEN (Y501).
 ' ---------------------------------------------------------------
 Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported As Long, _
@@ -592,11 +592,11 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
     
     ' --- 5-Zeilen-Block zusammenbauen ---
-    neuerBlock(1) = "Import: " & Format(Now, "DD.MM.YYYY HH:MM:SS")
-    neuerBlock(2) = imported & " von " & totalRows & " Datensaetzen importiert"
+    neuerBlock(1) = "Import: " & Format(Now, "DD.MM.YYYY   HH:MM:SS")
+    neuerBlock(2) = imported & " / " & totalRows & " Datensätze importiert"
     neuerBlock(3) = dupes & " Duplikate erkannt"
     neuerBlock(4) = failed & " Fehler"
-    neuerBlock(5) = "----------------------"
+    neuerBlock(5) = "--------------------------------------"
     
     ' --- Daten-Blatt entsperren ---
     On Error Resume Next
