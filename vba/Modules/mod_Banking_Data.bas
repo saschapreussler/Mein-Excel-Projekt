@@ -3,30 +3,29 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Data
-' VERSION: 3.2 - 07.02.2026
-' AENDERUNG: ListBox als Formularsteuerelement korrekt,
-'            Y500 als einzige Speicherzelle (serialisiert),
+' VERSION: 3.3 - 07.02.2026
+' AENDERUNG: ActiveX-ListBox (lst_ImportReport) statt Formular-LB,
+'            Hintergrundfarbe direkt auf ListBox.BackColor,
+'            EnableEvents=False beim Schreiben in Daten-Blatt
+'            (verhindert Worksheet_Change Kaskade / Laufzeitfehler),
 '            MsgBox mit vollstaendigen Import-Details,
-'            Farbcodierung ueber Rahmen-Shape
+'            Y500 als einzige Speicherzelle (serialisiert)
 ' ===============================================================
 
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
-Private Const RAHMEN_NAME As String = "ImportReport_Rahmen"
 
-' Farb-Konstanten fuer Rahmen-Hintergrund
-' VBA nutzt BGR-Reihenfolge bei Long-Werten!
-Private Const RAHMEN_COLOR_GRUEN As Long = 11534528    ' RGB(0,176,80) dunkelgruen
-Private Const RAHMEN_COLOR_GELB As Long = 65535        ' RGB(255,255,0) gelb
-Private Const RAHMEN_COLOR_ROT As Long = 255           ' RGB(255,0,0) rot
-Private Const RAHMEN_COLOR_WEISS As Long = 16777215    ' RGB(255,255,255) weiss
+' Farb-Konstanten fuer ListBox-Hintergrund (OLE_COLOR / BGR)
+Private Const LB_COLOR_GRUEN As Long = &HC0FFC0     ' hellgruen
+Private Const LB_COLOR_GELB As Long = &HC0FFFF      ' hellgelb
+Private Const LB_COLOR_ROT As Long = &HC0C0FF       ' hellrot
+Private Const LB_COLOR_WEISS As Long = &HFFFFFF     ' weiss
 
 ' Trennzeichen fuer Serialisierung in Zelle Y500
 Private Const PROTO_SEP As String = "||"
 
-' Hilfsbereich fuer ListFillRange: Spalte Y ab Zeile 501
-' (wird bei jedem Initialize/Update neu beschrieben)
-Private Const LB_FILL_START_ROW As Long = 501
-Private Const LB_FILL_SPALTE As Long = 25             ' Spalte Y
+' Protokoll-Speicher: Zelle Y500 auf dem Daten-Blatt
+Private Const PROTO_ZEILE As Long = 500
+Private Const PROTO_SPALTE As Long = 25              ' Spalte Y
 
 ' Maximale Anzahl Import-Bloecke im Speicher (je 5 Zeilen)
 Private Const MAX_BLOECKE As Long = 12
@@ -352,9 +351,7 @@ Private Sub Anwende_Zebra_Bankkonto(ByVal ws As Worksheet)
     If lastRow < BK_START_ROW Then Exit Sub
     
     For lRow = BK_START_ROW To lastRow
-        ' Teil 1: Spalten A-G (1-7)
         Set rngPart1 = ws.Range(ws.Cells(lRow, 1), ws.Cells(lRow, 7))
-        ' Teil 2: Spalten I-Z (9-26) - Spalte H (8) ausgenommen!
         Set rngPart2 = ws.Range(ws.Cells(lRow, 9), ws.Cells(lRow, 26))
         
         If (lRow - BK_START_ROW) Mod 2 = 1 Then
@@ -522,33 +519,35 @@ Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
 End Sub
 
 ' ===============================================================
-' 7. IMPORT REPORT LISTBOX (FORMULARSTEUERELEMENT)
+' 7. IMPORT REPORT LISTBOX (ACTIVEX STEUERELEMENT)
 '    -----------------------------------------------
 '    Architektur:
+'    - ActiveX ListBox "lst_ImportReport" auf Bankkonto-Blatt
 '    - Speicher: Daten!Y500 (eine einzige Zelle, serialisiert
 '      mit "||" als Trennzeichen zwischen Zeilen)
-'    - Anzeige: Daten!Y501:Y5xx als Hilfsbereich, der aus Y500
-'      deserialisiert wird. ListFillRange zeigt darauf.
-'    - Farbe: Rahmen-Shape "ImportReport_Rahmen" wird eingefaerbt.
+'    - Befuellung: .Clear / .AddItem (ActiveX-Methoden)
+'    - Hintergrundfarbe: .BackColor direkt auf der ListBox
 '    - Pro Import-Vorgang: 5 Zeilen (Datum, X/Y, Dupes, Fehler, ----)
 '    - Max 12 Bloecke = 60 Zeilen Historie
+'    - WICHTIG: EnableEvents=False beim Schreiben in Daten!Y500
+'      um Worksheet_Change-Kaskade zu verhindern
 ' ===============================================================
 
 ' ---------------------------------------------------------------
-' 7a. Initialize: Liest Y500, deserialisiert in Y501ff,
-'     setzt ListFillRange und Rahmen-Farbe.
+' 7a. Initialize: Liest Y500, befuellt ActiveX ListBox,
+'     setzt Hintergrundfarbe.
 '     Aufruf: Workbook_Open, Worksheet_Activate, nach Loeschen
 ' ---------------------------------------------------------------
 Public Sub Initialize_ImportReport_ListBox()
     
     Dim wsBK As Worksheet
     Dim wsDaten As Worksheet
-    Dim shpLB As Shape
+    Dim lb As MSForms.ListBox
     Dim gespeichert As String
     Dim zeilen() As String
     Dim anzahl As Long
     Dim i As Long
-    Dim letzteZeile As Long
+    Dim eventsWaren As Boolean
     
     On Error Resume Next
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
@@ -557,81 +556,57 @@ Public Sub Initialize_ImportReport_ListBox()
     
     If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
     
-    ' Formularsteuerelement-ListBox finden
-    Set shpLB = HoleFormListBox(wsBK)
-    If shpLB Is Nothing Then Exit Sub
+    ' ActiveX ListBox holen
+    Set lb = HoleActiveXListBox(wsBK)
+    If lb Is Nothing Then Exit Sub
     
-    ' Daten-Blatt entsperren
-    On Error Resume Next
-    wsDaten.Unprotect PASSWORD:=PASSWORD
-    On Error GoTo 0
-    
-    ' Hilfsbereich Y501:Y560 komplett leeren
-    Call LeereHilfsbereich(wsDaten)
+    ' ListBox leeren
+    lb.Clear
     
     ' Gespeichertes Protokoll aus Y500 lesen
-    gespeichert = CStr(wsDaten.Cells(500, LB_FILL_SPALTE).value)
+    gespeichert = CStr(wsDaten.Cells(PROTO_ZEILE, PROTO_SPALTE).value)
     
     If gespeichert = "" Or gespeichert = "0" Then
         ' Kein Protokoll vorhanden - Standardtext
-        wsDaten.Cells(LB_FILL_START_ROW, LB_FILL_SPALTE).value = _
-            "Es wurden noch keine Daten importiert."
-        
-        On Error Resume Next
-        wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-        On Error GoTo 0
-        
-        ' ListFillRange auf die eine Zeile setzen
-        shpLB.ControlFormat.ListFillRange = _
-            "'" & WS_DATEN & "'!Y" & LB_FILL_START_ROW & ":Y" & LB_FILL_START_ROW
-        
-        ' Rahmen weiss
-        Call FaerbeRahmen(wsBK, RAHMEN_COLOR_WEISS)
+        lb.AddItem "Kein Status Report vorhanden."
+        lb.BackColor = LB_COLOR_WEISS
         Exit Sub
     End If
     
-    ' Protokoll-Zeilen aus Y500 deserialisieren
+    ' Protokoll-Zeilen aus Y500 deserialisieren und einfuegen
     zeilen = Split(gespeichert, PROTO_SEP)
     anzahl = UBound(zeilen) + 1
     If anzahl > MAX_ZEILEN Then anzahl = MAX_ZEILEN
     
-    ' In Hilfsbereich Y501ff schreiben
     For i = 0 To anzahl - 1
-        wsDaten.Cells(LB_FILL_START_ROW + i, LB_FILL_SPALTE).value = zeilen(i)
+        lb.AddItem zeilen(i)
     Next i
     
-    On Error Resume Next
-    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    On Error GoTo 0
-    
-    ' ListFillRange setzen
-    letzteZeile = LB_FILL_START_ROW + anzahl - 1
-    shpLB.ControlFormat.ListFillRange = _
-        "'" & WS_DATEN & "'!Y" & LB_FILL_START_ROW & ":Y" & letzteZeile
-    
     ' Farbe aus juengstem Block bestimmen
-    Call FaerbeRahmenAusProtokoll(wsBK, zeilen)
+    Call FaerbeListBoxAusProtokoll(lb, zeilen)
+    
+    ' Groesse und Position fixieren (Schutz vor Verschiebung)
+    Call FixiereListBoxPosition(wsBK)
     
 End Sub
 
 ' ---------------------------------------------------------------
 ' 7b. Update: Neuen 5-Zeilen-Block OBEN einfuegen,
-'     in Y500 serialisiert speichern, Hilfsbereich aktualisieren,
-'     ListFillRange setzen, Rahmen einfaerben.
+'     in Y500 serialisiert speichern, ListBox aktualisieren.
 ' ---------------------------------------------------------------
 Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported As Long, _
                                          ByVal dupes As Long, ByVal failed As Long)
     
     Dim wsBK As Worksheet
     Dim wsDaten As Worksheet
-    Dim shpLB As Shape
+    Dim lb As MSForms.ListBox
     Dim altGespeichert As String
     Dim neuerBlock As String
     Dim gesamt As String
     Dim zeilen() As String
     Dim anzahl As Long
     Dim i As Long
-    Dim letzteZeile As Long
+    Dim eventsWaren As Boolean
     
     On Error Resume Next
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
@@ -651,17 +626,19 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
                  PROTO_SEP & _
                  "--------------------------------------"
     
+    ' --- WICHTIG: Events deaktivieren BEVOR in Daten geschrieben wird ---
+    eventsWaren = Application.EnableEvents
+    Application.EnableEvents = False
+    
     ' --- Daten-Blatt entsperren ---
     On Error Resume Next
     wsDaten.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
     ' --- Alten Inhalt aus Y500 laden ---
-    altGespeichert = CStr(wsDaten.Cells(500, LB_FILL_SPALTE).value)
+    altGespeichert = CStr(wsDaten.Cells(PROTO_ZEILE, PROTO_SPALTE).value)
     
-    ' Wenn alter Inhalt leer oder Default-Text, ignorieren
-    If altGespeichert = "" Or altGespeichert = "0" Or _
-       altGespeichert = "Es wurden noch keine Daten importiert." Then
+    If altGespeichert = "" Or altGespeichert = "0" Then
         gesamt = neuerBlock
     Else
         gesamt = neuerBlock & PROTO_SEP & altGespeichert
@@ -671,7 +648,6 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     zeilen = Split(gesamt, PROTO_SEP)
     anzahl = UBound(zeilen) + 1
     If anzahl > MAX_ZEILEN Then
-        ' Abschneiden und neu zusammensetzen
         gesamt = zeilen(0)
         For i = 1 To MAX_ZEILEN - 1
             gesamt = gesamt & PROTO_SEP & zeilen(i)
@@ -680,100 +656,90 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     End If
     
     ' --- In Y500 speichern (eine einzige Zelle!) ---
-    wsDaten.Cells(500, LB_FILL_SPALTE).value = gesamt
-    
-    ' --- Hilfsbereich Y501ff leeren und neu beschreiben ---
-    Call LeereHilfsbereich(wsDaten)
-    
-    zeilen = Split(gesamt, PROTO_SEP)
-    For i = 0 To anzahl - 1
-        wsDaten.Cells(LB_FILL_START_ROW + i, LB_FILL_SPALTE).value = zeilen(i)
-    Next i
+    wsDaten.Cells(PROTO_ZEILE, PROTO_SPALTE).value = gesamt
     
     ' --- Daten-Blatt schuetzen ---
     On Error Resume Next
     wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
     
-    ' --- ListBox aktualisieren ---
-    Set shpLB = HoleFormListBox(wsBK)
-    If Not shpLB Is Nothing Then
-        letzteZeile = LB_FILL_START_ROW + anzahl - 1
-        shpLB.ControlFormat.ListFillRange = _
-            "'" & WS_DATEN & "'!Y" & LB_FILL_START_ROW & ":Y" & letzteZeile
+    ' --- Events wieder herstellen ---
+    Application.EnableEvents = eventsWaren
+    
+    ' --- ActiveX ListBox aktualisieren ---
+    Set lb = HoleActiveXListBox(wsBK)
+    If Not lb Is Nothing Then
+        lb.Clear
+        zeilen = Split(gesamt, PROTO_SEP)
+        For i = 0 To anzahl - 1
+            lb.AddItem zeilen(i)
+        Next i
+        
+        ' Farbcodierung
+        Call FaerbeListBoxNachImport(lb, imported, dupes, failed)
     End If
     
-    ' --- Farbcodierung anwenden ---
-    Call FaerbeRahmenNachImport(wsBK, imported, dupes, failed)
+    ' Groesse und Position fixieren
+    Call FixiereListBoxPosition(wsBK)
     
 End Sub
 
 ' ---------------------------------------------------------------
-' 7c. Hilfsbereich Y501:Y560 komplett leeren
+' 7c. ActiveX ListBox auf dem Blatt finden
+'     Zugriff ueber OLEObjects -> .Object (MSForms.ListBox)
 ' ---------------------------------------------------------------
-Private Sub LeereHilfsbereich(ByVal wsDaten As Worksheet)
-    Dim i As Long
-    For i = 0 To MAX_ZEILEN - 1
-        wsDaten.Cells(LB_FILL_START_ROW + i, LB_FILL_SPALTE).ClearContents
-    Next i
-End Sub
-
-' ---------------------------------------------------------------
-' 7d. Formularsteuerelement-ListBox finden (ueber Shapes)
-' ---------------------------------------------------------------
-Private Function HoleFormListBox(ByVal ws As Worksheet) As Shape
+Private Function HoleActiveXListBox(ByVal ws As Worksheet) As MSForms.ListBox
     
-    Dim shp As Shape
+    Dim oleObj As OLEObject
     
     On Error Resume Next
-    Set shp = ws.Shapes(FORM_LISTBOX_NAME)
+    Set oleObj = ws.OLEObjects(FORM_LISTBOX_NAME)
     On Error GoTo 0
     
-    If shp Is Nothing Then
-        Set HoleFormListBox = Nothing
-    Else
-        Set HoleFormListBox = shp
+    If oleObj Is Nothing Then
+        Set HoleActiveXListBox = Nothing
+        Exit Function
     End If
+    
+    On Error Resume Next
+    Set HoleActiveXListBox = oleObj.Object
+    On Error GoTo 0
     
 End Function
 
 ' ---------------------------------------------------------------
-' 7e. Farbcodierung nach Import-Ergebnis
+' 7d. Farbcodierung nach Import-Ergebnis (direkt auf ListBox)
 '     GRUEN  = Alles OK (dupes = 0, failed = 0)
 '     GELB   = Duplikate vorhanden (dupes > 0, failed = 0)
 '     ROT    = Fehler vorhanden (failed > 0)
 ' ---------------------------------------------------------------
-Private Sub FaerbeRahmenNachImport(ByVal ws As Worksheet, _
-                                    ByVal imported As Long, _
-                                    ByVal dupes As Long, _
-                                    ByVal failed As Long)
-    Dim farbe As Long
+Private Sub FaerbeListBoxNachImport(ByVal lb As MSForms.ListBox, _
+                                     ByVal imported As Long, _
+                                     ByVal dupes As Long, _
+                                     ByVal failed As Long)
     
     If failed > 0 Then
-        farbe = RAHMEN_COLOR_ROT
+        lb.BackColor = LB_COLOR_ROT
     ElseIf dupes > 0 Then
-        farbe = RAHMEN_COLOR_GELB
+        lb.BackColor = LB_COLOR_GELB
     Else
-        farbe = RAHMEN_COLOR_GRUEN
+        lb.BackColor = LB_COLOR_GRUEN
     End If
-    
-    Call FaerbeRahmen(ws, farbe)
     
 End Sub
 
 ' ---------------------------------------------------------------
-' 7f. Farbcodierung aus gespeichertem Protokoll bestimmen
-'     (fuer Initialize beim Oeffnen der Arbeitsmappe)
-'     Liest Zeile 3 (Index 2): "X Duplikate erkannt"
-'     Liest Zeile 4 (Index 3): "X Fehler"
+' 7e. Farbcodierung aus gespeichertem Protokoll bestimmen
+'     Liest Index 2: "X Duplikate erkannt"
+'     Liest Index 3: "X Fehler"
 ' ---------------------------------------------------------------
-Private Sub FaerbeRahmenAusProtokoll(ByVal wsBK As Worksheet, ByRef zeilen() As String)
+Private Sub FaerbeListBoxAusProtokoll(ByVal lb As MSForms.ListBox, ByRef zeilen() As String)
     
     Dim dupes As Long
     Dim failed As Long
     
     If UBound(zeilen) < 3 Then
-        Call FaerbeRahmen(wsBK, RAHMEN_COLOR_WEISS)
+        lb.BackColor = LB_COLOR_WEISS
         Exit Sub
     End If
     
@@ -781,17 +747,17 @@ Private Sub FaerbeRahmenAusProtokoll(ByVal wsBK As Worksheet, ByRef zeilen() As 
     failed = ExtrahiereZahl(CStr(zeilen(3)))
     
     If failed > 0 Then
-        Call FaerbeRahmen(wsBK, RAHMEN_COLOR_ROT)
+        lb.BackColor = LB_COLOR_ROT
     ElseIf dupes > 0 Then
-        Call FaerbeRahmen(wsBK, RAHMEN_COLOR_GELB)
+        lb.BackColor = LB_COLOR_GELB
     Else
-        Call FaerbeRahmen(wsBK, RAHMEN_COLOR_GRUEN)
+        lb.BackColor = LB_COLOR_GRUEN
     End If
     
 End Sub
 
 ' ---------------------------------------------------------------
-' 7g. Zahl am Anfang eines Strings extrahieren
+' 7f. Zahl am Anfang eines Strings extrahieren
 '     "123 Duplikate erkannt" -> 123
 ' ---------------------------------------------------------------
 Private Function ExtrahiereZahl(ByVal text As String) As Long
@@ -817,27 +783,23 @@ Private Function ExtrahiereZahl(ByVal text As String) As Long
 End Function
 
 ' ---------------------------------------------------------------
-' 7h. Rahmen-Shape einfaerben (Hintergrund)
-'     Das Shape "ImportReport_Rahmen" liegt visuell hinter/um
-'     die ListBox und dient als farblicher Indikator.
+' 7g. Fixiert Position und Groesse der ActiveX ListBox
+'     Setzt Placement auf xlFreeFloating, damit die ListBox
+'     bei Zeilenhoehen-/Spaltenbreiten-Aenderungen stabil bleibt.
 ' ---------------------------------------------------------------
-Private Sub FaerbeRahmen(ByVal ws As Worksheet, ByVal farbe As Long)
+Private Sub FixiereListBoxPosition(ByVal ws As Worksheet)
     
-    Dim shp As Shape
+    Dim oleObj As OLEObject
     
     On Error Resume Next
-    Set shp = ws.Shapes(RAHMEN_NAME)
+    Set oleObj = ws.OLEObjects(FORM_LISTBOX_NAME)
     On Error GoTo 0
     
-    If shp Is Nothing Then Exit Sub
+    If oleObj Is Nothing Then Exit Sub
     
     On Error Resume Next
-    With shp.Fill
-        .Visible = msoTrue
-        .Solid
-        .ForeColor.RGB = farbe
-        .Transparency = 0
-    End With
+    ' xlFreeFloating = 3: Nicht mit Zellen verschieben/skalieren
+    oleObj.Placement = xlFreeFloating
     On Error GoTo 0
     
 End Sub
@@ -851,6 +813,7 @@ Public Sub LoescheAlleBankkontoZeilen()
     Dim wsDaten As Worksheet
     Dim lastRow As Long
     Dim antwort As VbMsgBoxResult
+    Dim eventsWaren As Boolean
     
     antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden geloescht!" & vbCrLf & vbCrLf & _
                      "Fortfahren?", vbYesNo + vbCritical, "Alle Daten loeschen?")
@@ -872,16 +835,20 @@ Public Sub LoescheAlleBankkontoZeilen()
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
-    ' Protokoll-Speicher leeren: Y500 + Hilfsbereich Y501:Y560
+    ' Protokoll-Speicher leeren (Events aus!)
+    eventsWaren = Application.EnableEvents
+    Application.EnableEvents = False
+    
     On Error Resume Next
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     If Not wsDaten Is Nothing Then
         wsDaten.Unprotect PASSWORD:=PASSWORD
-        wsDaten.Cells(500, LB_FILL_SPALTE).ClearContents
-        Call LeereHilfsbereich(wsDaten)
+        wsDaten.Cells(PROTO_ZEILE, PROTO_SPALTE).ClearContents
         wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     End If
     On Error GoTo 0
+    
+    Application.EnableEvents = eventsWaren
     
     Call Initialize_ImportReport_ListBox
     
