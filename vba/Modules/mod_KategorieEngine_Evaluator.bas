@@ -3,13 +3,19 @@ Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - EVALUATOR
-' VERSION: 3.0 - 07.02.2026
-' ÄNDERUNG: Betragsvalidierung über Einstellungen!,
-'           Zeitfensterprüfung (Vorlauf/Nachlauf),
-'           Monat/Periode intelligent aus Fälligkeit,
-'           strengere EntityRole-Trennung,
-'           Datum+IBAN+Betrag als zusätzliche Signale
+' VERSION: 4.0 - 07.02.2026
+' ÄNDERUNG: Score-Dominanz-Logik: Wenn bester Score
+'           deutlich höher als zweitbester ? GRÜN (sicher).
+'           Sammelzahlung-Kategorie bei echter Mehrdeutigkeit.
+'           Editierbare Betragsspalten bei GELB.
+'           Strengere EntityRole-Trennung.
 ' =====================================================
+
+' Mindest-Score-Differenz für sichere Zuordnung
+Private Const SCORE_DOMINANZ_SCHWELLE As Long = 20
+
+' Kategorie für echte Mehrdeutigkeit bei Mitgliedern
+Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung (mehrere Positionen) Mitglied"
 
 ' -----------------------------
 ' Kontext erstellen (erweitert)
@@ -195,6 +201,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     bestPriority = 999
     bestCategory = ""
 
+    ' Dictionary: Kategorie -> Score (höchster Score je Kategorie)
     Dim hitCategories As Object
     Set hitCategories = CreateObject("Scripting.Dictionary")
 
@@ -255,12 +262,24 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                 score = score + 15
             End If
             
-            ' NEU: Betragsvalidierung über Einstellungen
+            ' Keyword-Länge als Qualitätsfaktor:
+            ' Längere Keywords sind spezifischer und verdienen mehr Score
+            Dim kwLen As Long
+            kwLen = Len(normKeyword)
+            If kwLen >= 10 Then
+                score = score + 15        ' Sehr spezifisches Keyword
+            ElseIf kwLen >= 6 Then
+                score = score + 8         ' Mittleres Keyword
+            Else
+                score = score + 0         ' Kurzes, generisches Keyword (z.B. "wasser")
+            End If
+            
+            ' Betragsvalidierung über Einstellungen
             Dim betragBonus As Long
             betragBonus = PruefeBetragGegenEinstellungen(category, ctx("AbsAmount"))
             score = score + betragBonus
             
-            ' NEU: Zeitfenstervalidierung über Einstellungen
+            ' Zeitfenstervalidierung über Einstellungen
             If IsDate(ctx("Datum")) Then
                 Dim zeitBonus As Long
                 zeitBonus = PruefeZeitfenster(category, CDate(ctx("Datum")), faelligkeit)
@@ -287,21 +306,73 @@ NextRule:
     Next ruleRow
 
     ' ================================
-    ' PHASE 3: ERGEBNIS AUSWERTEN
+    ' PHASE 3: ERGEBNIS AUSWERTEN MIT SCORE-DOMINANZ
     ' ================================
     
     If hitCategories.count > 1 Then
-        If ctx("IsMitglied") And ctx("IsEinnahme") Then
+        ' Zweitbesten Score ermitteln
+        Dim zweitBesterScore As Long
+        zweitBesterScore = -999
+        Dim katKey As Variant
+        For Each katKey In hitCategories.keys
+            If CStr(katKey) <> bestCategory Then
+                If CLng(hitCategories(katKey)) > zweitBesterScore Then
+                    zweitBesterScore = CLng(hitCategories(katKey))
+                End If
+            End If
+        Next katKey
+        
+        ' Score-Dominanz prüfen:
+        ' Wenn der beste Score DEUTLICH höher ist als der zweitbeste,
+        ' ist die Zuordnung eindeutig trotz mehrerer Keyword-Treffer
+        Dim scoreDifferenz As Long
+        scoreDifferenz = bestScore - zweitBesterScore
+        
+        If scoreDifferenz >= SCORE_DOMINANZ_SCHWELLE Then
+            ' ========================================
+            ' SICHERER TREFFER trotz mehrerer Matches
+            ' Der beste Kandidat dominiert klar
+            ' ========================================
             wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-                "Mehrere Positionen erkannt: " & Join(hitCategories.keys, " | ")
+                "Automatisch zugeordnet (Score " & bestScore & _
+                ", nächstbester: " & zweitBesterScore & ")"
+            ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRUEN"
+            ApplyBetragsZuordnung wsBK, rowBK
+            Exit Sub
+        End If
+        
+        ' ========================================
+        ' ECHTE MEHRDEUTIGKEIT: Scores liegen nah beieinander
+        ' ========================================
+        
+        ' Liste der konkurrierenden Kategorien erstellen
+        Dim konkurrenten As String
+        konkurrenten = ""
+        For Each katKey In hitCategories.keys
+            If konkurrenten <> "" Then konkurrenten = konkurrenten & " | "
+            konkurrenten = konkurrenten & CStr(katKey) & " (" & hitCategories(katKey) & ")"
+        Next katKey
+        
+        If ctx("IsMitglied") Then
+            ' Mitglied ? Sammelzahlung-Kategorie
+            wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
+                "Mehrere Positionen möglich: " & konkurrenten & _
+                " - Bitte manuell in den Betragsspalten aufteilen!"
             ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
-                           "Sammelzahlung Mitglied", "GELB"
+                           KAT_SAMMELZAHLUNG, "GELB"
+            
+            ' Betragsspalten editierbar machen (Zellschutz aufheben)
+            Call EntsperreBetragsspalten(wsBK, rowBK, ctx("IsEinnahme"))
             Exit Sub
         Else
+            ' Kein Mitglied ? normale Mehrdeutigkeitsmeldung
             wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-                "Mehrere mögliche Kategorien: " & Join(hitCategories.keys, " | ") & _
+                "Mehrere mögliche Kategorien: " & konkurrenten & _
                 " - Bitte prüfen!"
-            ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GELB"
+            ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
+                           KAT_SAMMELZAHLUNG, "GELB"
+            
+            Call EntsperreBetragsspalten(wsBK, rowBK, ctx("IsEinnahme"))
             Exit Sub
         End If
     End If
@@ -321,6 +392,34 @@ NextRule:
     End If
     ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), "", "ROT"
 
+End Sub
+
+
+' =====================================================
+' NEU: Betragsspalten entsperren für manuelle Eingabe
+' Bei GELB/Sammelzahlung soll der Nutzer die Beträge
+' manuell auf die richtigen Spalten aufteilen können.
+' Einnahme (Betrag > 0) ? Spalten M-S editierbar
+' Ausgabe  (Betrag < 0) ? Spalten T-Z editierbar
+' =====================================================
+Private Sub EntsperreBetragsspalten(ByVal wsBK As Worksheet, _
+                                    ByVal rowBK As Long, _
+                                    ByVal istEinnahme As Boolean)
+    Dim startCol As Long
+    Dim endCol As Long
+    Dim c As Long
+    
+    If istEinnahme Then
+        startCol = BK_COL_EINNAHMEN_START   ' M = 13
+        endCol = BK_COL_EINNAHMEN_ENDE      ' S = 19
+    Else
+        startCol = BK_COL_AUSGABEN_START    ' T = 20
+        endCol = BK_COL_AUSGABEN_ENDE       ' Z = 26
+    End If
+    
+    For c = startCol To endCol
+        wsBK.Cells(rowBK, c).Locked = False
+    Next c
 End Sub
 
 
@@ -351,6 +450,7 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
         If catLower Like "*vorauszahlung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*spende*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*beitrag*" And Not catLower Like "*verband*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*sammelzahlung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         
         ' Versorger bei Einnahme (Rückzahlung VOM Versorger) = OK
         ' Versorger bei Ausgabe (Zahlung AN Versorger) = OK
@@ -364,12 +464,18 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
         If catLower Like "*energieversorger*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*wasserwerk*" Then PasstEntityRoleZuKategorie = False: Exit Function
         
+        ' Mitglied darf KEINE Rückzahlung-Versorger-Kombinationen
+        ' (z.B. "Strom Rückzahlung Versorger" ist NICHT für Mitglieder)
+        If catLower Like "*rueckzahlung*versorger*" Or _
+           catLower Like "*rückzahlung*versorger*" Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        
         ' Mitglied darf KEINE Bank-Kategorien
         If catLower Like "*entgeltabschluss*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*kontoführung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*kontofuehrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         
-        ' Mitglied bei Einnahme = Beitrag/Pacht/Zahlung VON Mitglied
         ' Mitglied bei Ausgabe = Rückerstattung AN Mitglied (selten, aber möglich)
         If ctx("IsAusgabe") Then
             ' Ausgaben an Mitglieder sind ungewöhnlich - nur Rückerstattung erlauben
@@ -402,7 +508,7 @@ End Function
 
 
 ' =====================================================
-' NEU: Betragsvalidierung über Einstellungen!
+' Betragsvalidierung über Einstellungen!
 ' Prüft ob der Betrag zum Soll-Betrag der Kategorie passt
 ' Rückgabe: Score-Bonus (0 = kein Match, 25 = exakter Match)
 ' =====================================================
@@ -458,7 +564,7 @@ End Function
 
 
 ' =====================================================
-' NEU: Zeitfensterprüfung über Einstellungen!
+' Zeitfensterprüfung über Einstellungen!
 ' Prüft ob das Buchungsdatum im Toleranzfenster liegt
 ' Rückgabe: Score-Bonus (0 = außerhalb, 20 = innerhalb)
 ' =====================================================
@@ -559,7 +665,7 @@ End Function
 
 
 ' =====================================================
-' NEU: Monat/Periode intelligent ermitteln
+' Monat/Periode intelligent ermitteln
 ' Berücksichtigt Fälligkeit und Zahlungstermine
 ' =====================================================
 Public Function ErmittleMonatPeriode(ByVal category As String, _
@@ -670,4 +776,5 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         End Select
     End With
 End Sub
+
 
