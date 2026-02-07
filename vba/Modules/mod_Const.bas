@@ -218,6 +218,7 @@ Public Const FORM_LISTBOX_NAME As String = "lst_ImportReport"
 Public Const WS_PROTOCOL_TEMP As String = "Protokoll_Temp"
 Public Const PROTOCOL_RANGE_START As String = "A1"
 Public Const MAX_LISTBOX_LINES As Long = 500
+
 ' ===============================================================
 ' L. ENTITY ROLE
 ' ===============================================================
@@ -260,6 +261,24 @@ Public Const FUNKTION_1_VORSITZENDER As String = "1. Vorsitzende(r)"
 Public Const FUNKTION_2_VORSITZENDER As String = "2. Vorsitzende(r)"
 Public Const FUNKTION_KASSIERER As String = "Kassierer"
 Public Const FUNKTION_SCHRIFTFUEHRER As String = "Schriftfuehrer"
+
+' ===============================================================
+' P. EINSTELLUNGEN - ZAHLUNGSTERMINE (Spalten B-H)
+' ===============================================================
+Public Const ES_HEADER_ROW As Long = 3
+Public Const ES_START_ROW As Long = 4
+
+Public Const ES_COL_KATEGORIE As Long = 2       ' Spalte B - Referenz Kategorie
+Public Const ES_COL_SOLL_BETRAG As Long = 3     ' Spalte C - Soll-Betrag
+Public Const ES_COL_SOLL_TAG As Long = 4        ' Spalte D - Soll-Tag (1-31)
+Public Const ES_COL_STICHTAG_FIX As Long = 5    ' Spalte E - Soll-Stichtag TT.MM.
+Public Const ES_COL_VORLAUF As Long = 6         ' Spalte F - Vorlauf-Toleranz (Tage)
+Public Const ES_COL_NACHLAUF As Long = 7        ' Spalte G - Nachlauf-Toleranz (Tage)
+Public Const ES_COL_SAEUMNIS As Long = 8        ' Spalte H - Saeumnis-Gebuehr
+
+Public Const ES_COL_START As Long = 2           ' Erste Datenspalte (B)
+Public Const ES_COL_END As Long = 8             ' Letzte Datenspalte (H)
+
 
 Public Function GetErlaubteFunktionenFuerParzelle() As Variant
     GetErlaubteFunktionenFuerParzelle = Array( _
