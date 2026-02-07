@@ -217,8 +217,7 @@ Public Const STR_HISTORY_SEPARATOR As String = "--- MA-INFO ---"
 Public Const FORM_LISTBOX_NAME As String = "lst_ImportReport"
 Public Const WS_PROTOCOL_TEMP As String = "Protokoll_Temp"
 Public Const PROTOCOL_RANGE_START As String = "A1"
-Public Const MAX_LISTBOX_LINES As Long = 60
-
+Public Const MAX_LISTBOX_LINES As Long = 500
 ' ===============================================================
 ' L. ENTITY ROLE
 ' ===============================================================

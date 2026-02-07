@@ -3,13 +3,12 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Data
-' VERSION: 3.3 - 07.02.2026
-' AENDERUNG: ActiveX-ListBox (lst_ImportReport) statt Formular-LB,
-'            Hintergrundfarbe direkt auf ListBox.BackColor,
-'            EnableEvents=False beim Schreiben in Daten-Blatt
-'            (verhindert Worksheet_Change Kaskade / Laufzeitfehler),
-'            MsgBox mit vollstaendigen Import-Details,
-'            Y500 als einzige Speicherzelle (serialisiert)
+' VERSION: 3.4 - 07.02.2026
+' AENDERUNG: ListBox-Position wird ausschliesslich vom Designer
+'            gesteuert (kein Ueberschreiben von Pos/Groesse),
+'            Placement=xlFreeFloating wird nur einmal gesetzt,
+'            MsgBox "Keine Kontoauszuege" entfernt,
+'            MAX_BLOECKE auf 100 erhoeht (500 Zeilen max)
 ' ===============================================================
 
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
@@ -28,16 +27,9 @@ Private Const PROTO_ZEILE As Long = 500
 Private Const PROTO_SPALTE As Long = 25              ' Spalte Y
 
 ' Maximale Anzahl Import-Bloecke im Speicher (je 5 Zeilen)
-Private Const MAX_BLOECKE As Long = 12
-' 12 x 5 = 60 Zeilen maximal
-Private Const MAX_ZEILEN As Long = 60
-
-' Variablen für 7g. Fixierung von Position und Grösse der ActiveX ListBox
-Private m_lbLeft As Double
-Private m_lbTop As Double
-Private m_lbWidth As Double
-Private m_lbHeight As Double
-Private m_lbInitialisiert As Boolean
+Private Const MAX_BLOECKE As Long = 100
+' 100 x 5 = 500 Zeilen maximal
+Private Const MAX_ZEILEN As Long = 500
 
 
 ' ===============================================================
@@ -457,11 +449,6 @@ End Sub
 
 
 
-'--- Ende Teil 1 ---
-'--- Anfang Teil 2 ---
-
-
-
 ' ===============================================================
 ' 5. SORTIERUNG NACH DATUM (AUFSTEIGEND - Januar oben)
 ' ===============================================================
@@ -537,9 +524,14 @@ End Sub
 '    - Befuellung: .Clear / .AddItem (ActiveX-Methoden)
 '    - Hintergrundfarbe: .BackColor direkt auf der ListBox
 '    - Pro Import-Vorgang: 5 Zeilen (Datum, X/Y, Dupes, Fehler, ----)
-'    - Max 12 Bloecke = 60 Zeilen Historie
+'    - Max 100 Bloecke = 500 Zeilen Historie
 '    - WICHTIG: EnableEvents=False beim Schreiben in Daten!Y500
 '      um Worksheet_Change-Kaskade zu verhindern
+'    - WICHTIG: Position und Groesse der ListBox werden NIE
+'      per Code geaendert. Der Designer bestimmt allein
+'      Platzierung und Groesse. Nur Placement=xlFreeFloating
+'      wird einmalig gesetzt, damit die LB bei Zeilen-/
+'      Spaltengroessenaenderungen nicht mitwandert.
 ' ===============================================================
 
 ' ---------------------------------------------------------------
@@ -556,7 +548,6 @@ Public Sub Initialize_ImportReport_ListBox()
     Dim zeilen() As String
     Dim anzahl As Long
     Dim i As Long
-    Dim eventsWaren As Boolean
     
     On Error Resume Next
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
@@ -564,6 +555,9 @@ Public Sub Initialize_ImportReport_ListBox()
     On Error GoTo 0
     
     If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
+    
+    ' Placement einmalig sicherstellen (freifliegend)
+    Call StelleFreifliegendSicher(wsBK)
     
     ' ActiveX ListBox holen
     Set lb = HoleActiveXListBox(wsBK)
@@ -577,7 +571,8 @@ Public Sub Initialize_ImportReport_ListBox()
     
     If gespeichert = "" Or gespeichert = "0" Then
         ' Kein Protokoll vorhanden - Standardtext
-        lb.AddItem "Kein Status Report " & vbLf & "vorhanden."
+        lb.AddItem "Kein Status Report"
+        lb.AddItem "vorhanden."
         lb.BackColor = LB_COLOR_WEISS
         Exit Sub
     End If
@@ -593,9 +588,6 @@ Public Sub Initialize_ImportReport_ListBox()
     
     ' Farbe aus juengstem Block bestimmen
     Call FaerbeListBoxAusProtokoll(lb, zeilen)
-    
-    ' Groesse und Position fixieren (Schutz vor Verschiebung)
-    Call FixiereListBoxPosition(wsBK)
     
 End Sub
 
@@ -627,7 +619,7 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     ' --- 5-Zeilen-Block zusammenbauen ---
     neuerBlock = "Import: " & Format(Now, "DD.MM.YYYY  HH:MM:SS") & _
                  PROTO_SEP & _
-                 imported & " / " & totalRows & " Datensätze importiert" & _
+                 imported & " / " & totalRows & " Datensaetze importiert" & _
                  PROTO_SEP & _
                  dupes & " Duplikate erkannt" & _
                  PROTO_SEP & _
@@ -675,6 +667,9 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     ' --- Events wieder herstellen ---
     Application.EnableEvents = eventsWaren
     
+    ' --- Placement sicherstellen ---
+    Call StelleFreifliegendSicher(wsBK)
+    
     ' --- ActiveX ListBox aktualisieren ---
     Set lb = HoleActiveXListBox(wsBK)
     If Not lb Is Nothing Then
@@ -687,9 +682,6 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
         ' Farbcodierung
         Call FaerbeListBoxNachImport(lb, imported, dupes, failed)
     End If
-    
-    ' Groesse und Position fixieren
-    Call FixiereListBoxPosition(wsBK)
     
 End Sub
 
@@ -792,19 +784,12 @@ Private Function ExtrahiereZahl(ByVal text As String) As Long
 End Function
 
 ' ---------------------------------------------------------------
-' 7g. Fixiert Position und Groesse der ActiveX ListBox
-'     Beim ERSTEN Aufruf wird die aktuelle Position/Groesse
-'     aus dem Tabellenblatt gelesen und in Modulvariablen
-'     gespeichert. Bei allen weiteren Aufrufen wird diese
-'     gespeicherte Position wiederhergestellt.
-'     So kann die ListBox im Excel-Designer beliebig
-'     verschoben/skaliert werden - nach dem naechsten
-'     Workbook_Open wird die neue Position uebernommen.
+' 7g. Setzt Placement auf xlFreeFloating, damit die ListBox
+'     bei Zeilen-/Spaltengroessenaenderungen nicht mitwandert.
+'     Position und Groesse werden NICHT veraendert - das
+'     bestimmt ausschliesslich der Designer.
 ' ---------------------------------------------------------------
-
-'Varablen für Sub FixiereListBoxPosition wurden oben am Anfang des Moduls verschoben
-
-Private Sub FixiereListBoxPosition(ByVal ws As Worksheet)
+Private Sub StelleFreifliegendSicher(ByVal ws As Worksheet)
     
     Dim oleObj As OLEObject
     
@@ -815,26 +800,7 @@ Private Sub FixiereListBoxPosition(ByVal ws As Worksheet)
     If oleObj Is Nothing Then Exit Sub
     
     On Error Resume Next
-    
-    If Not m_lbInitialisiert Then
-        ' Erster Aufruf: aktuelle Position/Groesse merken
-        m_lbLeft = oleObj.Left
-        m_lbTop = oleObj.Top
-        m_lbWidth = oleObj.Width
-        m_lbHeight = oleObj.Height
-        m_lbInitialisiert = True
-        
-        ' Nur Placement setzen, Position stimmt ja noch
-        oleObj.Placement = xlFreeFloating
-    Else
-        ' Folgeaufruf: gespeicherte Werte wiederherstellen
-        oleObj.Placement = xlFreeFloating
-        oleObj.Left = m_lbLeft
-        oleObj.Top = m_lbTop
-        oleObj.Width = m_lbWidth
-        oleObj.Height = m_lbHeight
-    End If
-    
+    oleObj.Placement = xlFreeFloating
     On Error GoTo 0
     
 End Sub
