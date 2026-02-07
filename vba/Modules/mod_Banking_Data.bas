@@ -3,31 +3,35 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Data
-' VERSION: 3.1 - 07.02.2026
-' AENDERUNG: Formularsteuerelement-ListBox korrekt angesteuert
-'            (ListFillRange statt AddItem), Speicher in Daten!Y500ff
+' VERSION: 3.2 - 07.02.2026
+' AENDERUNG: ListBox als Formularsteuerelement korrekt,
+'            Y500 als einzige Speicherzelle (serialisiert),
+'            MsgBox mit vollstaendigen Import-Details,
+'            Farbcodierung ueber Rahmen-Shape
 ' ===============================================================
 
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
 Private Const RAHMEN_NAME As String = "ImportReport_Rahmen"
 
-' Farb-Konstanten fuer Rahmen-Hintergrund (BGR-Format!)
-Private Const RAHMEN_COLOR_GRUEN As Long = &HC0FFC0    ' hellgruen (RGB 192,255,192)
-Private Const RAHMEN_COLOR_GELB As Long = &HC0FFFF     ' hellgelb  (RGB 255,255,192)
-Private Const RAHMEN_COLOR_ROT As Long = &HC0C0FF      ' hellrot   (RGB 255,192,192)
-Private Const RAHMEN_COLOR_WEISS As Long = &HFFFFFF    ' weiss
+' Farb-Konstanten fuer Rahmen-Hintergrund
+' VBA nutzt BGR-Reihenfolge bei Long-Werten!
+Private Const RAHMEN_COLOR_GRUEN As Long = 11534528    ' RGB(0,176,80) dunkelgruen
+Private Const RAHMEN_COLOR_GELB As Long = 65535        ' RGB(255,255,0) gelb
+Private Const RAHMEN_COLOR_ROT As Long = 255           ' RGB(255,0,0) rot
+Private Const RAHMEN_COLOR_WEISS As Long = 16777215    ' RGB(255,255,255) weiss
 
-' Protokoll-Speicher: Startzeile auf dem Daten-Blatt (Spalte Y)
-' Zeile 500 = Metadaten-Zeile (Anzahl belegter Zeilen)
-' Zeilen 501..560 = eigentliche Protokoll-Zeilen
-Private Const PROTOKOLL_META_ROW As Long = 500
-Private Const PROTOKOLL_START_ROW As Long = 501
-Private Const PROTOKOLL_SPALTE As Long = 25           ' Spalte Y
+' Trennzeichen fuer Serialisierung in Zelle Y500
+Private Const PROTO_SEP As String = "||"
 
-' Maximale Anzahl gespeicherter Import-Bloecke (je 5 Zeilen)
-Private Const MAX_PROTOKOLL_BLOECKE As Long = 12
-' 12 Bloecke x 5 Zeilen = 60 Zeilen max
-Private Const MAX_PROTOKOLL_ZEILEN As Long = 60
+' Hilfsbereich fuer ListFillRange: Spalte Y ab Zeile 501
+' (wird bei jedem Initialize/Update neu beschrieben)
+Private Const LB_FILL_START_ROW As Long = 501
+Private Const LB_FILL_SPALTE As Long = 25             ' Spalte Y
+
+' Maximale Anzahl Import-Bloecke im Speicher (je 5 Zeilen)
+Private Const MAX_BLOECKE As Long = 12
+' 12 x 5 = 60 Zeilen maximal
+Private Const MAX_ZEILEN As Long = 60
 
 ' ===============================================================
 ' 1. CSV-KONTOAUSZUG IMPORT
@@ -239,6 +243,7 @@ ImportAbschluss:
     
     rowsFailedImport = rowsIgnoredFilter
     
+    ' ListBox und Protokoll-Speicher aktualisieren
     Call Update_ImportReport_ListBox(rowsTotalInFile, rowsProcessed, rowsIgnoredDupe, rowsFailedImport)
     
     On Error Resume Next
@@ -285,13 +290,49 @@ ImportAbschluss:
     Application.ScreenUpdating = True
     Application.EnableEvents = True
     
-    If rowsTotalInFile > 0 And rowsProcessed = 0 And rowsIgnoredDupe = rowsTotalInFile And rowsFailedImport = 0 Then
-        MsgBox "Achtung: Die ausgewaehlte CSV-Datei enthaelt ausschliesslich Eintraege, " & _
-           "die bereits in der Datenbank vorhanden sind (" & rowsIgnoredDupe & " Duplikate). " & _
-           "Es wurden keine neuen Datensaetze importiert.", vbExclamation, "100% Duplikate erkannt"
+    ' ============================================================
+    ' ERWEITERTE MsgBox mit vollstaendigen Import-Details
+    ' ============================================================
+    Dim msgIcon As VbMsgBoxStyle
+    Dim msgTitle As String
+    Dim msgText As String
+    
+    If rowsFailedImport > 0 Then
+        msgIcon = vbCritical
+        msgTitle = "Import mit Fehlern"
+    ElseIf rowsIgnoredDupe > 0 And rowsProcessed = 0 Then
+        msgIcon = vbExclamation
+        msgTitle = "100% Duplikate erkannt"
+    ElseIf rowsIgnoredDupe > 0 Then
+        msgIcon = vbExclamation
+        msgTitle = "Import mit Duplikaten"
     ElseIf rowsProcessed > 0 Then
-        MsgBox "Import abgeschlossen! (" & rowsProcessed & " neue Zeilen hinzugefuegt)", vbInformation
+        msgIcon = vbInformation
+        msgTitle = "Import erfolgreich"
+    Else
+        msgIcon = vbInformation
+        msgTitle = "Import abgeschlossen"
     End If
+    
+    msgText = "CSV-Import Ergebnis:" & vbCrLf & _
+              "==============================" & vbCrLf & vbCrLf & _
+              "Datensaetze in CSV:     " & rowsTotalInFile & vbCrLf & _
+              "Importiert:                    " & rowsProcessed & " / " & rowsTotalInFile & vbCrLf & _
+              "Duplikate:                     " & rowsIgnoredDupe & vbCrLf & _
+              "Fehler:                          " & rowsFailedImport & vbCrLf & vbCrLf
+    
+    If rowsFailedImport > 0 Then
+        msgText = msgText & "ACHTUNG: " & rowsFailedImport & " Zeilen konnten nicht verarbeitet werden!"
+    ElseIf rowsProcessed = 0 And rowsIgnoredDupe > 0 Then
+        msgText = msgText & "Alle Eintraege waren bereits in der Datenbank vorhanden."
+    ElseIf rowsProcessed > 0 And rowsIgnoredDupe = 0 Then
+        msgText = msgText & "Alle Datensaetze wurden erfolgreich importiert."
+    ElseIf rowsProcessed > 0 And rowsIgnoredDupe > 0 Then
+        msgText = msgText & rowsProcessed & " neue Datensaetze importiert, " & _
+                  rowsIgnoredDupe & " Duplikate uebersprungen."
+    End If
+    
+    MsgBox msgText, msgIcon, msgTitle
     
 End Sub
 
@@ -483,26 +524,30 @@ End Sub
 ' ===============================================================
 ' 7. IMPORT REPORT LISTBOX (FORMULARSTEUERELEMENT)
 '    -----------------------------------------------
-'    Technik: Formularsteuerelement-ListBox wird ueber
-'    ListFillRange befuellt. Die Protokoll-Zeilen stehen
-'    als einzelne Zellwerte in Daten!Y501:Y560.
-'    Zeile Y500 = Meta (Anzahl belegter Zeilen).
-'    Rahmen-Shape "ImportReport_Rahmen" wird farblich
-'    codiert: GRUEN/GELB/ROT/WEISS.
+'    Architektur:
+'    - Speicher: Daten!Y500 (eine einzige Zelle, serialisiert
+'      mit "||" als Trennzeichen zwischen Zeilen)
+'    - Anzeige: Daten!Y501:Y5xx als Hilfsbereich, der aus Y500
+'      deserialisiert wird. ListFillRange zeigt darauf.
+'    - Farbe: Rahmen-Shape "ImportReport_Rahmen" wird eingefaerbt.
+'    - Pro Import-Vorgang: 5 Zeilen (Datum, X/Y, Dupes, Fehler, ----)
+'    - Max 12 Bloecke = 60 Zeilen Historie
 ' ===============================================================
 
 ' ---------------------------------------------------------------
-' 7a. Initialize: Laedt gespeichertes Protokoll aus Daten!Y501ff
-'     und setzt ListFillRange der ListBox.
-'     Wird aufgerufen bei: Workbook_Open, Worksheet_Activate,
-'     LoescheAlleBankkontoZeilen (Reset)
+' 7a. Initialize: Liest Y500, deserialisiert in Y501ff,
+'     setzt ListFillRange und Rahmen-Farbe.
+'     Aufruf: Workbook_Open, Worksheet_Activate, nach Loeschen
 ' ---------------------------------------------------------------
 Public Sub Initialize_ImportReport_ListBox()
     
     Dim wsBK As Worksheet
     Dim wsDaten As Worksheet
     Dim shpLB As Shape
-    Dim anzahlZeilen As Long
+    Dim gespeichert As String
+    Dim zeilen() As String
+    Dim anzahl As Long
+    Dim i As Long
     Dim letzteZeile As Long
     
     On Error Resume Next
@@ -516,22 +561,21 @@ Public Sub Initialize_ImportReport_ListBox()
     Set shpLB = HoleFormListBox(wsBK)
     If shpLB Is Nothing Then Exit Sub
     
-    ' Anzahl gespeicherter Protokoll-Zeilen aus Meta-Zelle lesen
+    ' Daten-Blatt entsperren
     On Error Resume Next
-    anzahlZeilen = CLng(wsDaten.Cells(PROTOKOLL_META_ROW, PROTOKOLL_SPALTE).value)
-    If Err.Number <> 0 Then anzahlZeilen = 0
-    Err.Clear
+    wsDaten.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
-    If anzahlZeilen <= 0 Then
-        ' Kein Protokoll vorhanden - Standardtext schreiben
-        On Error Resume Next
-        wsDaten.Unprotect PASSWORD:=PASSWORD
-        On Error GoTo 0
-        
-        wsDaten.Cells(PROTOKOLL_START_ROW, PROTOKOLL_SPALTE).value = _
+    ' Hilfsbereich Y501:Y560 komplett leeren
+    Call LeereHilfsbereich(wsDaten)
+    
+    ' Gespeichertes Protokoll aus Y500 lesen
+    gespeichert = CStr(wsDaten.Cells(500, LB_FILL_SPALTE).value)
+    
+    If gespeichert = "" Or gespeichert = "0" Then
+        ' Kein Protokoll vorhanden - Standardtext
+        wsDaten.Cells(LB_FILL_START_ROW, LB_FILL_SPALTE).value = _
             "Es wurden noch keine Daten importiert."
-        wsDaten.Cells(PROTOKOLL_META_ROW, PROTOKOLL_SPALTE).value = 1
         
         On Error Resume Next
         wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -539,37 +583,41 @@ Public Sub Initialize_ImportReport_ListBox()
         
         ' ListFillRange auf die eine Zeile setzen
         shpLB.ControlFormat.ListFillRange = _
-            "'" & WS_DATEN & "'!Y" & PROTOKOLL_START_ROW & ":Y" & PROTOKOLL_START_ROW
+            "'" & WS_DATEN & "'!Y" & LB_FILL_START_ROW & ":Y" & LB_FILL_START_ROW
         
-        ' Rahmen weiss faerben
+        ' Rahmen weiss
         Call FaerbeRahmen(wsBK, RAHMEN_COLOR_WEISS)
         Exit Sub
     End If
     
-    ' ListFillRange auf den belegten Bereich setzen
-    letzteZeile = PROTOKOLL_START_ROW + anzahlZeilen - 1
-    If letzteZeile > PROTOKOLL_START_ROW + MAX_PROTOKOLL_ZEILEN - 1 Then
-        letzteZeile = PROTOKOLL_START_ROW + MAX_PROTOKOLL_ZEILEN - 1
-    End If
+    ' Protokoll-Zeilen aus Y500 deserialisieren
+    zeilen = Split(gespeichert, PROTO_SEP)
+    anzahl = UBound(zeilen) + 1
+    If anzahl > MAX_ZEILEN Then anzahl = MAX_ZEILEN
     
+    ' In Hilfsbereich Y501ff schreiben
+    For i = 0 To anzahl - 1
+        wsDaten.Cells(LB_FILL_START_ROW + i, LB_FILL_SPALTE).value = zeilen(i)
+    Next i
+    
+    On Error Resume Next
+    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
+    ' ListFillRange setzen
+    letzteZeile = LB_FILL_START_ROW + anzahl - 1
     shpLB.ControlFormat.ListFillRange = _
-        "'" & WS_DATEN & "'!Y" & PROTOKOLL_START_ROW & ":Y" & letzteZeile
+        "'" & WS_DATEN & "'!Y" & LB_FILL_START_ROW & ":Y" & letzteZeile
     
-    ' Farbe aus gespeichertem Protokoll bestimmen
-    Call FaerbeRahmenAusProtokoll(wsBK, wsDaten)
+    ' Farbe aus juengstem Block bestimmen
+    Call FaerbeRahmenAusProtokoll(wsBK, zeilen)
     
 End Sub
 
 ' ---------------------------------------------------------------
-' 7b. Update: Schreibt neuen Import-Block (5 Zeilen) in den
-'     Protokoll-Speicher (Daten!Y501ff) und aktualisiert ListBox.
-'     Format pro Block:
-'       Zeile 1: "Import: DD.MM.YYYY  HH:MM:SS"
-'       Zeile 2: "X von Y Datensätze importiert"
-'       Zeile 3: "X Duplikate erkannt"
-'       Zeile 4: "X Fehler"
-'       Zeile 5: "--------------------------------------"
-'     Neuester Block steht OBEN (Y501).
+' 7b. Update: Neuen 5-Zeilen-Block OBEN einfuegen,
+'     in Y500 serialisiert speichern, Hilfsbereich aktualisieren,
+'     ListFillRange setzen, Rahmen einfaerben.
 ' ---------------------------------------------------------------
 Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported As Long, _
                                          ByVal dupes As Long, ByVal failed As Long)
@@ -577,11 +625,12 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     Dim wsBK As Worksheet
     Dim wsDaten As Worksheet
     Dim shpLB As Shape
-    Dim alteAnzahl As Long
-    Dim neueAnzahl As Long
-    Dim maxZeilen As Long
+    Dim altGespeichert As String
+    Dim neuerBlock As String
+    Dim gesamt As String
+    Dim zeilen() As String
+    Dim anzahl As Long
     Dim i As Long
-    Dim neuerBlock(1 To 5) As String
     Dim letzteZeile As Long
     
     On Error Resume Next
@@ -592,75 +641,56 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
     
     ' --- 5-Zeilen-Block zusammenbauen ---
-    neuerBlock(1) = "Import: " & Format(Now, "DD.MM.YYYY   HH:MM:SS")
-    neuerBlock(2) = imported & " / " & totalRows & " Datensätze importiert"
-    neuerBlock(3) = dupes & " Duplikate erkannt"
-    neuerBlock(4) = failed & " Fehler"
-    neuerBlock(5) = "--------------------------------------"
+    neuerBlock = "Import: " & Format(Now, "DD.MM.YYYY  HH:MM:SS") & _
+                 PROTO_SEP & _
+                 imported & " / " & totalRows & " Datensaetze importiert" & _
+                 PROTO_SEP & _
+                 dupes & " Duplikate erkannt" & _
+                 PROTO_SEP & _
+                 failed & " Fehler" & _
+                 PROTO_SEP & _
+                 "--------------------------------------"
     
     ' --- Daten-Blatt entsperren ---
     On Error Resume Next
     wsDaten.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
-    ' --- Alte Anzahl lesen ---
-    On Error Resume Next
-    alteAnzahl = CLng(wsDaten.Cells(PROTOKOLL_META_ROW, PROTOKOLL_SPALTE).value)
-    If Err.Number <> 0 Then alteAnzahl = 0
-    Err.Clear
-    On Error GoTo 0
+    ' --- Alten Inhalt aus Y500 laden ---
+    altGespeichert = CStr(wsDaten.Cells(500, LB_FILL_SPALTE).value)
     
-    ' Pruefen ob alter Inhalt nur der Default-Text ist
-    If alteAnzahl = 1 Then
-        Dim erstZeile As String
-        erstZeile = CStr(wsDaten.Cells(PROTOKOLL_START_ROW, PROTOKOLL_SPALTE).value)
-        If erstZeile = "Es wurden noch keine Daten importiert." Then
-            alteAnzahl = 0
-        End If
-    End If
-    
-    maxZeilen = MAX_PROTOKOLL_BLOECKE * 5  ' 60
-    
-    ' --- Bestehende Zeilen nach unten verschieben (Platz fuer 5 neue) ---
-    If alteAnzahl > 0 Then
-        ' Auf max begrenzen: nur so viele alte Zeilen behalten dass Gesamt <= maxZeilen
-        Dim zuBehalten As Long
-        zuBehalten = alteAnzahl
-        If zuBehalten + 5 > maxZeilen Then
-            zuBehalten = maxZeilen - 5
-        End If
-        
-        If zuBehalten > 0 Then
-            ' Von unten nach oben verschieben um Ueberschreibung zu vermeiden
-            For i = zuBehalten To 1 Step -1
-                wsDaten.Cells(PROTOKOLL_START_ROW + 5 + i - 1, PROTOKOLL_SPALTE).value = _
-                    wsDaten.Cells(PROTOKOLL_START_ROW + i - 1, PROTOKOLL_SPALTE).value
-            Next i
-        End If
-        
-        neueAnzahl = zuBehalten + 5
+    ' Wenn alter Inhalt leer oder Default-Text, ignorieren
+    If altGespeichert = "" Or altGespeichert = "0" Or _
+       altGespeichert = "Es wurden noch keine Daten importiert." Then
+        gesamt = neuerBlock
     Else
-        neueAnzahl = 5
+        gesamt = neuerBlock & PROTO_SEP & altGespeichert
     End If
     
-    ' --- Neuen Block in die ersten 5 Zeilen schreiben ---
-    For i = 1 To 5
-        wsDaten.Cells(PROTOKOLL_START_ROW + i - 1, PROTOKOLL_SPALTE).value = neuerBlock(i)
+    ' --- Auf MAX_ZEILEN begrenzen ---
+    zeilen = Split(gesamt, PROTO_SEP)
+    anzahl = UBound(zeilen) + 1
+    If anzahl > MAX_ZEILEN Then
+        ' Abschneiden und neu zusammensetzen
+        gesamt = zeilen(0)
+        For i = 1 To MAX_ZEILEN - 1
+            gesamt = gesamt & PROTO_SEP & zeilen(i)
+        Next i
+        anzahl = MAX_ZEILEN
+    End If
+    
+    ' --- In Y500 speichern (eine einzige Zelle!) ---
+    wsDaten.Cells(500, LB_FILL_SPALTE).value = gesamt
+    
+    ' --- Hilfsbereich Y501ff leeren und neu beschreiben ---
+    Call LeereHilfsbereich(wsDaten)
+    
+    zeilen = Split(gesamt, PROTO_SEP)
+    For i = 0 To anzahl - 1
+        wsDaten.Cells(LB_FILL_START_ROW + i, LB_FILL_SPALTE).value = zeilen(i)
     Next i
     
-    ' --- Ueberhaengende Zeilen loeschen ---
-    If neueAnzahl < alteAnzahl + 5 Then
-        For i = neueAnzahl + 1 To alteAnzahl + 5
-            If PROTOKOLL_START_ROW + i - 1 <= PROTOKOLL_START_ROW + MAX_PROTOKOLL_ZEILEN Then
-                wsDaten.Cells(PROTOKOLL_START_ROW + i - 1, PROTOKOLL_SPALTE).ClearContents
-            End If
-        Next i
-    End If
-    
-    ' --- Meta-Zelle aktualisieren ---
-    wsDaten.Cells(PROTOKOLL_META_ROW, PROTOKOLL_SPALTE).value = neueAnzahl
-    
-    ' --- Daten-Blatt wieder schuetzen ---
+    ' --- Daten-Blatt schuetzen ---
     On Error Resume Next
     wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
@@ -668,9 +698,9 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     ' --- ListBox aktualisieren ---
     Set shpLB = HoleFormListBox(wsBK)
     If Not shpLB Is Nothing Then
-        letzteZeile = PROTOKOLL_START_ROW + neueAnzahl - 1
+        letzteZeile = LB_FILL_START_ROW + anzahl - 1
         shpLB.ControlFormat.ListFillRange = _
-            "'" & WS_DATEN & "'!Y" & PROTOKOLL_START_ROW & ":Y" & letzteZeile
+            "'" & WS_DATEN & "'!Y" & LB_FILL_START_ROW & ":Y" & letzteZeile
     End If
     
     ' --- Farbcodierung anwenden ---
@@ -679,8 +709,17 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
 End Sub
 
 ' ---------------------------------------------------------------
-' 7c. Hilfsfunktion: Formularsteuerelement-ListBox finden
-'     Sucht ueber ws.Shapes nach dem Namen FORM_LISTBOX_NAME
+' 7c. Hilfsbereich Y501:Y560 komplett leeren
+' ---------------------------------------------------------------
+Private Sub LeereHilfsbereich(ByVal wsDaten As Worksheet)
+    Dim i As Long
+    For i = 0 To MAX_ZEILEN - 1
+        wsDaten.Cells(LB_FILL_START_ROW + i, LB_FILL_SPALTE).ClearContents
+    Next i
+End Sub
+
+' ---------------------------------------------------------------
+' 7d. Formularsteuerelement-ListBox finden (ueber Shapes)
 ' ---------------------------------------------------------------
 Private Function HoleFormListBox(ByVal ws As Worksheet) As Shape
     
@@ -699,8 +738,8 @@ Private Function HoleFormListBox(ByVal ws As Worksheet) As Shape
 End Function
 
 ' ---------------------------------------------------------------
-' 7d. Farbcodierung nach Import-Ergebnis
-'     GRUEN  = Alles OK (imported > 0, dupes = 0, failed = 0)
+' 7e. Farbcodierung nach Import-Ergebnis
+'     GRUEN  = Alles OK (dupes = 0, failed = 0)
 '     GELB   = Duplikate vorhanden (dupes > 0, failed = 0)
 '     ROT    = Fehler vorhanden (failed > 0)
 ' ---------------------------------------------------------------
@@ -723,24 +762,23 @@ Private Sub FaerbeRahmenNachImport(ByVal ws As Worksheet, _
 End Sub
 
 ' ---------------------------------------------------------------
-' 7e. Farbcodierung aus gespeichertem Protokoll bestimmen
+' 7f. Farbcodierung aus gespeichertem Protokoll bestimmen
 '     (fuer Initialize beim Oeffnen der Arbeitsmappe)
-'     Liest Zeile 3 und 4 des juengsten Blocks (Y503, Y504)
+'     Liest Zeile 3 (Index 2): "X Duplikate erkannt"
+'     Liest Zeile 4 (Index 3): "X Fehler"
 ' ---------------------------------------------------------------
-Private Sub FaerbeRahmenAusProtokoll(ByVal wsBK As Worksheet, ByVal wsDaten As Worksheet)
+Private Sub FaerbeRahmenAusProtokoll(ByVal wsBK As Worksheet, ByRef zeilen() As String)
     
-    Dim zeile3 As String
-    Dim zeile4 As String
     Dim dupes As Long
     Dim failed As Long
     
-    ' Zeile 3 des juengsten Blocks = PROTOKOLL_START_ROW + 2 = Y503
-    zeile3 = CStr(wsDaten.Cells(PROTOKOLL_START_ROW + 2, PROTOKOLL_SPALTE).value)
-    ' Zeile 4 des juengsten Blocks = PROTOKOLL_START_ROW + 3 = Y504
-    zeile4 = CStr(wsDaten.Cells(PROTOKOLL_START_ROW + 3, PROTOKOLL_SPALTE).value)
+    If UBound(zeilen) < 3 Then
+        Call FaerbeRahmen(wsBK, RAHMEN_COLOR_WEISS)
+        Exit Sub
+    End If
     
-    dupes = ExtrahiereZahl(zeile3)
-    failed = ExtrahiereZahl(zeile4)
+    dupes = ExtrahiereZahl(CStr(zeilen(2)))
+    failed = ExtrahiereZahl(CStr(zeilen(3)))
     
     If failed > 0 Then
         Call FaerbeRahmen(wsBK, RAHMEN_COLOR_ROT)
@@ -753,7 +791,7 @@ Private Sub FaerbeRahmenAusProtokoll(ByVal wsBK As Worksheet, ByVal wsDaten As W
 End Sub
 
 ' ---------------------------------------------------------------
-' 7f. Zahl am Anfang eines Strings extrahieren
+' 7g. Zahl am Anfang eines Strings extrahieren
 '     "123 Duplikate erkannt" -> 123
 ' ---------------------------------------------------------------
 Private Function ExtrahiereZahl(ByVal text As String) As Long
@@ -779,7 +817,9 @@ Private Function ExtrahiereZahl(ByVal text As String) As Long
 End Function
 
 ' ---------------------------------------------------------------
-' 7g. Rahmen-Shape einfaerben (Hintergrund)
+' 7h. Rahmen-Shape einfaerben (Hintergrund)
+'     Das Shape "ImportReport_Rahmen" liegt visuell hinter/um
+'     die ListBox und dient als farblicher Indikator.
 ' ---------------------------------------------------------------
 Private Sub FaerbeRahmen(ByVal ws As Worksheet, ByVal farbe As Long)
     
@@ -792,8 +832,12 @@ Private Sub FaerbeRahmen(ByVal ws As Worksheet, ByVal farbe As Long)
     If shp Is Nothing Then Exit Sub
     
     On Error Resume Next
-    shp.Fill.ForeColor.RGB = farbe
-    shp.Fill.Visible = msoTrue
+    With shp.Fill
+        .Visible = msoTrue
+        .Solid
+        .ForeColor.RGB = farbe
+        .Transparency = 0
+    End With
     On Error GoTo 0
     
 End Sub
@@ -807,7 +851,6 @@ Public Sub LoescheAlleBankkontoZeilen()
     Dim wsDaten As Worksheet
     Dim lastRow As Long
     Dim antwort As VbMsgBoxResult
-    Dim i As Long
     
     antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden geloescht!" & vbCrLf & vbCrLf & _
                      "Fortfahren?", vbYesNo + vbCritical, "Alle Daten loeschen?")
@@ -829,15 +872,13 @@ Public Sub LoescheAlleBankkontoZeilen()
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
-    ' Protokoll-Speicher ebenfalls leeren (Y500:Y560)
+    ' Protokoll-Speicher leeren: Y500 + Hilfsbereich Y501:Y560
     On Error Resume Next
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     If Not wsDaten Is Nothing Then
         wsDaten.Unprotect PASSWORD:=PASSWORD
-        wsDaten.Cells(PROTOKOLL_META_ROW, PROTOKOLL_SPALTE).ClearContents
-        For i = 0 To MAX_PROTOKOLL_ZEILEN - 1
-            wsDaten.Cells(PROTOKOLL_START_ROW + i, PROTOKOLL_SPALTE).ClearContents
-        Next i
+        wsDaten.Cells(500, LB_FILL_SPALTE).ClearContents
+        Call LeereHilfsbereich(wsDaten)
         wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     End If
     On Error GoTo 0
