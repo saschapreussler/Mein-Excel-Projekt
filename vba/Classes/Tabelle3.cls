@@ -23,7 +23,7 @@ Private Sub Worksheet_Activate()
     arrMonate(1) = "ganzes Jahr"
     arrMonate(2) = "Januar"
     arrMonate(3) = "Februar"
-    arrMonate(4) = "März"
+    arrMonate(4) = "M?rz"
     arrMonate(5) = "April"
     arrMonate(6) = "Mai"
     arrMonate(7) = "Juni"
@@ -63,7 +63,7 @@ Private Sub cbo_RechnungsMonat_Change()
     Dim rngFilterBereich As Range
     Dim visibleCellsCount As Long
     
-    Set wsStart = ThisWorkbook.Sheets("Startmenü")
+    Set wsStart = ThisWorkbook.Sheets("Startmen?")
     Set wsBank = ThisWorkbook.Sheets("Bankkonto")
     Set wsDaten = ThisWorkbook.Sheets("Daten")
 
@@ -83,7 +83,7 @@ Private Sub cbo_RechnungsMonat_Change()
         If IsNumeric(wsStart.Range("F1").value) Then
             jahr = CLng(wsStart.Range("F1").value)
         Else
-            MsgBox "Fehler: Ungültiges Abrechnungsjahr in Startmenü!F1", vbCritical
+            MsgBox "Fehler: Ung?ltiges Abrechnungsjahr in Startmen?!F1", vbCritical
             GoTo SafeExit
         End If
         
@@ -93,7 +93,7 @@ Private Sub cbo_RechnungsMonat_Change()
                 monatsIndex = 0
             Case "Januar": monatsIndex = 1
             Case "Februar": monatsIndex = 2
-            Case "März": monatsIndex = 3
+            Case "M?rz": monatsIndex = 3
             Case "April": monatsIndex = 4
             Case "Mai": monatsIndex = 5
             Case "Juni": monatsIndex = 6
@@ -115,9 +115,9 @@ Private Sub cbo_RechnungsMonat_Change()
         letzteDatenZeile = .Cells(.Rows.count, "A").End(xlUp).Row
         
         If letzteDatenZeile < ersteDatenZeile Then
-            MsgBox "Keine Kontoauszüge für diesen Monat vorhanden.", vbInformation
+            ' Keine Daten vorhanden - still zuruecksetzen
             Me.cbo_RechnungsMonat.ListIndex = 0
-            wsDaten.Range("AG4").value = 0 ' zurück auf ganzes Jahr
+            wsDaten.Range("AG4").value = 0
             GoTo SafeExit
         End If
         
@@ -139,13 +139,13 @@ Private Sub cbo_RechnungsMonat_Change()
                 Criteria2:="<=" & CLng(letztesDesMonats)
         End If
         
-        ' Sichtbare Daten prüfen
+        ' Sichtbare Daten pruefen
         On Error Resume Next
         visibleCellsCount = rngFilterBereich.SpecialCells(xlCellTypeVisible).count
         On Error GoTo 0
         
         If visibleCellsCount <= 1 And monatsIndex > 0 Then
-            MsgBox "Keine Kontoauszüge für diesen Monat vorhanden.", vbInformation
+            ' Keine sichtbaren Daten - still zuruecksetzen
             .ShowAllData
             Me.cbo_RechnungsMonat.ListIndex = 0
             wsDaten.Range("AG4").value = 0
@@ -161,7 +161,4 @@ SafeExit:
     End If
 
 End Sub
-
-
-
 
