@@ -3,18 +3,20 @@ Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - EVALUATOR
-' VERSION: 4.0 - 07.02.2026
-' ÄNDERUNG: Score-Dominanz-Logik: Wenn bester Score
-'           deutlich höher als zweitbester ? GRÜN (sicher).
-'           Sammelzahlung-Kategorie bei echter Mehrdeutigkeit.
-'           Editierbare Betragsspalten bei GELB.
-'           Strengere EntityRole-Trennung.
+' VERSION: 5.0 - 07.02.2026
+' ÄNDERUNG: Sammelzahlung-Kategorie wird NIEMALS per
+'           Keyword-Matching gefunden (nur programmatisch).
+'           PasstEntityRoleZuKategorie: Pacht bei VERSORGER
+'           nur blockieren wenn auch "mitglied" enthalten.
+'           Mitglied-Ausgaben: Auszahlung/Guthaben erlaubt.
+'           Bemerkung bei Sammelzahlung zeigt einzelne
+'           gefundene Leistungen und den Widerspruch.
 ' =====================================================
 
 ' Mindest-Score-Differenz für sichere Zuordnung
 Private Const SCORE_DOMINANZ_SCHWELLE As Long = 20
 
-' Kategorie für echte Mehrdeutigkeit bei Mitgliedern
+' Kategorie für echte Mehrdeutigkeit (nur programmatisch!)
 Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung (mehrere Positionen) Mitglied"
 
 ' -----------------------------
@@ -225,6 +227,13 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         If category = "" Or keyword = "" Then GoTo NextRule
 
         ' ================================
+        ' FILTER 0: Sammelzahlung-Kategorie NIEMALS per Keyword!
+        ' Diese Kategorie wird ausschließlich programmatisch
+        ' in PHASE 3 zugewiesen bei echter Mehrdeutigkeit.
+        ' ================================
+        If LCase(category) Like "*sammelzahlung*" Then GoTo NextRule
+
+        ' ================================
         ' FILTER 1: Einnahme/Ausgabe MUSS passen
         ' ================================
         If Not ctx("IsNullBetrag") Then
@@ -248,7 +257,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
             Dim score As Long
             score = 100
             
-            ' Prioritätsbonus
+            ' Prioritätsbonus (niedrigere Prio = höherer Bonus)
             score = score + (10 - prio) * 5
             
             ' EntityRole bekannt = höhere Konfidenz
@@ -266,12 +275,14 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
             ' Längere Keywords sind spezifischer und verdienen mehr Score
             Dim kwLen As Long
             kwLen = Len(normKeyword)
-            If kwLen >= 10 Then
-                score = score + 15        ' Sehr spezifisches Keyword
-            ElseIf kwLen >= 6 Then
-                score = score + 8         ' Mittleres Keyword
+            If kwLen >= 12 Then
+                score = score + 20        ' Sehr spezifisches Keyword
+            ElseIf kwLen >= 8 Then
+                score = score + 12        ' Gutes Keyword
+            ElseIf kwLen >= 5 Then
+                score = score + 5         ' Mittleres Keyword
             Else
-                score = score + 0         ' Kurzes, generisches Keyword (z.B. "wasser")
+                score = score + 0         ' Kurzes, generisches Keyword
             End If
             
             ' Betragsvalidierung über Einstellungen
@@ -342,36 +353,31 @@ NextRule:
         ' ECHTE MEHRDEUTIGKEIT: Scores liegen nah beieinander
         ' ========================================
         
-        ' Liste der konkurrierenden Kategorien erstellen
-        Dim konkurrenten As String
-        konkurrenten = ""
+        ' Detaillierte Bemerkung: Einzelne Leistungen und Widerspruch
+        Dim bemerkung As String
+        bemerkung = "Mehrdeutigkeit (" & hitCategories.count & " Treffer):" & vbLf
+        
+        Dim katNr As Long
+        katNr = 0
         For Each katKey In hitCategories.keys
-            If konkurrenten <> "" Then konkurrenten = konkurrenten & " | "
-            konkurrenten = konkurrenten & CStr(katKey) & " (" & hitCategories(katKey) & ")"
+            katNr = katNr + 1
+            bemerkung = bemerkung & katNr & ") " & CStr(katKey) & _
+                        " [Score: " & hitCategories(katKey) & "]" & vbLf
         Next katKey
         
-        If ctx("IsMitglied") Then
-            ' Mitglied ? Sammelzahlung-Kategorie
-            wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-                "Mehrere Positionen möglich: " & konkurrenten & _
-                " - Bitte manuell in den Betragsspalten aufteilen!"
-            ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
-                           KAT_SAMMELZAHLUNG, "GELB"
-            
-            ' Betragsspalten editierbar machen (Zellschutz aufheben)
-            Call EntsperreBetragsspalten(wsBK, rowBK, ctx("IsEinnahme"))
-            Exit Sub
-        Else
-            ' Kein Mitglied ? normale Mehrdeutigkeitsmeldung
-            wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-                "Mehrere mögliche Kategorien: " & konkurrenten & _
-                " - Bitte prüfen!"
-            ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
-                           KAT_SAMMELZAHLUNG, "GELB"
-            
-            Call EntsperreBetragsspalten(wsBK, rowBK, ctx("IsEinnahme"))
-            Exit Sub
-        End If
+        bemerkung = bemerkung & "Widerspruch: Scores zu ähnlich " & _
+                    "(Differenz nur " & scoreDifferenz & ", " & _
+                    "benötigt >= " & SCORE_DOMINANZ_SCHWELLE & "). " & _
+                    "Bitte manuell prüfen und Beträge in den Spalten aufteilen!"
+        
+        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = bemerkung
+        
+        ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
+                       KAT_SAMMELZAHLUNG, "GELB"
+        
+        ' Betragsspalten editierbar machen (Zellschutz aufheben)
+        Call EntsperreBetragsspalten(wsBK, rowBK, ctx("IsEinnahme"))
+        Exit Sub
     End If
 
     If bestCategory <> "" Then
@@ -393,7 +399,7 @@ End Sub
 
 
 ' =====================================================
-' NEU: Betragsspalten entsperren für manuelle Eingabe
+' Betragsspalten entsperren für manuelle Eingabe
 ' Bei GELB/Sammelzahlung soll der Nutzer die Beträge
 ' manuell auf die richtigen Spalten aufteilen können.
 ' Einnahme (Betrag > 0) ? Spalten M-S editierbar
@@ -422,8 +428,10 @@ End Sub
 
 ' =====================================================
 ' FILTER: Strenge EntityRole-Kategorie-Trennung
-' Verhindert unlogische Zuordnungen wie
-' "Strom Rückzahlung Versorger" bei MITGLIED
+' Verhindert unlogische Zuordnungen.
+' v5.0: Pacht bei VERSORGER nur blockieren wenn
+'       auch "mitglied" in der Kategorie steht.
+'       Mitglied-Ausgaben: Auszahlung/Guthaben erlaubt.
 ' =====================================================
 Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
                                              ByVal category As String, _
@@ -442,15 +450,24 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
     If ctx("IsVersorger") Then
         ' Versorger darf KEINE Mitglieder-Kategorien
         If catLower Like "*mitglied*" Then PasstEntityRoleZuKategorie = False: Exit Function
-        If catLower Like "*pacht*" Then PasstEntityRoleZuKategorie = False: Exit Function
-        If catLower Like "*endabrechnung*" Then PasstEntityRoleZuKategorie = False: Exit Function
-        If catLower Like "*vorauszahlung*" Then PasstEntityRoleZuKategorie = False: Exit Function
-        If catLower Like "*spende*" Then PasstEntityRoleZuKategorie = False: Exit Function
-        If catLower Like "*beitrag*" And Not catLower Like "*verband*" Then PasstEntityRoleZuKategorie = False: Exit Function
-        If catLower Like "*sammelzahlung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         
-        ' Versorger bei Einnahme (Rückzahlung VOM Versorger) = OK
-        ' Versorger bei Ausgabe (Zahlung AN Versorger) = OK
+        ' Pacht nur blockieren wenn es eine Mitglieder-Pacht ist
+        ' "Miete (Pacht) Grundstück" ist eine LEGITIME Versorger/Vermieter-Kategorie!
+        If catLower Like "*pacht*" And catLower Like "*mitglied*" Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        
+        If catLower Like "*endabrechnung*" And catLower Like "*mitglied*" Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        If catLower Like "*vorauszahlung*" And catLower Like "*mitglied*" Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        If catLower Like "*spende*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*beitrag*" And Not catLower Like "*verband*" Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        If catLower Like "*sammelzahlung*" Then PasstEntityRoleZuKategorie = False: Exit Function
     End If
     
     ' --- MITGLIED: Nur Mitglieder-typische Kategorien ---
@@ -462,9 +479,16 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
         If catLower Like "*wasserwerk*" Then PasstEntityRoleZuKategorie = False: Exit Function
         
         ' Mitglied darf KEINE Rückzahlung-Versorger-Kombinationen
-        ' (z.B. "Strom Rückzahlung Versorger" ist NICHT für Mitglieder)
         If catLower Like "*rueckzahlung*versorger*" Or _
            catLower Like "*rückzahlung*versorger*" Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        
+        ' Mitglied darf KEINE Miete/Pacht-Grundstück (das zahlt der VEREIN)
+        If catLower Like "*miete*" And catLower Like "*grundstück*" Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        If catLower Like "*miete*" And catLower Like "*grundstueck*" Then
             PasstEntityRoleZuKategorie = False: Exit Function
         End If
         
@@ -473,11 +497,11 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
         If catLower Like "*kontoführung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*kontofuehrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         
-        ' Mitglied bei Ausgabe = Rückerstattung AN Mitglied (selten, aber möglich)
+        ' Mitglied bei Ausgabe = Rückerstattung/Auszahlung AN Mitglied
         If ctx("IsAusgabe") Then
-            ' Ausgaben an Mitglieder sind ungewöhnlich - nur Rückerstattung erlauben
             If Not (catLower Like "*rück*" Or catLower Like "*rueck*" Or _
-                    catLower Like "*erstattung*" Or catLower Like "*gutschrift*") Then
+                    catLower Like "*erstattung*" Or catLower Like "*gutschrift*" Or _
+                    catLower Like "*auszahlung*" Or catLower Like "*guthaben*") Then
                 PasstEntityRoleZuKategorie = False: Exit Function
             End If
         End If
@@ -624,7 +648,6 @@ Private Function PruefeZeitfenster(ByVal category As String, _
                 On Error Resume Next
                 sollDatum = DateSerial(Year(buchungsDatum), Month(buchungsDatum), sollTag)
                 If Err.Number <> 0 Then
-                    ' Tag existiert nicht in diesem Monat (z.B. 31. Februar)
                     Err.Clear
                     sollDatum = DateSerial(Year(buchungsDatum), Month(buchungsDatum) + 1, 0)
                 End If
@@ -636,7 +659,7 @@ Private Function PruefeZeitfenster(ByVal category As String, _
                     Exit Function
                 End If
                 
-                ' Auch Vormonat prüfen (Zahlung am Ende des Vormonats für nächsten Monat)
+                ' Auch Vormonat prüfen
                 Dim sollDatumVormonat As Date
                 On Error Resume Next
                 sollDatumVormonat = DateSerial(Year(buchungsDatum), Month(buchungsDatum) - 1, sollTag)
@@ -648,7 +671,7 @@ Private Function PruefeZeitfenster(ByVal category As String, _
                 
                 If buchungsDatum >= (sollDatumVormonat - vorlauf) And _
                    buchungsDatum <= (sollDatumVormonat + nachlauf) Then
-                    PruefeZeitfenster = 15  ' Etwas weniger Score für Vormonat-Fenster
+                    PruefeZeitfenster = 15
                     Exit Function
                 End If
             End If
@@ -663,7 +686,6 @@ End Function
 
 ' =====================================================
 ' Monat/Periode intelligent ermitteln
-' Berücksichtigt Fälligkeit und Zahlungstermine
 ' =====================================================
 Public Function ErmittleMonatPeriode(ByVal category As String, _
                                      ByVal buchungsDatum As Date, _
@@ -673,11 +695,9 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
     Dim lastRow As Long
     Dim r As Long
     
-    ' Fallback: Buchungsmonat
     Dim monatBuchung As Long
     monatBuchung = Month(buchungsDatum)
     
-    ' Fälligkeit prüfen
     If faelligkeit = "" Then faelligkeit = "monatlich"
     
     Select Case LCase(faelligkeit)
@@ -694,7 +714,6 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
             Exit Function
     End Select
     
-    ' Monatliche Fälligkeit: Prüfen ob Zahlung für Folgemonat
     On Error Resume Next
     Set wsES = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
     On Error GoTo 0
@@ -718,11 +737,8 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
                 Dim tagBuchung As Long
                 tagBuchung = Day(buchungsDatum)
                 
-                ' Wenn Buchungstag > Soll-Tag (z.B. 26. für Soll-Tag 5.)
-                ' UND Vorlauf erlaubt es, dann ist es für den Folgemonat
                 If tagBuchung > sollTag And vorlauf > 0 Then
                     Dim differenzTage As Long
-                    ' Tage bis zum Soll-Tag im Folgemonat berechnen
                     Dim sollDatumFolge As Date
                     On Error Resume Next
                     sollDatumFolge = DateSerial(Year(buchungsDatum), Month(buchungsDatum) + 1, sollTag)
@@ -736,14 +752,12 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
                     differenzTage = CLng(sollDatumFolge - buchungsDatum)
                     
                     If differenzTage >= 0 And differenzTage <= vorlauf Then
-                        ' Zahlung ist Vorlauf für Folgemonat
                         ErmittleMonatPeriode = MonthName(Month(sollDatumFolge))
                         Exit Function
                     End If
                 End If
             End If
             
-            ' Kategorie gefunden, aber keine Folgemonat-Zuordnung nötig
             GoTo FallbackMonat
         End If
     Next r
@@ -773,5 +787,6 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         End Select
     End With
 End Sub
+
 
 
