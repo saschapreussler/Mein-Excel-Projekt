@@ -785,25 +785,16 @@ End Function
 ' ---------------------------------------------------------------
 ' 7g. Fixiert Position und Groesse der ActiveX ListBox
 '     Stellt nach jedem Befuellen die FESTEN Masse wieder her.
-'     Die Werte (Left, Top, Width, Height) koennen bei Bedarf
-'     an die gewuenschte Position auf dem Bankkonto-Blatt
-'     angepasst werden.
 '     Placement = xlFreeFloating verhindert zusaetzlich, dass
 '     Excel die ListBox bei Zeilenhoehen-Aenderungen verschiebt.
 ' ---------------------------------------------------------------
 Private Sub FixiereListBoxPosition(ByVal ws As Worksheet)
     
-    ' ===== HIER POSITION UND GROESSE ANPASSEN =====
-    ' Werte in Punkt (1 Punkt = ca. 1.33 Pixel)
-    ' Tipp: Aktuelle Werte im Direktfenster (Strg+G) ablesen:
-    '   ? ActiveSheet.OLEObjects("lst_ImportReport").Left
-    '   ? ActiveSheet.OLEObjects("lst_ImportReport").Top
-    '   ? ActiveSheet.OLEObjects("lst_ImportReport").Width
-    '   ? ActiveSheet.OLEObjects("lst_ImportReport").Height
-    Const FIX_LEFT As Double = 15       ' Abstand vom linken Rand
-    Const FIX_TOP As Double = 10        ' Abstand vom oberen Rand
-    Const FIX_WIDTH As Double = 280     ' Breite der ListBox
-    Const FIX_HEIGHT As Double = 130    ' Hoehe der ListBox
+    ' Feste Position und Groesse (ermittelt ueber Direktfenster)
+    Const FIX_LEFT As Double = 822
+    Const FIX_TOP As Double = 179
+    Const FIX_WIDTH As Double = 159.5
+    Const FIX_HEIGHT As Double = 76
     
     Dim oleObj As OLEObject
     
@@ -814,19 +805,15 @@ Private Sub FixiereListBoxPosition(ByVal ws As Worksheet)
     If oleObj Is Nothing Then Exit Sub
     
     On Error Resume Next
-    
-    ' Zuerst Placement setzen (verhindert Mitskalieren mit Zellen)
     oleObj.Placement = xlFreeFloating
-    
-    ' Dann feste Groesse und Position erzwingen
     oleObj.Left = FIX_LEFT
     oleObj.Top = FIX_TOP
     oleObj.Width = FIX_WIDTH
     oleObj.Height = FIX_HEIGHT
-    
     On Error GoTo 0
     
 End Sub
+
 
 ' ===============================================================
 ' 8. HILFSFUNKTIONEN
