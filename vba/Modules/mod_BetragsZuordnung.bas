@@ -3,9 +3,10 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_BetragsZuordnung
-' ZWECK: Richtige Betragszuordnung je nach Einnahme / Ausgabe
-'        unter Berücksichtigung identischer Zielspaltennamen
-'        + Konsistenzprüfung Kategorie
+' VERSION: 2.0 - 08.02.2026
+' FIX: GELB (Sammelzahlung) wird übersprungen - keine
+'      Betragszuordnung und kein Überschreiben auf ROT!
+'      Bessere Bemerkungen bei fehlender Zielspalte.
 ' ***************************************************************
 
 Public Sub ApplyBetragsZuordnung(ByVal wsBK As Worksheet, _
@@ -21,32 +22,40 @@ Public Sub ApplyBetragsZuordnung(ByVal wsBK As Worksheet, _
 
     ' ROT = manuelle Nacharbeit ? keine Automatik
     If wsBK.Cells(rowBK, BK_COL_KATEGORIE).Interior.color = RGB(255, 199, 206) Then Exit Sub
+    
+    ' GELB = Sammelzahlung/Mehrdeutigkeit ? NICHT anfassen!
+    ' Der Nutzer muss die Beträge manuell aufteilen.
+    If wsBK.Cells(rowBK, BK_COL_KATEGORIE).Interior.color = RGB(255, 235, 156) Then Exit Sub
 
     ' Zielüberschrift aus Kategorietabelle
     Dim targetHeader As String
     targetHeader = GetTargetHeaderByCategory(category)
 
     If targetHeader = "" Then
-        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-            "Keine Zielspalte für Kategorie definiert"
-        MarkKategorieRed wsBK, rowBK
+        ' Nur Bemerkung setzen wenn noch keine vorhanden
+        If Trim(wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value) = "" Then
+            wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
+                "Kategorie '" & category & "' hat keine Zielspalte " & _
+                "(Spalte N in der Kategorie-Tabelle auf Daten! ist leer)"
+        End If
+        ' NICHT auf ROT setzen - die Kategorie selbst kann korrekt sein!
         Exit Sub
     End If
 
     ' Zielspalte abhängig vom Vorzeichen suchen
     Dim targetCol As Long
     If betrag >= 0 Then
-        ' Einnahmen M:S
         targetCol = FindBankkontoColumnByHeader(wsBK, targetHeader, 13, 19)
     Else
-        ' Ausgaben T:Z
         targetCol = FindBankkontoColumnByHeader(wsBK, targetHeader, 20, 26)
     End If
 
     If targetCol = 0 Then
-        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-            "Zielspalte '" & targetHeader & "' nicht im passenden Bereich gefunden"
-        MarkKategorieRed wsBK, rowBK
+        If Trim(wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value) = "" Then
+            wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
+                "Zielspalte '" & targetHeader & "' nicht im " & _
+                IIf(betrag >= 0, "Einnahmen", "Ausgaben") & "-Bereich gefunden"
+        End If
         Exit Sub
     End If
 
@@ -69,7 +78,7 @@ Private Function GetTargetHeaderByCategory(ByVal category As String) As String
     Dim r As Long
     For r = DATA_START_ROW To lastRow
         If Trim(wsRules.Cells(r, 10).value) = category Then
-            GetTargetHeaderByCategory = Trim(wsRules.Cells(r, 14).value) ' Spalte N
+            GetTargetHeaderByCategory = Trim(wsRules.Cells(r, 14).value)
             Exit Function
         End If
     Next r
@@ -86,7 +95,7 @@ Private Function FindBankkontoColumnByHeader(ByVal wsBK As Worksheet, _
                                              ByVal lastCol As Long) As Long
     Dim c As Long
     For c = firstCol To lastCol
-        If Trim(wsBK.Cells(27, c).value) = headerText Then
+        If Trim(wsBK.Cells(BK_HEADER_ROW, c).value) = headerText Then
             FindBankkontoColumnByHeader = c
             Exit Function
         End If
@@ -94,17 +103,4 @@ Private Function FindBankkontoColumnByHeader(ByVal wsBK As Worksheet, _
 
     FindBankkontoColumnByHeader = 0
 End Function
-
-' ---------------------------------------------------------------
-' Kategorie als manuell zu prüfen markieren
-' ---------------------------------------------------------------
-Private Sub MarkKategorieRed(ByVal wsBK As Worksheet, ByVal rowBK As Long)
-    With wsBK.Cells(rowBK, BK_COL_KATEGORIE)
-        .Interior.color = RGB(255, 199, 206)
-        .Font.color = vbRed
-    End With
-End Sub
-
-
-
 

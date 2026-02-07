@@ -12,8 +12,9 @@ Option Explicit
 ' ***************************************************************
 ' WORKSHEET: Tabelle8 (Daten)
 ' ZWECK: Automatische Formatierung bei Datenaenderungen
-' VERSION: 2.3 - 06.02.2026
-' FIX v5.3: Spalte L (Keyword) loest OnKategorieChange aus
+' VERSION: 3.0 - 08.02.2026
+' NEU: Bei Spalte W (EntityRole) Aenderung ? Bankkonto
+'      Kategorien fuer diese IBAN neu evaluieren
 ' ***************************************************************
 
 Private Sub Worksheet_Change(ByVal Target As Range)
@@ -68,7 +69,20 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     If changedCol >= 18 And changedCol <= 24 Then
         Call mod_Formatierung.FormatEntityKeyTableComplete(Me)
         If changedCol = 23 Then
+            ' EntityRole wurde geaendert
             Call mod_EntityKey_Manager.VerarbeiteManuelleRoleAenderung(Target)
+            
+            ' NEU: Bankkonto-Kategorien fuer diese IBAN neu evaluieren
+            ' Nur wenn eine Role tatsaechlich gesetzt wurde (nicht geloescht)
+            Dim neueRole As String
+            neueRole = Trim(CStr(Target.value))
+            If neueRole <> "" Then
+                Dim geaenderteIBAN As String
+                geaenderteIBAN = Trim(CStr(Me.Cells(Target.Row, EK_COL_IBAN).value))
+                If geaenderteIBAN <> "" Then
+                    Call mod_KategorieEngine_Pipeline.ReEvaluiereNachEntityRoleAenderung(geaenderteIBAN)
+                End If
+            End If
         End If
         GoTo CleanUp
     End If
@@ -98,7 +112,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         Call mod_Formatierung.FormatSingleColumnComplete(Me, 30)
         GoTo CleanUp
     End If
-    
+
     If changedCol = 31 Then
         Call mod_Formatierung.FormatSingleColumnComplete(Me, 31)
         GoTo CleanUp
