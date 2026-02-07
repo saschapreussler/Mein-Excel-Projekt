@@ -315,7 +315,7 @@ ImportAbschluss:
     
     msgText = "CSV-Import Ergebnis:" & vbCrLf & _
               "==============================" & vbCrLf & vbCrLf & _
-              "Datensaetze in CSV:     " & rowsTotalInFile & vbCrLf & _
+              "Datensätze in CSV:     " & rowsTotalInFile & vbCrLf & _
               "Importiert:                    " & rowsProcessed & " / " & rowsTotalInFile & vbCrLf & _
               "Duplikate:                     " & rowsIgnoredDupe & vbCrLf & _
               "Fehler:                          " & rowsFailedImport & vbCrLf & vbCrLf
@@ -325,9 +325,9 @@ ImportAbschluss:
     ElseIf rowsProcessed = 0 And rowsIgnoredDupe > 0 Then
         msgText = msgText & "Alle Eintraege waren bereits in der Datenbank vorhanden."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe = 0 Then
-        msgText = msgText & "Alle Datensaetze wurden erfolgreich importiert."
+        msgText = msgText & "Alle Datensätze wurden erfolgreich importiert."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe > 0 Then
-        msgText = msgText & rowsProcessed & " neue Datensaetze importiert, " & _
+        msgText = msgText & rowsProcessed & " neue Datensätze importiert, " & _
                   rowsIgnoredDupe & " Duplikate uebersprungen."
     End If
     
@@ -618,7 +618,7 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     ' --- 5-Zeilen-Block zusammenbauen ---
     neuerBlock = "Import: " & Format(Now, "DD.MM.YYYY  HH:MM:SS") & _
                  PROTO_SEP & _
-                 imported & " / " & totalRows & " Datensaetze importiert" & _
+                 imported & " / " & totalRows & " Datensätze importiert" & _
                  PROTO_SEP & _
                  dupes & " Duplikate erkannt" & _
                  PROTO_SEP & _
@@ -784,10 +784,26 @@ End Function
 
 ' ---------------------------------------------------------------
 ' 7g. Fixiert Position und Groesse der ActiveX ListBox
-'     Setzt Placement auf xlFreeFloating, damit die ListBox
-'     bei Zeilenhoehen-/Spaltenbreiten-Aenderungen stabil bleibt.
+'     Stellt nach jedem Befuellen die FESTEN Masse wieder her.
+'     Die Werte (Left, Top, Width, Height) koennen bei Bedarf
+'     an die gewuenschte Position auf dem Bankkonto-Blatt
+'     angepasst werden.
+'     Placement = xlFreeFloating verhindert zusaetzlich, dass
+'     Excel die ListBox bei Zeilenhoehen-Aenderungen verschiebt.
 ' ---------------------------------------------------------------
 Private Sub FixiereListBoxPosition(ByVal ws As Worksheet)
+    
+    ' ===== HIER POSITION UND GROESSE ANPASSEN =====
+    ' Werte in Punkt (1 Punkt = ca. 1.33 Pixel)
+    ' Tipp: Aktuelle Werte im Direktfenster (Strg+G) ablesen:
+    '   ? ActiveSheet.OLEObjects("lst_ImportReport").Left
+    '   ? ActiveSheet.OLEObjects("lst_ImportReport").Top
+    '   ? ActiveSheet.OLEObjects("lst_ImportReport").Width
+    '   ? ActiveSheet.OLEObjects("lst_ImportReport").Height
+    Const FIX_LEFT As Double = 15       ' Abstand vom linken Rand
+    Const FIX_TOP As Double = 10        ' Abstand vom oberen Rand
+    Const FIX_WIDTH As Double = 280     ' Breite der ListBox
+    Const FIX_HEIGHT As Double = 130    ' Hoehe der ListBox
     
     Dim oleObj As OLEObject
     
@@ -798,8 +814,16 @@ Private Sub FixiereListBoxPosition(ByVal ws As Worksheet)
     If oleObj Is Nothing Then Exit Sub
     
     On Error Resume Next
-    ' xlFreeFloating = 3: Nicht mit Zellen verschieben/skalieren
+    
+    ' Zuerst Placement setzen (verhindert Mitskalieren mit Zellen)
     oleObj.Placement = xlFreeFloating
+    
+    ' Dann feste Groesse und Position erzwingen
+    oleObj.Left = FIX_LEFT
+    oleObj.Top = FIX_TOP
+    oleObj.Width = FIX_WIDTH
+    oleObj.Height = FIX_HEIGHT
+    
     On Error GoTo 0
     
 End Sub
