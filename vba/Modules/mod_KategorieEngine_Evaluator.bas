@@ -333,9 +333,6 @@ NextRule:
             ' SICHERER TREFFER trotz mehrerer Matches
             ' Der beste Kandidat dominiert klar
             ' ========================================
-            wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-                "Automatisch zugeordnet (Score " & bestScore & _
-                ", nächstbester: " & zweitBesterScore & ")"
             ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRUEN"
             ApplyBetragsZuordnung wsBK, rowBK
             Exit Sub

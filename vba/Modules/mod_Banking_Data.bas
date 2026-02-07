@@ -333,6 +333,105 @@ ImportAbschluss:
     
     MsgBox msgText, msgIcon, msgTitle
     
+    ' ============================================================
+    ' ENTITYKEY-PRÜFUNG: Spalte W (EntityRole) vollständig?
+    ' Nur prüfen wenn tatsächlich neue Datensätze importiert wurden
+    ' ============================================================
+    If rowsProcessed > 0 Then
+        Call PruefeUnvollstaendigeEntityKeys
+    End If
+    
+End Sub
+
+
+' ===============================================================
+' 1b. ENTITYKEY-PRÜFUNG NACH IMPORT
+'     Prüft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
+'     eine vollständige Zuordnung in Spalte W (EntityRole) haben.
+'     Bei fehlenden Einträgen: MsgBox mit Angebot zur Navigation.
+' ===============================================================
+Private Sub PruefeUnvollstaendigeEntityKeys()
+    
+    Dim wsDaten As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim ersteLeereZeile As Long
+    Dim anzahlOhneRole As Long
+    Dim ibanOhneRole As String
+    
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsDaten Is Nothing Then Exit Sub
+    
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, EK_COL_IBAN).End(xlUp).Row
+    If lastRow < EK_START_ROW Then Exit Sub
+    
+    ersteLeereZeile = 0
+    anzahlOhneRole = 0
+    ibanOhneRole = ""
+    
+    For r = EK_START_ROW To lastRow
+        ' Nur Zeilen prüfen die eine IBAN haben
+        If Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)) <> "" Then
+            ' Spalte W (EntityRole) leer?
+            If Trim(CStr(wsDaten.Cells(r, EK_COL_ROLE).value)) = "" Then
+                anzahlOhneRole = anzahlOhneRole + 1
+                
+                ' Erste leere Zeile merken
+                If ersteLeereZeile = 0 Then ersteLeereZeile = r
+                
+                ' Maximal 5 IBANs für die Anzeige sammeln
+                If anzahlOhneRole <= 5 Then
+                    Dim kontoname As String
+                    kontoname = Trim(CStr(wsDaten.Cells(r, EK_COL_KONTONAME).value))
+                    If kontoname <> "" Then
+                        ibanOhneRole = ibanOhneRole & vbCrLf & "  • " & _
+                            Left(CStr(wsDaten.Cells(r, EK_COL_IBAN).value), 12) & "...  (" & kontoname & ")"
+                    Else
+                        ibanOhneRole = ibanOhneRole & vbCrLf & "  • " & _
+                            CStr(wsDaten.Cells(r, EK_COL_IBAN).value)
+                    End If
+                End If
+            End If
+        End If
+    Next r
+    
+    ' Keine fehlenden Einträge ? nichts tun
+    If anzahlOhneRole = 0 Then Exit Sub
+    
+    ' MsgBox zusammenbauen
+    Dim hinweis As String
+    hinweis = "Nach dem Import wurden " & anzahlOhneRole & _
+              " IBAN-Zuordnung(en) ohne EntityRole (Spalte W) gefunden:" & _
+              vbCrLf & ibanOhneRole
+    
+    If anzahlOhneRole > 5 Then
+        hinweis = hinweis & vbCrLf & "  ... und " & (anzahlOhneRole - 5) & " weitere"
+    End If
+    
+    hinweis = hinweis & vbCrLf & vbCrLf & _
+              "Ohne diese Zuordnung kann die Kategorie-Engine die Buchungen " & _
+              "nicht korrekt verarbeiten." & vbCrLf & vbCrLf & _
+              "Möchten Sie die fehlenden Angaben jetzt vervollständigen?"
+    
+    Dim antwort As VbMsgBoxResult
+    antwort = MsgBox(hinweis, vbYesNo + vbExclamation, _
+                     "Unvollständige IBAN-Zuordnungen")
+    
+    If antwort = vbYes Then
+        ' Zum Daten-Blatt wechseln und erste leere Zelle in Spalte W anwählen
+        wsDaten.Activate
+        
+        On Error Resume Next
+        wsDaten.Unprotect PASSWORD:=PASSWORD
+        On Error GoTo 0
+        
+        wsDaten.Cells(ersteLeereZeile, EK_COL_ROLE).Select
+        
+        wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    End If
+    
 End Sub
 
 
