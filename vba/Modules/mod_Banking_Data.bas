@@ -315,7 +315,7 @@ ImportAbschluss:
     
     msgText = "CSV-Import Ergebnis:" & vbCrLf & _
               String(30, "=") & vbCrLf & vbCrLf & _
-              "Datensaetze in CSV:" & vbTab & rowsTotalInFile & vbCrLf & _
+              "Datensätze in CSV:" & vbTab & rowsTotalInFile & vbCrLf & _
               "Importiert:" & vbTab & vbTab & rowsProcessed & " / " & rowsTotalInFile & vbCrLf & _
               "Duplikate:" & vbTab & vbTab & rowsIgnoredDupe & vbCrLf & _
               "Fehler:" & vbTab & vbTab & vbTab & rowsFailedImport & vbCrLf & vbCrLf
@@ -326,9 +326,9 @@ ImportAbschluss:
     ElseIf rowsProcessed = 0 And rowsIgnoredDupe > 0 Then
         msgText = msgText & "Alle Eintraege waren bereits in der Datenbank vorhanden."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe = 0 Then
-        msgText = msgText & "Alle Datensaetze wurden erfolgreich importiert."
+        msgText = msgText & "Alle Datensätze wurden erfolgreich importiert."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe > 0 Then
-        msgText = msgText & rowsProcessed & " neue Datensaetze importiert," & vbCrLf & _
+        msgText = msgText & rowsProcessed & " neue Datensätze importiert," & vbCrLf & _
                   rowsIgnoredDupe & " Duplikate uebersprungen."
     End If
     
@@ -663,7 +663,7 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     ' --- 5-Zeilen-Block zusammenbauen ---
     neuerBlock = "Import: " & Format(Now, "DD.MM.YYYY  HH:MM:SS") & _
                  PROTO_SEP & _
-                 imported & " / " & totalRows & " Datensaetze importiert" & _
+                 imported & " / " & totalRows & " Datensätze importiert" & _
                  PROTO_SEP & _
                  dupes & " Duplikate erkannt" & _
                  PROTO_SEP & _
