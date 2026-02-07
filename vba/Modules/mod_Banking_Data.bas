@@ -577,7 +577,7 @@ Public Sub Initialize_ImportReport_ListBox()
     
     If gespeichert = "" Or gespeichert = "0" Then
         ' Kein Protokoll vorhanden - Standardtext
-        lb.AddItem "Kein Status Report vorhanden."
+        lb.AddItem "Kein Status Report " & vbLf & "vorhanden."
         lb.BackColor = LB_COLOR_WEISS
         Exit Sub
     End If
