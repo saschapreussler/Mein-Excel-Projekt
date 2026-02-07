@@ -32,6 +32,14 @@ Private Const MAX_BLOECKE As Long = 12
 ' 12 x 5 = 60 Zeilen maximal
 Private Const MAX_ZEILEN As Long = 60
 
+' Variablen für 7g. Fixierung von Position und Grösse der ActiveX ListBox
+Private m_lbLeft As Double
+Private m_lbTop As Double
+Private m_lbWidth As Double
+Private m_lbHeight As Double
+Private m_lbInitialisiert As Boolean
+
+
 ' ===============================================================
 ' 1. CSV-KONTOAUSZUG IMPORT
 ' ===============================================================
@@ -314,26 +322,27 @@ ImportAbschluss:
     End If
     
     msgText = "CSV-Import Ergebnis:" & vbCrLf & _
-              "==============================" & vbCrLf & vbCrLf & _
-              "Datensätze in CSV:     " & rowsTotalInFile & vbCrLf & _
-              "Importiert:                    " & rowsProcessed & " / " & rowsTotalInFile & vbCrLf & _
-              "Duplikate:                     " & rowsIgnoredDupe & vbCrLf & _
-              "Fehler:                          " & rowsFailedImport & vbCrLf & vbCrLf
+              String(30, "=") & vbCrLf & vbCrLf & _
+              "Datensaetze in CSV:" & vbTab & rowsTotalInFile & vbCrLf & _
+              "Importiert:" & vbTab & vbTab & rowsProcessed & " / " & rowsTotalInFile & vbCrLf & _
+              "Duplikate:" & vbTab & vbTab & rowsIgnoredDupe & vbCrLf & _
+              "Fehler:" & vbTab & vbTab & rowsFailedImport & vbCrLf & vbCrLf
     
     If rowsFailedImport > 0 Then
         msgText = msgText & "ACHTUNG: " & rowsFailedImport & " Zeilen konnten nicht verarbeitet werden!"
     ElseIf rowsProcessed = 0 And rowsIgnoredDupe > 0 Then
         msgText = msgText & "Alle Eintraege waren bereits in der Datenbank vorhanden."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe = 0 Then
-        msgText = msgText & "Alle Datensätze wurden erfolgreich importiert."
+        msgText = msgText & "Alle Datensaetze wurden erfolgreich importiert."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe > 0 Then
-        msgText = msgText & rowsProcessed & " neue Datensätze importiert, " & _
+        msgText = msgText & rowsProcessed & " neue Datensaetze importiert," & vbCrLf & _
                   rowsIgnoredDupe & " Duplikate uebersprungen."
     End If
     
     MsgBox msgText, msgIcon, msgTitle
     
 End Sub
+
 
 ' ===============================================================
 ' 2. ZEBRA-FORMATIERUNG (A-G und I-Z, Spalte H ausgenommen)
@@ -784,17 +793,18 @@ End Function
 
 ' ---------------------------------------------------------------
 ' 7g. Fixiert Position und Groesse der ActiveX ListBox
-'     Stellt nach jedem Befuellen die FESTEN Masse wieder her.
-'     Placement = xlFreeFloating verhindert zusaetzlich, dass
-'     Excel die ListBox bei Zeilenhoehen-Aenderungen verschiebt.
+'     Beim ERSTEN Aufruf wird die aktuelle Position/Groesse
+'     aus dem Tabellenblatt gelesen und in Modulvariablen
+'     gespeichert. Bei allen weiteren Aufrufen wird diese
+'     gespeicherte Position wiederhergestellt.
+'     So kann die ListBox im Excel-Designer beliebig
+'     verschoben/skaliert werden - nach dem naechsten
+'     Workbook_Open wird die neue Position uebernommen.
 ' ---------------------------------------------------------------
+
+'Varablen für Sub FixiereListBoxPosition wurden oben am Anfang des Moduls verschoben
+
 Private Sub FixiereListBoxPosition(ByVal ws As Worksheet)
-    
-    ' Feste Position und Groesse (ermittelt ueber Direktfenster)
-    Const FIX_LEFT As Double = 822
-    Const FIX_TOP As Double = 179
-    Const FIX_WIDTH As Double = 159.5
-    Const FIX_HEIGHT As Double = 76
     
     Dim oleObj As OLEObject
     
@@ -805,15 +815,29 @@ Private Sub FixiereListBoxPosition(ByVal ws As Worksheet)
     If oleObj Is Nothing Then Exit Sub
     
     On Error Resume Next
-    oleObj.Placement = xlFreeFloating
-    oleObj.Left = FIX_LEFT
-    oleObj.Top = FIX_TOP
-    oleObj.Width = FIX_WIDTH
-    oleObj.Height = FIX_HEIGHT
+    
+    If Not m_lbInitialisiert Then
+        ' Erster Aufruf: aktuelle Position/Groesse merken
+        m_lbLeft = oleObj.Left
+        m_lbTop = oleObj.Top
+        m_lbWidth = oleObj.Width
+        m_lbHeight = oleObj.Height
+        m_lbInitialisiert = True
+        
+        ' Nur Placement setzen, Position stimmt ja noch
+        oleObj.Placement = xlFreeFloating
+    Else
+        ' Folgeaufruf: gespeicherte Werte wiederherstellen
+        oleObj.Placement = xlFreeFloating
+        oleObj.Left = m_lbLeft
+        oleObj.Top = m_lbTop
+        oleObj.Width = m_lbWidth
+        oleObj.Height = m_lbHeight
+    End If
+    
     On Error GoTo 0
     
 End Sub
-
 
 ' ===============================================================
 ' 8. HILFSFUNKTIONEN
