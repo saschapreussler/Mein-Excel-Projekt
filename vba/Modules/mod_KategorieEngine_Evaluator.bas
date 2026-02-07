@@ -338,25 +338,22 @@ NextRule:
         End If
         
         ' ECHTE MEHRDEUTIGKEIT: Detaillierte Bemerkung
+                ' ECHTE MEHRDEUTIGKEIT: Kurze, klare Bemerkung ohne Scores
         Dim bemerkung As String
-        bemerkung = "Mehrdeutigkeit (" & hitCategories.count & " Kategorien gefunden):" & vbLf
+        bemerkung = hitCategories.count & " Kategorien passen:" & vbLf
         
         Dim katNr As Long
         katNr = 0
         For Each katKey In hitCategories.keys
             katNr = katNr + 1
-            bemerkung = bemerkung & katNr & ") " & CStr(katKey) & _
-                        " [Score: " & hitCategories(katKey) & "]" & vbLf
+            bemerkung = bemerkung & katNr & ") " & CStr(katKey) & vbLf
         Next katKey
         
         bemerkung = bemerkung & vbLf & _
-                    "Konflikt: Die Scores liegen zu nah beieinander " & _
-                    "(Differenz: " & scoreDifferenz & ", benötigt: >=" & _
-                    SCORE_DOMINANZ_SCHWELLE & ")." & vbLf & _
-                    "Bitte Kategorie manuell wählen und Beträge " & _
-                    "in den Spalten M-Z aufteilen!"
+                    "Bitte Kategorie manuell wählen und Beträge in Spalten M-Z aufteilen!"
         
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = bemerkung
+        
         
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
                        KAT_SAMMELZAHLUNG, "GELB"
@@ -380,7 +377,7 @@ NextRule:
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
             "Keine passende Kategorie gefunden (EntityRole: " & ctx("EntityRole") & ")"
     End If
-    ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), "", "ROT"
+    ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), "Bitte Auswahl treffen!", "ROT"
 
 End Sub
 
