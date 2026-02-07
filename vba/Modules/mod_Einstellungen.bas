@@ -415,13 +415,16 @@ End Sub
 ' ===============================================================
 Private Sub SetzeSpaltenbreiten(ByVal ws As Worksheet)
     
-    ws.Columns(ES_COL_KATEGORIE).ColumnWidth = 24    ' B
-    ws.Columns(ES_COL_SOLL_BETRAG).ColumnWidth = 14  ' C
-    ws.Columns(ES_COL_SOLL_TAG).ColumnWidth = 12     ' D
-    ws.Columns(ES_COL_STICHTAG_FIX).ColumnWidth = 14 ' E
-    ws.Columns(ES_COL_VORLAUF).ColumnWidth = 14      ' F
-    ws.Columns(ES_COL_NACHLAUF).ColumnWidth = 14     ' G
-    ws.Columns(ES_COL_SAEUMNIS).ColumnWidth = 14     ' H
+    ws.Columns(ES_COL_KATEGORIE).AutoFit              ' B: AutoFit nach Datenbreite
+    If ws.Columns(ES_COL_KATEGORIE).ColumnWidth < 24 Then
+        ws.Columns(ES_COL_KATEGORIE).ColumnWidth = 24 ' Mindestbreite 24
+    End If
+    ws.Columns(ES_COL_SOLL_BETRAG).ColumnWidth = 14   ' C
+    ws.Columns(ES_COL_SOLL_TAG).ColumnWidth = 12      ' D
+    ws.Columns(ES_COL_STICHTAG_FIX).ColumnWidth = 14  ' E
+    ws.Columns(ES_COL_VORLAUF).ColumnWidth = 14       ' F
+    ws.Columns(ES_COL_NACHLAUF).ColumnWidth = 14      ' G
+    ws.Columns(ES_COL_SAEUMNIS).ColumnWidth = 14      ' H
     
 End Sub
 

@@ -319,17 +319,16 @@ ImportAbschluss:
               "Importiert:" & vbTab & vbTab & rowsProcessed & " / " & rowsTotalInFile & vbCrLf & _
               "Duplikate:" & vbTab & vbTab & rowsIgnoredDupe & vbCrLf & _
               "Fehler:" & vbTab & vbTab & vbTab & rowsFailedImport & vbCrLf & vbCrLf
-              
-                  
+    
     If rowsFailedImport > 0 Then
         msgText = msgText & "ACHTUNG: " & rowsFailedImport & " Zeilen konnten nicht verarbeitet werden!"
     ElseIf rowsProcessed = 0 And rowsIgnoredDupe > 0 Then
-        msgText = msgText & "Alle Eintraege waren bereits in der Datenbank vorhanden."
+        msgText = msgText & "Alle Einträge waren bereits in der Datenbank vorhanden."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe = 0 Then
         msgText = msgText & "Alle Datensätze wurden erfolgreich importiert."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe > 0 Then
         msgText = msgText & rowsProcessed & " neue Datensätze importiert," & vbCrLf & _
-                  rowsIgnoredDupe & " Duplikate uebersprungen."
+                  rowsIgnoredDupe & " Duplikate übersprungen."
     End If
     
     MsgBox msgText, msgIcon, msgTitle
@@ -435,7 +434,13 @@ Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), ws.Cells(lastRow, BK_COL_BETRAG)).NumberFormat = euroFormat
+    ' Spalte B (Betrag): Währung + rechtsbündig
+    With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), ws.Cells(lastRow, BK_COL_BETRAG))
+        .NumberFormat = euroFormat
+        .HorizontalAlignment = xlRight
+    End With
+    
+    ' Spalten M-Z: Währung
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
     
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), ws.Cells(lastRow, BK_COL_BEMERKUNG))
@@ -490,7 +495,7 @@ Public Sub Sortiere_Bankkonto_nach_Datum()
 End Sub
 
 ' ===============================================================
-' 6. MONAT/PERIODE SETZEN
+' 6. MONAT/PERIODE SETZEN (intelligent über Einstellungen)
 ' ===============================================================
 Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     
@@ -498,22 +503,57 @@ Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     Dim r As Long
     Dim monatWert As Variant
     Dim datumWert As Variant
+    Dim kategorie As String
+    Dim faelligkeit As String
     
     If ws Is Nothing Then Exit Sub
     
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
+    ' Fälligkeit aus Kategorie-Tabelle vorladen
+    Dim wsDaten As Worksheet
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    
     For r = BK_START_ROW To lastRow
         datumWert = ws.Cells(r, BK_COL_DATUM).value
         monatWert = ws.Cells(r, BK_COL_MONAT_PERIODE).value
         
         If IsDate(datumWert) And (isEmpty(monatWert) Or monatWert = "") Then
-            ws.Cells(r, BK_COL_MONAT_PERIODE).value = MonthName(Month(datumWert))
+            kategorie = Trim(ws.Cells(r, BK_COL_KATEGORIE).value)
+            
+            If kategorie <> "" Then
+                ' Fälligkeit aus Kategorie-Tabelle holen (Spalte O)
+                faelligkeit = HoleFaelligkeitFuerKategorie(wsDaten, kategorie)
+                ' Intelligente Monat/Periode-Ermittlung
+                ws.Cells(r, BK_COL_MONAT_PERIODE).value = _
+                    ErmittleMonatPeriode(kategorie, CDate(datumWert), faelligkeit)
+            Else
+                ' Keine Kategorie: Fallback auf Buchungsmonat
+                ws.Cells(r, BK_COL_MONAT_PERIODE).value = MonthName(Month(datumWert))
+            End If
         End If
     Next r
     
 End Sub
+
+' Hilfsfunktion: Fälligkeit aus Kategorie-Tabelle (Spalte O) holen
+Private Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
+                                               ByVal kategorie As String) As String
+    Dim lastRow As Long
+    Dim r As Long
+    
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    
+    For r = DATA_START_ROW To lastRow
+        If Trim(wsDaten.Cells(r, DATA_CAT_COL_KATEGORIE).value) = kategorie Then
+            HoleFaelligkeitFuerKategorie = LCase(Trim(wsDaten.Cells(r, DATA_CAT_COL_FAELLIGKEIT).value))
+            Exit Function
+        End If
+    Next r
+    
+    HoleFaelligkeitFuerKategorie = "monatlich"
+End Function
 
 ' ===============================================================
 ' 7. IMPORT REPORT LISTBOX (ACTIVEX STEUERELEMENT)
