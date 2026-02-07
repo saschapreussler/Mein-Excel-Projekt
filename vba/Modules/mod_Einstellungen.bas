@@ -3,14 +3,17 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Einstellungen
-' VERSION: 1.0 - 07.02.2026
+' VERSION: 1.1 - 07.02.2026
 ' ZWECK: Formatierung, DropDowns, Schutz/Entsperrung fuer
 '        die Zahlungstermin-Tabelle auf Blatt Einstellungen
 '        (Spalten B-H, ab Zeile 4, Header Zeile 3)
+' AENDERUNG: Formatierung exakt wie FormatiereKategorieTabelle
+'            auf dem Daten-Blatt (gleiche Zebra-Farben, gleiche
+'            Rahmenlogik mit .ColorIndex = xlAutomatic)
 ' ===============================================================
 
 Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiss
-Private Const ZEBRA_COLOR_2 As Long = &HDEE5E3  ' Hellgrau (gleich wie Daten/Bankkonto)
+Private Const ZEBRA_COLOR_2 As Long = &HDEE5E3  ' Hellgrau
 
 
 ' ===============================================================
@@ -33,28 +36,25 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     
-    ' 1. Header formatieren
-    Call FormatiereHeader(ws)
+    ' 1. Header einmalig pruefen (nur setzen wenn leer)
+    Call PruefeHeader(ws)
     
     ' 2. Leerzeilen entfernen (Daten verdichten)
     Call VerdichteDaten(ws)
     
-    ' 3. Zebra-Formatierung
-    Call AnwendeZebra(ws)
+    ' 3. Formatierung anwenden (Zebra + Rahmen in einem Schritt)
+    Call FormatiereTabelle(ws)
     
-    ' 4. Rahmenlinien
-    Call AnwendeRahmen(ws)
-    
-    ' 5. Spaltenformate und Ausrichtung
+    ' 4. Spaltenformate und Ausrichtung
     Call AnwendeSpaltenformate(ws)
     
-    ' 6. DropDown-Listen setzen
+    ' 5. DropDown-Listen setzen
     Call SetzeDropDowns(ws)
     
-    ' 7. Zellen sperren/entsperren
+    ' 6. Zellen sperren/entsperren
     Call SperreUndEntsperre(ws)
     
-    ' 8. Spaltenbreiten
+    ' 7. Spaltenbreiten
     Call SetzeSpaltenbreiten(ws)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -66,53 +66,42 @@ End Sub
 
 
 ' ===============================================================
-' 2. HEADER FORMATIEREN (Zeile 3)
+' 2. HEADER PRUEFEN (Zeile 3) - nur setzen wenn leer
+'    Der Designer kann die Header manuell anpassen,
+'    sie werden nicht bei jedem Aufruf ueberschrieben
 ' ===============================================================
-Private Sub FormatiereHeader(ByVal ws As Worksheet)
+Private Sub PruefeHeader(ByVal ws As Worksheet)
+    
+    ' Nur setzen wenn die erste Header-Zelle leer ist
+    If Trim(ws.Cells(ES_HEADER_ROW, ES_COL_KATEGORIE).value) <> "" Then Exit Sub
+    
+    ws.Cells(ES_HEADER_ROW, ES_COL_KATEGORIE).value = "Referenz Kategorie (Leistungsart)"
+    ws.Cells(ES_HEADER_ROW, ES_COL_SOLL_BETRAG).value = "Soll-Betrag"
+    ws.Cells(ES_HEADER_ROW, ES_COL_SOLL_TAG).value = "Soll-Tag (des Monats)"
+    ws.Cells(ES_HEADER_ROW, ES_COL_STICHTAG_FIX).value = "Soll-Stichtag (Fix) TT.MM."
+    ws.Cells(ES_HEADER_ROW, ES_COL_VORLAUF).value = "Vorlauf-Toleranz (Tage)"
+    ws.Cells(ES_HEADER_ROW, ES_COL_NACHLAUF).value = "Nachlauf-Toleranz (Tage)"
+    ws.Cells(ES_HEADER_ROW, ES_COL_SAEUMNIS).value = "Saeumnis-Gebuehr"
     
     Dim rngHeader As Range
     Set rngHeader = ws.Range(ws.Cells(ES_HEADER_ROW, ES_COL_START), _
                              ws.Cells(ES_HEADER_ROW, ES_COL_END))
     
-    ' Ueberschriften setzen (falls leer oder falsch)
-    ws.Cells(ES_HEADER_ROW, ES_COL_KATEGORIE).value = "Referenz Kategorie" & vbLf & "(Leistungsart)"
-    ws.Cells(ES_HEADER_ROW, ES_COL_SOLL_BETRAG).value = "Soll-Betrag"
-    ws.Cells(ES_HEADER_ROW, ES_COL_SOLL_TAG).value = "Soll-Tag" & vbLf & "(des Monats)"
-    ws.Cells(ES_HEADER_ROW, ES_COL_STICHTAG_FIX).value = "Soll-Stichtag" & vbLf & "(Fix) TT.MM."
-    ws.Cells(ES_HEADER_ROW, ES_COL_VORLAUF).value = "Vorlauf-Toleranz" & vbLf & "(Tage)"
-    ws.Cells(ES_HEADER_ROW, ES_COL_NACHLAUF).value = "Nachlauf-Toleranz" & vbLf & "(Tage)"
-    ws.Cells(ES_HEADER_ROW, ES_COL_SAEUMNIS).value = "Saeumnis-" & vbLf & "Gebuehr"
-    
     With rngHeader
         .Font.Bold = True
-        .Font.Size = 10
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
         .WrapText = True
-        .Interior.color = RGB(68, 114, 196)  ' Dunkelblau
-        .Font.color = RGB(255, 255, 255)     ' Weiss
         .Locked = True
-        
-        ' Rahmen um Header
-        .Borders(xlEdgeLeft).LineStyle = xlContinuous
-        .Borders(xlEdgeLeft).Weight = xlThin
-        .Borders(xlEdgeRight).LineStyle = xlContinuous
-        .Borders(xlEdgeRight).Weight = xlThin
-        .Borders(xlEdgeTop).LineStyle = xlContinuous
-        .Borders(xlEdgeTop).Weight = xlThin
-        .Borders(xlEdgeBottom).LineStyle = xlContinuous
-        .Borders(xlEdgeBottom).Weight = xlMedium
-        .Borders(xlInsideVertical).LineStyle = xlContinuous
-        .Borders(xlInsideVertical).Weight = xlThin
     End With
-    
-    ws.Rows(ES_HEADER_ROW).RowHeight = 36
     
 End Sub
 
 
 ' ===============================================================
 ' 3. LEERZEILEN ENTFERNEN (Daten verdichten)
+'    Exakt gleiche Logik wie VerdichteSpalteOhneLuecken
+'    in mod_Formatierung
 ' ===============================================================
 Private Sub VerdichteDaten(ByVal ws As Worksheet)
     
@@ -131,7 +120,6 @@ Private Sub VerdichteDaten(ByVal ws As Worksheet)
     resultCount = 0
     
     For r = ES_START_ROW To lastRow
-        ' Zeile ist nicht leer wenn Spalte B (Kategorie) gefuellt
         If Trim(ws.Cells(r, ES_COL_KATEGORIE).value) <> "" Then
             resultCount = resultCount + 1
             For c = 1 To numCols
@@ -143,10 +131,6 @@ Private Sub VerdichteDaten(ByVal ws As Worksheet)
     ' Bereich loeschen und verdichtete Daten zurueckschreiben
     ws.Range(ws.Cells(ES_START_ROW, ES_COL_START), _
              ws.Cells(lastRow, ES_COL_END)).ClearContents
-    ws.Range(ws.Cells(ES_START_ROW, ES_COL_START), _
-             ws.Cells(lastRow, ES_COL_END)).Interior.ColorIndex = xlNone
-    ws.Range(ws.Cells(ES_START_ROW, ES_COL_START), _
-             ws.Cells(lastRow, ES_COL_END)).Borders.LineStyle = xlNone
     
     If resultCount > 0 Then
         For r = 1 To resultCount
@@ -160,88 +144,82 @@ End Sub
 
 
 ' ===============================================================
-' 4. ZEBRA-FORMATIERUNG
+' 4. FORMATIERUNG: Zebra + Rahmen
+'    Exakt gleiche Logik wie FormatiereKategorieTabelle:
+'    - Zuerst Bereich unterhalb bereinigen
+'    - Dann belegten Bereich zuruecksetzen
+'    - Zebra-Farben zeilenweise
+'    - Rahmen auf gesamten belegten Bereich
 ' ===============================================================
-Private Sub AnwendeZebra(ByVal ws As Worksheet)
+Private Sub FormatiereTabelle(ByVal ws As Worksheet)
     
     Dim lastRow As Long
+    Dim lastRowMax As Long
+    Dim rngTable As Range
+    Dim rngLeeren As Range
     Dim r As Long
-    Dim rngRow As Range
+    Dim col As Long
+    Dim colLastRow As Long
+    Dim cleanStart As Long
     
     lastRow = LetzteZeile(ws)
+    
+    ' Maximale letzte Zeile ueber alle Spalten B-H ermitteln (fuer Bereinigung)
+    lastRowMax = lastRow
+    For col = ES_COL_START To ES_COL_END
+        colLastRow = ws.Cells(ws.Rows.count, col).End(xlUp).Row
+        If colLastRow > lastRowMax Then lastRowMax = colLastRow
+    Next col
+    
+    ' Bereich UNTERHALB der belegten Zeilen bereinigen (Rahmen + Farbe entfernen)
+    If lastRowMax >= ES_START_ROW Then
+        If lastRow < ES_START_ROW Then
+            cleanStart = ES_START_ROW
+        Else
+            cleanStart = lastRow + 1
+        End If
+        
+        If cleanStart <= lastRowMax + 50 Then
+            Set rngLeeren = ws.Range(ws.Cells(cleanStart, ES_COL_START), _
+                                     ws.Cells(lastRowMax + 50, ES_COL_END))
+            rngLeeren.Interior.ColorIndex = xlNone
+            rngLeeren.Borders.LineStyle = xlNone
+        End If
+    End If
+    
     If lastRow < ES_START_ROW Then Exit Sub
     
+    Set rngTable = ws.Range(ws.Cells(ES_START_ROW, ES_COL_START), _
+                            ws.Cells(lastRow, ES_COL_END))
+    
+    ' Zuerst alles zuruecksetzen im belegten Bereich
+    rngTable.Interior.ColorIndex = xlNone
+    rngTable.Borders.LineStyle = xlNone
+    
+    ' Zebra-Formatierung NUR fuer belegte Zeilen
     For r = ES_START_ROW To lastRow
-        Set rngRow = ws.Range(ws.Cells(r, ES_COL_START), ws.Cells(r, ES_COL_END))
-        
         If (r - ES_START_ROW) Mod 2 = 0 Then
-            rngRow.Interior.color = ZEBRA_COLOR_1
+            ws.Range(ws.Cells(r, ES_COL_START), ws.Cells(r, ES_COL_END)).Interior.color = ZEBRA_COLOR_1
         Else
-            rngRow.Interior.color = ZEBRA_COLOR_2
+            ws.Range(ws.Cells(r, ES_COL_START), ws.Cells(r, ES_COL_END)).Interior.color = ZEBRA_COLOR_2
         End If
     Next r
     
-    ' Zeilen unterhalb der Daten: Formatierung entfernen
-    If lastRow + 1 <= lastRow + 50 Then
-        ws.Range(ws.Cells(lastRow + 1, ES_COL_START), _
-                 ws.Cells(lastRow + 50, ES_COL_END)).Interior.ColorIndex = xlNone
-        ws.Range(ws.Cells(lastRow + 1, ES_COL_START), _
-                 ws.Cells(lastRow + 50, ES_COL_END)).Borders.LineStyle = xlNone
-    End If
+    ' Rahmenlinien NUR fuer belegte Zeilen
+    ' (exakt wie FormatiereKategorieTabelle: .ColorIndex = xlAutomatic)
+    With rngTable.Borders
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = xlAutomatic
+    End With
+    
+    rngTable.VerticalAlignment = xlCenter
     
 End Sub
 
 
 ' ===============================================================
-' 5. RAHMENLINIEN (duenne schwarze Linien innen und aussen)
-' ===============================================================
-Private Sub AnwendeRahmen(ByVal ws As Worksheet)
-    
-    Dim lastRow As Long
-    Dim rngDaten As Range
-    
-    lastRow = LetzteZeile(ws)
-    If lastRow < ES_START_ROW Then Exit Sub
-    
-    Set rngDaten = ws.Range(ws.Cells(ES_START_ROW, ES_COL_START), _
-                            ws.Cells(lastRow, ES_COL_END))
-    
-    With rngDaten.Borders(xlEdgeLeft)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .color = vbBlack
-    End With
-    With rngDaten.Borders(xlEdgeTop)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .color = vbBlack
-    End With
-    With rngDaten.Borders(xlEdgeBottom)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .color = vbBlack
-    End With
-    With rngDaten.Borders(xlEdgeRight)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .color = vbBlack
-    End With
-    With rngDaten.Borders(xlInsideVertical)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .color = vbBlack
-    End With
-    With rngDaten.Borders(xlInsideHorizontal)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .color = vbBlack
-    End With
-    
-End Sub
-
-
-' ===============================================================
-' 6. SPALTENFORMATE UND AUSRICHTUNG
+' 5. SPALTENFORMATE UND AUSRICHTUNG
 ' ===============================================================
 Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
     
@@ -249,7 +227,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
     Dim endRow As Long
     
     lastRow = LetzteZeile(ws)
-    endRow = lastRow + 50  ' Pufferbereich mit formatieren
+    endRow = lastRow + 50
     If endRow < ES_START_ROW + 50 Then endRow = ES_START_ROW + 50
     
     ' Spalte B: Linkbuendig, kein Textumbruch
@@ -279,7 +257,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
     ' Spalte E: Text TT.MM., zentriert
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_STICHTAG_FIX), _
                   ws.Cells(endRow, ES_COL_STICHTAG_FIX))
-        .NumberFormat = "@"  ' Text-Format damit 01.03 nicht als Datum interpretiert wird
+        .NumberFormat = "@"
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
     End With
@@ -312,7 +290,7 @@ End Sub
 
 
 ' ===============================================================
-' 7. DROPDOWN-LISTEN SETZEN
+' 6. DROPDOWN-LISTEN SETZEN
 ' ===============================================================
 Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     
@@ -320,6 +298,8 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     Dim nextRow As Long
     Dim r As Long
     Dim kategorienListe As String
+    Dim tagListe As String
+    Dim toleranzListe As String
     
     lastRow = LetzteZeile(ws)
     nextRow = lastRow + 1
@@ -345,7 +325,6 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     Next r
     
     ' --- Spalte D: Tag 1-31 ---
-    Dim tagListe As String
     tagListe = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
     
     For r = ES_START_ROW To nextRow
@@ -362,7 +341,6 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     Next r
     
     ' --- Spalte F: Vorlauf 0-31 ---
-    Dim toleranzListe As String
     toleranzListe = "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
     
     For r = ES_START_ROW To nextRow
@@ -396,11 +374,10 @@ End Sub
 
 
 ' ===============================================================
-' 8. SPERREN UND ENTSPERREN
+' 7. SPERREN UND ENTSPERREN
 '    - Bestehende Datenzeilen B-H: entsperrt (editierbar)
 '    - Genau 1 naechste freie Zeile: entsperrt (Neuanlage)
-'    - Alles darunter: gesperrt
-'    - Alles ausserhalb B-H: gesperrt
+'    - Alles darunter + ausserhalb: gesperrt
 ' ===============================================================
 Private Sub SperreUndEntsperre(ByVal ws As Worksheet)
     
@@ -434,33 +411,31 @@ End Sub
 
 
 ' ===============================================================
-' 9. SPALTENBREITEN
+' 8. SPALTENBREITEN
 ' ===============================================================
 Private Sub SetzeSpaltenbreiten(ByVal ws As Worksheet)
     
-    ws.Columns(ES_COL_KATEGORIE).ColumnWidth = 24    ' B: Kategorie
-    ws.Columns(ES_COL_SOLL_BETRAG).ColumnWidth = 14  ' C: Soll-Betrag
-    ws.Columns(ES_COL_SOLL_TAG).ColumnWidth = 12     ' D: Soll-Tag
-    ws.Columns(ES_COL_STICHTAG_FIX).ColumnWidth = 14 ' E: Stichtag Fix
-    ws.Columns(ES_COL_VORLAUF).ColumnWidth = 14      ' F: Vorlauf
-    ws.Columns(ES_COL_NACHLAUF).ColumnWidth = 14     ' G: Nachlauf
-    ws.Columns(ES_COL_SAEUMNIS).ColumnWidth = 14     ' H: Saeumnis
+    ws.Columns(ES_COL_KATEGORIE).ColumnWidth = 24    ' B
+    ws.Columns(ES_COL_SOLL_BETRAG).ColumnWidth = 14  ' C
+    ws.Columns(ES_COL_SOLL_TAG).ColumnWidth = 12     ' D
+    ws.Columns(ES_COL_STICHTAG_FIX).ColumnWidth = 14 ' E
+    ws.Columns(ES_COL_VORLAUF).ColumnWidth = 14      ' F
+    ws.Columns(ES_COL_NACHLAUF).ColumnWidth = 14     ' G
+    ws.Columns(ES_COL_SAEUMNIS).ColumnWidth = 14     ' H
     
 End Sub
 
 
 ' ===============================================================
-' 10. HILFSFUNKTIONEN
+' 9. HILFSFUNKTIONEN
 ' ===============================================================
 
 ' Letzte Zeile im Bereich B ermitteln
 Private Function LetzteZeile(ByVal ws As Worksheet) As Long
-    
     Dim lr As Long
     lr = ws.Cells(ws.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
     If lr < ES_START_ROW Then lr = ES_START_ROW - 1
     LetzteZeile = lr
-    
 End Function
 
 
@@ -500,14 +475,10 @@ Private Function HoleKategorienAlsListe() As String
         Exit Function
     End If
     
-    ' Sortiert zusammenbauen (Dictionary-Keys sind Einfuegereihenfolge)
     result = Join(dict.keys, ",")
     
     ' Excel DropDown Limit: max 255 Zeichen in Formula1
-    ' Bei Ueberschreitung: Named Range verwenden
     If Len(result) > 255 Then
-        ' Fallback: Direkt auf den Bereich in Daten!J verweisen
-        ' (kann Duplikate enthalten, aber funktioniert immer)
         HoleKategorienAlsListe = "='" & WS_DATEN & "'!$J$" & DATA_START_ROW & _
                                   ":$J$" & lastRow
     Else
@@ -518,7 +489,7 @@ End Function
 
 
 ' ===============================================================
-' 11. ZEILE LOESCHEN (Aufruf aus Worksheet_Change oder Button)
+' 10. ZEILE LOESCHEN
 ' ===============================================================
 Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long)
     
@@ -532,11 +503,9 @@ Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
-    ' Zeile leeren (nicht loeschen, damit Blattstruktur erhalten bleibt)
     ws.Range(ws.Cells(zeile, ES_COL_START), _
              ws.Cells(zeile, ES_COL_END)).ClearContents
     
-    ' Tabelle neu formatieren (verdichtet automatisch Leerzeilen)
     Call FormatiereZahlungsterminTabelle(ws)
     
 End Sub
