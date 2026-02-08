@@ -168,7 +168,8 @@ End Sub
 ' ---------------------------------------------------------------
 ' Erkennt wenn der Nutzer per DropDown eine Kategorie in Spalte H
 ' (BK_COL_KATEGORIE = 8) manuell auswählt oder ändert und:
-' - Sammelzahlung: VerarbeiteSammelzahlung aufrufen
+' - Sammelzahlung: Prüft ob bereits zugeordnet (GRÜN), fragt
+'   per MsgBox ob neu zugeordnet werden soll.
 ' - Normale Kategorie: Spalten M-Z leeren, GRÜN setzen,
 '   "manuell zugeordnet" als Bemerkung, ApplyBetragsZuordnung
 ' - Bei Kategorie-Änderung (auch von GRÜN): alte Beträge
@@ -200,6 +201,25 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     ' Sammelzahlung? -> Spezialbehandlung
     If LCase(kategorie) Like "*sammelzahlung*" Then
+        
+        ' Prüfen ob die Zeile bereits GRÜN ist (= bereits vollständig zugeordnet)
+        Dim aktFarbe As Long
+        aktFarbe = Target.Interior.color
+        
+        If aktFarbe = RGB(198, 239, 206) Then
+            ' Bereits vollständig zugeordnet -> Nutzer fragen
+            Dim antwort As VbMsgBoxResult
+            antwort = MsgBox("Diese Sammelzahlung wurde bereits vollständig zugeordnet." & vbLf & vbLf & _
+                             "Möchten Sie die Zuordnung verwerfen und neu aufteilen?", _
+                             vbQuestion + vbYesNo, "Sammelzahlung - Zeile " & rowBK)
+            
+            If antwort = vbNo Then
+                ' Nutzer will NICHT neu zuordnen -> nichts tun, GRÜN bleibt
+                GoTo ChangeCleanup
+            End If
+            ' Nutzer will NEU zuordnen -> weiter zu VerarbeiteSammelzahlung
+        End If
+        
         Call VerarbeiteSammelzahlung(ws, rowBK)
         GoTo ChangeCleanup
     End If
@@ -266,7 +286,7 @@ End Sub
 
 
 ' ===============================================================
-' Sammelzahlung verarbeiten (v9.4)
+' Sammelzahlung verarbeiten (v9.5)
 ' ---------------------------------------------------------------
 ' Komfortable InputBox mit:
 ' - Name des Zahlers und Verwendungszweck als Kontext
@@ -279,6 +299,8 @@ End Sub
 '   wohin der Betrag auf dem Bankkonto gebucht wird.
 ' - Bei mehrfacher Buchung in die gleiche Spalte werden Beträge addiert.
 ' - GRÜN nur wenn ALLES zugeordnet, GELB bei teilweise/nichts.
+' - Die Schleife endet sofort wenn der Betrag vollständig zugeordnet
+'   ist - es erscheint KEINE weitere InputBox mit "0,00 offen".
 ' ===============================================================
 Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
     
@@ -286,6 +308,9 @@ Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
     betrag = ws.Cells(rowBK, BK_COL_BETRAG).value
     Dim absBetrag As Double
     absBetrag = Abs(betrag)
+    
+    ' Rundung auf 2 Nachkommastellen (verhindert Fließkomma-Probleme)
+    absBetrag = Round(absBetrag, 2)
     
     Dim istEinnahme As Boolean
     istEinnahme = (betrag > 0)
@@ -398,7 +423,16 @@ NextKatRow:
         endCol = BK_COL_AUSGABEN_ENDE
     End If
     
-    Do While restBetrag > 0.01
+    Do
+        ' *** PRÜFUNG VOR der InputBox: Ist der Betrag bereits vollständig zugeordnet? ***
+        restBetrag = Round(absBetrag - zugeordnet, 2)
+        
+        If restBetrag <= 0.01 Then
+            ' Betrag ist vollständig zugeordnet -> Schleife sofort beenden
+            ' KEINE weitere InputBox anzeigen!
+            Exit Do
+        End If
+        
         Dim prompt As String
         prompt = "=== BUCHUNGSDETAILS ===" & vbLf & _
                  "Name: " & zahlerName & vbLf & _
@@ -441,6 +475,7 @@ NextKatRow:
         
         Dim teilBetrag As Double
         teilBetrag = Val(teilBetragStr)
+        teilBetrag = Round(teilBetrag, 2)
         
         If teilBetrag <= 0 Then
             MsgBox "Ungültiger Betrag: " & Mid(eingabe, trennPos + 1), vbExclamation
@@ -504,13 +539,12 @@ NextKatRow:
         End If
         
         If istEinnahme Then
-            ws.Cells(rowBK, zielCol).value = vorhandenerBetrag + teilBetrag
+            ws.Cells(rowBK, zielCol).value = Round(vorhandenerBetrag + teilBetrag, 2)
         Else
-            ws.Cells(rowBK, zielCol).value = vorhandenerBetrag + (-teilBetrag)
+            ws.Cells(rowBK, zielCol).value = Round(vorhandenerBetrag + (-teilBetrag), 2)
         End If
         
-        zugeordnet = zugeordnet + teilBetrag
-        restBetrag = absBetrag - zugeordnet
+        zugeordnet = Round(zugeordnet + teilBetrag, 2)
         
 WeiterEingabe:
     Loop
@@ -518,6 +552,9 @@ WeiterEingabe:
     ' ===============================================================
     ' Farbe und Bemerkung abhängig vom Zuordnungsstatus
     ' ===============================================================
+    
+    ' Endgültigen Restbetrag nochmal sauber berechnen
+    restBetrag = Round(absBetrag - zugeordnet, 2)
     
     If zugeordnet < 0.01 Then
         ' NICHTS zugeordnet (User hat sofort Abbrechen geklickt)
