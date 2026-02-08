@@ -167,10 +167,12 @@ End Sub
 ' Worksheet_Change: Manuelle Kategorie-Auswahl in Spalte H
 ' ---------------------------------------------------------------
 ' Erkennt wenn der Nutzer per DropDown eine Kategorie in Spalte H
-' (BK_COL_KATEGORIE = 8) manuell auswählt und:
+' (BK_COL_KATEGORIE = 8) manuell auswählt oder ändert und:
+' - Sammelzahlung: VerarbeiteSammelzahlung aufrufen
 ' - Normale Kategorie: Spalten M-Z leeren, GRÜN setzen,
 '   "manuell zugeordnet" als Bemerkung, ApplyBetragsZuordnung
-' - Sammelzahlung: VerarbeiteSammelzahlung aufrufen
+' - Bei Kategorie-Änderung (auch von GRÜN): alte Beträge
+'   werden gelöscht und neu zugeordnet.
 ' ===============================================================
 Private Sub Worksheet_Change(ByVal Target As Range)
     
@@ -182,9 +184,6 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Dim kategorie As String
     kategorie = Trim(Target.value)
     If kategorie = "" Then Exit Sub
-    
-    ' Bereits GRÜN? Dann nicht erneut verarbeiten
-    If Target.Interior.color = RGB(198, 239, 206) Then Exit Sub
     
     On Error GoTo ChangeError
     Application.EnableEvents = False
@@ -205,7 +204,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         GoTo ChangeCleanup
     End If
     
-    ' --- NORMALE KATEGORIE ---
+    ' --- NORMALE KATEGORIE (auch bei Änderung von GRÜN) ---
     
     ' 1. Alte Beträge in Spalten M-Z löschen
     Dim c As Long
@@ -267,17 +266,19 @@ End Sub
 
 
 ' ===============================================================
-' Sammelzahlung verarbeiten (v9.3)
+' Sammelzahlung verarbeiten (v9.4)
 ' ---------------------------------------------------------------
 ' Komfortable InputBox mit:
 ' - Name des Zahlers und Verwendungszweck als Kontext
-' - Buchstaben-Kürzel (A, B, C...) statt langer Spaltennamen
-' - Eingabe: Kürzel;Betrag (z.B. "A;25,00" oder "A;25")
+' - Buchstaben-Kürzel (A, B, C...) für KATEGORIEN (nicht Spalten!)
+'   Die Kategorien werden dynamisch aus der Kategorie-Tabelle
+'   (Spalte J auf Daten!) gelesen, nach E/A getrennt, nicht redundant.
+' - Eingabe: Kürzel;Betrag (z.B. "A;25,00")
 '   Semikolon trennt Kürzel vom Betrag, Komma = Dezimalzeichen
-' - Laufende Summe: Gesamt / Zugeordnet / Noch offen
-' - GRÜN nur wenn ALLES zugeordnet
-' - GELB bleibt wenn teilweise oder gar nichts zugeordnet
-' Funktioniert identisch für Einnahmen und Ausgaben.
+' - Jede Kategorie hat über Spalte N (Zielspalte) eine Zuordnung
+'   wohin der Betrag auf dem Bankkonto gebucht wird.
+' - Bei mehrfacher Buchung in die gleiche Spalte werden Beträge addiert.
+' - GRÜN nur wenn ALLES zugeordnet, GELB bei teilweise/nichts.
 ' ===============================================================
 Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
     
@@ -298,7 +299,95 @@ Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
     verwendungszweck = Trim(ws.Cells(rowBK, BK_COL_VERWENDUNGSZWECK).value)
     If verwendungszweck = "" Then verwendungszweck = "(kein Verwendungszweck)"
     
-    ' Bereich bestimmen (Einnahmen oder Ausgaben)
+    ' Spalten M-Z komplett leeren
+    Dim c As Long
+    For c = BK_COL_EINNAHMEN_START To BK_COL_AUSGABEN_ENDE
+        ws.Cells(rowBK, c).ClearContents
+    Next c
+    
+    ' ---------------------------------------------------------------
+    ' Kategorien dynamisch aus der Kategorie-Tabelle laden
+    ' (Spalte J auf Daten!, nach E/A getrennt, nicht redundant)
+    ' ---------------------------------------------------------------
+    Dim wsDaten As Worksheet
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    Dim lastRuleRow As Long
+    lastRuleRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    
+    ' Eindeutige Kategorien sammeln + deren Zielspalte (Spalte N)
+    Dim dictKat As Object
+    Set dictKat = CreateObject("Scripting.Dictionary")
+    
+    Dim filterEA As String
+    If istEinnahme Then filterEA = "E" Else filterEA = "A"
+    
+    Dim r As Long
+    For r = DATA_START_ROW To lastRuleRow
+        Dim katName As String
+        Dim katEA As String
+        Dim katZiel As String
+        
+        katName = Trim(CStr(wsDaten.Cells(r, DATA_CAT_COL_KATEGORIE).value))
+        katEA = UCase(Trim(CStr(wsDaten.Cells(r, DATA_CAT_COL_EINAUS).value)))
+        katZiel = Trim(CStr(wsDaten.Cells(r, DATA_CAT_COL_ZIELSPALTE).value))
+        
+        If katName = "" Then GoTo NextKatRow
+        If katEA <> filterEA Then GoTo NextKatRow
+        
+        ' Sammelzahlung selbst nicht als Unterkategorie anbieten
+        If LCase(katName) Like "*sammelzahlung*" Then GoTo NextKatRow
+        
+        ' Nur aufnehmen wenn noch nicht vorhanden
+        If Not dictKat.Exists(katName) Then
+            dictKat.Add katName, katZiel
+        End If
+NextKatRow:
+    Next r
+    
+    Dim anzahlKat As Long
+    anzahlKat = dictKat.count
+    
+    If anzahlKat = 0 Then
+        MsgBox "Keine Kategorien für " & IIf(istEinnahme, "Einnahmen", "Ausgaben") & _
+               " in der Kategorie-Tabelle gefunden!", vbCritical
+        Exit Sub
+    End If
+    
+    ' Kürzel-Arrays aufbauen: A=erste Kategorie, B=zweite, usw.
+    Dim kuerzelBuchstabe() As String
+    Dim kuerzelKatName() As String
+    Dim kuerzelZielHeader() As String
+    ReDim kuerzelBuchstabe(1 To anzahlKat)
+    ReDim kuerzelKatName(1 To anzahlKat)
+    ReDim kuerzelZielHeader(1 To anzahlKat)
+    
+    Dim idx As Long
+    idx = 0
+    Dim k As Variant
+    For Each k In dictKat.keys
+        idx = idx + 1
+        kuerzelBuchstabe(idx) = Chr(64 + idx)   ' A, B, C, ...
+        kuerzelKatName(idx) = CStr(k)
+        kuerzelZielHeader(idx) = CStr(dictKat(k))
+    Next k
+    
+    ' Kürzel-Liste für Anzeige zusammenbauen
+    Dim spaltenInfo As String
+    spaltenInfo = IIf(istEinnahme, "EINNAHMEN", "AUSGABEN") & "-Kategorien:" & vbLf
+    Dim i As Long
+    For i = 1 To anzahlKat
+        spaltenInfo = spaltenInfo & "  " & kuerzelBuchstabe(i) & ": " & _
+                      kuerzelKatName(i) & vbLf
+    Next i
+    
+    ' Eingabeschleife
+    Dim restBetrag As Double
+    restBetrag = absBetrag
+    Dim zugeordnet As Double
+    zugeordnet = 0
+    
+    ' Spaltenbereich für Einnahmen/Ausgaben
     Dim startCol As Long
     Dim endCol As Long
     If istEinnahme Then
@@ -308,65 +397,6 @@ Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
         startCol = BK_COL_AUSGABEN_START
         endCol = BK_COL_AUSGABEN_ENDE
     End If
-    
-    ' Spalten M-Z komplett leeren
-    Dim c As Long
-    For c = BK_COL_EINNAHMEN_START To BK_COL_AUSGABEN_ENDE
-        ws.Cells(rowBK, c).ClearContents
-    Next c
-    
-    ' ---------------------------------------------------------------
-    ' Kürzel-Zuordnung aufbauen: A=erste Spalte, B=zweite, usw.
-    ' ---------------------------------------------------------------
-    Dim kuerzelBuchstabe() As String
-    Dim kuerzelSpalte() As Long
-    Dim kuerzelName() As String
-    Dim anzahlSpalten As Long
-    anzahlSpalten = 0
-    
-    ' Erst zählen
-    For c = startCol To endCol
-        Dim hdrTmp As String
-        hdrTmp = Trim(ws.Cells(BK_HEADER_ROW, c).value)
-        If hdrTmp <> "" Then anzahlSpalten = anzahlSpalten + 1
-    Next c
-    
-    If anzahlSpalten = 0 Then
-        MsgBox "Keine Spaltenüberschriften in Zeile " & BK_HEADER_ROW & " gefunden!", vbCritical
-        Exit Sub
-    End If
-    
-    ReDim kuerzelBuchstabe(1 To anzahlSpalten)
-    ReDim kuerzelSpalte(1 To anzahlSpalten)
-    ReDim kuerzelName(1 To anzahlSpalten)
-    
-    Dim idx As Long
-    idx = 0
-    For c = startCol To endCol
-        Dim headerText As String
-        headerText = Trim(ws.Cells(BK_HEADER_ROW, c).value)
-        If headerText <> "" Then
-            idx = idx + 1
-            kuerzelBuchstabe(idx) = Chr(64 + idx)   ' A, B, C, D, E, F, G
-            kuerzelSpalte(idx) = c
-            kuerzelName(idx) = headerText
-        End If
-    Next c
-    
-    ' Kürzel-Liste für Anzeige zusammenbauen
-    Dim spaltenInfo As String
-    spaltenInfo = IIf(istEinnahme, "EINNAHMEN", "AUSGABEN") & "-Spalten:" & vbLf
-    Dim i As Long
-    For i = 1 To anzahlSpalten
-        spaltenInfo = spaltenInfo & "  " & kuerzelBuchstabe(i) & ": " & _
-                      kuerzelName(i) & vbLf
-    Next i
-    
-    ' Eingabeschleife
-    Dim restBetrag As Double
-    restBetrag = absBetrag
-    Dim zugeordnet As Double
-    zugeordnet = 0
     
     Do While restBetrag > 0.01
         Dim prompt As String
@@ -424,28 +454,59 @@ Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
             GoTo WeiterEingabe
         End If
         
-        ' Kürzel in Spalte übersetzen
-        Dim zielCol As Long
-        zielCol = 0
-        For i = 1 To anzahlSpalten
+        ' Kürzel in Kategorie übersetzen
+        Dim gefundenIdx As Long
+        gefundenIdx = 0
+        For i = 1 To anzahlKat
             If kuerzelBuchstabe(i) = eingabeKuerzel Then
-                zielCol = kuerzelSpalte(i)
+                gefundenIdx = i
                 Exit For
             End If
         Next i
         
-        If zielCol = 0 Then
+        If gefundenIdx = 0 Then
             MsgBox "Kürzel '" & eingabeKuerzel & "' nicht gefunden!" & vbLf & _
-                   "Erlaubte Kürzel: " & kuerzelBuchstabe(1) & _
-                   " bis " & kuerzelBuchstabe(anzahlSpalten), vbExclamation
+                   "Erlaubte Kürzel: A bis " & kuerzelBuchstabe(anzahlKat), vbExclamation
             GoTo WeiterEingabe
         End If
         
-        ' Betrag eintragen (mit korrektem Vorzeichen)
+        ' Zielspalte über die Kategorietabelle bestimmen (Spalte N = Zielspalte)
+        Dim zielHeader As String
+        zielHeader = kuerzelZielHeader(gefundenIdx)
+        
+        If zielHeader = "" Then
+            MsgBox "Kategorie '" & kuerzelKatName(gefundenIdx) & "' hat keine Zielspalte " & _
+                   "(Spalte N in der Kategorie-Tabelle ist leer)!", vbExclamation
+            GoTo WeiterEingabe
+        End If
+        
+        ' Zielspalte im richtigen Bereich (M-S oder T-Z) finden
+        Dim zielCol As Long
+        zielCol = 0
+        For c = startCol To endCol
+            If StrComp(Trim(ws.Cells(BK_HEADER_ROW, c).value), zielHeader, vbTextCompare) = 0 Then
+                zielCol = c
+                Exit For
+            End If
+        Next c
+        
+        If zielCol = 0 Then
+            MsgBox "Zielspalte '" & zielHeader & "' nicht im " & _
+                   IIf(istEinnahme, "Einnahmen", "Ausgaben") & "-Bereich gefunden!", vbExclamation
+            GoTo WeiterEingabe
+        End If
+        
+        ' Betrag eintragen (ADDIEREN wenn schon ein Wert in der Zelle steht)
+        Dim vorhandenerBetrag As Double
+        vorhandenerBetrag = 0
+        If ws.Cells(rowBK, zielCol).value <> "" Then
+            vorhandenerBetrag = CDbl(ws.Cells(rowBK, zielCol).value)
+        End If
+        
         If istEinnahme Then
-            ws.Cells(rowBK, zielCol).value = teilBetrag
+            ws.Cells(rowBK, zielCol).value = vorhandenerBetrag + teilBetrag
         Else
-            ws.Cells(rowBK, zielCol).value = -teilBetrag
+            ws.Cells(rowBK, zielCol).value = vorhandenerBetrag + (-teilBetrag)
         End If
         
         zugeordnet = zugeordnet + teilBetrag
