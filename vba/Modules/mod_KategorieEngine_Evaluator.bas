@@ -3,15 +3,10 @@ Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - EVALUATOR
-' VERSION: 7.0 - 08.02.2026
-' NEU: Multi-Word-Matching - Keywords mit mehreren Woertern
-'      werden einzeln geprueft (alle muessen vorkommen,
-'      Reihenfolge egal). Loest das "Stromvorauszahlungen"
-'      vs "Strom Vorauszahlung" Problem.
-' FIX: EHEMALIGES MITGLIED -> Auszahlung/Guthaben erlaubt
-' FIX: Sammelzahlung-Bemerkung zeigt Kategorien + Konflikte
-' FIX: ApplyBetragsZuordnung wird NICHT mehr aus dem
-'      Evaluator aufgerufen (Pipeline regelt das)
+' VERSION: 7.1 DEBUG - 08.02.2026
+' NEU: Multi-Word-Matching (MatchKeyword)
+' NEU: DEBUG-Protokoll im Direktbereich (Strg+G)
+' HINWEIS: Debug.Print Zeilen nach Analyse entfernen!
 ' =====================================================
 
 ' Mindest-Score-Differenz fuer sichere Zuordnung
@@ -19,6 +14,9 @@ Private Const SCORE_DOMINANZ_SCHWELLE As Long = 20
 
 ' Kategorie fuer echte Mehrdeutigkeit (nur programmatisch!)
 Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung (mehrere Positionen) Mitglied"
+
+' DEBUG: Zaehler fuer Zeilennummern im Protokoll
+Private mDebugRowBK As Long
 
 ' -----------------------------
 ' Kontext erstellen (erweitert)
@@ -67,18 +65,15 @@ Public Function BuildKategorieContext(ByVal wsBK As Worksheet, _
     ctx("EntityRole") = entityRole
     ctx("EntityParzelle") = entityParzelle
     
-    ' Ist es ein Mitglied (alle Varianten)?
     ctx("IsMitglied") = (entityRole = "MITGLIED" Or _
                           entityRole = "MITGLIED_MIT_PACHT" Or _
                           entityRole = "MITGLIED_OHNE_PACHT")
     
-    ' Ehemalige Mitglieder separat
     ctx("IsEhemaligesMitglied") = (entityRole = "EHEMALIGES MITGLIED")
     
     ctx("IsVersorger") = (entityRole = "VERSORGER")
     ctx("IsBank") = (entityRole = "BANK")
 
-    ' Entgeltabschluss-Erkennung (Bankgebuehren)
     ctx("IsEntgeltabschluss") = _
         (InStr(normText, "entgeltabschluss") > 0) Or _
         (InStr(normText, "kontoabschluss") > 0) Or _
@@ -86,7 +81,6 @@ Public Function BuildKategorieContext(ByVal wsBK As Worksheet, _
         (buchungstext = "abschluss") Or _
         (buchungstext = "entgeltabschluss")
 
-    ' Bargeldauszahlung-Erkennung
     ctx("IsBargeldauszahlung") = _
         (InStr(normText, "bargeld") > 0) Or _
         (InStr(normText, "auszahlung") > 0 And InStr(normText, "geldautomat") > 0) Or _
@@ -154,17 +148,10 @@ Private Function GetEntityParzelleByIBAN(ByVal strIBAN As String) As String
 End Function
 
 ' =====================================================
-' MULTI-WORD-MATCHING (NEU v7.0)
+' MULTI-WORD-MATCHING (v7.0)
 ' Prueft ob ALLE Woerter des Keywords im Text vorkommen.
 ' Reihenfolge ist egal. Zusammengeschriebene Woerter
 ' werden ebenfalls erkannt (Substring-Matching je Wort).
-'
-' Beispiel: Keyword "Strom Vorauszahlung"
-'   Woerter: "strom", "vorauszahlung"
-'   Text: "stromvorauszahlungen" -> enthält "strom" UND "vorauszahlung" -> MATCH!
-'   Text: "vorauszahlung strom"  -> enthält "strom" UND "vorauszahlung" -> MATCH!
-'
-' Ein-Wort-Keywords nutzen weiterhin einfaches InStr.
 ' =====================================================
 Private Function MatchKeyword(ByVal normText As String, _
                                ByVal normKeyword As String) As Boolean
@@ -183,16 +170,30 @@ Private Function MatchKeyword(ByVal normText As String, _
     For w = LBound(woerter) To UBound(woerter)
         If Len(woerter(w)) > 0 Then
             If InStr(normText, woerter(w)) = 0 Then
-                ' Ein Wort fehlt -> kein Match
                 MatchKeyword = False
                 Exit Function
             End If
         End If
     Next w
     
-    ' Alle Woerter gefunden
     MatchKeyword = True
 End Function
+
+' =====================================================
+' DEBUG: Detailliertes Match-Protokoll fuer eine Zeile
+' Wird im Direktbereich ausgegeben (Strg+G im VBA-Editor)
+' =====================================================
+Private Sub DebugLogMatch(ByVal keyword As String, ByVal normKeyword As String, _
+                           ByVal category As String, ByVal einAus As String, _
+                           ByVal prio As Long, ByVal matched As Boolean, _
+                           ByVal filterGrund As String, ByVal score As Long)
+    
+    If matched Then
+        Debug.Print "    [MATCH] Kat=""" & category & """ KW=""" & keyword & """ normKW=""" & normKeyword & """ Prio=" & prio & " Score=" & score
+    ElseIf filterGrund <> "" Then
+        Debug.Print "    [SKIP ] Kat=""" & category & """ KW=""" & keyword & """ -> " & filterGrund
+    End If
+End Sub
 
 ' -----------------------------
 ' Hauptfunktion: Kategorie evaluieren
@@ -206,11 +207,26 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
 
     Dim ctx As Object
     Set ctx = BuildKategorieContext(wsBK, rowBK)
+    
+    ' === DEBUG START ===
+    mDebugRowBK = rowBK
+    Debug.Print ""
+    Debug.Print "========== ZEILE " & rowBK & " =========="
+    Debug.Print "  Name:    " & ctx("KontoName")
+    Debug.Print "  Betrag:  " & ctx("Amount")
+    Debug.Print "  E/A:     " & IIf(ctx("IsEinnahme"), "EINNAHME", IIf(ctx("IsAusgabe"), "AUSGABE", "NULL"))
+    Debug.Print "  Role:    " & ctx("EntityRole")
+    Debug.Print "  IsMitgl: " & ctx("IsMitglied")
+    Debug.Print "  NormText:" & Left(ctx("NormText"), 120)
+    Debug.Print "  BuchTxt: " & ctx("BuchungsText")
+    Debug.Print "  --- Regel-Pruefung ---"
+    ' === DEBUG END ===
 
     ' ================================
     ' PHASE 0: SONDERREGEL FUER 0-EURO-BETRAEGE
     ' ================================
     If ctx("IsNullBetrag") And ctx("IsEntgeltabschluss") Then
+        Debug.Print "  -> PHASE 0: 0-Euro Entgeltabschluss"
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
                        "Entgeltabschluss (Kontof" & ChrW(252) & "hrung)", "GRUEN"
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = "0-Euro-Abschluss automatisch zugeordnet"
@@ -221,15 +237,15 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     ' PHASE 1: HARTE SONDERREGELN
     ' ================================
     
-    ' 1a) Entgeltabschluss (Bankgebuehren)
     If ctx("IsEntgeltabschluss") And ctx("IsAusgabe") Then
+        Debug.Print "  -> PHASE 1a: Entgeltabschluss"
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
                        "Entgeltabschluss (Kontof" & ChrW(252) & "hrung)", "GRUEN"
         Exit Sub
     End If
     
-    ' 1b) Bargeldauszahlung
     If ctx("IsBargeldauszahlung") And ctx("IsAusgabe") Then
+        Debug.Print "  -> PHASE 1b: Bargeldauszahlung"
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
                        "Bargeldauszahlung", "GRUEN"
         Exit Sub
@@ -246,7 +262,6 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     bestPriority = 999
     bestCategory = ""
 
-    ' Dictionary: Kategorie -> Score (hoechster Score je Kategorie)
     Dim hitCategories As Object
     Set hitCategories = CreateObject("Scripting.Dictionary")
 
@@ -259,62 +274,62 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         Dim prio As Long
         Dim faelligkeit As String
 
-        ' Spalten: J=Kategorie, K=E/A, L=Keyword, M=Prioritaet, N=Zielspalte, O=Faelligkeit
-        category = Trim(ruleRow.Cells(1, 1).value)      ' Spalte J
-        einAus = UCase(Trim(ruleRow.Cells(1, 2).value))  ' Spalte K
-        keyword = Trim(ruleRow.Cells(1, 3).value)        ' Spalte L
-        prio = Val(ruleRow.Cells(1, 4).value)            ' Spalte M
-        faelligkeit = LCase(Trim(ruleRow.Cells(1, 6).value)) ' Spalte O
+        category = Trim(ruleRow.Cells(1, 1).value)
+        einAus = UCase(Trim(ruleRow.Cells(1, 2).value))
+        keyword = Trim(ruleRow.Cells(1, 3).value)
+        prio = Val(ruleRow.Cells(1, 4).value)
+        faelligkeit = LCase(Trim(ruleRow.Cells(1, 6).value))
         If prio = 0 Then prio = 5
 
         If category = "" Or keyword = "" Then GoTo NextRule
 
-        ' ================================
-        ' FILTER 0: Sammelzahlung-Kategorie NIEMALS per Keyword!
-        ' Diese Kategorie wird ausschliesslich programmatisch
-        ' in PHASE 3 zugewiesen bei echter Mehrdeutigkeit.
-        ' ================================
-        If LCase(category) Like "*sammelzahlung*" Then GoTo NextRule
-
-        ' ================================
-        ' FILTER 1: Einnahme/Ausgabe MUSS passen
-        ' ================================
-        If Not ctx("IsNullBetrag") Then
-            If einAus = "E" And ctx("IsAusgabe") Then GoTo NextRule
-            If einAus = "A" And ctx("IsEinnahme") Then GoTo NextRule
+        ' FILTER 0: Sammelzahlung NIEMALS per Keyword
+        If LCase(category) Like "*sammelzahlung*" Then
+            ' Kein Debug-Log fuer Sammelzahlung (wuerde nur fluten)
+            GoTo NextRule
         End If
 
-        ' ================================
-        ' FILTER 2: Strenge EntityRole-Trennung
-        ' ================================
-        If Not PasstEntityRoleZuKategorie(ctx, category, einAus) Then GoTo NextRule
+        ' FILTER 1: Einnahme/Ausgabe MUSS passen
+        If Not ctx("IsNullBetrag") Then
+            If einAus = "E" And ctx("IsAusgabe") Then
+                DebugLogMatch keyword, "", category, einAus, prio, False, "E/A-Filter (E vs Ausgabe)", 0
+                GoTo NextRule
+            End If
+            If einAus = "A" And ctx("IsEinnahme") Then
+                DebugLogMatch keyword, "", category, einAus, prio, False, "E/A-Filter (A vs Einnahme)", 0
+                GoTo NextRule
+            End If
+        End If
 
-        ' ================================
+        ' FILTER 2: Strenge EntityRole-Trennung
+        If Not PasstEntityRoleZuKategorie(ctx, category, einAus) Then
+            DebugLogMatch keyword, "", category, einAus, prio, False, "EntityRole-Filter (Role=" & ctx("EntityRole") & ")", 0
+            GoTo NextRule
+        End If
+
         ' KEYWORD-MATCHING (v7.0 Multi-Word)
-        ' ================================
         Dim normKeyword As String
         normKeyword = NormalizeText(keyword)
         
-        If MatchKeyword(ctx("NormText"), normKeyword) Then
+        Dim matched As Boolean
+        matched = MatchKeyword(ctx("NormText"), normKeyword)
+        
+        If matched Then
 
             Dim score As Long
             score = 100
             
-            ' Prioritaetsbonus (niedrigere Prio = hoeherer Bonus)
             score = score + (10 - prio) * 5
             
-            ' EntityRole bekannt = hoehere Konfidenz
             If ctx("EntityRole") <> "" Then
                 score = score + 20
             End If
             
-            ' Einnahme/Ausgabe stimmt exakt ueberein
             If (einAus = "E" And ctx("IsEinnahme")) Or _
                (einAus = "A" And ctx("IsAusgabe")) Then
                 score = score + 15
             End If
             
-            ' Keyword-Laenge als Qualitaetsfaktor
             Dim kwLen As Long
             kwLen = Len(normKeyword)
             If kwLen >= 12 Then
@@ -325,18 +340,19 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                 score = score + 5
             End If
             
-            ' Betragsvalidierung ueber Einstellungen
             Dim betragBonus As Long
             betragBonus = PruefeBetragGegenEinstellungen(category, ctx("AbsAmount"))
             score = score + betragBonus
             
-            ' Zeitfenstervalidierung ueber Einstellungen
             If IsDate(ctx("Datum")) Then
                 Dim zeitBonus As Long
                 zeitBonus = PruefeZeitfenster(category, CDate(ctx("Datum")), faelligkeit)
                 score = score + zeitBonus
             End If
 
+            ' === DEBUG ===
+            DebugLogMatch keyword, normKeyword, category, einAus, prio, True, "", score
+            
             If Not hitCategories.Exists(category) Then
                 hitCategories.Add category, score
             Else
@@ -350,17 +366,46 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                 bestPriority = prio
                 bestCategory = category
             End If
+        Else
+            ' DEBUG: Nur fuer Strom-relevante Keywords loggen (sonst zu viel)
+            If LCase(keyword) Like "*strom*" Or LCase(keyword) Like "*abschlag*" Or _
+               LCase(keyword) Like "*vorauszahlung*" Or LCase(keyword) Like "*stvom*" Then
+                Debug.Print "    [MISS ] Kat=""" & category & """ KW=""" & keyword & """ normKW=""" & normKeyword & """"
+                ' DEBUG: Einzelwort-Analyse
+                If InStr(normKeyword, " ") > 0 Then
+                    Dim dbgWords() As String
+                    dbgWords = Split(normKeyword, " ")
+                    Dim dw As Long
+                    For dw = LBound(dbgWords) To UBound(dbgWords)
+                        If Len(dbgWords(dw)) > 0 Then
+                            If InStr(ctx("NormText"), dbgWords(dw)) > 0 Then
+                                Debug.Print "             Wort """ & dbgWords(dw) & """ -> GEFUNDEN"
+                            Else
+                                Debug.Print "             Wort """ & dbgWords(dw) & """ -> NICHT GEFUNDEN ***"
+                            End If
+                        End If
+                    Next dw
+                End If
+            End If
         End If
 
 NextRule:
     Next ruleRow
 
     ' ================================
-    ' PHASE 3: ERGEBNIS AUSWERTEN MIT SCORE-DOMINANZ
+    ' PHASE 3: ERGEBNIS AUSWERTEN
     ' ================================
     
+    ' === DEBUG ===
+    Debug.Print "  --- Ergebnis ---"
+    Debug.Print "  Treffer-Kategorien: " & hitCategories.count
+    Dim dbgKey As Variant
+    For Each dbgKey In hitCategories.keys
+        Debug.Print "    " & CStr(dbgKey) & " = " & CLng(hitCategories(dbgKey))
+    Next dbgKey
+    Debug.Print "  Best: """ & bestCategory & """ Score=" & bestScore
+    
     If hitCategories.count > 1 Then
-        ' Zweitbesten Score ermitteln
         Dim zweitBesterScore As Long
         zweitBesterScore = -999
         Dim katKey As Variant
@@ -375,14 +420,16 @@ NextRule:
         Dim scoreDifferenz As Long
         scoreDifferenz = bestScore - zweitBesterScore
         
+        Debug.Print "  Differenz: " & scoreDifferenz & " (Schwelle: " & SCORE_DOMINANZ_SCHWELLE & ")"
+        
         If scoreDifferenz >= SCORE_DOMINANZ_SCHWELLE Then
-            ' SICHERER TREFFER trotz mehrerer Matches
+            Debug.Print "  -> GRUEN (dominanter Treffer)"
             ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRUEN"
-            ' Kein ApplyBetragsZuordnung hier - macht die Pipeline!
             Exit Sub
         End If
         
-        ' ECHTE MEHRDEUTIGKEIT: Kurze, klare Bemerkung ohne Scores
+        Debug.Print "  -> GELB (Sammelzahlung - Mehrdeutigkeit)"
+        
         Dim bemerkung As String
         bemerkung = hitCategories.count & " Kategorien passen:" & vbLf
         
@@ -398,7 +445,6 @@ NextRule:
         
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = bemerkung
         
-        
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
                        KAT_SAMMELZAHLUNG, "GELB"
         
@@ -406,14 +452,14 @@ NextRule:
         Exit Sub
     End If
 
-    ' Genau 1 Treffer = sicher GRUEN
     If bestCategory <> "" Then
+        Debug.Print "  -> GRUEN (einziger Treffer)"
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRUEN"
-        ' Kein ApplyBetragsZuordnung hier - macht die Pipeline!
         Exit Sub
     End If
 
     ' Kein Treffer = ROT
+    Debug.Print "  -> ROT (kein Treffer)"
     If ctx("EntityRole") = "" Then
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
             "Keine Kategorie gefunden. IBAN nicht zugeordnet - bitte Entity-Mapping pr" & ChrW(252) & "fen!"
@@ -474,7 +520,6 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
     If ctx("IsVersorger") Then
         If catLower Like "*mitglied*" Then PasstEntityRoleZuKategorie = False: Exit Function
         
-        ' Pacht nur blockieren wenn Mitglieder-Pacht
         If catLower Like "*pacht*" And catLower Like "*mitglied*" Then
             PasstEntityRoleZuKategorie = False: Exit Function
         End If
@@ -504,7 +549,6 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
             PasstEntityRoleZuKategorie = False: Exit Function
         End If
         
-        ' Mitglied darf KEINE Miete/Pacht-Grundstueck (das zahlt der VEREIN)
         If catLower Like "*miete*" And (catLower Like "*grundst" & ChrW(252) & "ck*" Or catLower Like "*grundstueck*") Then
             PasstEntityRoleZuKategorie = False: Exit Function
         End If
@@ -513,7 +557,6 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
         If catLower Like "*kontof" & ChrW(252) & "hrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*kontofuehrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         
-        ' Mitglied bei Ausgabe = nur Rueckerstattung/Auszahlung/Guthaben
         If ctx("IsAusgabe") Then
             If Not (catLower Like "*r" & ChrW(252) & "ck*" Or catLower Like "*rueck*" Or _
                     catLower Like "*erstattung*" Or catLower Like "*gutschrift*" Or _
@@ -545,7 +588,6 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
             PasstEntityRoleZuKategorie = False: Exit Function
         End If
         
-        ' Ehemalige bei Ausgabe: Auszahlung/Guthaben/Rueckzahlung erlaubt
         If ctx("IsAusgabe") Then
             If Not (catLower Like "*r" & ChrW(252) & "ck*" Or catLower Like "*rueck*" Or _
                     catLower Like "*erstattung*" Or catLower Like "*gutschrift*" Or _
@@ -555,9 +597,6 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
             End If
         End If
     End If
-    
-    ' --- SONSTIGE: Sehr offen, fast alles erlaubt ---
-    ' Keine zusaetzlichen Filter fuer SONSTIGE
     
 End Function
 
