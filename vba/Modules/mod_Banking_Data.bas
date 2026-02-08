@@ -3,13 +3,9 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Data
-' VERSION: 3.6 - 08.02.2026
-' AENDERUNG: StelleFormelnWiederHer nach Import und Loeschen
-'            ListBox-Groesse wird VOR dem Befuellen gespeichert
-'            und NACH dem Befuellen wiederhergestellt, da .AddItem
-'            bei ActiveX-ListBox die OLE-Container-Groesse
-'            veraendern kann. Designer bestimmt die Ausgangsgroesse.
-'            MAX_BLOECKE auf 100 erhoeht (500 Zeilen max)
+' VERSION: 3.7 - 08.02.2026
+' AENDERUNG: Redundante Funktion HoleActiveXListBox entfernt
+'            (wurde nirgends aufgerufen)
 ' ===============================================================
 
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
@@ -349,7 +345,7 @@ ImportAbschluss:
     MsgBox msgText, msgIcon, msgTitle
     
     ' ============================================================
-    ' ENTITYKEY-PR" & ChrW(220) & "FUNG: Spalte W (EntityRole) vollstaendig?
+    ' ENTITYKEY-PRUEFUNG: Spalte W (EntityRole) vollstaendig?
     ' Nur pruefen wenn tatsaechlich neue Datensaetze importiert wurden
     ' ============================================================
     If rowsProcessed > 0 Then
@@ -569,6 +565,12 @@ End Sub
 
 
 
+'--- Ende Teil 1 von 3 ---
+'--- Anfang Teil 2 von 3 ---
+
+
+
+
 ' ===============================================================
 ' 5. SORTIERUNG NACH DATUM (AUFSTEIGEND - Januar oben)
 ' ===============================================================
@@ -680,7 +682,7 @@ Private Function ErmittleMonatPeriode(ByVal kategorie As String, _
                 ErmittleMonatPeriode = "H2 " & Year(buchungsDatum)
             End If
             
-        Case "jaehrlich", "jahr", "jährlich"
+        Case "jaehrlich", "jahr", "j?hrlich"
             ErmittleMonatPeriode = CStr(Year(buchungsDatum))
             
         Case Else
@@ -709,6 +711,7 @@ Private Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
     
     HoleFaelligkeitFuerKategorie = "monatlich"
 End Function
+
 ' ===============================================================
 ' 7. IMPORT REPORT LISTBOX (ACTIVEX STEUERELEMENT)
 '    -----------------------------------------------
@@ -932,30 +935,7 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
 End Sub
 
 ' ---------------------------------------------------------------
-' 7c. ActiveX ListBox auf dem Blatt finden
-'     Zugriff ueber OLEObjects -> .Object (MSForms.ListBox)
-' ---------------------------------------------------------------
-Private Function HoleActiveXListBox(ByVal ws As Worksheet) As MSForms.ListBox
-    
-    Dim oleObj As OLEObject
-    
-    On Error Resume Next
-    Set oleObj = ws.OLEObjects(FORM_LISTBOX_NAME)
-    On Error GoTo 0
-    
-    If oleObj Is Nothing Then
-        Set HoleActiveXListBox = Nothing
-        Exit Function
-    End If
-    
-    On Error Resume Next
-    Set HoleActiveXListBox = oleObj.Object
-    On Error GoTo 0
-    
-End Function
-
-' ---------------------------------------------------------------
-' 7d. Farbcodierung nach Import-Ergebnis (direkt auf ListBox)
+' 7c. Farbcodierung nach Import-Ergebnis (direkt auf ListBox)
 '     GRUEN  = Alles OK (dupes = 0, failed = 0)
 '     GELB   = Duplikate vorhanden (dupes > 0, failed = 0)
 '     ROT    = Fehler vorhanden (failed > 0)
@@ -976,7 +956,7 @@ Private Sub FaerbeListBoxNachImport(ByVal lb As MSForms.ListBox, _
 End Sub
 
 ' ---------------------------------------------------------------
-' 7e. Farbcodierung aus gespeichertem Protokoll bestimmen
+' 7d. Farbcodierung aus gespeichertem Protokoll bestimmen
 '     Liest Index 2: "X Duplikate erkannt"
 '     Liest Index 3: "X Fehler"
 ' ---------------------------------------------------------------
@@ -1004,7 +984,7 @@ Private Sub FaerbeListBoxAusProtokoll(ByVal lb As MSForms.ListBox, ByRef zeilen(
 End Sub
 
 ' ---------------------------------------------------------------
-' 7f. Zahl am Anfang eines Strings extrahieren
+' 7e. Zahl am Anfang eines Strings extrahieren
 '     "123 Duplikate erkannt" -> 123
 ' ---------------------------------------------------------------
 Private Function ExtrahiereZahl(ByVal text As String) As Long
@@ -1028,6 +1008,15 @@ Private Function ExtrahiereZahl(ByVal text As String) As Long
     End If
     
 End Function
+
+
+
+
+'--- Ende Teil 2 von 3 ---
+'--- Anfang Teil 3 von 3 ---
+
+
+
 
 ' ===============================================================
 ' 8. HILFSFUNKTIONEN
@@ -1223,4 +1212,5 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
 
