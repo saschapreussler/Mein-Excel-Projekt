@@ -20,12 +20,16 @@ Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung (mehrere Positionen) 
 ' =====================================================
 ' EINSTELLUNGEN-CACHE (Performance)
 ' Wird einmal geladen, dann fuer alle Zeilen verwendet
+' Spalten: B=Kategorie, C=Soll-Betrag, D=Soll-Tag,
+'          E=Stichtag, F=Vorlauf, G=Nachlauf
 ' =====================================================
 Private mCacheGeladen As Boolean
 Private mCacheKat() As String
 Private mCacheSoll() As Double
-Private mCacheVon() As Variant
-Private mCacheBis() As Variant
+Private mCacheSollTag() As Long
+Private mCacheStichtag() As Variant
+Private mCacheVorlauf() As Long
+Private mCacheNachlauf() As Long
 Private mCacheAnzahl As Long
 
 Public Sub LadeEinstellungenCache()
@@ -44,8 +48,10 @@ Public Sub LadeEinstellungenCache()
     mCacheAnzahl = lastRow - ES_START_ROW + 1
     ReDim mCacheKat(1 To mCacheAnzahl)
     ReDim mCacheSoll(1 To mCacheAnzahl)
-    ReDim mCacheVon(1 To mCacheAnzahl)
-    ReDim mCacheBis(1 To mCacheAnzahl)
+    ReDim mCacheSollTag(1 To mCacheAnzahl)
+    ReDim mCacheStichtag(1 To mCacheAnzahl)
+    ReDim mCacheVorlauf(1 To mCacheAnzahl)
+    ReDim mCacheNachlauf(1 To mCacheAnzahl)
     
     Dim i As Long
     Dim r As Long
@@ -53,8 +59,20 @@ Public Sub LadeEinstellungenCache()
         r = ES_START_ROW + i - 1
         mCacheKat(i) = Trim(CStr(wsES.Cells(r, ES_COL_KATEGORIE).value))
         mCacheSoll(i) = wsES.Cells(r, ES_COL_SOLL_BETRAG).value
-        mCacheVon(i) = wsES.Cells(r, ES_COL_VON).value
-        mCacheBis(i) = wsES.Cells(r, ES_COL_BIS).value
+        
+        On Error Resume Next
+        mCacheSollTag(i) = CLng(wsES.Cells(r, ES_COL_SOLL_TAG).value)
+        If Err.Number <> 0 Then mCacheSollTag(i) = 0: Err.Clear
+        On Error GoTo 0
+        
+        mCacheStichtag(i) = wsES.Cells(r, ES_COL_STICHTAG_FIX).value
+        
+        On Error Resume Next
+        mCacheVorlauf(i) = CLng(wsES.Cells(r, ES_COL_VORLAUF).value)
+        If Err.Number <> 0 Then mCacheVorlauf(i) = 0: Err.Clear
+        mCacheNachlauf(i) = CLng(wsES.Cells(r, ES_COL_NACHLAUF).value)
+        If Err.Number <> 0 Then mCacheNachlauf(i) = 0: Err.Clear
+        On Error GoTo 0
     Next i
     
     mCacheGeladen = True
@@ -65,8 +83,10 @@ Public Sub EntladeEinstellungenCache()
     mCacheAnzahl = 0
     Erase mCacheKat
     Erase mCacheSoll
-    Erase mCacheVon
-    Erase mCacheBis
+    Erase mCacheSollTag
+    Erase mCacheStichtag
+    Erase mCacheVorlauf
+    Erase mCacheNachlauf
 End Sub
 
 ' -----------------------------
@@ -414,6 +434,7 @@ End Function
 
 ' =====================================================
 ' Zeitfenster-Pruefung (Cache-Version)
+' Nutzt Stichtag + Vorlauf/Nachlauf aus Einstellungen
 ' =====================================================
 Private Function PruefeZeitfenster(ByVal category As String, _
                                     ByVal buchungsDatum As Variant) As Long
@@ -422,60 +443,85 @@ Private Function PruefeZeitfenster(ByVal category As String, _
     If mCacheAnzahl = 0 Then Exit Function
     If Not IsDate(buchungsDatum) Then Exit Function
     
-    Dim buchungsMonat As Long
-    buchungsMonat = ErmittleMonatPeriode(CDate(buchungsDatum))
+    Dim buchDat As Date
+    buchDat = CDate(buchungsDatum)
     
     Dim i As Long
     For i = 1 To mCacheAnzahl
         If StrComp(mCacheKat(i), category, vbTextCompare) = 0 Then
-            Dim monatVon As Long
-            Dim monatBis As Long
             
-            If IsDate(mCacheVon(i)) Then
-                monatVon = Month(CDate(mCacheVon(i)))
-            Else
-                monatVon = 0
-            End If
+            ' Stichtag-basierte Pruefung
+            Dim sollTag As Long
+            sollTag = mCacheSollTag(i)
             
-            If IsDate(mCacheBis(i)) Then
-                monatBis = Month(CDate(mCacheBis(i)))
-            Else
-                monatBis = 0
-            End If
+            Dim vorlauf As Long
+            Dim nachlauf As Long
+            vorlauf = mCacheVorlauf(i)
+            nachlauf = mCacheNachlauf(i)
             
-            If monatVon = 0 And monatBis = 0 Then Exit Function
-            
-            ' Exakter Monats-Match
-            If buchungsMonat = monatVon Or buchungsMonat = monatBis Then
-                PruefeZeitfenster = 20
+            ' Fester Stichtag vorhanden?
+            If IsDate(mCacheStichtag(i)) Then
+                Dim stichtag As Date
+                stichtag = CDate(mCacheStichtag(i))
+                
+                ' Stichtag auf gleiches Jahr wie Buchung setzen
+                Dim stichtagAktuell As Date
+                On Error Resume Next
+                stichtagAktuell = DateSerial(Year(buchDat), Month(stichtag), Day(stichtag))
+                If Err.Number <> 0 Then
+                    Err.Clear
+                    On Error GoTo 0
+                    Exit Function
+                End If
+                On Error GoTo 0
+                
+                Dim diffTage As Long
+                diffTage = Abs(CLng(buchDat - stichtagAktuell))
+                
+                If diffTage = 0 Then
+                    PruefeZeitfenster = 20   ' Exakt am Stichtag
+                    Exit Function
+                End If
+                
+                ' Vorlauf/Nachlauf-Toleranz
+                If vorlauf > 0 Or nachlauf > 0 Then
+                    Dim fruehestens As Date
+                    Dim spaetestens As Date
+                    fruehestens = stichtagAktuell - vorlauf
+                    spaetestens = stichtagAktuell + nachlauf
+                    
+                    If buchDat >= fruehestens And buchDat <= spaetestens Then
+                        PruefeZeitfenster = 15   ' Im Toleranzfenster
+                    End If
+                End If
+                
                 Exit Function
             End If
             
-            ' Im Bereich
-            If monatVon > 0 And monatBis > 0 Then
-                If monatVon <= monatBis Then
-                    If buchungsMonat >= monatVon And buchungsMonat <= monatBis Then
-                        PruefeZeitfenster = 15
-                    End If
-                Else
-                    ' Jahreswechsel (z.B. Nov-Feb)
-                    If buchungsMonat >= monatVon Or buchungsMonat <= monatBis Then
+            ' Soll-Tag (Tag im Monat, z.B. 15 = jeweils am 15.)
+            If sollTag > 0 And sollTag <= 31 Then
+                Dim buchTag As Long
+                buchTag = Day(buchDat)
+                
+                If buchTag = sollTag Then
+                    PruefeZeitfenster = 20   ' Exakt am Soll-Tag
+                    Exit Function
+                End If
+                
+                ' Toleranz um den Soll-Tag
+                If vorlauf > 0 Or nachlauf > 0 Then
+                    If buchTag >= (sollTag - vorlauf) And buchTag <= (sollTag + nachlauf) Then
                         PruefeZeitfenster = 15
                     End If
                 End If
+                
+                Exit Function
             End If
             
+            ' Kein Zeitfenster definiert
             Exit Function
         End If
     Next i
-End Function
-
-
-' =====================================================
-' Monats-Periode bestimmen
-' =====================================================
-Private Function ErmittleMonatPeriode(ByVal d As Date) As Long
-    ErmittleMonatPeriode = Month(d)
 End Function
 
 
