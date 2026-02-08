@@ -651,7 +651,48 @@ Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     
 End Sub
 
-' Hilfsfunktion: Faelligkeit aus Kategorie-Tabelle (Spalte O) holen
+' ---------------------------------------------------------------
+' 6a. Intelligente Monat/Periode-Ermittlung
+'     Bestimmt den Periodennamen anhand der Faelligkeit:
+'     - "monatlich"     -> Monatsname (z.B. "Januar")
+'     - "quartalsweise" -> Quartal (z.B. "Q1 2026")
+'     - "halbjaehrlich" -> Halbjahr (z.B. "H1 2026")
+'     - "jaehrlich"     -> Jahr (z.B. "2026")
+'     - sonst           -> Monatsname (Fallback)
+' ---------------------------------------------------------------
+Private Function ErmittleMonatPeriode(ByVal kategorie As String, _
+                                       ByVal buchungsDatum As Date, _
+                                       ByVal faelligkeit As String) As String
+    
+    Dim m As Long
+    m = Month(buchungsDatum)
+    
+    Select Case LCase(Trim(faelligkeit))
+        Case "quartalsweise", "quartal"
+            Dim q As Long
+            q = Int((m - 1) / 3) + 1
+            ErmittleMonatPeriode = "Q" & q & " " & Year(buchungsDatum)
+            
+        Case "halbjaehrlich", "halbjahr"
+            If m <= 6 Then
+                ErmittleMonatPeriode = "H1 " & Year(buchungsDatum)
+            Else
+                ErmittleMonatPeriode = "H2 " & Year(buchungsDatum)
+            End If
+            
+        Case "jaehrlich", "jahr", "jährlich"
+            ErmittleMonatPeriode = CStr(Year(buchungsDatum))
+            
+        Case Else
+            ' "monatlich" oder unbekannt -> Monatsname
+            ErmittleMonatPeriode = MonthName(m)
+    End Select
+    
+End Function
+
+' ---------------------------------------------------------------
+' 6b. Faelligkeit aus Kategorie-Tabelle (Spalte O) holen
+' ---------------------------------------------------------------
 Private Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
                                                ByVal kategorie As String) As String
     Dim lastRow As Long
@@ -668,7 +709,6 @@ Private Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
     
     HoleFaelligkeitFuerKategorie = "monatlich"
 End Function
-
 ' ===============================================================
 ' 7. IMPORT REPORT LISTBOX (ACTIVEX STEUERELEMENT)
 '    -----------------------------------------------
