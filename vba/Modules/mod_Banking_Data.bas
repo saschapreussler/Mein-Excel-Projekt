@@ -4,20 +4,20 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Banking_Data
 ' VERSION: 3.8 - 08.02.2026
-' AENDERUNG: Setze_Monat_Periode mit Cache-Unterstuetzung
+' ÄNDERUNG: Setze_Monat_Periode mit Cache-Unterstützung
 '            Private ErmittleMonatPeriode ENTFERNT (nutzt Public
 '            Version aus mod_KategorieEngine_Evaluator)
 ' ===============================================================
 
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
 
-' Farb-Konstanten fuer ListBox-Hintergrund (OLE_COLOR / BGR)
+' Farb-Konstanten für ListBox-Hintergrund (OLE_COLOR / BGR)
 Private Const LB_COLOR_GRUEN As Long = &HC0FFC0     ' hellgruen
 Private Const LB_COLOR_GELB As Long = &HC0FFFF      ' hellgelb
 Private Const LB_COLOR_ROT As Long = &HC0C0FF       ' hellrot
 Private Const LB_COLOR_WEISS As Long = &HFFFFFF     ' weiss
 
-' Trennzeichen fuer Serialisierung in Zelle Y500
+' Trennzeichen für Serialisierung in Zelle Y500
 Private Const PROTO_SEP As String = "||"
 
 ' Protokoll-Speicher: Zelle Y500 auf dem Daten-Blatt
@@ -121,7 +121,7 @@ Public Sub Importiere_Kontoauszug()
     Set wsTemp = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.count))
     If Err.Number <> 0 Then
         MsgBox "Fehler beim Erstellen des Temp-Blatts: " & Err.Description & vbCrLf & vbCrLf & _
-           "Bitte pruefen Sie ob die Arbeitsmappe geschuetzt ist.", vbCritical
+           "Bitte prüfen Sie ob die Arbeitsmappe geschützt ist.", vbCritical
         Err.Clear
         Application.DisplayAlerts = True
         Application.ScreenUpdating = True
@@ -292,7 +292,7 @@ ImportAbschluss:
     wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
     
-    ' 7. Formeln wiederherstellen (koennten durch Import/Sort ueberschrieben sein)
+    ' 7. Formeln wiederherstellen (könnten durch Import/Sort überschrieben sein)
     Call StelleFormelnWiederHer(wsZiel)
     
     wsZiel.Activate
@@ -302,7 +302,7 @@ ImportAbschluss:
     Application.EnableEvents = True
     
     ' ============================================================
-    ' ERWEITERTE MsgBox mit vollstaendigen Import-Details
+    ' ERWEITERTE MsgBox mit vollständigen Import-Details
     ' ============================================================
     Dim msgIcon As VbMsgBoxStyle
     Dim msgTitle As String
@@ -346,8 +346,8 @@ ImportAbschluss:
     MsgBox msgText, msgIcon, msgTitle
     
     ' ============================================================
-    ' ENTITYKEY-PRUEFUNG: Spalte W (EntityRole) vollstaendig?
-    ' Nur pruefen wenn tatsaechlich neue Datensaetze importiert wurden
+    ' ENTITYKEY-PRÜFUNG: Spalte W (EntityRole) vollständig?
+    ' Nur prüfen wenn tatsächlich neue Datensätze importiert wurden
     ' ============================================================
     If rowsProcessed > 0 Then
         Call PruefeUnvollstaendigeEntityKeys
@@ -364,9 +364,9 @@ End Sub
 
 
 ' ===============================================================
-' 1b. ENTITYKEY-PRUEFUNG NACH IMPORT
-'     Prueft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
-'     eine vollstaendige Zuordnung in Spalte W (EntityRole) haben.
+' 1b. ENTITYKEY-PRÜFUNG NACH IMPORT
+'     Prüft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
+'     eine vollständige Zuordnung in Spalte W (EntityRole) haben.
 '     Bei fehlenden Eintraegen: MsgBox mit Angebot zur Navigation.
 ' ===============================================================
 Private Sub PruefeUnvollstaendigeEntityKeys()
@@ -391,7 +391,7 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
     ibanOhneRole = ""
     
     For r = EK_START_ROW To lastRow
-        ' Nur Zeilen pruefen die eine IBAN haben
+        ' Nur Zeilen prüfen die eine IBAN haben
         If Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)) <> "" Then
             ' Spalte W (EntityRole) leer?
             If Trim(CStr(wsDaten.Cells(r, EK_COL_ROLE).value)) = "" Then
@@ -400,7 +400,7 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
                 ' Erste leere Zeile merken
                 If ersteLeereZeile = 0 Then ersteLeereZeile = r
                 
-                ' Maximal 5 IBANs fuer die Anzeige sammeln
+                ' Maximal 5 IBANs für die Anzeige sammeln
                 If anzahlOhneRole <= 5 Then
                     Dim kontoname As String
                     kontoname = Trim(CStr(wsDaten.Cells(r, EK_COL_KONTONAME).value))
@@ -612,9 +612,9 @@ Public Sub Sortiere_Bankkonto_nach_Datum()
 End Sub
 
 ' ===============================================================
-' 6. MONAT/PERIODE SETZEN (intelligent ueber Einstellungen)
+' 6. MONAT/PERIODE SETZEN (intelligent über Einstellungen)
 '    v3.8: Nutzt Public ErmittleMonatPeriode aus
-'    mod_KategorieEngine_Evaluator mit Cache-Unterstuetzung.
+'    mod_KategorieEngine_Evaluator mit Cache-Unterstützung.
 ' ===============================================================
 Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     
@@ -634,7 +634,7 @@ Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     Dim wsDaten As Worksheet
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     
-    ' v3.8: Einstellungen-Cache laden fuer Folgemonat-Erkennung
+    ' v3.8: Einstellungen-Cache laden für Folgemonat-Erkennung
     Call LadeEinstellungenCache
     
     For r = BK_START_ROW To lastRow
@@ -995,7 +995,7 @@ End Function
 
 ' ===============================================================
 ' Stellt die Formeln auf dem Bankkonto-Blatt wieder her,
-' die durch ClearContents oder Import verloren gehen koennen.
+' die durch ClearContents oder Import verloren gehen können.
 ' Betrifft: C3, E8-E14, E16-E21, E23
 ' WICHTIG: Formeln werden 1:1 als FormulaLocal gesetzt!
 ' ===============================================================
@@ -1070,8 +1070,8 @@ Public Sub LoescheAlleBankkontoZeilen()
     Dim antwort As VbMsgBoxResult
     Dim eventsWaren As Boolean
     
-    antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden geloescht!" & vbCrLf & vbCrLf & _
-                     "Fortfahren?", vbYesNo + vbCritical, "Alle Daten loeschen?")
+    antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden gelöscht!" & vbCrLf & vbCrLf & _
+                     "Fortfahren?", vbYesNo + vbCritical, "Alle Daten löschen?")
     
     If antwort <> vbYes Then Exit Sub
     
@@ -1110,7 +1110,7 @@ Public Sub LoescheAlleBankkontoZeilen()
     
     Call Initialize_ImportReport_ListBox
     
-    MsgBox "Alle Daten wurden geloescht.", vbInformation
+    MsgBox "Alle Daten wurden gelöscht.", vbInformation
     
 End Sub
 
@@ -1183,4 +1183,6 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 

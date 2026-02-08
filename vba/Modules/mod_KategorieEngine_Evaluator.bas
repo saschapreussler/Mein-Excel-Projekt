@@ -3,38 +3,38 @@ Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - EVALUATOR
-' VERSION: 9.3 - 09.02.2026
+' VERSION: 9.3 - 08.02.2026
 ' MERGE: v7.0 Scoring-Logik (funktionierend) +
 '        v8.2 Infrastruktur (kein Named Range, Cache,
 '        kombiniertes GetEntityInfo, ExactMatchBonus)
-' FIX: Sonderregel fuer 0-Euro wieder aktiv
+' FIX: Sonderregel für 0-Euro wieder aktiv
 ' FIX: PasstEntityRoleZuKategorie mit detaillierter Logik
 ' FIX: Sammelzahlung-Filter vor Scoring wieder aktiv
 ' FIX: ApplyKategorie mit originaler Signatur
 ' FIX: EntsperreBetragsspalten bei GELB wieder aktiv
 ' FIX: Detaillierte Bemerkungen bei GELB und ROT
 ' FIX: Betrags-Vielfaches-Check wiederhergestellt
-' FIX: Zeitfenster mit Vormonat + faelligkeit-Parameter
+' FIX: Zeitfenster mit Vormonat + Fälligkeit-Parameter
 ' FIX: EntityRole-Bonus wieder auf +20
 ' v9.1: GELB-Bemerkung bereinigt (kein Instruktions-Satz)
 ' v9.1: ErmittleMonatPeriode mit Folgemonat-Erkennung
 '       via SollTag + Vorlauf aus Einstellungen-Cache
 ' v9.3: FIX: CoverageBonus ersetzt durch WordCountBonus
-'       (Anzahl gematchter Woerter im Keyword * 5)
-'       Prio-Bonus erhoeht: (10-prio)*8 statt *5
+'       (Anzahl gematchter Wörter im Keyword * 5)
+'       Prio-Bonus erhöht: (10-prio)*8 statt *5
 '       Damit wird STVOM-WASSER PARZ.9 korrekt als
 '       Strom/Wasser erkannt (Differenz >=20)
 ' =====================================================
 
-' Mindest-Score-Differenz fuer sichere Zuordnung
+' Mindest-Score-Differenz für sichere Zuordnung
 Private Const SCORE_DOMINANZ_SCHWELLE As Long = 20
 
-' Kategorie fuer echte Mehrdeutigkeit (nur programmatisch!)
+' Kategorie für echte Mehrdeutigkeit (nur programmatisch!)
 Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung (mehrere Positionen) Mitglied"
 
 ' =====================================================
 ' EINSTELLUNGEN-CACHE (Performance)
-' Wird einmal geladen, dann fuer alle Zeilen verwendet
+' Wird einmal geladen, dann für alle Zeilen verwendet
 ' Spalten: B=Kategorie, C=Soll-Betrag, D=Soll-Tag,
 '          E=Stichtag, F=Vorlauf, G=Nachlauf
 ' =====================================================
@@ -105,7 +105,7 @@ Public Sub EntladeEinstellungenCache()
 End Sub
 
 ' -----------------------------
-' EntityInfo ueber IBAN bestimmen (kombiniert: Role + Parzelle)
+' EntityInfo über IBAN bestimmen (kombiniert: Role + Parzelle)
 ' -----------------------------
 Private Sub GetEntityInfoByIBAN(ByVal strIBAN As String, _
                                  ByRef outRole As String, _
@@ -207,8 +207,8 @@ End Function
 
 ' =====================================================
 ' MULTI-WORD-MATCHING (v7.0)
-' Prueft ob ALLE Woerter des Keywords im Text vorkommen.
-' Reihenfolge ist egal. Zusammengeschriebene Woerter
+' Prüft ob ALLE Wörter des Keywords im Text vorkommen.
+' Reihenfolge ist egal. Zusammengeschriebene Wörter
 ' werden ebenfalls erkannt (Substring-Matching je Wort).
 ' =====================================================
 Private Function MatchKeyword(ByVal normText As String, _
@@ -251,16 +251,16 @@ End Function
 
 ' =====================================================
 ' WordCountBonus (v9.3 - ersetzt CoverageBonus)
-' Zaehlt die Woerter im normalisierten Keyword und
-' gibt pro Wort 5 Punkte Bonus. Laengere/spezifischere
-' Keywords mit mehr Woertern bekommen dadurch mehr Punkte.
+' Zählt die Wörter im normalisierten Keyword und
+' gibt pro Wort 5 Punkte Bonus. Längere/spezifischere
+' Keywords mit mehr Wörtern bekommen dadurch mehr Punkte.
 '
 ' Beispiel: normText = "max mustermann stvom wasser parz 9 gutschrift"
-'   Keyword "stvom wasser parz 9" -> 4 Woerter -> +20
-'   Keyword "wasser parz 9"       -> 3 Woerter -> +15
+'   Keyword "stvom wasser parz 9" -> 4 Wörter -> +20
+'   Keyword "wasser parz 9"       -> 3 Wörter -> +15
 '   Keyword "wasser"               -> 1 Wort   -> +5
 '
-' Zusammen mit dem erhoehten Prio-Bonus (10-prio)*8
+' Zusammen mit dem erhöhten Prio-Bonus (10-prio)*8
 ' ergibt sich bei Prio1 vs Prio3 eine Differenz von
 ' 16 (Prio) + 5 (WordCount) = 21 >= SCHWELLE 20
 ' =====================================================
@@ -288,7 +288,7 @@ End Function
 ' =====================================================
 ' Hauptfunktion: Kategorie evaluieren (v9.3)
 ' Braucht KEINEN Named Range! Liest Regeln direkt vom
-' Daten-Blatt ueber DATA_CAT_COL_* Konstanten.
+' Daten-Blatt über DATA_CAT_COL_* Konstanten.
 ' Scoring-Logik aus v7.0 wiederhergestellt.
 ' v9.3: WordCountBonus + erhoehter Prio-Bonus
 ' =====================================================
@@ -304,7 +304,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     Set ctx = BuildKategorieContext(wsBK, rowBK)
 
     ' ================================
-    ' PHASE 0: SONDERREGEL FUER 0-EURO-BETRAEGE
+    ' PHASE 0: SONDERREGEL FÜR 0-EURO-BETRÄGE
     ' ================================
     If ctx("IsNullBetrag") And ctx("IsEntgeltabschluss") Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
@@ -362,7 +362,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         Dim prio As Long
         Dim faelligkeit As String
 
-        ' Spalten ueber Konstanten lesen
+        ' Spalten über Konstanten lesen
         category = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KATEGORIE).value))    ' J
         einAus = UCase(Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_EINAUS).value)))   ' K
         keyword = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KEYWORD).value))        ' L
@@ -402,21 +402,21 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
             score = 100
             
             ' Prioritaetsbonus (niedrigere Prio = hoeherer Bonus)
-            ' v9.3: Faktor 8 statt 5 fuer staerkere Differenzierung
+            ' v9.3: Faktor 8 statt 5 für stärkere Differenzierung
             score = score + (10 - prio) * 8
             
-            ' EntityRole bekannt = hoehere Konfidenz (+20 wie in v7.0)
+            ' EntityRole bekannt = höhere Konfidenz (+20 wie in v7.0)
             If ctx("EntityRole") <> "" Then
                 score = score + 20
             End If
             
-            ' Einnahme/Ausgabe stimmt exakt ueberein
+            ' Einnahme/Ausgabe stimmt exakt überein
             If (einAus = "E" And ctx("IsEinnahme")) Or _
                (einAus = "A" And ctx("IsAusgabe")) Then
                 score = score + 15
             End If
             
-            ' Keyword-Laenge als Qualitaetsfaktor
+            ' Keyword-Länge als Qualitätsfaktor
             Dim kwLen As Long
             kwLen = Len(normKeyword)
             If kwLen >= 12 Then
@@ -430,15 +430,15 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
             ' ExactMatchBonus (v8.0: +10 wenn Keyword zusammenhaengend im Text)
             score = score + ExactMatchBonus(normText, normKeyword)
             
-            ' WordCountBonus (v9.3: Anzahl Woerter im Keyword * 5)
+            ' WordCountBonus (v9.3: Anzahl Wörter im Keyword * 5)
             score = score + WordCountBonus(normKeyword)
             
-            ' Betragsvalidierung ueber Einstellungen
+             ' Betragsvalidierung über Einstellungen
             Dim betragBonus As Long
             betragBonus = PruefeBetragGegenEinstellungen(category, ctx("AbsAmount"))
             score = score + betragBonus
             
-            ' Zeitfenstervalidierung ueber Einstellungen
+             ' Zeitfenstervalidierung über Einstellungen
             If IsDate(ctx("Datum")) Then
                 Dim zeitBonus As Long
                 zeitBonus = PruefeZeitfenster(category, CDate(ctx("Datum")), faelligkeit)
@@ -524,7 +524,7 @@ NextRule:
     ' Kein Treffer = ROT
     If ctx("EntityRole") = "" Then
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-            "Keine Kategorie gefunden. IBAN nicht zugeordnet - bitte Entity-Mapping pr" & ChrW(252) & "fen!"
+        "Keine Kategorie gefunden. IBAN nicht zugeordnet - bitte Entity-Mapping prüfen!"
     Else
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
             "Keine passende Kategorie gefunden (EntityRole: " & ctx("EntityRole") & ")"
@@ -535,7 +535,7 @@ End Sub
 
 
 ' =====================================================
-' Betragsspalten entsperren fuer manuelle Eingabe
+' Betragsspalten entsperren für manuelle Eingabe
 ' =====================================================
 Private Sub EntsperreBetragsspalten(ByVal wsBK As Worksheet, _
                                     ByVal rowBK As Long, _
@@ -665,7 +665,7 @@ End Function
 
 
 ' =====================================================
-' Betragsvalidierung ueber Einstellungen (Cache-Version)
+' Betragsvalidierung über Einstellungen (Cache-Version)
 ' mit Vielfaches-Check aus v7.0
 ' =====================================================
 Private Function PruefeBetragGegenEinstellungen(ByVal category As String, _
@@ -704,7 +704,7 @@ End Function
 
 
 ' =====================================================
-' Zeitfensterpruefung (Cache-Version + faelligkeit)
+' Zeitfensterprüfung (Cache-Version + Fälligkeit)
 ' mit Vormonat-Check aus v7.0
 ' =====================================================
 Private Function PruefeZeitfenster(ByVal category As String, _
@@ -798,13 +798,13 @@ End Function
 
 ' =====================================================
 ' Monat/Periode intelligent ermitteln (v9.1)
-' Nutzt Einstellungen-Cache fuer Folgemonat-Erkennung:
-' Wenn SollTag und Vorlauf gesetzt sind, wird geprueft
-' ob die Zahlung bereits fuer den Folgemonat gilt.
+' Nutzt Einstellungen-Cache für Folgemonat-Erkennung:
+' Wenn SollTag und Vorlauf gesetzt sind, wird geprüft
+' ob die Zahlung bereits für den Folgemonat gilt.
 ' Beispiel: SollTag=5, Vorlauf=10
-'   -> Folgemonat-Faelligkeit = 05.02.
-'   -> Fruehester Zahlungstag = 05.02. - 10 = 26.01.
-'   -> Zahlung am 27.01. >= 26.01. -> gilt fuer Februar
+'   -> Folgemonat-Fälligkeit = 05.02.
+'   -> Frühester Zahlungstag = 05.02. - 10 = 26.01.
+'   -> Zahlung am 27.01. >= 26.01. -> gilt für Februar
 ' =====================================================
 Public Function ErmittleMonatPeriode(ByVal category As String, _
                                      ByVal buchungsDatum As Date, _
@@ -885,14 +885,14 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
                 End If
             End If
             
-            ' Pruefe SollTag (Spalte D) - Tag im Monat
+            ' Prüfe SollTag (Spalte D) - Tag im Monat
             If sollTag >= 1 And sollTag <= 31 Then
                 Dim tagBuchung As Long
                 tagBuchung = Day(buchungsDatum)
                 
                 ' Folgemonat-Pruefung: Zahlung NACH dem SollTag des
                 ' aktuellen Monats UND innerhalb des Vorlauf-Fensters
-                ' fuer den SollTag des Folgemonats
+                ' für den SollTag des Folgemonats
                 If vorlauf > 0 And tagBuchung > sollTag Then
                     Dim sollDatumFolge As Date
                     On Error Resume Next
@@ -943,4 +943,6 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         End Select
     End With
 End Sub
+
+
 
