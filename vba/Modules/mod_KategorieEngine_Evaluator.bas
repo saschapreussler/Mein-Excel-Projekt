@@ -3,18 +3,16 @@ Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - EVALUATOR
-' VERSION: 8.1 - 08.02.2026
-' FIX: Regeln werden jetzt ueber DATA_CAT_COL_* Konstanten
-'      direkt vom Daten-Blatt gelesen, NICHT mehr relativ
-'      ueber den Named Range rng_KategorieRegeln!
-'      Dadurch ist die Spaltenreihenfolge immer korrekt:
-'      L=Keyword, J=Kategorie, K=E/A, M=Prio
-' FIX: EntityRole-Filter kommt aus dem Kontext (EntityKey-
-'      Tabelle R-X), nicht aus der Kategorie-Tabelle
+' VERSION: 8.2 - 08.02.2026
+' FIX: Named Range rng_KategorieRegeln wird NICHT mehr
+'      benoetigt! Zeilengrenzen werden dynamisch ueber
+'      DATA_CAT_COL_KATEGORIE (letzte gefuellte Zeile)
+'      ermittelt. Spalten ueber DATA_CAT_COL_* Konstanten.
 ' FIX: IsMitglied-Bug (Spaces statt Underscores)
 ' FIX: Kombiniertes GetEntityInfoByIBAN (1 Loop statt 2)
 ' NEU: ExactMatchBonus gegen Keyword-Kollisionen
 ' NEU: Einstellungen-Cache (Arrays statt Blattzugriff)
+' NEU: EntityRole aus Kontext wird im Scoring beruecksichtigt
 ' =====================================================
 
 ' Mindest-Score-Differenz fuer sichere Zuordnung
@@ -245,15 +243,16 @@ Private Function ExactMatchBonus(ByVal normText As String, _
 End Function
 
 ' =====================================================
-' Hauptfunktion: Kategorie evaluieren (v8.1)
-' FIX: Liest Regeln direkt vom Daten-Blatt mit
-'      DATA_CAT_COL_* Konstanten statt relativ ueber
-'      Named Range (falsche Spaltenreihenfolge!)
-' Parameter rngRules wird nur noch fuer lastRow benutzt.
+' Hauptfunktion: Kategorie evaluieren (v8.2)
+' FIX: Braucht KEINEN Named Range mehr!
+'      Liest Regeln direkt vom Daten-Blatt mit
+'      DATA_CAT_COL_* Konstanten. Zeilengrenzen werden
+'      dynamisch ueber letzte gefuellte Zeile ermittelt.
 ' =====================================================
 Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                                       ByVal rowBK As Long, _
-                                      ByVal rngRules As Range)
+                                      ByVal wsData As Worksheet, _
+                                      ByVal lastRuleRow As Long)
 
     ' --- Phase 1: Kontext ---
     Dim ctx As Object
@@ -266,20 +265,9 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     If normText = "" Then Exit Sub
 
     ' --- Phase 2: Regeln durchlaufen ---
-    ' FIX v8.1: Direkt vom Daten-Blatt lesen mit DATA_CAT_COL_* Konstanten
-    '           statt relativ ueber rngRules.Cells(rRow, 1/2/3...)
-    '           Die bisherige Zuordnung war FALSCH:
-    '           rngRules.Cells(rRow, 1) = Spalte J = Kategorie (NICHT Keyword!)
-    '           rngRules.Cells(rRow, 2) = Spalte K = E/A (NICHT Kategorie!)
-    '           rngRules.Cells(rRow, 3) = Spalte L = Keyword (NICHT E/A!)
-    Dim wsData As Worksheet
-    Set wsData = rngRules.Worksheet
-    
-    Dim firstDataRow As Long
-    firstDataRow = rngRules.Row  ' Erste Datenzeile des Named Range
-    
-    Dim lastDataRow As Long
-    lastDataRow = firstDataRow + rngRules.Rows.count - 1
+    ' v8.2: Direkt vom Daten-Blatt (wsData) lesen
+    '       Zeilen DATA_START_ROW bis lastRuleRow
+    '       Spalten ueber DATA_CAT_COL_* Konstanten
     
     Dim bestKat As String
     Dim bestScore As Long
@@ -291,7 +279,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     matchCount = 0
 
     Dim dataRow As Long
-    For dataRow = firstDataRow To lastDataRow
+    For dataRow = DATA_START_ROW To lastRuleRow
     
         ' Keyword aus Spalte L (DATA_CAT_COL_KEYWORD = 12)
         Dim rawKeyword As String
@@ -328,9 +316,8 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         If prio < 1 Then prio = 1
         If prio > 10 Then prio = 10
 
-        ' EntityRole-Filter: kommt aus dem Kontext (EntityKey-Tabelle),
-        ' NICHT aus der Kategorie-Tabelle (hat keine EntityRole-Spalte).
-        ' Die EntityRole-Pruefung erfolgt automatisch ueber den Kontext.
+        ' EntityRole aus Kontext (EntityKey-Tabelle R-X)
+        ' Keine eigene EntityRole-Spalte in der Kategorie-Tabelle
         Dim entityRole As String
         entityRole = ctx("EntityRole")
 
@@ -341,7 +328,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         ' Prioritaetsbonus (Prio 1 = +45, Prio 5 = +25, Prio 10 = 0)
         score = score + (10 - prio) * 5
 
-        ' EntityRole-Bonus: Wenn Entity bekannt ist, Bonus geben
+        ' EntityRole-Bonus: bekannte Entity = vertrauenswuerdiger
         If entityRole <> "" Then score = score + 10
 
         ' E/A-Match-Bonus (+15)
@@ -579,4 +566,3 @@ Private Sub ApplyKategorie(ByVal wsBK As Worksheet, ByVal rowBK As Long, _
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = bemerkung
     End If
 End Sub
-
