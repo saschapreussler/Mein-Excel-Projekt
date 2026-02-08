@@ -3,12 +3,14 @@ Option Explicit
 
 ' ===============================================================
 ' KATEGORIEENGINE PIPELINE
-' VERSION: 4.0 - 08.02.2026
+' VERSION: 4.1 - 08.02.2026
 ' FIX: Eigenes Unprotect/Protect - unabhaengig vom Aufrufer
 ' FIX: On Error GoTo 0 am Anfang - loest vererbtes Resume Next
 ' FIX: Validation.Add mit eigenem Error-Handling
 ' FIX: EntsperreBetragsspalten-Fehler abgefangen
 ' NEU: Dynamische DropDown-Listen in Spalte H (Kategorie)
+' NEU: Einstellungen-Cache (LadeEinstellungenCache)
+' FIX: Redundanter NormalizeBankkontoZeile-Aufruf entfernt
 ' ===============================================================
 
 Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
@@ -38,6 +40,9 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
 
     ' Kategorie-Listen auf Daten! aktualisieren (fuer DropDowns)
     AktualisierKategorieListen
+    
+    ' Einstellungen-Cache laden (Performance)
+    LadeEinstellungenCache
 
     ' Blattschutz SELBST aufheben - nicht vom Aufrufer abhaengig!
     On Error Resume Next
@@ -49,6 +54,7 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
 
     For r = BK_START_ROW To lastRowBK
 
+        ' NormText-Schnelltest: leere Zeile ueberspringen
         Dim normText As String
         normText = NormalizeBankkontoZeile(wsBK, r)
         If normText = "" Then GoTo NextRow
@@ -82,6 +88,9 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
 
 NextRow:
     Next r
+
+    ' Einstellungen-Cache freigeben
+    EntladeEinstellungenCache
 
     ' Blattschutz wieder aktivieren
     On Error Resume Next
@@ -198,7 +207,6 @@ Private Sub SetzeKategorieDropDown(ByVal wsBK As Worksheet, ByVal rowBK As Long)
     On Error GoTo 0
     
     ' Validierungs-Formel als Bereichsreferenz
-    ' Blattname in Hochkommas fuer Sicherheit
     Dim listRange As String
     listRange = "='" & wsData.Name & "'!" & _
                 wsData.Cells(DATA_START_ROW, listCol).Address(True, True) & ":" & _
@@ -257,6 +265,9 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
     ' Listen aktualisieren
     AktualisierKategorieListen
     
+    ' Einstellungen-Cache laden
+    LadeEinstellungenCache
+    
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     
@@ -312,6 +323,9 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
         
 NextRowReEval:
     Next r
+    
+    ' Einstellungen-Cache freigeben
+    EntladeEinstellungenCache
     
     wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
