@@ -12,6 +12,7 @@ Option Explicit
 ' ===============================================================
 ' TABELLENBLATT-MODUL: Einstellungen
 ' Formatiert die Zahlungstermin-Tabelle bei Aenderungen
+' NEU v4.2: Loest Re-Evaluierung der Bankkonto-Kategorien aus
 ' ===============================================================
 
 Private Sub Worksheet_Activate()
@@ -30,12 +31,15 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     Application.EnableEvents = False
     
-    ' Wenn eine Datenzeile komplett geleert wurde (Delete-Taste),
-    ' wird sie beim Neu-Formatieren automatisch entfernt
+    ' Formatierung aktualisieren
     Call mod_Einstellungen.FormatiereZahlungsterminTabelle(Me)
+    
+    ' NEU v4.2: Bankkonto-Kategorien neu evaluieren
+    ' (Betrags-/Zeitfenster-Scoring hat sich geaendert)
+    ' Manuelle Eingaben des Nutzers werden NICHT ueberschrieben
+    Call mod_KategorieEngine_Pipeline.ReEvaluiereAlleNichtManuellen
     
     Application.EnableEvents = True
     
 End Sub
-
 

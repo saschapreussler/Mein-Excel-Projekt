@@ -1,18 +1,22 @@
 Attribute VB_Name = "mod_KategorieEngine_Pipeline"
-Option Explicit
-
 ' ===============================================================
 ' KATEGORIEENGINE PIPELINE
-' VERSION: 4.1 - 08.02.2026
+' VERSION: 4.2 - 08.02.2026
 ' FIX: Eigenes Unprotect/Protect - unabhaengig vom Aufrufer
 ' FIX: On Error GoTo 0 am Anfang - loest vererbtes Resume Next
 ' FIX: Validation.Add mit eigenem Error-Handling
-' FIX: EntsperreBetragsspalten-Fehler abgefangen
 ' NEU: Dynamische DropDown-Listen in Spalte H (Kategorie)
 ' NEU: Einstellungen-Cache (LadeEinstellungenCache)
 ' FIX: Redundanter NormalizeBankkontoZeile-Aufruf entfernt
+' NEU: Manuelle Kategorie-Eingaben werden NICHT ueberschrieben
+' NEU: ReEvaluiereAlleNichtManuellen fuer Trigger aus Daten/Einstellungen
 ' ===============================================================
 
+' ---------------------------------------------------------------
+' Hauptpipeline: Evaluiert NUR Zeilen ohne manuelle Eingabe
+' Wird nach CSV-Import aufgerufen.
+' Manuelle Kategorien (vom Nutzer geaendert) werden NICHT angefasst.
+' ---------------------------------------------------------------
 Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
 
     ' WICHTIG: Vererbtes "On Error Resume Next" vom Aufrufer
@@ -54,10 +58,16 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
 
     For r = BK_START_ROW To lastRowBK
 
-        ' NormText-Schnelltest: leere Zeile ueberspringen
+        ' Leere Zeile ueberspringen
         Dim normText As String
         normText = NormalizeBankkontoZeile(wsBK, r)
         If normText = "" Then GoTo NextRow
+        
+        ' Manuelle Betragseingabe? NICHT anfassen
+        If HatManuelleBetragseingabe(wsBK, r) Then GoTo NextRow
+        
+        ' Manuelle Kategorie? NICHT anfassen
+        If HatManuelleKategorie(wsBK, r) Then GoTo NextRow
 
         ' Kategorie ermitteln (eigenes Error-Handling intern)
         On Error Resume Next
@@ -97,6 +107,107 @@ NextRow:
     wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
 
+    Application.EnableEvents = True
+    Application.ScreenUpdating = True
+
+End Sub
+
+
+' ---------------------------------------------------------------
+' Re-Evaluierung ALLER nicht-manuellen Zeilen
+' Wird aufgerufen wenn Kategorie-Regeln oder Einstellungen
+' geaendert werden. Ueberspringt manuelle Eingaben.
+' ---------------------------------------------------------------
+Public Sub ReEvaluiereAlleNichtManuellen()
+
+    On Error GoTo 0
+    
+    Dim wsBK As Worksheet
+    Dim wsData As Worksheet
+    Dim rngRules As Range
+    Dim lastRowBK As Long
+    Dim r As Long
+    Dim kategorieFarbe As Long
+    Dim anzahlNeu As Long
+    
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    Set wsData = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    On Error Resume Next
+    Set rngRules = wsData.Range(RANGE_KATEGORIE_REGELN)
+    On Error GoTo 0
+    If rngRules Is Nothing Then Exit Sub
+    
+    lastRowBK = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRowBK < BK_START_ROW Then Exit Sub
+    
+    ' Listen aktualisieren
+    AktualisierKategorieListen
+    
+    ' Einstellungen-Cache laden
+    LadeEinstellungenCache
+    
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    
+    On Error Resume Next
+    wsBK.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    anzahlNeu = 0
+    
+    For r = BK_START_ROW To lastRowBK
+        ' Leere Zeile ueberspringen
+        If Trim(CStr(wsBK.Cells(r, BK_COL_DATUM).value)) = "" Then GoTo NextRowReAll
+        
+        ' Manuelle Betragseingabe? NICHT anfassen
+        If HatManuelleBetragseingabe(wsBK, r) Then GoTo NextRowReAll
+        
+        ' Manuelle Kategorie? NICHT anfassen
+        If HatManuelleKategorie(wsBK, r) Then GoTo NextRowReAll
+        
+        ' Alte Kategorie und Bemerkung loeschen
+        wsBK.Cells(r, BK_COL_KATEGORIE).value = ""
+        wsBK.Cells(r, BK_COL_KATEGORIE).Interior.ColorIndex = xlNone
+        wsBK.Cells(r, BK_COL_KATEGORIE).Font.color = vbBlack
+        wsBK.Cells(r, BK_COL_BEMERKUNG).value = ""
+        On Error Resume Next
+        wsBK.Cells(r, BK_COL_KATEGORIE).Validation.Delete
+        On Error GoTo 0
+        
+        ' Neu evaluieren
+        On Error Resume Next
+        EvaluateKategorieEngineRow wsBK, r, rngRules
+        If Err.Number <> 0 Then Err.Clear
+        On Error GoTo 0
+        
+        ' Betrag nur zuordnen wenn GRUEN
+        On Error Resume Next
+        If wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color = RGB(198, 239, 206) Then
+            ApplyBetragsZuordnung wsBK, r
+        End If
+        If Err.Number <> 0 Then Err.Clear
+        On Error GoTo 0
+        
+        ' DropDown fuer ROT und GELB setzen
+        Dim reAllFarbe As Long
+        reAllFarbe = wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color
+        If reAllFarbe = RGB(255, 199, 206) Or reAllFarbe = RGB(255, 235, 156) Then
+            SetzeKategorieDropDown wsBK, r
+        End If
+        
+        anzahlNeu = anzahlNeu + 1
+        
+NextRowReAll:
+    Next r
+    
+    ' Einstellungen-Cache freigeben
+    EntladeEinstellungenCache
+    
+    On Error Resume Next
+    wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
     Application.EnableEvents = True
     Application.ScreenUpdating = True
 
@@ -232,7 +343,7 @@ End Sub
 
 
 ' ===============================================================
-' Re-Evaluierung nach EntityRole-Aenderung
+' Re-Evaluierung nach EntityRole-Aenderung (fuer eine IBAN)
 ' ===============================================================
 Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
 
@@ -281,13 +392,11 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
         zeilenIBAN = UCase(Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", ""))
         If zeilenIBAN <> ibanClean Then GoTo NextRowReEval
         
-        kategorieFarbe = wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color
-        
-        ' GRUEN = erfolgreich zugeordnet - NICHT anfassen
-        If kategorieFarbe = RGB(198, 239, 206) Then GoTo NextRowReEval
-        
-        ' Manuelle Betragseingabe? Nicht anfassen
+        ' Manuelle Betragseingabe? NICHT anfassen
         If HatManuelleBetragseingabe(wsBK, r) Then GoTo NextRowReEval
+        
+        ' Manuelle Kategorie? NICHT anfassen
+        If HatManuelleKategorie(wsBK, r) Then GoTo NextRowReEval
         
         ' Alte Kategorie, Bemerkung und Validierung loeschen
         wsBK.Cells(r, BK_COL_KATEGORIE).value = ""
@@ -327,15 +436,13 @@ NextRowReEval:
     ' Einstellungen-Cache freigeben
     EntladeEinstellungenCache
     
+    On Error Resume Next
     wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
     
     Application.EnableEvents = True
     Application.ScreenUpdating = True
-    
-    If anzahlNeu > 0 Then
-        Debug.Print "Re-Evaluierung: " & anzahlNeu & " Zeilen fuer IBAN " & Left(ibanClean, 8) & "... neu bewertet."
-    End If
-    
+
 End Sub
 
 
@@ -353,5 +460,46 @@ Private Function HatManuelleBetragseingabe(ByVal wsBK As Worksheet, _
             Exit Function
         End If
     Next c
+End Function
+
+
+' ===============================================================
+' Prueft ob der Nutzer manuell eine Kategorie gewaehlt/geaendert hat.
+' Manuelle Kategorie = Kategorie-Zelle hat einen Wert UND
+' die Zelle hat KEINE der Engine-Farben (GRUEN/GELB/ROT).
+' Wenn der Nutzer via DropDown eine Kategorie gewaehlt hat,
+' hat die Zelle keine Interior-Farbe oder eine andere als die
+' Engine-Farben -> wird als manuell erkannt.
+'
+' GRUEN-Zeilen werden ebenfalls uebersprungen, da sie bereits
+' erfolgreich automatisch zugeordnet wurden.
+' ===============================================================
+Private Function HatManuelleKategorie(ByVal wsBK As Worksheet, _
+                                       ByVal rowBK As Long) As Boolean
+    HatManuelleKategorie = False
+    
+    Dim katWert As String
+    katWert = Trim(CStr(wsBK.Cells(rowBK, BK_COL_KATEGORIE).value))
+    
+    ' Keine Kategorie -> nicht manuell, Engine soll evaluieren
+    If katWert = "" Then Exit Function
+    
+    Dim katFarbe As Long
+    katFarbe = wsBK.Cells(rowBK, BK_COL_KATEGORIE).Interior.color
+    
+    ' GRUEN = erfolgreich automatisch zugeordnet -> nicht ueberschreiben
+    If katFarbe = RGB(198, 239, 206) Then
+        HatManuelleKategorie = True
+        Exit Function
+    End If
+    
+    ' ROT oder GELB = Engine hat zugeordnet aber unsicher
+    ' -> darf von der Engine bei Re-Evaluierung ueberschrieben werden
+    If katFarbe = RGB(255, 199, 206) Then Exit Function  ' ROT
+    If katFarbe = RGB(255, 235, 156) Then Exit Function  ' GELB
+    
+    ' Jede andere Farbe oder keine Farbe mit Wert = manuell
+    HatManuelleKategorie = True
+    
 End Function
 

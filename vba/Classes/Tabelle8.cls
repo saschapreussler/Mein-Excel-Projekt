@@ -88,7 +88,6 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             Dim gefundeneZeile As Long
             gefundeneZeile = FindeKategorieZeile(merkKategorie, merkKeyword)
             If gefundeneZeile > 0 Then
-                ' Naechste leere oder aktuelle Spalte anwaehlen
                 Dim zielSpalte As Long
                 zielSpalte = changedCol
                 If zielSpalte < DATA_CAT_COL_START Then zielSpalte = DATA_CAT_COL_START
@@ -101,7 +100,6 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                 Application.ScreenUpdating = False
             End If
         ElseIf merkKategorie <> "" Then
-            ' Nur Kategorie bekannt (Keyword noch leer) -> erste passende Zeile finden
             Dim suchZeile As Long
             Dim lrSuch As Long
             lrSuch = Me.Cells(Me.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
@@ -120,9 +118,12 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             Next suchZeile
         End If
         
+        ' NEU v4.2: Bankkonto-Kategorien neu evaluieren
+        ' (nur nicht-manuelle Zeilen, manuelle bleiben erhalten)
+        Call mod_KategorieEngine_Pipeline.ReEvaluiereAlleNichtManuellen
+        
         GoTo CleanUp
     End If
-    
     ' === ENTITYKEY-TABELLE R-X (18-24) ===
     If changedCol >= 18 And changedCol <= 24 Then
         Call mod_Formatierung.FormatEntityKeyTableComplete(Me)
