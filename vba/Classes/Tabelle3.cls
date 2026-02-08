@@ -23,7 +23,7 @@ Private Sub Worksheet_Activate()
     arrMonate(1) = "ganzes Jahr"
     arrMonate(2) = "Januar"
     arrMonate(3) = "Februar"
-    arrMonate(4) = "M?rz"
+    arrMonate(4) = "M" & ChrW(228) & "rz"
     arrMonate(5) = "April"
     arrMonate(6) = "Mai"
     arrMonate(7) = "Juni"
@@ -63,7 +63,7 @@ Private Sub cbo_RechnungsMonat_Change()
     Dim rngFilterBereich As Range
     Dim visibleCellsCount As Long
     
-    Set wsStart = ThisWorkbook.Sheets("Startmenü")
+    Set wsStart = ThisWorkbook.Sheets("Startmen" & ChrW(252))
     Set wsBank = ThisWorkbook.Sheets("Bankkonto")
     Set wsDaten = ThisWorkbook.Sheets("Daten")
 
@@ -83,7 +83,7 @@ Private Sub cbo_RechnungsMonat_Change()
         If IsNumeric(wsStart.Range("F1").value) Then
             jahr = CLng(wsStart.Range("F1").value)
         Else
-            MsgBox "Fehler: Ung?ltiges Abrechnungsjahr in Startmen?!F1", vbCritical
+            MsgBox "Fehler: Ung" & ChrW(252) & "ltiges Abrechnungsjahr in Startmen" & ChrW(252) & "!F1", vbCritical
             GoTo SafeExit
         End If
         
@@ -93,7 +93,7 @@ Private Sub cbo_RechnungsMonat_Change()
                 monatsIndex = 0
             Case "Januar": monatsIndex = 1
             Case "Februar": monatsIndex = 2
-            Case "M?rz": monatsIndex = 3
+            Case "M" & ChrW(228) & "rz": monatsIndex = 3
             Case "April": monatsIndex = 4
             Case "Mai": monatsIndex = 5
             Case "Juni": monatsIndex = 6
@@ -160,5 +160,259 @@ SafeExit:
         Err.Clear
     End If
 
+End Sub
+
+
+' ===============================================================
+' Worksheet_Change: Manuelle Kategorie-Auswahl in Spalte H
+' ---------------------------------------------------------------
+' Erkennt wenn der Nutzer per DropDown eine Kategorie in Spalte H
+' (BK_COL_KATEGORIE = 8) manuell auswaehlt und:
+' - Normale Kategorie: Spalten M-Z leeren, GRUEN setzen,
+'   "manuell zugeordnet" als Bemerkung, ApplyBetragsZuordnung
+' - Sammelzahlung: VerarbeiteSammelzahlung aufrufen
+' ===============================================================
+Private Sub Worksheet_Change(ByVal Target As Range)
+    
+    ' Nur Spalte H (Kategorie), ab Datenzeile 28, einzelne Zelle
+    If Target.Cells.count <> 1 Then Exit Sub
+    If Target.Column <> BK_COL_KATEGORIE Then Exit Sub
+    If Target.Row < BK_START_ROW Then Exit Sub
+    
+    Dim kategorie As String
+    kategorie = Trim(Target.value)
+    If kategorie = "" Then Exit Sub
+    
+    ' Bereits GRUEN? Dann nicht erneut verarbeiten
+    If Target.Interior.color = RGB(198, 239, 206) Then Exit Sub
+    
+    On Error GoTo ChangeError
+    Application.EnableEvents = False
+    
+    Dim ws As Worksheet
+    Set ws = Me
+    
+    Dim rowBK As Long
+    rowBK = Target.Row
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo ChangeError
+    
+    ' Sammelzahlung? -> Spezialbehandlung
+    If LCase(kategorie) Like "*sammelzahlung*" Then
+        Call VerarbeiteSammelzahlung(ws, rowBK)
+        GoTo ChangeCleanup
+    End If
+    
+    ' --- NORMALE KATEGORIE ---
+    
+    ' 1. Alte Betraege in Spalten M-Z loeschen
+    Dim c As Long
+    For c = BK_COL_EINNAHMEN_START To BK_COL_AUSGABEN_ENDE
+        ws.Cells(rowBK, c).ClearContents
+    Next c
+    
+    ' 2. Kategorie GRUEN faerben
+    ApplyKategorie ws.Cells(rowBK, BK_COL_KATEGORIE), kategorie, "GRUEN"
+    
+    ' 3. Bemerkung setzen
+    ws.Cells(rowBK, BK_COL_BEMERKUNG).value = "manuell zugeordnet"
+    
+    ' 4. Monat/Periode setzen (falls leer)
+    If Trim(ws.Cells(rowBK, BK_COL_MONAT_PERIODE).value) = "" Then
+        If IsDate(ws.Cells(rowBK, BK_COL_DATUM).value) Then
+            Dim wsDaten As Worksheet
+            Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+            Dim faelligkeit As String
+            Dim lastRuleDaten As Long
+            lastRuleDaten = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+            Dim rD As Long
+            faelligkeit = "monatlich"
+            For rD = DATA_START_ROW To lastRuleDaten
+                If Trim(wsDaten.Cells(rD, DATA_CAT_COL_KATEGORIE).value) = kategorie Then
+                    faelligkeit = LCase(Trim(wsDaten.Cells(rD, DATA_CAT_COL_FAELLIGKEIT).value))
+                    If faelligkeit = "" Then faelligkeit = "monatlich"
+                    Exit For
+                End If
+            Next rD
+            
+            Call LadeEinstellungenCache
+            ws.Cells(rowBK, BK_COL_MONAT_PERIODE).value = _
+                ErmittleMonatPeriode(kategorie, CDate(ws.Cells(rowBK, BK_COL_DATUM).value), faelligkeit)
+            Call EntladeEinstellungenCache
+        End If
+    End If
+    
+    ' 5. Betragszuordnung ausfuehren
+    ApplyBetragsZuordnung ws, rowBK
+
+ChangeCleanup:
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    Application.EnableEvents = True
+    Exit Sub
+
+ChangeError:
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    Application.EnableEvents = True
+    If Err.Number <> 0 Then
+        MsgBox "Fehler in Worksheet_Change: " & Err.Description, vbExclamation
+        Err.Clear
+    End If
+End Sub
+
+
+' ===============================================================
+' Sammelzahlung verarbeiten: InputBox mit Spaltenkoepfen,
+' schrittweise Betragseingabe mit laufender Summe.
+' ===============================================================
+Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
+    
+    Dim betrag As Double
+    betrag = ws.Cells(rowBK, BK_COL_BETRAG).value
+    Dim absBetrag As Double
+    absBetrag = Abs(betrag)
+    
+    Dim istEinnahme As Boolean
+    istEinnahme = (betrag > 0)
+    
+    ' Bereich bestimmen (Einnahmen oder Ausgaben)
+    Dim startCol As Long
+    Dim endCol As Long
+    If istEinnahme Then
+        startCol = BK_COL_EINNAHMEN_START
+        endCol = BK_COL_EINNAHMEN_ENDE
+    Else
+        startCol = BK_COL_AUSGABEN_START
+        endCol = BK_COL_AUSGABEN_ENDE
+    End If
+    
+    ' Spalten M-Z komplett leeren
+    Dim c As Long
+    For c = BK_COL_EINNAHMEN_START To BK_COL_AUSGABEN_ENDE
+        ws.Cells(rowBK, c).ClearContents
+    Next c
+    
+    ' Spaltenkoepfe aus Zeile 27 sammeln
+    Dim spaltenListe As String
+    spaltenListe = "Verf" & ChrW(252) & "gbare Spalten (" & _
+                   IIf(istEinnahme, "Einnahmen", "Ausgaben") & "):" & vbLf & vbLf
+    
+    Dim colCount As Long
+    colCount = 0
+    For c = startCol To endCol
+        Dim headerText As String
+        headerText = Trim(ws.Cells(BK_HEADER_ROW, c).value)
+        If headerText <> "" Then
+            colCount = colCount + 1
+            spaltenListe = spaltenListe & colCount & ") " & headerText & _
+                           "  [Spalte " & Chr(64 + c) & "]" & vbLf
+        End If
+    Next c
+    
+    ' Eingabeschleife
+    Dim restBetrag As Double
+    restBetrag = absBetrag
+    Dim zugeordnet As Double
+    zugeordnet = 0
+    
+    Do While restBetrag > 0.01
+        Dim prompt As String
+        prompt = spaltenListe & vbLf & _
+                 "Gesamtbetrag: " & Format(absBetrag, "#,##0.00") & " " & ChrW(8364) & vbLf & _
+                 "Bereits zugeordnet: " & Format(zugeordnet, "#,##0.00") & " " & ChrW(8364) & vbLf & _
+                 "Noch offen: " & Format(restBetrag, "#,##0.00") & " " & ChrW(8364) & vbLf & vbLf & _
+                 "Geben Sie den Spaltennamen (z.B. '" & _
+                 Trim(ws.Cells(BK_HEADER_ROW, startCol).value) & _
+                 "') und den Betrag ein:" & vbLf & _
+                 "Format: Spaltenname;Betrag" & vbLf & _
+                 "(z.B. Beitrag;25,00)" & vbLf & vbLf & _
+                 "Abbrechen = restlichen Betrag nicht zuordnen"
+        
+        Dim eingabe As String
+        eingabe = InputBox(prompt, "Sammelzahlung aufteilen - Zeile " & rowBK)
+        
+        ' Abbrechen oder leer
+        If eingabe = "" Then Exit Do
+        
+        ' Eingabe parsen: "Spaltenname;Betrag"
+        Dim teile() As String
+        teile = Split(eingabe, ";")
+        
+        If UBound(teile) < 1 Then
+            MsgBox "Ung" & ChrW(252) & "ltiges Format!" & vbLf & _
+                   "Bitte im Format 'Spaltenname;Betrag' eingeben.", vbExclamation
+            GoTo WeiterEingabe
+        End If
+        
+        Dim zielSpalte As String
+        zielSpalte = Trim(teile(0))
+        
+        Dim teilBetragStr As String
+        teilBetragStr = Trim(teile(1))
+        ' Komma -> Punkt fuer Val()
+        teilBetragStr = Replace(teilBetragStr, ",", ".")
+        
+        Dim teilBetrag As Double
+        teilBetrag = Val(teilBetragStr)
+        
+        If teilBetrag <= 0 Then
+            MsgBox "Ung" & ChrW(252) & "ltiger Betrag: " & teile(1), vbExclamation
+            GoTo WeiterEingabe
+        End If
+        
+        If teilBetrag > restBetrag + 0.01 Then
+            MsgBox "Betrag " & Format(teilBetrag, "#,##0.00") & " " & ChrW(8364) & _
+                   " ist gr" & ChrW(246) & ChrW(223) & "er als der Restbetrag " & _
+                   Format(restBetrag, "#,##0.00") & " " & ChrW(8364) & "!", vbExclamation
+            GoTo WeiterEingabe
+        End If
+        
+        ' Zielspalte finden (nach Ueberschrift in Zeile 27)
+        Dim zielCol As Long
+        zielCol = 0
+        For c = startCol To endCol
+            If StrComp(Trim(ws.Cells(BK_HEADER_ROW, c).value), zielSpalte, vbTextCompare) = 0 Then
+                zielCol = c
+                Exit For
+            End If
+        Next c
+        
+        If zielCol = 0 Then
+            MsgBox "Spalte '" & zielSpalte & "' nicht gefunden!" & vbLf & _
+                   "Bitte exakten Spaltennamen aus der Liste verwenden.", vbExclamation
+            GoTo WeiterEingabe
+        End If
+        
+        ' Betrag eintragen (mit korrektem Vorzeichen)
+        If istEinnahme Then
+            ws.Cells(rowBK, zielCol).value = teilBetrag
+        Else
+            ws.Cells(rowBK, zielCol).value = -teilBetrag
+        End If
+        
+        zugeordnet = zugeordnet + teilBetrag
+        restBetrag = absBetrag - zugeordnet
+        
+WeiterEingabe:
+    Loop
+    
+    ' Kategorie GRUEN faerben und Bemerkung setzen
+    ApplyKategorie ws.Cells(rowBK, BK_COL_KATEGORIE), _
+                   ws.Cells(rowBK, BK_COL_KATEGORIE).value, "GRUEN"
+    
+    If restBetrag > 0.01 Then
+        ws.Cells(rowBK, BK_COL_BEMERKUNG).value = _
+            "manuell zugeordnet (Sammelzahlung aufgeteilt, " & _
+            Format(restBetrag, "#,##0.00") & " " & ChrW(8364) & " nicht zugeordnet)"
+    Else
+        ws.Cells(rowBK, BK_COL_BEMERKUNG).value = _
+            "manuell zugeordnet (Sammelzahlung aufgeteilt)"
+    End If
+    
 End Sub
 

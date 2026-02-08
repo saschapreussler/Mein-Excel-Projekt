@@ -3,7 +3,7 @@ Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - EVALUATOR
-' VERSION: 9.0 - 08.02.2026
+' VERSION: 9.1 - 09.02.2026
 ' MERGE: v7.0 Scoring-Logik (funktionierend) +
 '        v8.2 Infrastruktur (kein Named Range, Cache,
 '        kombiniertes GetEntityInfo, ExactMatchBonus)
@@ -16,6 +16,9 @@ Option Explicit
 ' FIX: Betrags-Vielfaches-Check wiederhergestellt
 ' FIX: Zeitfenster mit Vormonat + faelligkeit-Parameter
 ' FIX: EntityRole-Bonus wieder auf +20
+' v9.1: GELB-Bemerkung bereinigt (kein Instruktions-Satz)
+' v9.1: ErmittleMonatPeriode mit Folgemonat-Erkennung
+'       via SollTag + Vorlauf aus Einstellungen-Cache
 ' =====================================================
 
 ' Mindest-Score-Differenz fuer sichere Zuordnung
@@ -441,6 +444,7 @@ NextRule:
         End If
         
         ' ECHTE MEHRDEUTIGKEIT: Detaillierte Bemerkung
+        ' v9.1: Kein Instruktions-Satz, nur Kategorieliste
         Dim bemerkung As String
         bemerkung = hitCategories.count & " Kategorien passen:" & vbLf
         
@@ -448,11 +452,13 @@ NextRule:
         katNr = 0
         For Each katKey In hitCategories.keys
             katNr = katNr + 1
-            bemerkung = bemerkung & katNr & ") " & CStr(katKey) & vbLf
+            If katNr < hitCategories.count Then
+                bemerkung = bemerkung & katNr & ") " & CStr(katKey) & vbLf
+            Else
+                ' Letzte Kategorie: KEIN abschliessendes vbLf
+                bemerkung = bemerkung & katNr & ") " & CStr(katKey)
+            End If
         Next katKey
-        
-        bemerkung = bemerkung & vbLf & _
-                    "Bitte Kategorie manuell w" & ChrW(228) & "hlen und Betr" & ChrW(228) & "ge in Spalten M-Z aufteilen!"
         
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = bemerkung
         
@@ -745,7 +751,14 @@ End Function
 
 
 ' =====================================================
-' Monat/Periode intelligent ermitteln
+' Monat/Periode intelligent ermitteln (v9.1)
+' Nutzt Einstellungen-Cache fuer Folgemonat-Erkennung:
+' Wenn SollTag und Vorlauf gesetzt sind, wird geprueft
+' ob die Zahlung bereits fuer den Folgemonat gilt.
+' Beispiel: SollTag=5, Vorlauf=10
+'   -> Folgemonat-Faelligkeit = 05.02.
+'   -> Fruehester Zahlungstag = 05.02. - 10 = 26.01.
+'   -> Zahlung am 27.01. >= 26.01. -> gilt fuer Februar
 ' =====================================================
 Public Function ErmittleMonatPeriode(ByVal category As String, _
                                      ByVal buchungsDatum As Date, _
@@ -756,6 +769,7 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
     
     If faelligkeit = "" Then faelligkeit = "monatlich"
     
+    ' Nicht-monatliche Perioden: direkt zuordnen
     Select Case LCase(faelligkeit)
         Case "j" & ChrW(228) & "hrlich", "jaehrlich"
             ErmittleMonatPeriode = "Jahresbeitrag " & Year(buchungsDatum)
@@ -775,7 +789,9 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
             Exit Function
     End Select
     
-    ' Monatlich: Pruefen ob Zahlung fuer Folgemonat via Einstellungen
+    ' ==============================================
+    ' Monatlich: Folgemonat-Erkennung via Cache
+    ' ==============================================
     If Not mCacheGeladen Then
         ErmittleMonatPeriode = MonthName(monatBuchung)
         Exit Function
@@ -784,17 +800,54 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
     Dim idx As Long
     For idx = 1 To mCacheAnzahl
         If StrComp(mCacheKat(idx), category, vbTextCompare) = 0 Then
+            
             Dim sollTag As Long
             Dim vorlauf As Long
             
             sollTag = mCacheSollTag(idx)
             vorlauf = mCacheVorlauf(idx)
             
+            ' Pruefe zuerst festen Stichtag (Spalte E)
+            If IsDate(mCacheStichtag(idx)) Then
+                Dim stichDatum As Date
+                On Error Resume Next
+                stichDatum = CDate(CStr(mCacheStichtag(idx)))
+                If Err.Number = 0 Then
+                    On Error GoTo 0
+                    ' Stichtag im aktuellen Buchungsmonat
+                    Dim stichAktuell As Date
+                    stichAktuell = DateSerial(Year(buchungsDatum), Month(buchungsDatum), Day(stichDatum))
+                    
+                    ' Stichtag im Folgemonat
+                    Dim stichFolge As Date
+                    stichFolge = DateSerial(Year(buchungsDatum), Month(buchungsDatum) + 1, Day(stichDatum))
+                    
+                    ' Liegt Buchung im Vorlauf-Fenster des Folgemonats?
+                    If vorlauf > 0 And buchungsDatum >= (stichFolge - vorlauf) Then
+                        ErmittleMonatPeriode = MonthName(Month(stichFolge))
+                        Exit Function
+                    End If
+                    
+                    ' Liegt Buchung im Vorlauf-Fenster des aktuellen Monats?
+                    If vorlauf > 0 And buchungsDatum >= (stichAktuell - vorlauf) Then
+                        ErmittleMonatPeriode = MonthName(Month(stichAktuell))
+                        Exit Function
+                    End If
+                Else
+                    Err.Clear
+                    On Error GoTo 0
+                End If
+            End If
+            
+            ' Pruefe SollTag (Spalte D) - Tag im Monat
             If sollTag >= 1 And sollTag <= 31 Then
                 Dim tagBuchung As Long
                 tagBuchung = Day(buchungsDatum)
                 
-                If tagBuchung > sollTag And vorlauf > 0 Then
+                ' Folgemonat-Pruefung: Zahlung NACH dem SollTag des
+                ' aktuellen Monats UND innerhalb des Vorlauf-Fensters
+                ' fuer den SollTag des Folgemonats
+                If vorlauf > 0 And tagBuchung > sollTag Then
                     Dim sollDatumFolge As Date
                     On Error Resume Next
                     sollDatumFolge = DateSerial(Year(buchungsDatum), Month(buchungsDatum) + 1, sollTag)
@@ -844,4 +897,5 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         End Select
     End With
 End Sub
+
 
