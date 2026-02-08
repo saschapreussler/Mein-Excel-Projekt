@@ -3,7 +3,7 @@ Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - EVALUATOR
-' VERSION: 9.1 - 09.02.2026
+' VERSION: 9.2 - 08.02.2026
 ' MERGE: v7.0 Scoring-Logik (funktionierend) +
 '        v8.2 Infrastruktur (kein Named Range, Cache,
 '        kombiniertes GetEntityInfo, ExactMatchBonus)
@@ -19,6 +19,12 @@ Option Explicit
 ' v9.1: GELB-Bemerkung bereinigt (kein Instruktions-Satz)
 ' v9.1: ErmittleMonatPeriode mit Folgemonat-Erkennung
 '       via SollTag + Vorlauf aus Einstellungen-Cache
+' v9.2: NEU: Textabdeckungs-Bonus (CoverageBonus)
+'       Spezifischere Keywords (die mehr vom Text abdecken)
+'       bekommen bis zu +15 Bonus. Verhindert falsche
+'       Sammelzahlung bei z.B. "STVOM-WASSER PARZ.9"
+'       wo "wasser parz 9" (68%) vs "stvom wasser parz 9"
+'       (100%) konkurrierten.
 ' =====================================================
 
 ' Mindest-Score-Differenz fuer sichere Zuordnung
@@ -245,10 +251,41 @@ Private Function ExactMatchBonus(ByVal normText As String, _
 End Function
 
 ' =====================================================
-' Hauptfunktion: Kategorie evaluieren (v9.0)
+' CoverageBonus (v9.2 NEU)
+' Bewertet wie viel Prozent des Eingabetextes das
+' Keyword abdeckt. Spezifischere Keywords (die mehr
+' vom Text abdecken) bekommen einen hoeheren Bonus.
+'
+' Beispiel: Text = "stvom wasser parz 9" (19 Zeichen)
+'   Keyword "stvom wasser parz 9" -> 19/19 = 100% -> +15
+'   Keyword "wasser parz 9"       -> 13/19 =  68% -> +5
+'   Keyword "wasser"               ->  6/19 =  31% -> +0
+'
+' Schwellen: >= 90% -> +15, >= 60% -> +5, sonst +0
+' =====================================================
+Private Function CoverageBonus(ByVal normText As String, _
+                                ByVal normKeyword As String) As Long
+    CoverageBonus = 0
+    
+    If Len(normText) = 0 Then Exit Function
+    If Len(normKeyword) = 0 Then Exit Function
+    
+    Dim coverage As Double
+    coverage = CDbl(Len(normKeyword)) / CDbl(Len(normText))
+    
+    If coverage >= 0.9 Then
+        CoverageBonus = 15
+    ElseIf coverage >= 0.6 Then
+        CoverageBonus = 5
+    End If
+End Function
+
+' =====================================================
+' Hauptfunktion: Kategorie evaluieren (v9.2)
 ' Braucht KEINEN Named Range! Liest Regeln direkt vom
 ' Daten-Blatt ueber DATA_CAT_COL_* Konstanten.
 ' Scoring-Logik aus v7.0 wiederhergestellt.
+' v9.2: CoverageBonus fuer spezifischere Keywords
 ' =====================================================
 Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                                       ByVal rowBK As Long, _
@@ -387,6 +424,9 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
             ' ExactMatchBonus (v8.0: +10 wenn Keyword zusammenhaengend im Text)
             score = score + ExactMatchBonus(normText, normKeyword)
             
+            ' CoverageBonus (v9.2: +5/+15 je nach Textabdeckung)
+            score = score + CoverageBonus(normText, normKeyword)
+            
             ' Betragsvalidierung ueber Einstellungen
             Dim betragBonus As Long
             betragBonus = PruefeBetragGegenEinstellungen(category, ctx("AbsAmount"))
@@ -486,6 +526,12 @@ NextRule:
     ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), "Bitte Auswahl treffen!", "ROT"
 
 End Sub
+
+
+
+'--- Ende Teil 1 von 2 ---
+'--- Anfang Teil 2 von 2 ---
+
 
 
 ' =====================================================
@@ -897,5 +943,4 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         End Select
     End With
 End Sub
-
 
