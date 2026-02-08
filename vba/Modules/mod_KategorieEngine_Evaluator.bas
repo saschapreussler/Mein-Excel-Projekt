@@ -3,12 +3,18 @@ Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - EVALUATOR
-' VERSION: 8.0 - 08.02.2026
+' VERSION: 8.1 - 08.02.2026
+' FIX: Regeln werden jetzt ueber DATA_CAT_COL_* Konstanten
+'      direkt vom Daten-Blatt gelesen, NICHT mehr relativ
+'      ueber den Named Range rng_KategorieRegeln!
+'      Dadurch ist die Spaltenreihenfolge immer korrekt:
+'      L=Keyword, J=Kategorie, K=E/A, M=Prio
+' FIX: EntityRole-Filter kommt aus dem Kontext (EntityKey-
+'      Tabelle R-X), nicht aus der Kategorie-Tabelle
 ' FIX: IsMitglied-Bug (Spaces statt Underscores)
 ' FIX: Kombiniertes GetEntityInfoByIBAN (1 Loop statt 2)
 ' NEU: ExactMatchBonus gegen Keyword-Kollisionen
 ' NEU: Einstellungen-Cache (Arrays statt Blattzugriff)
-' ENTFERNT: Alle Debug.Print Zeilen
 ' =====================================================
 
 ' Mindest-Score-Differenz fuer sichere Zuordnung
@@ -238,9 +244,13 @@ Private Function ExactMatchBonus(ByVal normText As String, _
     End If
 End Function
 
-' -----------------------------
-' Hauptfunktion: Kategorie evaluieren (v8.0)
-' -----------------------------
+' =====================================================
+' Hauptfunktion: Kategorie evaluieren (v8.1)
+' FIX: Liest Regeln direkt vom Daten-Blatt mit
+'      DATA_CAT_COL_* Konstanten statt relativ ueber
+'      Named Range (falsche Spaltenreihenfolge!)
+' Parameter rngRules wird nur noch fuer lastRow benutzt.
+' =====================================================
 Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                                       ByVal rowBK As Long, _
                                       ByVal rngRules As Range)
@@ -256,6 +266,21 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     If normText = "" Then Exit Sub
 
     ' --- Phase 2: Regeln durchlaufen ---
+    ' FIX v8.1: Direkt vom Daten-Blatt lesen mit DATA_CAT_COL_* Konstanten
+    '           statt relativ ueber rngRules.Cells(rRow, 1/2/3...)
+    '           Die bisherige Zuordnung war FALSCH:
+    '           rngRules.Cells(rRow, 1) = Spalte J = Kategorie (NICHT Keyword!)
+    '           rngRules.Cells(rRow, 2) = Spalte K = E/A (NICHT Kategorie!)
+    '           rngRules.Cells(rRow, 3) = Spalte L = Keyword (NICHT E/A!)
+    Dim wsData As Worksheet
+    Set wsData = rngRules.Worksheet
+    
+    Dim firstDataRow As Long
+    firstDataRow = rngRules.Row  ' Erste Datenzeile des Named Range
+    
+    Dim lastDataRow As Long
+    lastDataRow = firstDataRow + rngRules.Rows.count - 1
+    
     Dim bestKat As String
     Dim bestScore As Long
     Dim secondScore As Long
@@ -265,14 +290,17 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     secondScore = 0
     matchCount = 0
 
-    Dim rRow As Long
-    For rRow = 1 To rngRules.Rows.count
+    Dim dataRow As Long
+    For dataRow = firstDataRow To lastDataRow
+    
+        ' Keyword aus Spalte L (DATA_CAT_COL_KEYWORD = 12)
         Dim rawKeyword As String
-        rawKeyword = Trim(CStr(rngRules.Cells(rRow, 1).value))
+        rawKeyword = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KEYWORD).value))
         If rawKeyword = "" Then GoTo NextRule
 
+        ' Kategoriename aus Spalte J (DATA_CAT_COL_KATEGORIE = 10)
         Dim category As String
-        category = Trim(CStr(rngRules.Cells(rRow, 2).value))
+        category = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KATEGORIE).value))
         If category = "" Then GoTo NextRule
 
         ' Keyword normalisieren
@@ -283,29 +311,28 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         ' Keyword im Text suchen (Multi-Word-Matching)
         If Not MatchKeyword(normText, normKeyword) Then GoTo NextRule
 
-        ' E/A aus Regeltabelle
+        ' E/A aus Spalte K (DATA_CAT_COL_EINAUS = 11)
         Dim einAus As String
-        einAus = UCase(Trim(CStr(rngRules.Cells(rRow, 3).value)))
+        einAus = UCase(Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_EINAUS).value)))
 
         ' E/A-Filter pruefen
         If einAus = "E" And Not ctx("IsEinnahme") Then GoTo NextRule
         If einAus = "A" And Not ctx("IsAusgabe") Then GoTo NextRule
 
-        ' Prioritaet
+        ' Prioritaet aus Spalte M (DATA_CAT_COL_PRIORITAET = 13)
         Dim prio As Long
         prio = 5
         On Error Resume Next
-        prio = CLng(rngRules.Cells(rRow, 4).value)
+        prio = CLng(wsData.Cells(dataRow, DATA_CAT_COL_PRIORITAET).value)
         On Error GoTo 0
         If prio < 1 Then prio = 1
         If prio > 10 Then prio = 10
 
-        ' EntityRole-Filter (Spalte 5)
-        Dim roleFilter As String
-        roleFilter = UCase(Trim(CStr(rngRules.Cells(rRow, 5).value)))
-        If roleFilter <> "" Then
-            If Not PasstEntityRoleZuKategorie(ctx, roleFilter) Then GoTo NextRule
-        End If
+        ' EntityRole-Filter: kommt aus dem Kontext (EntityKey-Tabelle),
+        ' NICHT aus der Kategorie-Tabelle (hat keine EntityRole-Spalte).
+        ' Die EntityRole-Pruefung erfolgt automatisch ueber den Kontext.
+        Dim entityRole As String
+        entityRole = ctx("EntityRole")
 
         ' === SCORING ===
         Dim score As Long
@@ -314,8 +341,8 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         ' Prioritaetsbonus (Prio 1 = +45, Prio 5 = +25, Prio 10 = 0)
         score = score + (10 - prio) * 5
 
-        ' EntityRole-Bonus (+20 wenn Rolle passt)
-        If roleFilter <> "" Then score = score + 20
+        ' EntityRole-Bonus: Wenn Entity bekannt ist, Bonus geben
+        If entityRole <> "" Then score = score + 10
 
         ' E/A-Match-Bonus (+15)
         If einAus <> "" Then score = score + 15
@@ -349,7 +376,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         End If
 
 NextRule:
-    Next rRow
+    Next dataRow
 
     ' --- Phase 3: Ergebnis anwenden ---
     If matchCount = 0 Then
