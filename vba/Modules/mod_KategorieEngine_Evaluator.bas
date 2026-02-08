@@ -383,7 +383,7 @@ End Sub
 
 
 ' =====================================================
-' Betragsspalten entsperren für manuelle Eingabe
+' Betragsspalten entsperren fuer manuelle Eingabe
 ' =====================================================
 Private Sub EntsperreBetragsspalten(ByVal wsBK As Worksheet, _
                                     ByVal rowBK As Long, _
@@ -400,10 +400,13 @@ Private Sub EntsperreBetragsspalten(ByVal wsBK As Worksheet, _
         endCol = BK_COL_AUSGABEN_ENDE
     End If
     
+    On Error Resume Next
     For c = startCol To endCol
         wsBK.Cells(rowBK, c).Locked = False
     Next c
+    On Error GoTo 0
 End Sub
+
 
 
 ' =====================================================

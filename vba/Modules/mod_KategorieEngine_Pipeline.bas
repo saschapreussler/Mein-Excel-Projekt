@@ -3,16 +3,19 @@ Option Explicit
 
 ' ===============================================================
 ' KATEGORIEENGINE PIPELINE
-' VERSION: 3.1 - 08.02.2026
-' FIX: ApplyBetragsZuordnung nur bei GRÜN aufrufen
-' FIX: Robustes Error-Handling pro Zeile (kein Abbruch!)
-' FIX: Validation.Delete mit Fehlerbehandlung
+' VERSION: 4.0 - 08.02.2026
+' FIX: Eigenes Unprotect/Protect - unabhaengig vom Aufrufer
+' FIX: On Error GoTo 0 am Anfang - loest vererbtes Resume Next
+' FIX: Validation.Add mit eigenem Error-Handling
+' FIX: EntsperreBetragsspalten-Fehler abgefangen
 ' NEU: Dynamische DropDown-Listen in Spalte H (Kategorie)
-'      basierend auf Einnahme/Ausgabe
-' NEU: AktualisierKategorieListen füllt Daten! AF/AG
 ' ===============================================================
 
 Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
+
+    ' WICHTIG: Vererbtes "On Error Resume Next" vom Aufrufer
+    ' (mod_Banking_Data) SOFORT deaktivieren!
+    On Error GoTo 0
 
     Dim wsData As Worksheet
     Dim rngRules As Range
@@ -21,55 +24,68 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
 
     If wsBK Is Nothing Then Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
     Set wsData = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    On Error Resume Next
     Set rngRules = wsData.Range(RANGE_KATEGORIE_REGELN)
+    On Error GoTo 0
+    If rngRules Is Nothing Then
+        Debug.Print "Pipeline ABBRUCH: Named Range '" & RANGE_KATEGORIE_REGELN & "' nicht gefunden!"
+        Exit Sub
+    End If
 
     lastRowBK = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRowBK < BK_START_ROW Then Exit Sub
 
-    ' Kategorie-Listen auf Daten! aktualisieren (für DropDowns)
+    ' Kategorie-Listen auf Daten! aktualisieren (fuer DropDowns)
     AktualisierKategorieListen
+
+    ' Blattschutz SELBST aufheben - nicht vom Aufrufer abhaengig!
+    On Error Resume Next
+    wsBK.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
 
     Application.ScreenUpdating = False
     Application.EnableEvents = False
 
     For r = BK_START_ROW To lastRowBK
 
-        ' Fehlerbehandlung PRO ZEILE - damit ein Fehler
-        ' in einer Zeile NICHT die restlichen Zeilen blockiert!
-        On Error GoTo ZeileFehler
-
         Dim normText As String
         normText = NormalizeBankkontoZeile(wsBK, r)
         If normText = "" Then GoTo NextRow
 
-        ' Kategorie ermitteln
+        ' Kategorie ermitteln (eigenes Error-Handling intern)
+        On Error Resume Next
         EvaluateKategorieEngineRow wsBK, r, rngRules
+        If Err.Number <> 0 Then
+            Debug.Print "Evaluator Fehler Zeile " & r & ": " & Err.Description
+            Err.Clear
+        End If
+        On Error GoTo 0
 
-        ' Betrag nur zuordnen wenn Kategorie GRÜN ist
-        ' GELB (Sammelzahlung) und ROT dürfen NICHT überschrieben werden!
+        ' Betrag nur zuordnen wenn Kategorie GRUEN ist
+        On Error Resume Next
         If wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color = RGB(198, 239, 206) Then
             ApplyBetragsZuordnung wsBK, r
         End If
-        
-        ' DropDown für ROT und GELB setzen
+        If Err.Number <> 0 Then
+            Debug.Print "Betragszuordnung Fehler Zeile " & r & ": " & Err.Description
+            Err.Clear
+        End If
+        On Error GoTo 0
+
+        ' DropDown fuer ROT und GELB setzen
         Dim katFarbe As Long
         katFarbe = wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color
         If katFarbe = RGB(255, 199, 206) Or katFarbe = RGB(255, 235, 156) Then
             SetzeKategorieDropDown wsBK, r
         End If
 
-        GoTo NextRow
-
-ZeileFehler:
-        ' Fehler in dieser Zeile protokollieren, aber WEITERMACHEN!
-        Debug.Print "Pipeline Fehler in Zeile " & r & ": " & Err.Description
-        wsBK.Cells(r, BK_COL_BEMERKUNG).value = "Systemfehler: " & Err.Description
-        Err.Clear
-        Resume NextRow
-
 NextRow:
     Next r
 
+    ' Blattschutz wieder aktivieren
+    On Error Resume Next
+    wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
 
     Application.EnableEvents = True
@@ -79,7 +95,7 @@ End Sub
 
 
 ' ===============================================================
-' Kategorie-Listen auf Daten! AF + AG befüllen
+' Kategorie-Listen auf Daten! AF + AG befuellen
 ' (Eindeutige Kategorienamen, getrennt nach E und A)
 ' ===============================================================
 Private Sub AktualisierKategorieListen()
@@ -114,7 +130,11 @@ Private Sub AktualisierKategorieListen()
 NextListRow:
     Next r
     
-    ' Alte Listen löschen
+    ' Alte Listen loeschen - Daten-Blatt kurz entsperren
+    On Error Resume Next
+    wsData.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
     Dim clearEnd As Long
     clearEnd = Application.WorksheetFunction.Max(50, lastRow + 10)
     wsData.Range(wsData.Cells(DATA_START_ROW, DATA_COL_KAT_EINNAHMEN), _
@@ -138,11 +158,15 @@ NextListRow:
         rowIdx = rowIdx + 1
     Next k
     
+    On Error Resume Next
+    wsData.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
 End Sub
 
 
 ' ===============================================================
-' DropDown-Validierung für Spalte H (Kategorie) setzen
+' DropDown-Validierung fuer Spalte H (Kategorie) setzen
 ' basierend auf Betrag-Vorzeichen (Einnahme/Ausgabe)
 ' ===============================================================
 Private Sub SetzeKategorieDropDown(ByVal wsBK As Worksheet, ByVal rowBK As Long)
@@ -160,24 +184,28 @@ Private Sub SetzeKategorieDropDown(ByVal wsBK As Worksheet, ByVal rowBK As Long)
         listCol = DATA_COL_KAT_AUSGABEN    ' AG = Ausgaben
     End If
     
-    ' Letzten gefüllten Wert in der Liste finden
+    ' Letzten gefuellten Wert in der Liste finden
     Dim lastListRow As Long
     lastListRow = wsData.Cells(wsData.Rows.count, listCol).End(xlUp).Row
     If lastListRow < DATA_START_ROW Then Exit Sub
     
+    ' Zelle muss entsperrt sein fuer Validation
+    wsBK.Cells(rowBK, BK_COL_KATEGORIE).Locked = False
+    
+    ' Alte Validierung sicher loeschen
+    On Error Resume Next
+    wsBK.Cells(rowBK, BK_COL_KATEGORIE).Validation.Delete
+    On Error GoTo 0
+    
     ' Validierungs-Formel als Bereichsreferenz
-    ' Blattname in Hochkommas für Sicherheit
+    ' Blattname in Hochkommas fuer Sicherheit
     Dim listRange As String
     listRange = "='" & wsData.Name & "'!" & _
                 wsData.Cells(DATA_START_ROW, listCol).Address(True, True) & ":" & _
                 wsData.Cells(lastListRow, listCol).Address(True, True)
     
-    ' Alte Validierung sicher löschen (kann fehlen ? kein Fehler)
-    On Error Resume Next
-    wsBK.Cells(rowBK, BK_COL_KATEGORIE).Validation.Delete
-    On Error GoTo 0
-    
     ' Neue DropDown-Validierung setzen
+    On Error Resume Next
     With wsBK.Cells(rowBK, BK_COL_KATEGORIE).Validation
         .Add Type:=xlValidateList, _
              AlertStyle:=xlValidAlertWarning, _
@@ -185,23 +213,23 @@ Private Sub SetzeKategorieDropDown(ByVal wsBK As Worksheet, ByVal rowBK As Long)
         .IgnoreBlank = True
         .InCellDropdown = True
         .ShowError = False
-        .ErrorTitle = "Kategorie"
-        .ErrorMessage = "Bitte eine Kategorie aus der Liste wählen."
     End With
+    If Err.Number <> 0 Then
+        Debug.Print "DropDown Fehler Zeile " & rowBK & ": " & Err.Description
+        Err.Clear
+    End If
+    On Error GoTo 0
     
 End Sub
 
 
 ' ===============================================================
-' Re-Evaluierung nach EntityRole-Änderung
-' Nur Zeilen neu bewerten die:
-'   - automatisch zugeordnet wurden (nicht manuell geändert)
-'   - ROT sind (keine Kategorie gefunden)
-'   - GELB sind (Sammelzahlung durch fehlende EntityRole)
-' Manuell korrigierte Zeilen werden NICHT angefasst!
+' Re-Evaluierung nach EntityRole-Aenderung
 ' ===============================================================
 Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
 
+    On Error GoTo 0
+    
     Dim wsBK As Worksheet
     Dim wsData As Worksheet
     Dim rngRules As Range
@@ -214,7 +242,11 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
     
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
     Set wsData = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    On Error Resume Next
     Set rngRules = wsData.Range(RANGE_KATEGORIE_REGELN)
+    On Error GoTo 0
+    If rngRules Is Nothing Then Exit Sub
     
     ibanClean = UCase(Replace(geaenderteIBAN, " ", ""))
     If ibanClean = "" Then Exit Sub
@@ -222,7 +254,7 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
     lastRowBK = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRowBK < BK_START_ROW Then Exit Sub
     
-    ' Listen aktualisieren (falls neue Kategorien hinzugekommen sind)
+    ' Listen aktualisieren
     AktualisierKategorieListen
     
     Application.ScreenUpdating = False
@@ -235,21 +267,18 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
     anzahlNeu = 0
     
     For r = BK_START_ROW To lastRowBK
-        ' Nur Zeilen mit der geänderten IBAN betrachten
         zeilenIBAN = UCase(Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", ""))
         If zeilenIBAN <> ibanClean Then GoTo NextRowReEval
         
-        ' Prüfen ob die Zeile manuell geändert wurde
         kategorieFarbe = wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color
         
-        ' GRÜN = erfolgreich zugeordnet ? NICHT anfassen
+        ' GRUEN = erfolgreich zugeordnet - NICHT anfassen
         If kategorieFarbe = RGB(198, 239, 206) Then GoTo NextRowReEval
         
-        ' Prüfen ob der Nutzer manuell etwas in den Betragsspalten eingetragen hat
+        ' Manuelle Betragseingabe? Nicht anfassen
         If HatManuelleBetragseingabe(wsBK, r) Then GoTo NextRowReEval
         
-        ' Diese Zeile darf neu evaluiert werden!
-        ' Alte Kategorie, Bemerkung und Validierung löschen
+        ' Alte Kategorie, Bemerkung und Validierung loeschen
         wsBK.Cells(r, BK_COL_KATEGORIE).value = ""
         wsBK.Cells(r, BK_COL_KATEGORIE).Interior.ColorIndex = xlNone
         wsBK.Cells(r, BK_COL_KATEGORIE).Font.color = vbBlack
@@ -259,14 +288,20 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
         On Error GoTo 0
         
         ' Neu evaluieren
+        On Error Resume Next
         EvaluateKategorieEngineRow wsBK, r, rngRules
+        If Err.Number <> 0 Then Err.Clear
+        On Error GoTo 0
         
-        ' Betrag nur zuordnen wenn GRÜN
+        ' Betrag nur zuordnen wenn GRUEN
+        On Error Resume Next
         If wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color = RGB(198, 239, 206) Then
             ApplyBetragsZuordnung wsBK, r
         End If
+        If Err.Number <> 0 Then Err.Clear
+        On Error GoTo 0
         
-        ' DropDown für ROT und GELB setzen
+        ' DropDown fuer ROT und GELB setzen
         Dim reEvalFarbe As Long
         reEvalFarbe = wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color
         If reEvalFarbe = RGB(255, 199, 206) Or reEvalFarbe = RGB(255, 235, 156) Then
@@ -284,21 +319,21 @@ NextRowReEval:
     Application.ScreenUpdating = True
     
     If anzahlNeu > 0 Then
-        Debug.Print "Re-Evaluierung: " & anzahlNeu & " Zeilen für IBAN " & Left(ibanClean, 8) & "... neu bewertet."
+        Debug.Print "Re-Evaluierung: " & anzahlNeu & " Zeilen fuer IBAN " & Left(ibanClean, 8) & "... neu bewertet."
     End If
     
 End Sub
 
 
 ' ===============================================================
-' Prüft ob der Nutzer manuell Beträge in Spalten M-Z eingetragen hat
+' Prueft ob der Nutzer manuell Betraege in Spalten M-Z eingetragen hat
 ' ===============================================================
 Private Function HatManuelleBetragseingabe(ByVal wsBK As Worksheet, _
                                             ByVal rowBK As Long) As Boolean
     Dim c As Long
     HatManuelleBetragseingabe = False
     
-    For c = BK_COL_EINNAHMEN_START To BK_COL_AUSGABEN_ENDE  ' M bis Z
+    For c = BK_COL_EINNAHMEN_START To BK_COL_AUSGABEN_ENDE
         If wsBK.Cells(rowBK, c).value <> "" And wsBK.Cells(rowBK, c).value <> 0 Then
             HatManuelleBetragseingabe = True
             Exit Function

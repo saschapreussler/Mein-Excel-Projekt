@@ -273,18 +273,29 @@ ImportAbschluss:
     Call Anwende_Border_Bankkonto(wsZiel)
     Call Anwende_Formatierung_Bankkonto(wsZiel)
     
-    ' 5. Kategorie-Engine nur bei neuen Zeilen
-    If rowsProcessed > 0 Then Call KategorieEngine_Pipeline(wsZiel)
-    
-    ' 6. Monat/Periode setzen
-    Call Setze_Monat_Periode(wsZiel)
-    
     Err.Clear
     On Error GoTo 0
     
+    ' 5. Kategorie-Engine nur bei neuen Zeilen
+    ' WICHTIG: On Error GoTo 0 MUSS vorher stehen,
+    ' damit die Pipeline ihr eigenes Error-Handling nutzen kann
+    ' und nicht das "On Error Resume Next" von oben erbt!
+    If rowsProcessed > 0 Then Call KategorieEngine_Pipeline(wsZiel)
+    
+    ' 6. Monat/Periode setzen
+    On Error Resume Next
+    Call Setze_Monat_Periode(wsZiel)
+    Err.Clear
+    On Error GoTo 0
+    
+    ' Blattschutz wird von der Pipeline selbst verwaltet (Protect am Ende).
+    ' Hier nochmals sicherstellen falls Pipeline nicht lief:
+    On Error Resume Next
     wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
     wsZiel.Activate
-
+    
     Application.DisplayAlerts = True
     Application.ScreenUpdating = True
     Application.EnableEvents = True
