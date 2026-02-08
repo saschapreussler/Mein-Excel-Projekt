@@ -3,7 +3,7 @@ Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - EVALUATOR
-' VERSION: 9.2 - 08.02.2026
+' VERSION: 9.3 - 09.02.2026
 ' MERGE: v7.0 Scoring-Logik (funktionierend) +
 '        v8.2 Infrastruktur (kein Named Range, Cache,
 '        kombiniertes GetEntityInfo, ExactMatchBonus)
@@ -19,12 +19,11 @@ Option Explicit
 ' v9.1: GELB-Bemerkung bereinigt (kein Instruktions-Satz)
 ' v9.1: ErmittleMonatPeriode mit Folgemonat-Erkennung
 '       via SollTag + Vorlauf aus Einstellungen-Cache
-' v9.2: NEU: Textabdeckungs-Bonus (CoverageBonus)
-'       Spezifischere Keywords (die mehr vom Text abdecken)
-'       bekommen bis zu +15 Bonus. Verhindert falsche
-'       Sammelzahlung bei z.B. "STVOM-WASSER PARZ.9"
-'       wo "wasser parz 9" (68%) vs "stvom wasser parz 9"
-'       (100%) konkurrierten.
+' v9.3: FIX: CoverageBonus ersetzt durch WordCountBonus
+'       (Anzahl gematchter Woerter im Keyword * 5)
+'       Prio-Bonus erhoeht: (10-prio)*8 statt *5
+'       Damit wird STVOM-WASSER PARZ.9 korrekt als
+'       Strom/Wasser erkannt (Differenz >=20)
 ' =====================================================
 
 ' Mindest-Score-Differenz fuer sichere Zuordnung
@@ -251,41 +250,47 @@ Private Function ExactMatchBonus(ByVal normText As String, _
 End Function
 
 ' =====================================================
-' CoverageBonus (v9.2 NEU)
-' Bewertet wie viel Prozent des Eingabetextes das
-' Keyword abdeckt. Spezifischere Keywords (die mehr
-' vom Text abdecken) bekommen einen hoeheren Bonus.
+' WordCountBonus (v9.3 - ersetzt CoverageBonus)
+' Zaehlt die Woerter im normalisierten Keyword und
+' gibt pro Wort 5 Punkte Bonus. Laengere/spezifischere
+' Keywords mit mehr Woertern bekommen dadurch mehr Punkte.
 '
-' Beispiel: Text = "stvom wasser parz 9" (19 Zeichen)
-'   Keyword "stvom wasser parz 9" -> 19/19 = 100% -> +15
-'   Keyword "wasser parz 9"       -> 13/19 =  68% -> +5
-'   Keyword "wasser"               ->  6/19 =  31% -> +0
+' Beispiel: normText = "max mustermann stvom wasser parz 9 gutschrift"
+'   Keyword "stvom wasser parz 9" -> 4 Woerter -> +20
+'   Keyword "wasser parz 9"       -> 3 Woerter -> +15
+'   Keyword "wasser"               -> 1 Wort   -> +5
 '
-' Schwellen: >= 90% -> +15, >= 60% -> +5, sonst +0
+' Zusammen mit dem erhoehten Prio-Bonus (10-prio)*8
+' ergibt sich bei Prio1 vs Prio3 eine Differenz von
+' 16 (Prio) + 5 (WordCount) = 21 >= SCHWELLE 20
 ' =====================================================
-Private Function CoverageBonus(ByVal normText As String, _
-                                ByVal normKeyword As String) As Long
-    CoverageBonus = 0
-    
-    If Len(normText) = 0 Then Exit Function
-    If Len(normKeyword) = 0 Then Exit Function
-    
-    Dim coverage As Double
-    coverage = CDbl(Len(normKeyword)) / CDbl(Len(normText))
-    
-    If coverage >= 0.9 Then
-        CoverageBonus = 15
-    ElseIf coverage >= 0.6 Then
-        CoverageBonus = 5
+Private Function WordCountBonus(ByVal normKeyword As String) As Long
+    If Len(normKeyword) = 0 Then
+        WordCountBonus = 0
+        Exit Function
     End If
+    
+    Dim woerter() As String
+    woerter = Split(normKeyword, " ")
+    
+    Dim anzahl As Long
+    Dim w As Long
+    anzahl = 0
+    For w = LBound(woerter) To UBound(woerter)
+        If Len(woerter(w)) > 0 Then
+            anzahl = anzahl + 1
+        End If
+    Next w
+    
+    WordCountBonus = anzahl * 5
 End Function
 
 ' =====================================================
-' Hauptfunktion: Kategorie evaluieren (v9.2)
+' Hauptfunktion: Kategorie evaluieren (v9.3)
 ' Braucht KEINEN Named Range! Liest Regeln direkt vom
 ' Daten-Blatt ueber DATA_CAT_COL_* Konstanten.
 ' Scoring-Logik aus v7.0 wiederhergestellt.
-' v9.2: CoverageBonus fuer spezifischere Keywords
+' v9.3: WordCountBonus + erhoehter Prio-Bonus
 ' =====================================================
 Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                                       ByVal rowBK As Long, _
@@ -397,7 +402,8 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
             score = 100
             
             ' Prioritaetsbonus (niedrigere Prio = hoeherer Bonus)
-            score = score + (10 - prio) * 5
+            ' v9.3: Faktor 8 statt 5 fuer staerkere Differenzierung
+            score = score + (10 - prio) * 8
             
             ' EntityRole bekannt = hoehere Konfidenz (+20 wie in v7.0)
             If ctx("EntityRole") <> "" Then
@@ -424,8 +430,8 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
             ' ExactMatchBonus (v8.0: +10 wenn Keyword zusammenhaengend im Text)
             score = score + ExactMatchBonus(normText, normKeyword)
             
-            ' CoverageBonus (v9.2: +5/+15 je nach Textabdeckung)
-            score = score + CoverageBonus(normText, normKeyword)
+            ' WordCountBonus (v9.3: Anzahl Woerter im Keyword * 5)
+            score = score + WordCountBonus(normKeyword)
             
             ' Betragsvalidierung ueber Einstellungen
             Dim betragBonus As Long
@@ -526,12 +532,6 @@ NextRule:
     ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), "Bitte Auswahl treffen!", "ROT"
 
 End Sub
-
-
-
-'--- Ende Teil 1 von 2 ---
-'--- Anfang Teil 2 von 2 ---
-
 
 
 ' =====================================================

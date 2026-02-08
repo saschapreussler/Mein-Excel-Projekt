@@ -269,6 +269,9 @@ End Sub
 ' ===============================================================
 ' Sammelzahlung verarbeiten: InputBox mit Spaltenkoepfen,
 ' schrittweise Betragseingabe mit laufender Summe.
+' v9.3: GRUEN nur wenn ALLES zugeordnet!
+'       Abbrechen ohne Zuordnung -> bleibt GELB
+'       Teilweise zugeordnet -> bleibt GELB mit Bemerkung
 ' ===============================================================
 Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
     
@@ -326,11 +329,9 @@ Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
                  "Gesamtbetrag: " & Format(absBetrag, "#,##0.00") & " " & ChrW(8364) & vbLf & _
                  "Bereits zugeordnet: " & Format(zugeordnet, "#,##0.00") & " " & ChrW(8364) & vbLf & _
                  "Noch offen: " & Format(restBetrag, "#,##0.00") & " " & ChrW(8364) & vbLf & vbLf & _
-                 "Geben Sie den Spaltennamen (z.B. '" & _
-                 Trim(ws.Cells(BK_HEADER_ROW, startCol).value) & _
-                 "') und den Betrag ein:" & vbLf & _
+                 "Geben Sie den Spaltennamen und den Betrag ein:" & vbLf & _
                  "Format: Spaltenname;Betrag" & vbLf & _
-                 "(z.B. Beitrag;25,00)" & vbLf & vbLf & _
+                 "(z.B. " & Trim(ws.Cells(BK_HEADER_ROW, startCol).value) & ";25,00)" & vbLf & vbLf & _
                  "Abbrechen = restlichen Betrag nicht zuordnen"
         
         Dim eingabe As String
@@ -401,17 +402,30 @@ Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
 WeiterEingabe:
     Loop
     
-    ' Kategorie GRUEN faerben und Bemerkung setzen
-    ApplyKategorie ws.Cells(rowBK, BK_COL_KATEGORIE), _
-                   ws.Cells(rowBK, BK_COL_KATEGORIE).value, "GRUEN"
+    ' ===============================================================
+    ' v9.3: Farbe und Bemerkung abhaengig vom Zuordnungsstatus
+    ' ===============================================================
     
-    If restBetrag > 0.01 Then
+    If zugeordnet < 0.01 Then
+        ' NICHTS zugeordnet (User hat sofort Abbrechen geklickt)
+        ' -> GELB bleibt, Bemerkung bleibt wie von der Engine gesetzt
+        ' (Kategorie und Farbe wurden schon von Worksheet_Change gesetzt)
+        Exit Sub
+    End If
+    
+    If restBetrag <= 0.01 Then
+        ' ALLES zugeordnet -> GRUEN
+        ApplyKategorie ws.Cells(rowBK, BK_COL_KATEGORIE), _
+                       ws.Cells(rowBK, BK_COL_KATEGORIE).value, "GRUEN"
         ws.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-            "manuell zugeordnet (Sammelzahlung aufgeteilt, " & _
-            Format(restBetrag, "#,##0.00") & " " & ChrW(8364) & " nicht zugeordnet)"
+            "manuell zugeordnet (Sammelzahlung vollst" & ChrW(228) & "ndig aufgeteilt)"
     Else
+        ' TEILWEISE zugeordnet -> GELB bleibt
+        ApplyKategorie ws.Cells(rowBK, BK_COL_KATEGORIE), _
+                       ws.Cells(rowBK, BK_COL_KATEGORIE).value, "GELB"
         ws.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-            "manuell zugeordnet (Sammelzahlung aufgeteilt)"
+            "Sammelzahlung teilweise aufgeteilt, " & _
+            Format(restBetrag, "#,##0.00") & " " & ChrW(8364) & " nicht zugeordnet"
     End If
     
 End Sub
