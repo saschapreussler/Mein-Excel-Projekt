@@ -3,8 +3,10 @@ Option Explicit
 
 ' ===============================================================
 ' KATEGORIEENGINE PIPELINE
-' VERSION: 3.0 - 09.02.2026
+' VERSION: 3.1 - 08.02.2026
 ' FIX: ApplyBetragsZuordnung nur bei GRÜN aufrufen
+' FIX: Robustes Error-Handling pro Zeile (kein Abbruch!)
+' FIX: Validation.Delete mit Fehlerbehandlung
 ' NEU: Dynamische DropDown-Listen in Spalte H (Kategorie)
 '      basierend auf Einnahme/Ausgabe
 ' NEU: AktualisierKategorieListen füllt Daten! AF/AG
@@ -32,9 +34,13 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
 
     For r = BK_START_ROW To lastRowBK
 
+        ' Fehlerbehandlung PRO ZEILE - damit ein Fehler
+        ' in einer Zeile NICHT die restlichen Zeilen blockiert!
+        On Error GoTo ZeileFehler
+
         Dim normText As String
         normText = NormalizeBankkontoZeile(wsBK, r)
-        If normText = "" Then GoTo nextRow
+        If normText = "" Then GoTo NextRow
 
         ' Kategorie ermitteln
         EvaluateKategorieEngineRow wsBK, r, rngRules
@@ -52,10 +58,20 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
             SetzeKategorieDropDown wsBK, r
         End If
 
-nextRow:
+        GoTo NextRow
+
+ZeileFehler:
+        ' Fehler in dieser Zeile protokollieren, aber WEITERMACHEN!
+        Debug.Print "Pipeline Fehler in Zeile " & r & ": " & Err.Description
+        wsBK.Cells(r, BK_COL_BEMERKUNG).value = "Systemfehler: " & Err.Description
+        Err.Clear
+        Resume NextRow
+
+NextRow:
     Next r
 
-SafeExit:
+    On Error GoTo 0
+
     Application.EnableEvents = True
     Application.ScreenUpdating = True
 
@@ -150,13 +166,16 @@ Private Sub SetzeKategorieDropDown(ByVal wsBK As Worksheet, ByVal rowBK As Long)
     If lastListRow < DATA_START_ROW Then Exit Sub
     
     ' Validierungs-Formel als Bereichsreferenz
+    ' Blattname in Hochkommas für Sicherheit
     Dim listRange As String
-    listRange = "=" & WS_DATEN & "!" & _
+    listRange = "='" & wsData.Name & "'!" & _
                 wsData.Cells(DATA_START_ROW, listCol).Address(True, True) & ":" & _
                 wsData.Cells(lastListRow, listCol).Address(True, True)
     
-    ' Alte Validierung löschen
+    ' Alte Validierung sicher löschen (kann fehlen ? kein Fehler)
+    On Error Resume Next
     wsBK.Cells(rowBK, BK_COL_KATEGORIE).Validation.Delete
+    On Error GoTo 0
     
     ' Neue DropDown-Validierung setzen
     With wsBK.Cells(rowBK, BK_COL_KATEGORIE).Validation
@@ -174,7 +193,7 @@ End Sub
 
 
 ' ===============================================================
-' NEU: Re-Evaluierung nach EntityRole-Änderung
+' Re-Evaluierung nach EntityRole-Änderung
 ' Nur Zeilen neu bewerten die:
 '   - automatisch zugeordnet wurden (nicht manuell geändert)
 '   - ROT sind (keine Kategorie gefunden)

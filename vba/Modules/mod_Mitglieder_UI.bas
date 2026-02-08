@@ -240,7 +240,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
 
     Dim wsM As Worksheet
     Dim wsH As Worksheet
-    Dim nextRow As Long
+    Dim NextRow As Long
     Dim lastRow As Long
     Dim iRow As Long
     
@@ -262,19 +262,19 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     
     ' --- 1. HISTORIE SPEICHERN ---
     wsH.Unprotect PASSWORD:=PASSWORD
-    nextRow = wsH.Cells(wsH.Rows.count, H_COL_PARZELLE).End(xlUp).Row + 1
-    If nextRow < H_START_ROW Then nextRow = H_START_ROW
+    NextRow = wsH.Cells(wsH.Rows.count, H_COL_PARZELLE).End(xlUp).Row + 1
+    If NextRow < H_START_ROW Then NextRow = H_START_ROW
     
-    wsH.Cells(nextRow, H_COL_PARZELLE).value = OldParzelle
-    wsH.Cells(nextRow, H_COL_MITGL_ID).value = OldMemberID
-    wsH.Cells(nextRow, H_COL_NACHNAME).value = nachname
-    wsH.Cells(nextRow, H_COL_AUST_DATUM).value = austrittsDatum
-    wsH.Cells(nextRow, H_COL_NEUER_PAECHTER_ID).value = newMemberID
-    wsH.Cells(nextRow, H_COL_GRUND).value = ChangeReason
-    wsH.Cells(nextRow, H_COL_SYSTEMZEIT).value = Now
+    wsH.Cells(NextRow, H_COL_PARZELLE).value = OldParzelle
+    wsH.Cells(NextRow, H_COL_MITGL_ID).value = OldMemberID
+    wsH.Cells(NextRow, H_COL_NACHNAME).value = nachname
+    wsH.Cells(NextRow, H_COL_AUST_DATUM).value = austrittsDatum
+    wsH.Cells(NextRow, H_COL_NEUER_PAECHTER_ID).value = newMemberID
+    wsH.Cells(NextRow, H_COL_GRUND).value = ChangeReason
+    wsH.Cells(NextRow, H_COL_SYSTEMZEIT).value = Now
     
-    wsH.Cells(nextRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
-    wsH.Cells(nextRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
+    wsH.Cells(NextRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
+    wsH.Cells(NextRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
     wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
 
     ' --- 2. MITGLIEDERLISTE AKTUALISIEREN ---

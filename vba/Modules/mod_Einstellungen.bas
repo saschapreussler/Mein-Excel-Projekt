@@ -295,21 +295,21 @@ End Sub
 Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     
     Dim lastRow As Long
-    Dim nextRow As Long
+    Dim NextRow As Long
     Dim r As Long
     Dim kategorienListe As String
     Dim tagListe As String
     Dim toleranzListe As String
     
     lastRow = LetzteZeile(ws)
-    nextRow = lastRow + 1
-    If nextRow < ES_START_ROW Then nextRow = ES_START_ROW
+    NextRow = lastRow + 1
+    If NextRow < ES_START_ROW Then NextRow = ES_START_ROW
     
     ' --- Kategorie-Liste aus Daten!J erstellen (nicht redundant) ---
     kategorienListe = HoleKategorienAlsListe()
     
     ' --- Spalte B: Kategorie-DropDown fuer alle Datenzeilen + Eingabezeile ---
-    For r = ES_START_ROW To nextRow
+    For r = ES_START_ROW To NextRow
         ws.Cells(r, ES_COL_KATEGORIE).Validation.Delete
         If kategorienListe <> "" Then
             With ws.Cells(r, ES_COL_KATEGORIE).Validation
@@ -327,7 +327,7 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     ' --- Spalte D: Tag 1-31 ---
     tagListe = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
     
-    For r = ES_START_ROW To nextRow
+    For r = ES_START_ROW To NextRow
         ws.Cells(r, ES_COL_SOLL_TAG).Validation.Delete
         With ws.Cells(r, ES_COL_SOLL_TAG).Validation
             .Add Type:=xlValidateList, _
@@ -343,7 +343,7 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     ' --- Spalte F: Vorlauf 0-31 ---
     toleranzListe = "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
     
-    For r = ES_START_ROW To nextRow
+    For r = ES_START_ROW To NextRow
         ws.Cells(r, ES_COL_VORLAUF).Validation.Delete
         With ws.Cells(r, ES_COL_VORLAUF).Validation
             .Add Type:=xlValidateList, _
@@ -357,7 +357,7 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     Next r
     
     ' --- Spalte G: Nachlauf 0-31 ---
-    For r = ES_START_ROW To nextRow
+    For r = ES_START_ROW To NextRow
         ws.Cells(r, ES_COL_NACHLAUF).Validation.Delete
         With ws.Cells(r, ES_COL_NACHLAUF).Validation
             .Add Type:=xlValidateList, _
@@ -382,13 +382,13 @@ End Sub
 Private Sub SperreUndEntsperre(ByVal ws As Worksheet)
     
     Dim lastRow As Long
-    Dim nextRow As Long
+    Dim NextRow As Long
     Dim lockEnd As Long
     
     lastRow = LetzteZeile(ws)
-    nextRow = lastRow + 1
-    If nextRow < ES_START_ROW Then nextRow = ES_START_ROW
-    lockEnd = nextRow + 50
+    NextRow = lastRow + 1
+    If NextRow < ES_START_ROW Then NextRow = ES_START_ROW
+    lockEnd = NextRow + 50
     
     ' Gesamtes Blatt sperren
     ws.Cells.Locked = True
@@ -400,11 +400,11 @@ Private Sub SperreUndEntsperre(ByVal ws As Worksheet)
     End If
     
     ' Genau 1 naechste freie Zeile B-H entsperren (Neuanlage)
-    ws.Range(ws.Cells(nextRow, ES_COL_START), _
-             ws.Cells(nextRow, ES_COL_END)).Locked = False
+    ws.Range(ws.Cells(NextRow, ES_COL_START), _
+             ws.Cells(NextRow, ES_COL_END)).Locked = False
     
     ' Bereich darunter explizit sperren (Sicherheitspuffer)
-    ws.Range(ws.Cells(nextRow + 1, ES_COL_START), _
+    ws.Range(ws.Cells(NextRow + 1, ES_COL_START), _
              ws.Cells(lockEnd, ES_COL_END)).Locked = True
     
 End Sub

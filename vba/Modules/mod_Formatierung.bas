@@ -518,7 +518,7 @@ End Sub
 Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     
     Dim lastRow As Long
-    Dim nextRow As Long
+    Dim NextRow As Long
     Dim lockEnd As Long
     Dim r As Long
     Dim lastRowDD As Long
@@ -533,8 +533,8 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     For c = LBound(singleCols) To UBound(singleCols)
         lastRow = ws.Cells(ws.Rows.count, singleCols(c)).End(xlUp).Row
         If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
-        nextRow = lastRow + 1
-        lockEnd = nextRow + 50
+        NextRow = lastRow + 1
+        lockEnd = NextRow + 50
         
         ' Bestehende Daten entsperren (editierbar)
         If lastRow >= DATA_START_ROW Then
@@ -543,18 +543,18 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
         End If
         
         ' Genau 1 naechste freie Zeile entsperren
-        ws.Cells(nextRow, singleCols(c)).Locked = False
+        ws.Cells(NextRow, singleCols(c)).Locked = False
         
         ' Bereich darunter sperren (50 Zeilen Sicherheitspuffer)
-        ws.Range(ws.Cells(nextRow + 1, singleCols(c)), _
+        ws.Range(ws.Cells(NextRow + 1, singleCols(c)), _
                  ws.Cells(lockEnd, singleCols(c))).Locked = True
     Next c
     
     ' === KATEGORIE-TABELLE: J-P (10-16) ===
     lastRow = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
-    nextRow = lastRow + 1
-    lockEnd = nextRow + 50
+    NextRow = lastRow + 1
+    lockEnd = NextRow + 50
     
     ' Bestehende Daten J-P entsperren (editierbar)
     If lastRow >= DATA_START_ROW Then
@@ -563,19 +563,19 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     End If
     
     ' Genau 1 naechste freie Zeile J-P entsperren
-    ws.Range(ws.Cells(nextRow, DATA_CAT_COL_START), _
-             ws.Cells(nextRow, DATA_CAT_COL_END)).Locked = False
+    ws.Range(ws.Cells(NextRow, DATA_CAT_COL_START), _
+             ws.Cells(NextRow, DATA_CAT_COL_END)).Locked = False
     
     ' Bereich darunter sperren
-    ws.Range(ws.Cells(nextRow + 1, DATA_CAT_COL_START), _
+    ws.Range(ws.Cells(NextRow + 1, DATA_CAT_COL_START), _
              ws.Cells(lockEnd, DATA_CAT_COL_END)).Locked = True
     
     ' DropDowns fuer die Eingabezeile setzen
-    Call SetzeZielspalteDropdown(ws, nextRow, "")
+    Call SetzeZielspalteDropdown(ws, NextRow, "")
     
     ' Dropdown K (E/A)
-    ws.Cells(nextRow, DATA_CAT_COL_EINAUS).Validation.Delete
-    With ws.Cells(nextRow, DATA_CAT_COL_EINAUS).Validation
+    ws.Cells(NextRow, DATA_CAT_COL_EINAUS).Validation.Delete
+    With ws.Cells(NextRow, DATA_CAT_COL_EINAUS).Validation
         .Add Type:=xlValidateList, _
              AlertStyle:=xlValidAlertWarning, _
              Formula1:="E,A"
@@ -586,8 +586,8 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     End With
     
     ' Dropdown M (Prioritaet)
-    ws.Cells(nextRow, DATA_CAT_COL_PRIORITAET).Validation.Delete
-    With ws.Cells(nextRow, DATA_CAT_COL_PRIORITAET).Validation
+    ws.Cells(NextRow, DATA_CAT_COL_PRIORITAET).Validation.Delete
+    With ws.Cells(NextRow, DATA_CAT_COL_PRIORITAET).Validation
         .Add Type:=xlValidateList, _
              AlertStyle:=xlValidAlertWarning, _
              Formula1:="=" & WS_DATEN & "!$AA$4:$AA$" & _
@@ -599,8 +599,8 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     End With
     
     ' Dropdown O (Faelligkeit)
-    ws.Cells(nextRow, DATA_CAT_COL_FAELLIGKEIT).Validation.Delete
-    With ws.Cells(nextRow, DATA_CAT_COL_FAELLIGKEIT).Validation
+    ws.Cells(NextRow, DATA_CAT_COL_FAELLIGKEIT).Validation.Delete
+    With ws.Cells(NextRow, DATA_CAT_COL_FAELLIGKEIT).Validation
         .Add Type:=xlValidateList, _
              AlertStyle:=xlValidAlertWarning, _
              Formula1:="=" & WS_DATEN & "!$AC$4:$AC$" & _
@@ -621,15 +621,15 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     If lastRowR > lastRow Then lastRow = lastRowR
     
     If lastRow < EK_START_ROW Then lastRow = EK_START_ROW - 1
-    nextRow = lastRow + 1
-    lockEnd = nextRow + 50
+    NextRow = lastRow + 1
+    lockEnd = NextRow + 50
     
     ' Genau 1 naechste freie Zeile R-X entsperren
-    ws.Range(ws.Cells(nextRow, EK_COL_ENTITYKEY), _
-             ws.Cells(nextRow, EK_COL_DEBUG)).Locked = False
+    ws.Range(ws.Cells(NextRow, EK_COL_ENTITYKEY), _
+             ws.Cells(NextRow, EK_COL_DEBUG)).Locked = False
     
     ' Bereich darunter sperren
-    ws.Range(ws.Cells(nextRow + 1, EK_COL_ENTITYKEY), _
+    ws.Range(ws.Cells(NextRow + 1, EK_COL_ENTITYKEY), _
              ws.Cells(lockEnd, EK_COL_DEBUG)).Locked = True
     
     ' EntityRole-Dropdown (W) Quelle: Spalte AD
@@ -637,8 +637,8 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     If lastRowDD < DATA_START_ROW Then lastRowDD = DATA_START_ROW
     
     ' Dropdown W fuer die Eingabezeile
-    ws.Cells(nextRow, EK_COL_ROLE).Validation.Delete
-    With ws.Cells(nextRow, EK_COL_ROLE).Validation
+    ws.Cells(NextRow, EK_COL_ROLE).Validation.Delete
+    With ws.Cells(NextRow, EK_COL_ROLE).Validation
         .Add Type:=xlValidateList, _
              AlertStyle:=xlValidAlertWarning, _
              Formula1:="=" & WS_DATEN & "!$AD$" & DATA_START_ROW & ":$AD$" & lastRowDD
@@ -700,8 +700,8 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     For c = LBound(helperCols) To UBound(helperCols)
         lastRow = ws.Cells(ws.Rows.count, helperCols(c)).End(xlUp).Row
         If lastRow < DATA_START_ROW Then lastRow = DATA_START_ROW - 1
-        nextRow = lastRow + 1
-        lockEnd = nextRow + 50
+        NextRow = lastRow + 1
+        lockEnd = NextRow + 50
         
         ' Bestehende Daten entsperren (editierbar)
         If lastRow >= DATA_START_ROW Then
@@ -710,10 +710,10 @@ Private Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
         End If
         
         ' Genau 1 naechste freie Zeile entsperren
-        ws.Cells(nextRow, helperCols(c)).Locked = False
+        ws.Cells(NextRow, helperCols(c)).Locked = False
         
         ' Bereich darunter sperren
-        ws.Range(ws.Cells(nextRow + 1, helperCols(c)), _
+        ws.Range(ws.Cells(NextRow + 1, helperCols(c)), _
                  ws.Cells(lockEnd, helperCols(c))).Locked = True
     Next c
     

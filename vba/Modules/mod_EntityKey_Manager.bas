@@ -614,7 +614,7 @@ Public Sub AktualisiereAlleEntityKeys()
         currentParzelle = Trim(wsD.Cells(r, EK_COL_PARZELLE).value)
         currentRole = Trim(wsD.Cells(r, EK_COL_ROLE).value)
         
-        If iban = "" And kontoname = "" Then GoTo nextRow
+        If iban = "" And kontoname = "" Then GoTo NextRow
         
         ' NEU v5.2: Pruefe Geldautomat-Abhebung VOR Bankabschluss
         If currentEntityKey = "" Then
@@ -624,7 +624,7 @@ Public Sub AktualisiereAlleEntityKeys()
                 wsD.Cells(r, EK_COL_ROLE).value = ROLE_BANK
                 wsD.Cells(r, EK_COL_DEBUG).value = "Geldautomat erkannt (GA + BLZ)"
                 Call SetzeAmpelFarbe(wsD, r, 1)
-                GoTo nextRow
+                GoTo NextRow
             End If
         End If
         
@@ -635,13 +635,13 @@ Public Sub AktualisiereAlleEntityKeys()
                 wsD.Cells(r, EK_COL_ZUORDNUNG).value = "Bankabschluss / Kontogeb" & ChrW(252) & "hren"
                 wsD.Cells(r, EK_COL_ROLE).value = ROLE_BANK
                 wsD.Cells(r, EK_COL_DEBUG).value = "BANK erkannt (IBAN=" & iban & " + ABSCHLUSS)"
-                GoTo nextRow
+                GoTo NextRow
             End If
         End If
         
         If HatBereitsGueltigeDaten(currentEntityKey, currentZuordnung, currentRole) Then
             zeilenUnveraendert = zeilenUnveraendert + 1
-            GoTo nextRow
+            GoTo NextRow
         End If
         
         zeilenNeu = zeilenNeu + 1
@@ -673,7 +673,7 @@ Public Sub AktualisiereAlleEntityKeys()
         
         If ampelStatus = 3 Then zeilenProbleme = zeilenProbleme + 1
         
-nextRow:
+NextRow:
     Next r
     
     ' Formatierung ZUERST (inkl. Sortierung)
