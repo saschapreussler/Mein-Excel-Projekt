@@ -3,8 +3,9 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Data
-' VERSION: 3.5 - 07.02.2026
-' AENDERUNG: ListBox-Groesse wird VOR dem Befuellen gespeichert
+' VERSION: 3.6 - 08.02.2026
+' AENDERUNG: StelleFormelnWiederHer nach Import und Loeschen
+'            ListBox-Groesse wird VOR dem Befuellen gespeichert
 '            und NACH dem Befuellen wiederhergestellt, da .AddItem
 '            bei ActiveX-ListBox die OLE-Container-Groesse
 '            veraendern kann. Designer bestimmt die Ausgangsgroesse.
@@ -294,6 +295,9 @@ ImportAbschluss:
     wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
     
+    ' 7. Formeln wiederherstellen (koennten durch Import/Sort ueberschrieben sein)
+    Call StelleFormelnWiederHer(wsZiel)
+    
     wsZiel.Activate
     
     Application.DisplayAlerts = True
@@ -326,7 +330,7 @@ ImportAbschluss:
     
     msgText = "CSV-Import Ergebnis:" & vbCrLf & _
               String(30, "=") & vbCrLf & vbCrLf & _
-              "Datensätze in CSV:" & vbTab & rowsTotalInFile & vbCrLf & _
+              "Datens" & ChrW(228) & "tze in CSV:" & vbTab & rowsTotalInFile & vbCrLf & _
               "Importiert:" & vbTab & vbTab & rowsProcessed & " / " & rowsTotalInFile & vbCrLf & _
               "Duplikate:" & vbTab & vbTab & rowsIgnoredDupe & vbCrLf & _
               "Fehler:" & vbTab & vbTab & vbTab & rowsFailedImport & vbCrLf & vbCrLf
@@ -334,19 +338,19 @@ ImportAbschluss:
     If rowsFailedImport > 0 Then
         msgText = msgText & "ACHTUNG: " & rowsFailedImport & " Zeilen konnten nicht verarbeitet werden!"
     ElseIf rowsProcessed = 0 And rowsIgnoredDupe > 0 Then
-        msgText = msgText & "Alle Einträge waren bereits in der Datenbank vorhanden."
+        msgText = msgText & "Alle Eintr" & ChrW(228) & "ge waren bereits in der Datenbank vorhanden."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe = 0 Then
-        msgText = msgText & "Alle Datensätze wurden erfolgreich importiert."
+        msgText = msgText & "Alle Datens" & ChrW(228) & "tze wurden erfolgreich importiert."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe > 0 Then
-        msgText = msgText & rowsProcessed & " neue Datensätze importiert," & vbCrLf & _
-                  rowsIgnoredDupe & " Duplikate übersprungen."
+        msgText = msgText & rowsProcessed & " neue Datens" & ChrW(228) & "tze importiert," & vbCrLf & _
+                  rowsIgnoredDupe & " Duplikate " & ChrW(252) & "bersprungen."
     End If
     
     MsgBox msgText, msgIcon, msgTitle
     
     ' ============================================================
-    ' ENTITYKEY-PRÜFUNG: Spalte W (EntityRole) vollständig?
-    ' Nur prüfen wenn tatsächlich neue Datensätze importiert wurden
+    ' ENTITYKEY-PR" & ChrW(220) & "FUNG: Spalte W (EntityRole) vollstaendig?
+    ' Nur pruefen wenn tatsaechlich neue Datensaetze importiert wurden
     ' ============================================================
     If rowsProcessed > 0 Then
         Call PruefeUnvollstaendigeEntityKeys
@@ -356,10 +360,10 @@ End Sub
 
 
 ' ===============================================================
-' 1b. ENTITYKEY-PRÜFUNG NACH IMPORT
-'     Prüft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
-'     eine vollständige Zuordnung in Spalte W (EntityRole) haben.
-'     Bei fehlenden Einträgen: MsgBox mit Angebot zur Navigation.
+' 1b. ENTITYKEY-PRUEFUNG NACH IMPORT
+'     Prueft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
+'     eine vollstaendige Zuordnung in Spalte W (EntityRole) haben.
+'     Bei fehlenden Eintraegen: MsgBox mit Angebot zur Navigation.
 ' ===============================================================
 Private Sub PruefeUnvollstaendigeEntityKeys()
     
@@ -383,7 +387,7 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
     ibanOhneRole = ""
     
     For r = EK_START_ROW To lastRow
-        ' Nur Zeilen prüfen die eine IBAN haben
+        ' Nur Zeilen pruefen die eine IBAN haben
         If Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)) <> "" Then
             ' Spalte W (EntityRole) leer?
             If Trim(CStr(wsDaten.Cells(r, EK_COL_ROLE).value)) = "" Then
@@ -392,15 +396,15 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
                 ' Erste leere Zeile merken
                 If ersteLeereZeile = 0 Then ersteLeereZeile = r
                 
-                ' Maximal 5 IBANs für die Anzeige sammeln
+                ' Maximal 5 IBANs fuer die Anzeige sammeln
                 If anzahlOhneRole <= 5 Then
                     Dim kontoname As String
                     kontoname = Trim(CStr(wsDaten.Cells(r, EK_COL_KONTONAME).value))
                     If kontoname <> "" Then
-                        ibanOhneRole = ibanOhneRole & vbCrLf & "  • " & _
+                        ibanOhneRole = ibanOhneRole & vbCrLf & "  " & ChrW(8226) & " " & _
                             Left(CStr(wsDaten.Cells(r, EK_COL_IBAN).value), 12) & "...  (" & kontoname & ")"
                     Else
-                        ibanOhneRole = ibanOhneRole & vbCrLf & "  • " & _
+                        ibanOhneRole = ibanOhneRole & vbCrLf & "  " & ChrW(8226) & " " & _
                             CStr(wsDaten.Cells(r, EK_COL_IBAN).value)
                     End If
                 End If
@@ -408,7 +412,7 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
         End If
     Next r
     
-    ' Keine fehlenden Einträge ? nichts tun
+    ' Keine fehlenden Eintraege -> nichts tun
     If anzahlOhneRole = 0 Then Exit Sub
     
     ' MsgBox zusammenbauen
@@ -424,14 +428,14 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
     hinweis = hinweis & vbCrLf & vbCrLf & _
               "Ohne diese Zuordnung kann die Kategorie-Engine die Buchungen " & _
               "nicht korrekt verarbeiten." & vbCrLf & vbCrLf & _
-              "Möchten Sie die fehlenden Angaben jetzt vervollständigen?"
+              "M" & ChrW(246) & "chten Sie die fehlenden Angaben jetzt vervollst" & ChrW(228) & "ndigen?"
     
     Dim antwort As VbMsgBoxResult
     antwort = MsgBox(hinweis, vbYesNo + vbExclamation, _
-                     "Unvollständige IBAN-Zuordnungen")
+                     "Unvollst" & ChrW(228) & "ndige IBAN-Zuordnungen")
     
     If antwort = vbYes Then
-        ' Zum Daten-Blatt wechseln und erste leere Zelle in Spalte W anwählen
+        ' Zum Daten-Blatt wechseln und erste leere Zelle in Spalte W anwaehlen
         wsDaten.Activate
         
         On Error Resume Next
@@ -544,13 +548,13 @@ Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    ' Spalte B (Betrag): Währung + rechtsbündig
+    ' Spalte B (Betrag): Waehrung + rechtsbuendig
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), ws.Cells(lastRow, BK_COL_BETRAG))
         .NumberFormat = euroFormat
         .HorizontalAlignment = xlRight
     End With
     
-    ' Spalten M-Z: Währung
+    ' Spalten M-Z: Waehrung
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
     
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), ws.Cells(lastRow, BK_COL_BEMERKUNG))
@@ -605,7 +609,7 @@ Public Sub Sortiere_Bankkonto_nach_Datum()
 End Sub
 
 ' ===============================================================
-' 6. MONAT/PERIODE SETZEN (intelligent über Einstellungen)
+' 6. MONAT/PERIODE SETZEN (intelligent ueber Einstellungen)
 ' ===============================================================
 Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     
@@ -621,7 +625,7 @@ Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    ' Fälligkeit aus Kategorie-Tabelle vorladen
+    ' Faelligkeit aus Kategorie-Tabelle vorladen
     Dim wsDaten As Worksheet
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     
@@ -633,7 +637,7 @@ Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
             kategorie = Trim(ws.Cells(r, BK_COL_KATEGORIE).value)
             
             If kategorie <> "" Then
-                ' Fälligkeit aus Kategorie-Tabelle holen (Spalte O)
+                ' Faelligkeit aus Kategorie-Tabelle holen (Spalte O)
                 faelligkeit = HoleFaelligkeitFuerKategorie(wsDaten, kategorie)
                 ' Intelligente Monat/Periode-Ermittlung
                 ws.Cells(r, BK_COL_MONAT_PERIODE).value = _
@@ -647,7 +651,7 @@ Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
     
 End Sub
 
-' Hilfsfunktion: Fälligkeit aus Kategorie-Tabelle (Spalte O) holen
+' Hilfsfunktion: Faelligkeit aus Kategorie-Tabelle (Spalte O) holen
 Private Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
                                                ByVal kategorie As String) As String
     Dim lastRow As Long
@@ -813,7 +817,7 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     ' --- 5-Zeilen-Block zusammenbauen ---
     neuerBlock = "Import: " & Format(Now, "DD.MM.YYYY  HH:MM:SS") & _
                  PROTO_SEP & _
-                 imported & " / " & totalRows & " Datensätze importiert" & _
+                 imported & " / " & totalRows & " Datens" & ChrW(228) & "tze importiert" & _
                  PROTO_SEP & _
                  dupes & " Duplikate erkannt" & _
                  PROTO_SEP & _
@@ -988,6 +992,91 @@ End Function
 ' ===============================================================
 ' 8. HILFSFUNKTIONEN
 ' ===============================================================
+
+' ---------------------------------------------------------------
+' 8a. Stellt die Formeln auf dem Bankkonto-Blatt wieder her,
+'     die durch ClearContents oder Import verloren gehen koennen.
+'     Betrifft: C3, E8-E14, E16-E21, E23
+' ---------------------------------------------------------------
+Private Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    On Error Resume Next
+    
+    ' C3: Kontostand = Anfangsbestand + Summe aller Buchungen
+    ws.Range("C3").FormulaLocal = _
+        "=C1+SUMME(B28:B" & ws.Rows.count & ")"
+    
+    ' E8: Mitgliedsbeitraege (Einnahmen)
+    ws.Range("E8").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;M$28:M$1000)"
+    
+    ' E9: Spenden
+    ws.Range("E9").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;N$28:N$1000)"
+    
+    ' E10: Zuschuesse
+    ws.Range("E10").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;O$28:O$1000)"
+    
+    ' E11: Verwaltung (Einnahmen)
+    ws.Range("E11").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;P$28:P$1000)"
+    
+    ' E12: Vermoegen
+    ws.Range("E12").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;Q$28:Q$1000)"
+    
+    ' E13: Veranstaltungen (Einnahmen)
+    ws.Range("E13").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;R$28:R$1000)"
+    
+    ' E14: Sonstige Einnahmen
+    ws.Range("E14").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;S$28:S$1000)"
+    
+    ' E16: Unterhaltung/Reparatur (Ausgaben)
+    ws.Range("E16").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;T$28:T$1000)"
+    
+    ' E17: Fortbildung
+    ws.Range("E17").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;U$28:U$1000)"
+    
+    ' E18: Veranstaltungen (Ausgaben)
+    ws.Range("E18").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;V$28:V$1000)"
+    
+    ' E19: Buerobetrieb
+    ws.Range("E19").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;W$28:W$1000)"
+    
+    ' E20: Aufwandsentschaedigung
+    ws.Range("E20").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;X$28:X$1000)"
+    
+    ' E21: Sonstige Ausgaben
+    ws.Range("E21").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;Y$28:Y$1000)"
+    
+    ' E23: Auszahlung Kasse
+    ws.Range("E23").FormulaLocal = _
+        "=SUMMEWENN($G$28:$G$1000;WAHR;Z$28:Z$1000)"
+    
+    On Error GoTo 0
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
+End Sub
+
+' ---------------------------------------------------------------
+' 8b. Alle Bankkontozeilen loeschen
+' ---------------------------------------------------------------
 Public Sub LoescheAlleBankkontoZeilen()
     
     Dim ws As Worksheet
@@ -1014,6 +1103,9 @@ Public Sub LoescheAlleBankkontoZeilen()
         ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 26)).Interior.ColorIndex = xlNone
     End If
     
+    ' Formeln wiederherstellen (wurden durch ClearContents geloescht)
+    Call StelleFormelnWiederHer(ws)
+    
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
     ' Protokoll-Speicher leeren (Events aus!)
@@ -1037,6 +1129,9 @@ Public Sub LoescheAlleBankkontoZeilen()
     
 End Sub
 
+' ---------------------------------------------------------------
+' 8c. Formatierung Bankkonto aktualisieren
+' ---------------------------------------------------------------
 Public Sub AktualisiereFormatierungBankkonto()
     
     Dim ws As Worksheet
@@ -1103,6 +1198,4 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
-
-
 

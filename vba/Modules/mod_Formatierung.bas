@@ -831,7 +831,18 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
         ws.Columns(autoFitCol).AutoFit
     Next autoFitCol
     
+    ' ShrinkToFit deaktivieren + Schriftfarbe schwarz fuer Keyword-Spalte L
+    If lastRow >= DATA_START_ROW Then
+        ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KEYWORD), _
+                 ws.Cells(lastRow, DATA_CAT_COL_KEYWORD)).ShrinkToFit = False
+        ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KEYWORD), _
+                 ws.Cells(lastRow, DATA_CAT_COL_KEYWORD)).WrapText = False
+        ws.Range(ws.Cells(DATA_START_ROW, DATA_CAT_COL_KEYWORD), _
+                 ws.Cells(lastRow, DATA_CAT_COL_KEYWORD)).Font.color = vbBlack
+    End If
+    
 End Sub
+
 
 ' ===============================================================
 ' Sortiert die Kategorie-Tabelle nach Spalte J (A-Z)
