@@ -17,17 +17,30 @@ Public Function NormalizeText(ByVal inputText As String) As String
     txt = LCase(Trim(inputText))
     If txt = "" Then NormalizeText = "": Exit Function
 
-    txt = Replace(txt, "ä", "ae")
-    txt = Replace(txt, "ö", "oe")
-    txt = Replace(txt, "ü", "ue")
-    txt = Replace(txt, "ß", "ss")
+    ' Umlaute ersetzen
+    txt = Replace(txt, ChrW(228), "ae")  ' ae
+    txt = Replace(txt, ChrW(246), "oe")  ' oe
+    txt = Replace(txt, ChrW(252), "ue")  ' ue
+    txt = Replace(txt, ChrW(223), "ss")  ' ss
+    txt = Replace(txt, ChrW(196), "ae")  ' Ae
+    txt = Replace(txt, ChrW(214), "oe")  ' Oe
+    txt = Replace(txt, ChrW(220), "ue")  ' Ue
+
+    ' Typische Tippfehler korrigieren
     txt = Replace(txt, "mitgliets", "mitglieds")
     txt = Replace(txt, "mitgliedbetrag", "mitgliedsbeitrag")
     txt = Replace(txt, "mitglied beitrag", "mitgliedsbeitrag")
     txt = Replace(txt, "beitragsgeb hr", "beitragsgebuehr")
-    txt = Replace(txt, "abschlag", "abschlagszahlung")
     txt = Replace(txt, "entgelt abschluss", "entgeltabschluss")
 
+    ' WICHTIG: "abschlag" -> "abschlagszahlung" Expansion
+    ' ABER: Nur wenn "abschlagszahlung" noch NICHT im Text steht!
+    ' Sonst entsteht "abschlagszahlungszahlung" (doppelte Expansion)
+    If InStr(txt, "abschlagszahlung") = 0 Then
+        txt = Replace(txt, "abschlag", "abschlagszahlung")
+    End If
+
+    ' Sonderzeichen entfernen (nur a-z, 0-9, Leerzeichen behalten)
     Dim i As Long
     For i = 1 To Len(txt)
         Select Case Mid$(txt, i, 1)
@@ -37,11 +50,11 @@ Public Function NormalizeText(ByVal inputText As String) As String
         End Select
     Next i
 
+    ' Mehrfache Leerzeichen zusammenfassen
     Do While InStr(txt, "  ") > 0
         txt = Replace(txt, "  ", " ")
     Loop
 
     NormalizeText = Trim(txt)
 End Function
-
 
