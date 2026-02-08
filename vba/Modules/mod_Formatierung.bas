@@ -1144,23 +1144,23 @@ Private Sub ErstelleKategorieNamedRanges(ByRef ws As Worksheet, ByVal lastRowE A
     ThisWorkbook.Names("lst_MonatPeriode").Delete
     
     If lastRowE >= 4 Then
-        ThisWorkbook.Names.Add Name:="lst_KategorienEinnahmen", _
-            RefersTo:="=" & ws.Name & "!$AF$4:$AF$" & lastRowE
+        ThisWorkbook.Names.Add name:="lst_KategorienEinnahmen", _
+            RefersTo:="=" & ws.name & "!$AF$4:$AF$" & lastRowE
     Else
-        ThisWorkbook.Names.Add Name:="lst_KategorienEinnahmen", _
-            RefersTo:="=" & ws.Name & "!$AF$4"
+        ThisWorkbook.Names.Add name:="lst_KategorienEinnahmen", _
+            RefersTo:="=" & ws.name & "!$AF$4"
     End If
     
     If lastRowA >= 4 Then
-        ThisWorkbook.Names.Add Name:="lst_KategorienAusgaben", _
-            RefersTo:="=" & ws.Name & "!$AG$4:$AG$" & lastRowA
+        ThisWorkbook.Names.Add name:="lst_KategorienAusgaben", _
+            RefersTo:="=" & ws.name & "!$AG$4:$AG$" & lastRowA
     Else
-        ThisWorkbook.Names.Add Name:="lst_KategorienAusgaben", _
-            RefersTo:="=" & ws.Name & "!$AG$4"
+        ThisWorkbook.Names.Add name:="lst_KategorienAusgaben", _
+            RefersTo:="=" & ws.name & "!$AG$4"
     End If
     
-    ThisWorkbook.Names.Add Name:="lst_MonatPeriode", _
-        RefersTo:="=" & ws.Name & "!$AH$4:$AH$15"
+    ThisWorkbook.Names.Add name:="lst_MonatPeriode", _
+        RefersTo:="=" & ws.name & "!$AH$4:$AH$15"
     
     On Error GoTo 0
     
@@ -1406,7 +1406,7 @@ End Sub
 ' Prueft ob Named Range existiert
 ' ===============================================================
 Public Function NamedRangeExists(ByVal rangeName As String) As Boolean
-    Dim nm As Name
+    Dim nm As name
     NamedRangeExists = False
     
     On Error Resume Next

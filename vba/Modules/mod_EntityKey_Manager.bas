@@ -295,7 +295,7 @@ End Function
 ' ===============================================================
 ' HILFSFUNKTION: Zerlegt einen Namen in normalisierte Worte
 ' ===============================================================
-Private Function ZerlegeInWorte(ByVal Name As String) As Object
+Private Function ZerlegeInWorte(ByVal name As String) As Object
     Dim dict As Object
     Set dict = CreateObject("Scripting.Dictionary")
     
@@ -303,18 +303,18 @@ Private Function ZerlegeInWorte(ByVal Name As String) As Object
     Dim wort As String
     Dim i As Long
     
-    Name = UCase(Trim(Name))
-    Name = Replace(Name, ",", " ")
-    Name = Replace(Name, ".", " ")
-    Name = Replace(Name, "-", " ")
-    Name = EntferneMehrfacheLeerzeichen(Name)
+    name = UCase(Trim(name))
+    name = Replace(name, ",", " ")
+    name = Replace(name, ".", " ")
+    name = Replace(name, "-", " ")
+    name = EntferneMehrfacheLeerzeichen(name)
     
-    If Name = "" Then
+    If name = "" Then
         Set ZerlegeInWorte = dict
         Exit Function
     End If
     
-    parts = Split(Name, " ")
+    parts = Split(name, " ")
     
     For i = LBound(parts) To UBound(parts)
         wort = Trim(parts(i))
@@ -849,7 +849,7 @@ Private Function IstBankAbschluss(ByVal iban As String, ByRef wsBK As Worksheet)
             ' NEU v5.2: Geldautomat ausschliessen
             bkKontoname = Trim(CStr(wsBK.Cells(r, BK_COL_NAME).value))
             If IstGeldautomatAbhebung(CStr(wsBK.Cells(r, BK_COL_IBAN).value), bkKontoname) Then
-                GoTo naechsteZeile
+                GoTo NaechsteZeile
             End If
             
             buchungstext = UCase(Trim(CStr(wsBK.Cells(r, BK_COL_BUCHUNGSTEXT).value)))
@@ -859,7 +859,7 @@ Private Function IstBankAbschluss(ByVal iban As String, ByRef wsBK As Worksheet)
                 Exit Function
             End If
         End If
-naechsteZeile:
+NaechsteZeile:
     Next r
 End Function
 

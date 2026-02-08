@@ -1,409 +1,618 @@
 Attribute VB_Name = "mod_Banking_Data"
 Option Explicit
 
-' ***************************************************************
+' ===============================================================
 ' MODUL: mod_Banking_Data
-' VERSION: 3.8 - 09.02.2026
-' Zentrales Modul fuer den CSV-Import von Bankdaten,
-' Formatierung, Sortierung und ListBox-Verwaltung.
-'
-' FIXES/CHANGES:
-' v3.7 -> v3.8: Setze_Monat_Periode nutzt Public
-'   ErmittleMonatPeriode aus mod_KategorieEngine_Evaluator
-'   mit Cache-Unterstuetzung (Folgemonat-Erkennung).
-'   Private ErmittleMonatPeriode ENTFERNT (doppelt/veraltet).
-'
-' Abschnitte:
-' 1. IMPORT-HAUPTFUNKTION (Importiere_Kontoauszug)
-' 2. ENTITY-KEY-PRUEFUNG
-' 3. FORMATIERUNG (Zebra, Border, Zahlenformate)
-' 4. SORTIERUNG nach Datum
-' 5. IBAN-Import aus Buchungen
-' 6. MONAT/PERIODE ZUORDNUNG (Setze_Monat_Periode)
-' 7. IMPORT REPORT LISTBOX (ActiveX)
-' 8. HILFSFUNKTIONEN
-' 9. SORTIERE TABELLEN DATEN
-' ***************************************************************
-
-
+' VERSION: 3.8 - 08.02.2026
+' AENDERUNG: Setze_Monat_Periode mit Cache-Unterstuetzung
+'            Private ErmittleMonatPeriode ENTFERNT (nutzt Public
+'            Version aus mod_KategorieEngine_Evaluator)
 ' ===============================================================
-' LISTBOX-KONFIGURATION (Farben, Speicher, Limits)
-' ===============================================================
-Private Const LB_COLOR_GRUEN As Long = 13561798    ' RGB(198, 239, 206)
-Private Const LB_COLOR_GELB As Long = 10283775     ' RGB(255, 235, 156)
-Private Const LB_COLOR_ROT As Long = 13485311      ' RGB(255, 199, 206)
-Private Const LB_COLOR_WEISS As Long = 16777215    ' RGB(255, 255, 255)
 
-Private Const FORM_LISTBOX_NAME As String = "lst_ImportReport"
-Private Const PROTO_ZEILE As Long = 500
-Private Const PROTO_SPALTE As Long = 25             ' Spalte Y
+Private Const ZEBRA_COLOR As Long = &HDEE5E3
+
+' Farb-Konstanten fuer ListBox-Hintergrund (OLE_COLOR / BGR)
+Private Const LB_COLOR_GRUEN As Long = &HC0FFC0     ' hellgruen
+Private Const LB_COLOR_GELB As Long = &HC0FFFF      ' hellgelb
+Private Const LB_COLOR_ROT As Long = &HC0C0FF       ' hellrot
+Private Const LB_COLOR_WEISS As Long = &HFFFFFF     ' weiss
+
+' Trennzeichen fuer Serialisierung in Zelle Y500
 Private Const PROTO_SEP As String = "||"
-Private Const MAX_ZEILEN As Long = 500              ' 100 Bloecke x 5 Zeilen
+
+' Protokoll-Speicher: Zelle Y500 auf dem Daten-Blatt
+Private Const PROTO_ZEILE As Long = 500
+Private Const PROTO_SPALTE As Long = 25              ' Spalte Y
+
+' Maximale Anzahl Import-Bloecke im Speicher (je 5 Zeilen)
+Private Const MAX_BLOECKE As Long = 100
+' 100 x 5 = 500 Zeilen maximal
+Private Const MAX_ZEILEN As Long = 500
 
 
 ' ===============================================================
-' 1. IMPORT-HAUPTFUNKTION
+' 1. CSV-KONTOAUSZUG IMPORT
 ' ===============================================================
 Public Sub Importiere_Kontoauszug()
+    Const xlUTF8Value As Long = 65001
+    Const xlDelimitedValue As Long = 1
+    
+    Dim wsZiel As Worksheet
+    Dim wsTemp As Worksheet
+    Dim dictUmsaetze As Object
+    Dim strFile As Variant
+    Dim lRowZiel As Long, i As Long
+    Dim lRowTemp As Long, lastRowTemp As Long
+    
+    Dim sKey As String
+    Dim dBetrag As Double
+    Dim betragString As String
+    Dim sIBAN As String, sText As String, sName As String, sVZ As String
+    Dim tempSheetName As String
+    Dim dDatum As Date
+    Dim sFormelAuswertungsmonat As String
+    
+    Dim rowsProcessed As Long
+    Dim rowsIgnoredDupe As Long
+    Dim rowsIgnoredFilter As Long
+    Dim rowsFailedImport As Long
+    Dim rowsTotalInFile As Long
+    
+    tempSheetName = "TempImport"
+    
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+    Application.EnableEvents = False
+    
+    On Error Resume Next
+    ThisWorkbook.Unprotect PASSWORD:=PASSWORD
+    Err.Clear
+    On Error GoTo 0
+    
+    Set wsZiel = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    
+    On Error Resume Next
+    wsZiel.Unprotect PASSWORD:=PASSWORD
+    Err.Clear
+    On Error GoTo 0
+    
+    On Error Resume Next
+    ThisWorkbook.Worksheets(tempSheetName).Delete
+    Err.Clear
+    On Error GoTo 0
+    
+    Set dictUmsaetze = CreateObject("Scripting.Dictionary")
+    
+    rowsProcessed = 0
+    rowsIgnoredDupe = 0
+    rowsIgnoredFilter = 0
+    rowsFailedImport = 0
+    rowsTotalInFile = 0
+    
+    Application.DisplayAlerts = True
+    Application.ScreenUpdating = True
+    strFile = Application.GetOpenFilename("CSV (*.csv), *.csv")
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+    
+    If strFile = False Then
+        Application.ScreenUpdating = True
+        Application.DisplayAlerts = True
+        Application.EnableEvents = True
+        wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        Call Initialize_ImportReport_ListBox
+        Exit Sub
+    End If
+    
+    lRowZiel = wsZiel.Cells(wsZiel.Rows.count, BK_COL_BETRAG).End(xlUp).Row
+    If lRowZiel < BK_START_ROW Then lRowZiel = BK_START_ROW - 1
+    
+    For i = BK_START_ROW To lRowZiel
+        If wsZiel.Cells(i, BK_COL_BETRAG).value <> "" Then
+            sKey = Format(wsZiel.Cells(i, BK_COL_DATUM).value, "YYYYMMDD") & "|" & _
+                   CStr(wsZiel.Cells(i, BK_COL_BETRAG).value) & "|" & _
+                   Replace(CStr(wsZiel.Cells(i, BK_COL_IBAN).value), " ", "") & "|" & _
+                   CStr(wsZiel.Cells(i, BK_COL_VERWENDUNGSZWECK).value)
+            dictUmsaetze(sKey) = True
+        End If
+    Next i
+    
+    On Error Resume Next
+    Set wsTemp = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.count))
+    If Err.Number <> 0 Then
+        MsgBox "Fehler beim Erstellen des Temp-Blatts: " & Err.Description & vbCrLf & vbCrLf & _
+           "Bitte pruefen Sie ob die Arbeitsmappe geschuetzt ist.", vbCritical
+        Err.Clear
+        Application.DisplayAlerts = True
+        Application.ScreenUpdating = True
+        Application.EnableEvents = True
+        wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        Exit Sub
+    End If
+    wsTemp.name = tempSheetName
+    Err.Clear
+    On Error GoTo 0
+    
+    On Error Resume Next
+    With wsTemp.QueryTables.Add(Connection:="TEXT;" & strFile, Destination:=wsTemp.Cells(1, 1))
+        .name = "CSV_Import"
+        .FieldNames = True
+        .TextFilePlatform = xlUTF8Value
+        .TextFileStartRow = 1
+        .TextFileParseType = xlDelimitedValue
+        .TextFileSemicolonDelimiter = True
+        .Refresh BackgroundQuery:=False
+    End With
+    
+    If Err.Number <> 0 Then
+        MsgBox "Fehler beim Einlesen der CSV-Datei: " & Err.Description, vbCritical
+        Err.Clear
+        Application.DisplayAlerts = False
+        wsTemp.Delete
+        Application.DisplayAlerts = True
+        Application.ScreenUpdating = True
+        Application.EnableEvents = True
+        wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        Exit Sub
+    End If
+    Err.Clear
+    On Error GoTo 0
+    
+    lastRowTemp = wsTemp.Cells(wsTemp.Rows.count, 1).End(xlUp).Row
+    rowsTotalInFile = lastRowTemp - 1
+    
+    If lastRowTemp <= 1 Then
+        rowsProcessed = 0
+        GoTo ImportAbschluss
+    End If
+    
+    On Error Resume Next
+    wsTemp.QueryTables(1).Delete
+    Err.Clear
+    On Error GoTo 0
+    
+    For lRowTemp = 2 To lastRowTemp
+        
+        betragString = CStr(wsTemp.Cells(lRowTemp, CSV_COL_BETRAG).value)
+        
+        betragString = Replace(betragString, " EUR", "")
+        betragString = Replace(betragString, "EUR", "")
+        betragString = Trim(betragString)
+        
+        If betragString = "" Or Not IsNumeric(Replace(betragString, ",", ".")) Then
+             rowsIgnoredFilter = rowsIgnoredFilter + 1
+             GoTo NextRowImport
+        End If
+        
+        On Error Resume Next
+        dBetrag = CDbl(Replace(betragString, ",", Application.International(xlDecimalSeparator)))
+        If Err.Number <> 0 Then
+            rowsIgnoredFilter = rowsIgnoredFilter + 1
+            Err.Clear
+            GoTo NextRowImport
+        End If
+        On Error GoTo 0
+        
+        If IsDate(wsTemp.Cells(lRowTemp, CSV_COL_BUCHUNGSDATUM).value) Then
+            dDatum = CDate(wsTemp.Cells(lRowTemp, CSV_COL_BUCHUNGSDATUM).value)
+        Else
+            rowsIgnoredFilter = rowsIgnoredFilter + 1
+            GoTo NextRowImport
+        End If
+        
+        sIBAN = Replace(Trim(wsTemp.Cells(lRowTemp, CSV_COL_IBAN).value), " ", "")
+        sName = Trim(wsTemp.Cells(lRowTemp, CSV_COL_NAME).value)
+        sVZ = Trim(wsTemp.Cells(lRowTemp, CSV_COL_VERWENDUNGSZWECK).value)
+        sText = Trim(wsTemp.Cells(lRowTemp, CSV_COL_STATUS).value)
+        
+        sKey = Format(dDatum, "YYYYMMDD") & "|" & dBetrag & "|" & sIBAN & "|" & sVZ
 
-    Dim ws As Worksheet
+        If dictUmsaetze.Exists(sKey) Then
+            rowsIgnoredDupe = rowsIgnoredDupe + 1
+            GoTo NextRowImport
+        End If
+        
+        lRowZiel = wsZiel.Cells(wsZiel.Rows.count, BK_COL_DATUM).End(xlUp).Row + 1
+        dictUmsaetze.Add sKey, True
+        
+        wsZiel.Cells(lRowZiel, BK_COL_DATUM).value = dDatum
+        wsZiel.Cells(lRowZiel, BK_COL_DATUM).NumberFormat = "DD.MM.YYYY"
+
+        wsZiel.Cells(lRowZiel, BK_COL_BETRAG).value = dBetrag
+        wsZiel.Cells(lRowZiel, BK_COL_BETRAG).NumberFormat = "#,##0.00 [$EUR]"
+
+        wsZiel.Cells(lRowZiel, BK_COL_NAME).value = sName
+        wsZiel.Cells(lRowZiel, BK_COL_IBAN).value = sIBAN
+        wsZiel.Cells(lRowZiel, BK_COL_VERWENDUNGSZWECK).value = sVZ
+        wsZiel.Cells(lRowZiel, BK_COL_BUCHUNGSTEXT).value = sText
+        
+        sFormelAuswertungsmonat = "=IF(A" & lRowZiel & "="""","""",IF(Daten!$AE$4=0,TRUE,MONTH(A" & lRowZiel & ")=Daten!$AE$4))"
+        wsZiel.Cells(lRowZiel, BK_COL_IM_AUSWERTUNGSMONAT).Formula = sFormelAuswertungsmonat
+        
+        wsZiel.Cells(lRowZiel, BK_COL_STATUS).value = "Gebucht"
+        
+        rowsProcessed = rowsProcessed + 1
+
+NextRowImport:
+    Next lRowTemp
+
+ImportAbschluss:
+    
+    rowsFailedImport = rowsIgnoredFilter
+    
+    ' ListBox und Protokoll-Speicher aktualisieren
+    Call Update_ImportReport_ListBox(rowsTotalInFile, rowsProcessed, rowsIgnoredDupe, rowsFailedImport)
+    
+    On Error Resume Next
+    Application.DisplayAlerts = False
+    If Not wsTemp Is Nothing Then wsTemp.Delete
+    Application.DisplayAlerts = True
+    Set wsTemp = Nothing
+    Err.Clear
+    On Error GoTo 0
+    
+    ' ============================================================
+    ' WICHTIG: Reihenfolge der Nachbearbeitung nach CSV-Import
+    ' EXPLIZITE Modulangabe um Mehrdeutigkeiten zu vermeiden!
+    ' ============================================================
+    On Error Resume Next
+    
+    ' 1. IBANs aus Bankkonto in EntityKey-Tabelle importieren
+    Call mod_EntityKey_Manager.ImportiereIBANsAusBankkonto
+    
+    ' 2. EntityKeys aktualisieren (GUIDs, Zuordnungen, Ampel, Formatierung)
+    Call mod_EntityKey_Manager.AktualisiereAlleEntityKeys
+    
+    ' 3. Bankkonto sortieren (AUFSTEIGEND - Januar oben)
+    Call Sortiere_Bankkonto_nach_Datum
+    
+    ' 4. Formatierungen anwenden
+    Call Anwende_Zebra_Bankkonto(wsZiel)
+    Call Anwende_Border_Bankkonto(wsZiel)
+    Call Anwende_Formatierung_Bankkonto(wsZiel)
+    
+    Err.Clear
+    On Error GoTo 0
+    
+    ' 5. Kategorie-Engine nur bei neuen Zeilen
+    ' WICHTIG: On Error GoTo 0 MUSS vorher stehen,
+    ' damit die Pipeline ihr eigenes Error-Handling nutzen kann
+    ' und nicht das "On Error Resume Next" von oben erbt!
+    If rowsProcessed > 0 Then Call KategorieEngine_Pipeline(wsZiel)
+    
+    ' 6. Monat/Periode setzen
+    On Error Resume Next
+    Call Setze_Monat_Periode(wsZiel)
+    Err.Clear
+    On Error GoTo 0
+    
+    ' Blattschutz wird von der Pipeline selbst verwaltet (Protect am Ende).
+    ' Hier nochmals sicherstellen falls Pipeline nicht lief:
+    On Error Resume Next
+    wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
+    ' 7. Formeln wiederherstellen (koennten durch Import/Sort ueberschrieben sein)
+    Call StelleFormelnWiederHer(wsZiel)
+    
+    wsZiel.Activate
+    
+    Application.DisplayAlerts = True
+    Application.ScreenUpdating = True
+    Application.EnableEvents = True
+    
+    ' ============================================================
+    ' ERWEITERTE MsgBox mit vollstaendigen Import-Details
+    ' ============================================================
+    Dim msgIcon As VbMsgBoxStyle
+    Dim msgTitle As String
+    Dim msgText As String
+    
+    If rowsFailedImport > 0 Then
+        msgIcon = vbCritical
+        msgTitle = "Import mit Fehlern"
+    ElseIf rowsIgnoredDupe > 0 And rowsProcessed = 0 Then
+        msgIcon = vbExclamation
+        msgTitle = "100% Duplikate erkannt"
+    ElseIf rowsIgnoredDupe > 0 Then
+        msgIcon = vbExclamation
+        msgTitle = "Import mit Duplikaten"
+    ElseIf rowsProcessed > 0 Then
+        msgIcon = vbInformation
+        msgTitle = "Import erfolgreich"
+    Else
+        msgIcon = vbInformation
+        msgTitle = "Import abgeschlossen"
+    End If
+    
+    msgText = "CSV-Import Ergebnis:" & vbCrLf & _
+              String(30, "=") & vbCrLf & vbCrLf & _
+              "Datens" & ChrW(228) & "tze in CSV:" & vbTab & rowsTotalInFile & vbCrLf & _
+              "Importiert:" & vbTab & vbTab & rowsProcessed & " / " & rowsTotalInFile & vbCrLf & _
+              "Duplikate:" & vbTab & vbTab & rowsIgnoredDupe & vbCrLf & _
+              "Fehler:" & vbTab & vbTab & vbTab & rowsFailedImport & vbCrLf & vbCrLf
+    
+    If rowsFailedImport > 0 Then
+        msgText = msgText & "ACHTUNG: " & rowsFailedImport & " Zeilen konnten nicht verarbeitet werden!"
+    ElseIf rowsProcessed = 0 And rowsIgnoredDupe > 0 Then
+        msgText = msgText & "Alle Eintr" & ChrW(228) & "ge waren bereits in der Datenbank vorhanden."
+    ElseIf rowsProcessed > 0 And rowsIgnoredDupe = 0 Then
+        msgText = msgText & "Alle Datens" & ChrW(228) & "tze wurden erfolgreich importiert."
+    ElseIf rowsProcessed > 0 And rowsIgnoredDupe > 0 Then
+        msgText = msgText & rowsProcessed & " neue Datens" & ChrW(228) & "tze importiert," & vbCrLf & _
+                  rowsIgnoredDupe & " Duplikate " & ChrW(252) & "bersprungen."
+    End If
+    
+    MsgBox msgText, msgIcon, msgTitle
+    
+    ' ============================================================
+    ' ENTITYKEY-PRUEFUNG: Spalte W (EntityRole) vollstaendig?
+    ' Nur pruefen wenn tatsaechlich neue Datensaetze importiert wurden
+    ' ============================================================
+    If rowsProcessed > 0 Then
+        Call PruefeUnvollstaendigeEntityKeys
+    End If
+    
+End Sub
+
+
+
+'--- Ende Teil 1 von 3 ---
+'--- Anfang Teil 2 von 3 ---
+
+
+
+
+' ===============================================================
+' 1b. ENTITYKEY-PRUEFUNG NACH IMPORT
+'     Prueft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
+'     eine vollstaendige Zuordnung in Spalte W (EntityRole) haben.
+'     Bei fehlenden Eintraegen: MsgBox mit Angebot zur Navigation.
+' ===============================================================
+Private Sub PruefeUnvollstaendigeEntityKeys()
+    
     Dim wsDaten As Worksheet
-    Dim dateiPfad As String
-    Dim ff As Integer
-    Dim zeile As String
-    Dim felder() As String
-    Dim importZeile As Long
-    Dim totalRows As Long
-    Dim imported As Long
-    Dim dupes As Long
-    Dim failed As Long
-    Dim errorRows As String
-    Dim zeilenNr As Long
-    Dim headerGefunden As Boolean
-    Dim i As Long
+    Dim lastRow As Long
+    Dim r As Long
+    Dim ersteLeereZeile As Long
+    Dim anzahlOhneRole As Long
+    Dim ibanOhneRole As String
     
-    ' Datei auswaehlen
-    dateiPfad = Application.GetOpenFilename( _
-        FileFilter:="CSV-Dateien (*.csv),*.csv", _
-        Title:="Kontoauszug CSV-Datei ausw" & ChrW(228) & "hlen")
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsDaten Is Nothing Then Exit Sub
     
-    If dateiPfad = "Falsch" Or dateiPfad = "False" Or dateiPfad = "" Then Exit Sub
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, EK_COL_IBAN).End(xlUp).Row
+    If lastRow < EK_START_ROW Then Exit Sub
+    
+    ersteLeereZeile = 0
+    anzahlOhneRole = 0
+    ibanOhneRole = ""
+    
+    For r = EK_START_ROW To lastRow
+        ' Nur Zeilen pruefen die eine IBAN haben
+        If Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)) <> "" Then
+            ' Spalte W (EntityRole) leer?
+            If Trim(CStr(wsDaten.Cells(r, EK_COL_ROLE).value)) = "" Then
+                anzahlOhneRole = anzahlOhneRole + 1
+                
+                ' Erste leere Zeile merken
+                If ersteLeereZeile = 0 Then ersteLeereZeile = r
+                
+                ' Maximal 5 IBANs fuer die Anzeige sammeln
+                If anzahlOhneRole <= 5 Then
+                    Dim kontoname As String
+                    kontoname = Trim(CStr(wsDaten.Cells(r, EK_COL_KONTONAME).value))
+                    If kontoname <> "" Then
+                        ibanOhneRole = ibanOhneRole & vbCrLf & "  " & ChrW(8226) & " " & _
+                            Left(CStr(wsDaten.Cells(r, EK_COL_IBAN).value), 12) & "...  (" & kontoname & ")"
+                    Else
+                        ibanOhneRole = ibanOhneRole & vbCrLf & "  " & ChrW(8226) & " " & _
+                            CStr(wsDaten.Cells(r, EK_COL_IBAN).value)
+                    End If
+                End If
+            End If
+        End If
+    Next r
+    
+    ' Keine fehlenden Eintraege -> nichts tun
+    If anzahlOhneRole = 0 Then Exit Sub
+    
+    ' MsgBox zusammenbauen
+    Dim hinweis As String
+    hinweis = "Nach dem Import wurden " & anzahlOhneRole & _
+              " IBAN-Zuordnung(en) ohne EntityRole (Spalte W) gefunden:" & _
+              vbCrLf & ibanOhneRole
+    
+    If anzahlOhneRole > 5 Then
+        hinweis = hinweis & vbCrLf & "  ... und " & (anzahlOhneRole - 5) & " weitere"
+    End If
+    
+    hinweis = hinweis & vbCrLf & vbCrLf & _
+              "Ohne diese Zuordnung kann die Kategorie-Engine die Buchungen " & _
+              "nicht korrekt verarbeiten." & vbCrLf & vbCrLf & _
+              "M" & ChrW(246) & "chten Sie die fehlenden Angaben jetzt vervollst" & ChrW(228) & "ndigen?"
+    
+    Dim antwort As VbMsgBoxResult
+    antwort = MsgBox(hinweis, vbYesNo + vbExclamation, _
+                     "Unvollst" & ChrW(228) & "ndige IBAN-Zuordnungen")
+    
+    If antwort = vbYes Then
+        ' Zum Daten-Blatt wechseln und erste leere Zelle in Spalte W anwaehlen
+        wsDaten.Activate
+        
+        On Error Resume Next
+        wsDaten.Unprotect PASSWORD:=PASSWORD
+        On Error GoTo 0
+        
+        wsDaten.Cells(ersteLeereZeile, EK_COL_ROLE).Select
+        
+        wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    End If
+    
+End Sub
+
+
+' ===============================================================
+' 2. ZEBRA-FORMATIERUNG (A-G und I-Z, Spalte H ausgenommen)
+' ===============================================================
+Private Sub Anwende_Zebra_Bankkonto(ByVal ws As Worksheet)
+    
+    Dim lastRow As Long
+    Dim lRow As Long
+    Dim rngPart1 As Range
+    Dim rngPart2 As Range
+    
+    If ws Is Nothing Then Exit Sub
+    
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Sub
+    
+    For lRow = BK_START_ROW To lastRow
+        Set rngPart1 = ws.Range(ws.Cells(lRow, 1), ws.Cells(lRow, 7))
+        Set rngPart2 = ws.Range(ws.Cells(lRow, 9), ws.Cells(lRow, 26))
+        
+        If (lRow - BK_START_ROW) Mod 2 = 1 Then
+            rngPart1.Interior.color = ZEBRA_COLOR
+            rngPart2.Interior.color = ZEBRA_COLOR
+        Else
+            rngPart1.Interior.ColorIndex = xlNone
+            rngPart2.Interior.ColorIndex = xlNone
+        End If
+    Next lRow
+    
+End Sub
+
+' ===============================================================
+' 3. RAHMEN-FORMATIERUNG
+' ===============================================================
+Private Sub Anwende_Border_Bankkonto(ByVal ws As Worksheet)
+    
+    Dim lastRow As Long
+    Dim rngPart1 As Range
+    Dim rngPart2 As Range
+    
+    If ws Is Nothing Then Exit Sub
+    
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Sub
+    
+    Set rngPart1 = ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 12))
+    Set rngPart2 = ws.Range(ws.Cells(BK_START_ROW, 13), ws.Cells(lastRow, 26))
+    
+    Call SetBorders(rngPart1)
+    Call SetBorders(rngPart2)
+    
+End Sub
+
+Private Sub SetBorders(ByVal rng As Range)
+    
+    If rng Is Nothing Then Exit Sub
+    
+    With rng.Borders(xlEdgeLeft)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
+    With rng.Borders(xlEdgeTop)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
+    With rng.Borders(xlEdgeBottom)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
+    With rng.Borders(xlEdgeRight)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
+    With rng.Borders(xlInsideVertical)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
+    With rng.Borders(xlInsideHorizontal)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
+    
+End Sub
+
+' ===============================================================
+' 4. ALLGEMEINE FORMATIERUNG
+' ===============================================================
+Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
+    
+    Dim lastRow As Long
+    Dim euroFormat As String
+    
+    If ws Is Nothing Then Exit Sub
+    
+    euroFormat = "#,##0.00 " & ChrW(8364)
+    
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Sub
+    
+    ' Spalte B (Betrag): Waehrung + rechtsbuendig
+    With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), ws.Cells(lastRow, BK_COL_BETRAG))
+        .NumberFormat = euroFormat
+        .HorizontalAlignment = xlRight
+    End With
+    
+    ' Spalten M-Z: Waehrung
+    ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
+    
+    With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), ws.Cells(lastRow, BK_COL_BEMERKUNG))
+        .WrapText = True
+        .VerticalAlignment = xlCenter
+    End With
+    
+    ws.Cells.VerticalAlignment = xlCenter
+    ws.Rows(BK_START_ROW & ":" & lastRow).AutoFit
+    
+End Sub
+
+
+' ===============================================================
+' 5. SORTIERUNG NACH DATUM (AUFSTEIGEND - Januar oben)
+' ===============================================================
+Public Sub Sortiere_Bankkonto_nach_Datum()
+    
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim sortRange As Range
     
     Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
-    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     
     On Error Resume Next
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
-    ' Naechste freie Zeile bestimmen
-    importZeile = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row + 1
-    If importZeile < BK_START_ROW Then importZeile = BK_START_ROW
-    
-    totalRows = 0
-    imported = 0
-    dupes = 0
-    failed = 0
-    errorRows = ""
-    
-    ' CSV oeffnen und verarbeiten
-    ff = FreeFile
-    Open dateiPfad For Input As #ff
-    
-    headerGefunden = False
-    zeilenNr = 0
-    
-    Do While Not EOF(ff)
-        Line Input #ff, zeile
-        zeilenNr = zeilenNr + 1
-        
-        ' Header-Zeile erkennen und ueberspringen
-        If Not headerGefunden Then
-            If InStr(LCase(zeile), "buchungstag") > 0 Or _
-               InStr(LCase(zeile), "buchungsdatum") > 0 Or _
-               InStr(LCase(zeile), "valuta") > 0 Then
-                headerGefunden = True
-            End If
-            GoTo NaechsteZeile
-        End If
-        
-        ' Leere Zeilen ueberspringen
-        If Len(Trim(zeile)) = 0 Then GoTo NaechsteZeile
-        
-        totalRows = totalRows + 1
-        
-        ' CSV parsen (Semikolon-getrennt)
-        felder = SplitCSV(zeile, ";")
-        
-        ' Mindestens 7 Felder erwartet
-        If UBound(felder) < 6 Then
-            failed = failed + 1
-            errorRows = errorRows & zeilenNr & ", "
-            GoTo NaechsteZeile
-        End If
-        
-        ' Datum parsen
-        Dim buchungsDatum As Variant
-        buchungsDatum = ParseDatum(felder(0))
-        
-        If isEmpty(buchungsDatum) Then
-            failed = failed + 1
-            errorRows = errorRows & zeilenNr & ", "
-            GoTo NaechsteZeile
-        End If
-        
-        ' Betrag parsen
-        Dim betragStr As String
-        betragStr = felder(4)
-        If UBound(felder) >= 5 Then
-            If InStr(felder(4), ",") = 0 And InStr(felder(5), ",") > 0 Then
-                betragStr = felder(4) & "," & felder(5)
-            End If
-        End If
-        
-        Dim betrag As Double
-        betrag = ParseBetrag(betragStr)
-        
-        ' Duplikatpruefung
-        Dim isDuplicate As Boolean
-        isDuplicate = False
-        
-        Dim checkRow As Long
-        For checkRow = BK_START_ROW To importZeile - 1
-            If IsDate(ws.Cells(checkRow, BK_COL_DATUM).value) Then
-                If CDate(ws.Cells(checkRow, BK_COL_DATUM).value) = CDate(buchungsDatum) And _
-                   ws.Cells(checkRow, BK_COL_BETRAG).value = betrag And _
-                   Trim(ws.Cells(checkRow, BK_COL_VERWENDUNGSZWECK).value) = CleanField(felder(3)) Then
-                    isDuplicate = True
-                    Exit For
-                End If
-            End If
-        Next checkRow
-        
-        If isDuplicate Then
-            dupes = dupes + 1
-            GoTo NaechsteZeile
-        End If
-        
-        ' Daten eintragen
-        ws.Cells(importZeile, BK_COL_DATUM).value = CDate(buchungsDatum)
-        ws.Cells(importZeile, BK_COL_BETRAG).value = betrag
-        ws.Cells(importZeile, BK_COL_NAME).value = CleanField(felder(2))
-        
-        ' IBAN aus Feld 6 oder 7 (je nach Format)
-        Dim ibanText As String
-        ibanText = ""
-        For i = 5 To UBound(felder)
-            If LikeIBAN(felder(i)) Then
-                ibanText = CleanField(felder(i))
-                Exit For
-            End If
-        Next i
-        ws.Cells(importZeile, BK_COL_IBAN).value = ibanText
-        
-        ws.Cells(importZeile, BK_COL_VERWENDUNGSZWECK).value = CleanField(felder(3))
-        ws.Cells(importZeile, BK_COL_BUCHUNGSTEXT).value = CleanField(felder(1))
-        
-        ' Sichtbarkeitsfilter (Spalte G) auf TRUE setzen
-        ws.Cells(importZeile, 7).value = True
-        
-        imported = imported + 1
-        importZeile = importZeile + 1
-        
-NaechsteZeile:
-    Loop
-    
-    Close #ff
-    
-    ' -------------------------------------------------------
-    ' NACHVERARBEITUNG (nur wenn Daten importiert wurden)
-    ' -------------------------------------------------------
-    If imported > 0 Then
-        Application.ScreenUpdating = False
-        Application.EnableEvents = False
-        
-        On Error GoTo ImportCleanup
-        
-        ' 1. IBANs in Entity-Tabelle uebernehmen
-        Call ImportiereIBANs(ws)
-        
-        ' 2. Entity-Keys aktualisieren
-        Call AktualisiereEntityKeys(ws)
-        
-        ' 3. Sortierung nach Datum
-        Call SortiereBankkontoNachDatum(ws)
-        
-        ' 4. Formatierung
-        Call Anwende_Zebra_Bankkonto(ws)
-        Call Anwende_Border_Bankkonto(ws)
-        Call Anwende_Formatierung_Bankkonto(ws)
-        
-        ' 5. Kategorie-Engine
-        Call KategorieEngine_Pipeline(ws)
-        
-        ' 6. Monat/Periode zuordnen
-        Call Setze_Monat_Periode(ws)
-        
-        ' 7. Formeln wiederherstellen
-        Call StelleFormelnWiederHer(ws)
-        
-ImportCleanup:
-        Application.EnableEvents = True
-        Application.ScreenUpdating = True
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        Exit Sub
     End If
+    
+    Set sortRange = ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 26))
+    
+    ws.Sort.SortFields.Clear
+    ws.Sort.SortFields.Add key:=ws.Range(ws.Cells(BK_START_ROW, BK_COL_DATUM), ws.Cells(lastRow, BK_COL_DATUM)), _
+                           SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
+    
+    With ws.Sort
+        .SetRange sortRange
+        .Header = xlNo
+        .MatchCase = False
+        .Orientation = xlTopToBottom
+        .Apply
+    End With
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
-    ' ListBox aktualisieren
-    Call Update_ImportReport_ListBox(totalRows, imported, dupes, failed)
-    
-    ' Ergebnis anzeigen
-    Dim msg As String
-    msg = imported & " von " & totalRows & " Datens" & ChrW(228) & "tzen importiert." & vbCrLf
-    If dupes > 0 Then msg = msg & dupes & " Duplikate erkannt." & vbCrLf
-    If failed > 0 Then msg = msg & failed & " Fehler (Zeilen: " & Left(errorRows, Len(errorRows) - 2) & ")"
-    
-    MsgBox msg, IIf(failed > 0, vbExclamation, vbInformation), "Import abgeschlossen"
-    
 End Sub
 
-
 ' ===============================================================
-' 2. ENTITY-KEY-PRUEFUNG
-' ===============================================================
-Private Sub PruefeUnvollstaendigeEntityKeys(ByVal ws As Worksheet)
-    ' Wird bei Bedarf aufgerufen - aktuell leer (Platzhalter)
-End Sub
-
-
-' ===============================================================
-' 3. FORMATIERUNG
-' ===============================================================
-
-' ---------------------------------------------------------------
-' 3a. Zebra-Streifen (abwechselnde Zeilenfarben)
-' ---------------------------------------------------------------
-Private Sub Anwende_Zebra_Bankkonto(ByVal ws As Worksheet)
-    Dim lastRow As Long
-    Dim r As Long
-    
-    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
-    If lastRow < BK_START_ROW Then Exit Sub
-    
-    For r = BK_START_ROW To lastRow
-        If (r - BK_START_ROW) Mod 2 = 0 Then
-            ws.Range(ws.Cells(r, 1), ws.Cells(r, 7)).Interior.color = RGB(242, 242, 242)
-        Else
-            ws.Range(ws.Cells(r, 1), ws.Cells(r, 7)).Interior.color = RGB(255, 255, 255)
-        End If
-    Next r
-End Sub
-
-' ---------------------------------------------------------------
-' 3b. Rahmenlinien
-' ---------------------------------------------------------------
-Private Sub Anwende_Border_Bankkonto(ByVal ws As Worksheet)
-    Dim lastRow As Long
-    Dim rng As Range
-    
-    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
-    If lastRow < BK_START_ROW Then Exit Sub
-    
-    Set rng = ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 26))
-    
-    With rng.Borders
-        .LineStyle = xlContinuous
-        .Weight = xlThin
-        .color = RGB(200, 200, 200)
-    End With
-End Sub
-
-' ---------------------------------------------------------------
-' 3c. Zahlenformate und Spaltenbreiten
-' ---------------------------------------------------------------
-Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
-    Dim lastRow As Long
-    
-    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
-    If lastRow < BK_START_ROW Then Exit Sub
-    
-    ' Datum formatieren
-    ws.Range(ws.Cells(BK_START_ROW, BK_COL_DATUM), ws.Cells(lastRow, BK_COL_DATUM)).NumberFormat = "DD.MM.YYYY"
-    
-    ' Betrag formatieren
-    ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), ws.Cells(lastRow, BK_COL_BETRAG)).NumberFormat = "#,##0.00"
-    
-    ' Betragsspalten M-Z formatieren
-    ws.Range(ws.Cells(BK_START_ROW, 13), ws.Cells(lastRow, 26)).NumberFormat = "#,##0.00"
-End Sub
-
-
-' ===============================================================
-' 4. SORTIERUNG NACH DATUM
-' ===============================================================
-Private Sub SortiereBankkontoNachDatum(ByVal ws As Worksheet)
-    Dim lastRow As Long
-    
-    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
-    If lastRow < BK_START_ROW Then Exit Sub
-    
-    With ws.Sort
-        .SortFields.Clear
-        .SortFields.Add key:=ws.Cells(BK_START_ROW, BK_COL_DATUM), _
-                             Order:=xlAscending
-        .SetRange ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 26))
-        .Header = xlNo
-        .Apply
-    End With
-End Sub
-
-
-' ===============================================================
-' 5. IBAN-IMPORT AUS BUCHUNGEN
-' ===============================================================
-Private Sub ImportiereIBANs(ByVal ws As Worksheet)
-    Dim wsDaten As Worksheet
-    Dim lastRowBK As Long
-    Dim lastRowMap As Long
-    Dim r As Long
-    Dim iban As String
-    Dim name As String
-    Dim found As Boolean
-    Dim mapRow As Long
-    
-    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
-    
-    On Error Resume Next
-    wsDaten.Unprotect PASSWORD:=PASSWORD
-    On Error GoTo 0
-    
-    lastRowBK = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
-    
-    For r = BK_START_ROW To lastRowBK
-        iban = Trim(ws.Cells(r, BK_COL_IBAN).value)
-        If iban = "" Then GoTo NaechsteIBAN
-        
-        name = Trim(ws.Cells(r, BK_COL_NAME).value)
-        
-        ' Pruefen ob IBAN schon existiert
-        lastRowMap = wsDaten.Cells(wsDaten.Rows.count, DATA_MAP_COL_IBAN).End(xlUp).Row
-        found = False
-        
-        For mapRow = DATA_START_ROW To lastRowMap
-            If UCase(Replace(wsDaten.Cells(mapRow, DATA_MAP_COL_IBAN).value, " ", "")) = _
-               UCase(Replace(iban, " ", "")) Then
-                found = True
-                Exit For
-            End If
-        Next mapRow
-        
-        If Not found Then
-            ' Neue IBAN eintragen
-            lastRowMap = lastRowMap + 1
-            wsDaten.Cells(lastRowMap, DATA_MAP_COL_IBAN).value = iban
-            wsDaten.Cells(lastRowMap, DATA_MAP_COL_NAME).value = name
-        End If
-        
-NaechsteIBAN:
-    Next r
-    
-    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-End Sub
-
-
-' ===============================================================
-' 5b. ENTITY-KEYS AKTUALISIEREN
-' ===============================================================
-Private Sub AktualisiereEntityKeys(ByVal ws As Worksheet)
-    ' Delegiert an mod_EntityKey_Manager
-    On Error Resume Next
-    Call AktualisiereAlleEntityKeys
-    On Error GoTo 0
-End Sub
-
-
-' ===============================================================
-' 6. MONAT/PERIODE ZUORDNUNG
+' 6. MONAT/PERIODE SETZEN (intelligent ueber Einstellungen)
 '    v3.8: Nutzt Public ErmittleMonatPeriode aus
 '    mod_KategorieEngine_Evaluator mit Cache-Unterstuetzung.
 ' ===============================================================
@@ -472,6 +681,15 @@ Private Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
     
     HoleFaelligkeitFuerKategorie = "monatlich"
 End Function
+
+
+
+
+'--- Ende Teil 2 von 3 ---
+'--- Anfang Teil 3 von 3 ---
+
+
+
 
 ' ===============================================================
 ' 7. IMPORT REPORT LISTBOX (ACTIVEX STEUERELEMENT)
@@ -965,5 +1183,4 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
-
 

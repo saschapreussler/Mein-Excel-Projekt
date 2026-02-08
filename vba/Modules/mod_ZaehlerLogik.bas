@@ -326,7 +326,7 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
             Set ws = ThisWorkbook.Worksheets.Add
         End If
         
-        ws.Name = HIST_SHEET_NAME
+        ws.name = HIST_SHEET_NAME
         
         ' Header-Werte setzen
         ws.Range("A1:K1").value = Array( _
@@ -347,7 +347,7 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
                                      Source:=ws.Range("A1:K1"), _
                                      XlListObjectHasHeaders:=xlYes)
         
-        lo.Name = HIST_TABLE_NAME
+        lo.name = HIST_TABLE_NAME
         lo.TableStyle = "TableStyleMedium9"
         
         ' Formatierung der Tabelle
@@ -491,7 +491,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     ' 1. PARZELLENZÄHLER & UNTERZÄHLER
     ' ==========================================================
     
-    If LCase(wsTarget.Name) = "strom" Then
+    If LCase(wsTarget.name) = "strom" Then
         ' STROM: Parzelle 1 bis 12 (Zeilen 8 bis 19)
         For r = 1 To 12
             Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Parzelle " & r, r + 7)
@@ -516,7 +516,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
         wsTarget.Rows(21).AutoFit
         Call EnsureMinRowHeight(wsTarget, 21)
         
-    ElseIf LCase(wsTarget.Name) = "wasser" Then
+    ElseIf LCase(wsTarget.name) = "wasser" Then
         ' WASSER: Parzelle 1 bis 14 (Zeilen 10 bis 23)
         For r = 1 To 14
             ' Hier wurde der Startindex (10 statt 8) verwendet, was zu Ihrer Tabellenstruktur passen muss.
@@ -534,14 +534,14 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     ' 2. HAUPTZÄHLER
     ' ==========================================================
     
-    If LCase(wsTarget.Name) = "strom" Then
+    If LCase(wsTarget.name) = "strom" Then
         ' Hauptzähler Strom (Zeile 26)
         Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Hauptzähler", 26)
         wsTarget.Rows(26).AutoFit
         Call EnsureMinRowHeight(wsTarget, 26)
     End If
     
-    If LCase(wsTarget.Name) = "wasser" Then
+    If LCase(wsTarget.name) = "wasser" Then
         ' Hauptzähler Wasser (Zeile 29)
         Call CalculateSingleZaehler(wsTarget, wsHist, "Wasser", "Hauptzähler", 29)
         wsTarget.Rows(29).AutoFit
