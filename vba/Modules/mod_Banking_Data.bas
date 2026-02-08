@@ -993,11 +993,12 @@ End Function
 ' 8. HILFSFUNKTIONEN
 ' ===============================================================
 
-' ---------------------------------------------------------------
-' 8a. Stellt die Formeln auf dem Bankkonto-Blatt wieder her,
-'     die durch ClearContents oder Import verloren gehen koennen.
-'     Betrifft: C3, E8-E14, E16-E21, E23
-' ---------------------------------------------------------------
+' ===============================================================
+' Stellt die Formeln auf dem Bankkonto-Blatt wieder her,
+' die durch ClearContents oder Import verloren gehen koennen.
+' Betrifft: C3, E8-E14, E16-E21, E23
+' WICHTIG: Formeln werden 1:1 als FormulaLocal gesetzt!
+' ===============================================================
 Private Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     
     On Error Resume Next
@@ -1006,65 +1007,49 @@ Private Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     
     On Error Resume Next
     
-    ' C3: Kontostand = Anfangsbestand + Summe aller Buchungen
+    ' C3: Kontostand-Anzeige mit Monatsfilter
     ws.Range("C3").FormulaLocal = _
-        "=C1+SUMME(B28:B" & ws.Rows.count & ")"
+        "=WENN(Daten!$AE$4=0;WENN(ANZAHL(Bankkonto!$A$28:$A$3433)=0;"""";" & _
+        """Kontostand nach der letzten Buchung im Monat am: "" & TEXT(MAX(Bankkonto!$A$28:$A$5000);""TT.MM.JJJJ""));" & _
+        "WENN(Z" & ChrW(196) & "HLENWENNS(Bankkonto!$A$28:$A$5000;"">="" & DATUM(Startmen" & ChrW(252) & "!$F$1;Daten!$AE$4;1);" & _
+        "Bankkonto!$A$28:$A$5000;""<="" & DATUM(Startmen" & ChrW(252) & "!$F$1;Daten!$AE$4+1;0))=0;"""";" & _
+        """Kontostand nach der letzten Buchung im Monat am: "" & TEXT(MAXWENNS(Bankkonto!$A$28:$A$5000;" & _
+        "Bankkonto!$A$28:$A$5000;"">="" & DATUM(Startmen" & ChrW(252) & "!$F$1;Daten!$AE$4;1);" & _
+        "Bankkonto!$A$28:$A$5000;""<="" & DATUM(Startmen" & ChrW(252) & "!$F$1;Daten!$AE$4+1;0));""TT.MM.JJJJ"")))"
     
-    ' E8: Mitgliedsbeitraege (Einnahmen)
+    ' E8-E14: Einnahmen (Spalten M-S) mit SUMMEWENNS + WENN=0 leer
     ws.Range("E8").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;M$28:M$1000)"
-    
-    ' E9: Spenden
+        "=WENN(SUMMEWENNS(M28:M5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(M28:M5000;G28:G5000;WAHR))"
     ws.Range("E9").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;N$28:N$1000)"
-    
-    ' E10: Zuschuesse
+        "=WENN(SUMMEWENNS(N28:N5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(N28:N5000;G28:G5000;WAHR))"
     ws.Range("E10").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;O$28:O$1000)"
-    
-    ' E11: Verwaltung (Einnahmen)
+        "=WENN(SUMMEWENNS(O28:O5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(O28:O5000;G28:G5000;WAHR))"
     ws.Range("E11").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;P$28:P$1000)"
-    
-    ' E12: Vermoegen
+        "=WENN(SUMMEWENNS(P28:P5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(P28:P5000;G28:G5000;WAHR))"
     ws.Range("E12").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;Q$28:Q$1000)"
-    
-    ' E13: Veranstaltungen (Einnahmen)
+        "=WENN(SUMMEWENNS(Q28:Q5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(Q28:Q5000;G28:G5000;WAHR))"
     ws.Range("E13").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;R$28:R$1000)"
-    
-    ' E14: Sonstige Einnahmen
+        "=WENN(SUMMEWENNS(R28:R5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(R28:R5000;G28:G5000;WAHR))"
     ws.Range("E14").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;S$28:S$1000)"
+        "=WENN(SUMMEWENNS(S28:S5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(S28:S5000;G28:G5000;WAHR))"
     
-    ' E16: Unterhaltung/Reparatur (Ausgaben)
+    ' E16-E21: Ausgaben (Spalten T-Y) mit SUMMEWENNS + WENN=0 leer
     ws.Range("E16").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;T$28:T$1000)"
-    
-    ' E17: Fortbildung
+        "=WENN(SUMMEWENNS(T28:T5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(T28:T5000;G28:G5000;WAHR))"
     ws.Range("E17").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;U$28:U$1000)"
-    
-    ' E18: Veranstaltungen (Ausgaben)
+        "=WENN(SUMMEWENNS(U28:U5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(U28:U5000;G28:G5000;WAHR))"
     ws.Range("E18").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;V$28:V$1000)"
-    
-    ' E19: Buerobetrieb
+        "=WENN(SUMMEWENNS(V28:V5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(V28:V5000;G28:G5000;WAHR))"
     ws.Range("E19").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;W$28:W$1000)"
-    
-    ' E20: Aufwandsentschaedigung
+        "=WENN(SUMMEWENNS(W28:W5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(W28:W5000;G28:G5000;WAHR))"
     ws.Range("E20").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;X$28:X$1000)"
-    
-    ' E21: Sonstige Ausgaben
+        "=WENN(SUMMEWENNS(X28:X5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(X28:X5000;G28:G5000;WAHR))"
     ws.Range("E21").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;Y$28:Y$1000)"
+        "=WENN(SUMMEWENNS(Y28:Y5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(Y28:Y5000;G28:G5000;WAHR))"
     
-    ' E23: Auszahlung Kasse
+    ' E23: Auszahlung Kasse (Spalte Z)
     ws.Range("E23").FormulaLocal = _
-        "=SUMMEWENN($G$28:$G$1000;WAHR;Z$28:Z$1000)"
+        "=WENN(SUMMEWENNS(Z28:Z5000;G28:G5000;WAHR)=0;"""";SUMMEWENNS(Z28:Z5000;G28:G5000;WAHR))"
     
     On Error GoTo 0
     

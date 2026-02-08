@@ -3,17 +3,21 @@ Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - EVALUATOR
-' VERSION: 6.0 - 08.02.2026
-' FIX: EHEMALIGES MITGLIED ? Auszahlung/Guthaben erlaubt
+' VERSION: 7.0 - 08.02.2026
+' NEU: Multi-Word-Matching - Keywords mit mehreren Woertern
+'      werden einzeln geprueft (alle muessen vorkommen,
+'      Reihenfolge egal). Loest das "Stromvorauszahlungen"
+'      vs "Strom Vorauszahlung" Problem.
+' FIX: EHEMALIGES MITGLIED -> Auszahlung/Guthaben erlaubt
 ' FIX: Sammelzahlung-Bemerkung zeigt Kategorien + Konflikte
 ' FIX: ApplyBetragsZuordnung wird NICHT mehr aus dem
 '      Evaluator aufgerufen (Pipeline regelt das)
 ' =====================================================
 
-' Mindest-Score-Differenz für sichere Zuordnung
+' Mindest-Score-Differenz fuer sichere Zuordnung
 Private Const SCORE_DOMINANZ_SCHWELLE As Long = 20
 
-' Kategorie für echte Mehrdeutigkeit (nur programmatisch!)
+' Kategorie fuer echte Mehrdeutigkeit (nur programmatisch!)
 Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung (mehrere Positionen) Mitglied"
 
 ' -----------------------------
@@ -74,7 +78,7 @@ Public Function BuildKategorieContext(ByVal wsBK As Worksheet, _
     ctx("IsVersorger") = (entityRole = "VERSORGER")
     ctx("IsBank") = (entityRole = "BANK")
 
-    ' Entgeltabschluss-Erkennung (Bankgebühren)
+    ' Entgeltabschluss-Erkennung (Bankgebuehren)
     ctx("IsEntgeltabschluss") = _
         (InStr(normText, "entgeltabschluss") > 0) Or _
         (InStr(normText, "kontoabschluss") > 0) Or _
@@ -92,7 +96,7 @@ Public Function BuildKategorieContext(ByVal wsBK As Worksheet, _
 End Function
 
 ' -----------------------------
-' EntityRole über IBAN bestimmen
+' EntityRole ueber IBAN bestimmen
 ' -----------------------------
 Private Function GetEntityRoleByIBAN(ByVal strIBAN As String) As String
     Dim wsD As Worksheet
@@ -121,7 +125,7 @@ Private Function GetEntityRoleByIBAN(ByVal strIBAN As String) As String
 End Function
 
 ' -----------------------------
-' Parzelle über IBAN bestimmen
+' Parzelle ueber IBAN bestimmen
 ' -----------------------------
 Private Function GetEntityParzelleByIBAN(ByVal strIBAN As String) As String
     Dim wsD As Worksheet
@@ -149,6 +153,47 @@ Private Function GetEntityParzelleByIBAN(ByVal strIBAN As String) As String
     GetEntityParzelleByIBAN = ""
 End Function
 
+' =====================================================
+' MULTI-WORD-MATCHING (NEU v7.0)
+' Prueft ob ALLE Woerter des Keywords im Text vorkommen.
+' Reihenfolge ist egal. Zusammengeschriebene Woerter
+' werden ebenfalls erkannt (Substring-Matching je Wort).
+'
+' Beispiel: Keyword "Strom Vorauszahlung"
+'   Woerter: "strom", "vorauszahlung"
+'   Text: "stromvorauszahlungen" -> enthält "strom" UND "vorauszahlung" -> MATCH!
+'   Text: "vorauszahlung strom"  -> enthält "strom" UND "vorauszahlung" -> MATCH!
+'
+' Ein-Wort-Keywords nutzen weiterhin einfaches InStr.
+' =====================================================
+Private Function MatchKeyword(ByVal normText As String, _
+                               ByVal normKeyword As String) As Boolean
+    
+    ' Schnelltest: Wenn Keyword keine Leerzeichen hat -> einfaches InStr
+    If InStr(normKeyword, " ") = 0 Then
+        MatchKeyword = (InStr(normText, normKeyword) > 0)
+        Exit Function
+    End If
+    
+    ' Multi-Word: Alle Woerter muessen als Substring vorkommen
+    Dim woerter() As String
+    woerter = Split(normKeyword, " ")
+    
+    Dim w As Long
+    For w = LBound(woerter) To UBound(woerter)
+        If Len(woerter(w)) > 0 Then
+            If InStr(normText, woerter(w)) = 0 Then
+                ' Ein Wort fehlt -> kein Match
+                MatchKeyword = False
+                Exit Function
+            End If
+        End If
+    Next w
+    
+    ' Alle Woerter gefunden
+    MatchKeyword = True
+End Function
+
 ' -----------------------------
 ' Hauptfunktion: Kategorie evaluieren
 ' -----------------------------
@@ -156,18 +201,18 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                                       ByVal rowBK As Long, _
                                       ByVal rngRules As Range)
 
-    ' Bereits kategorisiert? Überspringen
+    ' Bereits kategorisiert? Ueberspringen
     If Trim(wsBK.Cells(rowBK, BK_COL_KATEGORIE).value) <> "" Then Exit Sub
 
     Dim ctx As Object
     Set ctx = BuildKategorieContext(wsBK, rowBK)
 
     ' ================================
-    ' PHASE 0: SONDERREGEL FÜR 0-EURO-BETRÄGE
+    ' PHASE 0: SONDERREGEL FUER 0-EURO-BETRAEGE
     ' ================================
     If ctx("IsNullBetrag") And ctx("IsEntgeltabschluss") Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
-                       "Entgeltabschluss (Kontoführung)", "GRUEN"
+                       "Entgeltabschluss (Kontof" & ChrW(252) & "hrung)", "GRUEN"
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = "0-Euro-Abschluss automatisch zugeordnet"
         Exit Sub
     End If
@@ -176,10 +221,10 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     ' PHASE 1: HARTE SONDERREGELN
     ' ================================
     
-    ' 1a) Entgeltabschluss (Bankgebühren)
+    ' 1a) Entgeltabschluss (Bankgebuehren)
     If ctx("IsEntgeltabschluss") And ctx("IsAusgabe") Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
-                       "Entgeltabschluss (Kontoführung)", "GRUEN"
+                       "Entgeltabschluss (Kontof" & ChrW(252) & "hrung)", "GRUEN"
         Exit Sub
     End If
     
@@ -201,7 +246,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     bestPriority = 999
     bestCategory = ""
 
-    ' Dictionary: Kategorie -> Score (höchster Score je Kategorie)
+    ' Dictionary: Kategorie -> Score (hoechster Score je Kategorie)
     Dim hitCategories As Object
     Set hitCategories = CreateObject("Scripting.Dictionary")
 
@@ -214,7 +259,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         Dim prio As Long
         Dim faelligkeit As String
 
-        ' Spalten: J=Kategorie, K=E/A, L=Keyword, M=Priorität, N=Zielspalte, O=Fälligkeit
+        ' Spalten: J=Kategorie, K=E/A, L=Keyword, M=Prioritaet, N=Zielspalte, O=Faelligkeit
         category = Trim(ruleRow.Cells(1, 1).value)      ' Spalte J
         einAus = UCase(Trim(ruleRow.Cells(1, 2).value))  ' Spalte K
         keyword = Trim(ruleRow.Cells(1, 3).value)        ' Spalte L
@@ -226,7 +271,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
 
         ' ================================
         ' FILTER 0: Sammelzahlung-Kategorie NIEMALS per Keyword!
-        ' Diese Kategorie wird ausschließlich programmatisch
+        ' Diese Kategorie wird ausschliesslich programmatisch
         ' in PHASE 3 zugewiesen bei echter Mehrdeutigkeit.
         ' ================================
         If LCase(category) Like "*sammelzahlung*" Then GoTo NextRule
@@ -245,31 +290,31 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         If Not PasstEntityRoleZuKategorie(ctx, category, einAus) Then GoTo NextRule
 
         ' ================================
-        ' KEYWORD-MATCHING
+        ' KEYWORD-MATCHING (v7.0 Multi-Word)
         ' ================================
         Dim normKeyword As String
         normKeyword = NormalizeText(keyword)
         
-        If InStr(ctx("NormText"), normKeyword) > 0 Then
+        If MatchKeyword(ctx("NormText"), normKeyword) Then
 
             Dim score As Long
             score = 100
             
-            ' Prioritätsbonus (niedrigere Prio = höherer Bonus)
+            ' Prioritaetsbonus (niedrigere Prio = hoeherer Bonus)
             score = score + (10 - prio) * 5
             
-            ' EntityRole bekannt = höhere Konfidenz
+            ' EntityRole bekannt = hoehere Konfidenz
             If ctx("EntityRole") <> "" Then
                 score = score + 20
             End If
             
-            ' Einnahme/Ausgabe stimmt exakt überein
+            ' Einnahme/Ausgabe stimmt exakt ueberein
             If (einAus = "E" And ctx("IsEinnahme")) Or _
                (einAus = "A" And ctx("IsAusgabe")) Then
                 score = score + 15
             End If
             
-            ' Keyword-Länge als Qualitätsfaktor
+            ' Keyword-Laenge als Qualitaetsfaktor
             Dim kwLen As Long
             kwLen = Len(normKeyword)
             If kwLen >= 12 Then
@@ -280,12 +325,12 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                 score = score + 5
             End If
             
-            ' Betragsvalidierung über Einstellungen
+            ' Betragsvalidierung ueber Einstellungen
             Dim betragBonus As Long
             betragBonus = PruefeBetragGegenEinstellungen(category, ctx("AbsAmount"))
             score = score + betragBonus
             
-            ' Zeitfenstervalidierung über Einstellungen
+            ' Zeitfenstervalidierung ueber Einstellungen
             If IsDate(ctx("Datum")) Then
                 Dim zeitBonus As Long
                 zeitBonus = PruefeZeitfenster(category, CDate(ctx("Datum")), faelligkeit)
@@ -337,8 +382,7 @@ NextRule:
             Exit Sub
         End If
         
-        ' ECHTE MEHRDEUTIGKEIT: Detaillierte Bemerkung
-                ' ECHTE MEHRDEUTIGKEIT: Kurze, klare Bemerkung ohne Scores
+        ' ECHTE MEHRDEUTIGKEIT: Kurze, klare Bemerkung ohne Scores
         Dim bemerkung As String
         bemerkung = hitCategories.count & " Kategorien passen:" & vbLf
         
@@ -350,7 +394,7 @@ NextRule:
         Next katKey
         
         bemerkung = bemerkung & vbLf & _
-                    "Bitte Kategorie manuell wählen und Beträge in Spalten M-Z aufteilen!"
+                    "Bitte Kategorie manuell w" & ChrW(228) & "hlen und Betr" & ChrW(228) & "ge in Spalten M-Z aufteilen!"
         
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = bemerkung
         
@@ -362,7 +406,7 @@ NextRule:
         Exit Sub
     End If
 
-    ' Genau 1 Treffer = sicher GRÜN
+    ' Genau 1 Treffer = sicher GRUEN
     If bestCategory <> "" Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRUEN"
         ' Kein ApplyBetragsZuordnung hier - macht die Pipeline!
@@ -372,7 +416,7 @@ NextRule:
     ' Kein Treffer = ROT
     If ctx("EntityRole") = "" Then
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-            "Keine Kategorie gefunden. IBAN nicht zugeordnet - bitte Entity-Mapping prüfen!"
+            "Keine Kategorie gefunden. IBAN nicht zugeordnet - bitte Entity-Mapping pr" & ChrW(252) & "fen!"
     Else
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
             "Keine passende Kategorie gefunden (EntityRole: " & ctx("EntityRole") & ")"
@@ -456,22 +500,22 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
         If catLower Like "*wasserwerk*" Then PasstEntityRoleZuKategorie = False: Exit Function
         
         If catLower Like "*rueckzahlung*versorger*" Or _
-           catLower Like "*rückzahlung*versorger*" Then
+           catLower Like "*r" & ChrW(252) & "ckzahlung*versorger*" Then
             PasstEntityRoleZuKategorie = False: Exit Function
         End If
         
-        ' Mitglied darf KEINE Miete/Pacht-Grundstück (das zahlt der VEREIN)
-        If catLower Like "*miete*" And (catLower Like "*grundstück*" Or catLower Like "*grundstueck*") Then
+        ' Mitglied darf KEINE Miete/Pacht-Grundstueck (das zahlt der VEREIN)
+        If catLower Like "*miete*" And (catLower Like "*grundst" & ChrW(252) & "ck*" Or catLower Like "*grundstueck*") Then
             PasstEntityRoleZuKategorie = False: Exit Function
         End If
         
         If catLower Like "*entgeltabschluss*" Then PasstEntityRoleZuKategorie = False: Exit Function
-        If catLower Like "*kontoführung*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*kontof" & ChrW(252) & "hrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*kontofuehrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         
-        ' Mitglied bei Ausgabe = nur Rückerstattung/Auszahlung/Guthaben
+        ' Mitglied bei Ausgabe = nur Rueckerstattung/Auszahlung/Guthaben
         If ctx("IsAusgabe") Then
-            If Not (catLower Like "*rück*" Or catLower Like "*rueck*" Or _
+            If Not (catLower Like "*r" & ChrW(252) & "ck*" Or catLower Like "*rueck*" Or _
                     catLower Like "*erstattung*" Or catLower Like "*gutschrift*" Or _
                     catLower Like "*auszahlung*" Or catLower Like "*guthaben*") Then
                 PasstEntityRoleZuKategorie = False: Exit Function
@@ -483,8 +527,8 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
     If ctx("IsBank") Then
         If Not (catLower Like "*bank*" Or _
                 catLower Like "*entgelt*" Or _
-                catLower Like "*gebühr*" Or catLower Like "*gebuehr*" Or _
-                catLower Like "*kontoführung*" Or catLower Like "*kontofuehrung*" Or _
+                catLower Like "*geb" & ChrW(252) & "hr*" Or catLower Like "*gebuehr*" Or _
+                catLower Like "*kontof" & ChrW(252) & "hrung*" Or catLower Like "*kontofuehrung*" Or _
                 catLower Like "*zins*") Then
             PasstEntityRoleZuKategorie = False: Exit Function
         End If
@@ -495,15 +539,15 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
         If catLower Like "*versorger*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*stadtwerke*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*entgeltabschluss*" Then PasstEntityRoleZuKategorie = False: Exit Function
-        If catLower Like "*kontoführung*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*kontof" & ChrW(252) & "hrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*kontofuehrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
-        If catLower Like "*miete*" And (catLower Like "*grundstück*" Or catLower Like "*grundstueck*") Then
+        If catLower Like "*miete*" And (catLower Like "*grundst" & ChrW(252) & "ck*" Or catLower Like "*grundstueck*") Then
             PasstEntityRoleZuKategorie = False: Exit Function
         End If
         
-        ' Ehemalige bei Ausgabe: Auszahlung/Guthaben/Rückzahlung erlaubt
+        ' Ehemalige bei Ausgabe: Auszahlung/Guthaben/Rueckzahlung erlaubt
         If ctx("IsAusgabe") Then
-            If Not (catLower Like "*rück*" Or catLower Like "*rueck*" Or _
+            If Not (catLower Like "*r" & ChrW(252) & "ck*" Or catLower Like "*rueck*" Or _
                     catLower Like "*erstattung*" Or catLower Like "*gutschrift*" Or _
                     catLower Like "*auszahlung*" Or catLower Like "*guthaben*" Or _
                     catLower Like "*endabrechnung*") Then
@@ -513,13 +557,13 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
     End If
     
     ' --- SONSTIGE: Sehr offen, fast alles erlaubt ---
-    ' Keine zusätzlichen Filter für SONSTIGE
+    ' Keine zusaetzlichen Filter fuer SONSTIGE
     
 End Function
 
 
 ' =====================================================
-' Betragsvalidierung über Einstellungen!
+' Betragsvalidierung ueber Einstellungen!
 ' =====================================================
 Private Function PruefeBetragGegenEinstellungen(ByVal category As String, _
                                                  ByVal absBetrag As Double) As Long
@@ -569,7 +613,7 @@ End Function
 
 
 ' =====================================================
-' Zeitfensterprüfung über Einstellungen!
+' Zeitfensterpruefung ueber Einstellungen!
 ' =====================================================
 Private Function PruefeZeitfenster(ByVal category As String, _
                                     ByVal buchungsDatum As Date, _
@@ -679,7 +723,7 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
     If faelligkeit = "" Then faelligkeit = "monatlich"
     
     Select Case LCase(faelligkeit)
-        Case "jährlich", "jaehrlich"
+        Case "j" & ChrW(228) & "hrlich", "jaehrlich"
             ErmittleMonatPeriode = "Jahresbeitrag " & Year(buchungsDatum)
             Exit Function
         Case "einmalig"
