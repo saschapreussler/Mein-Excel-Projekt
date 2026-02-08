@@ -3,16 +3,19 @@ Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - EVALUATOR
-' VERSION: 8.2 - 08.02.2026
-' FIX: Named Range rng_KategorieRegeln wird NICHT mehr
-'      benoetigt! Zeilengrenzen werden dynamisch ueber
-'      DATA_CAT_COL_KATEGORIE (letzte gefuellte Zeile)
-'      ermittelt. Spalten ueber DATA_CAT_COL_* Konstanten.
-' FIX: IsMitglied-Bug (Spaces statt Underscores)
-' FIX: Kombiniertes GetEntityInfoByIBAN (1 Loop statt 2)
-' NEU: ExactMatchBonus gegen Keyword-Kollisionen
-' NEU: Einstellungen-Cache (Arrays statt Blattzugriff)
-' NEU: EntityRole aus Kontext wird im Scoring beruecksichtigt
+' VERSION: 9.0 - 08.02.2026
+' MERGE: v7.0 Scoring-Logik (funktionierend) +
+'        v8.2 Infrastruktur (kein Named Range, Cache,
+'        kombiniertes GetEntityInfo, ExactMatchBonus)
+' FIX: Sonderregel fuer 0-Euro wieder aktiv
+' FIX: PasstEntityRoleZuKategorie mit detaillierter Logik
+' FIX: Sammelzahlung-Filter vor Scoring wieder aktiv
+' FIX: ApplyKategorie mit originaler Signatur
+' FIX: EntsperreBetragsspalten bei GELB wieder aktiv
+' FIX: Detaillierte Bemerkungen bei GELB und ROT
+' FIX: Betrags-Vielfaches-Check wiederhergestellt
+' FIX: Zeitfenster mit Vormonat + faelligkeit-Parameter
+' FIX: EntityRole-Bonus wieder auf +20
 ' =====================================================
 
 ' Mindest-Score-Differenz fuer sichere Zuordnung
@@ -123,7 +126,7 @@ Private Sub GetEntityInfoByIBAN(ByVal strIBAN As String, _
 End Sub
 
 ' -----------------------------
-' Kontext erstellen (v8.0)
+' Kontext erstellen
 ' -----------------------------
 Public Function BuildKategorieContext(ByVal wsBK As Worksheet, _
                                       ByVal rowBK As Long) As Object
@@ -168,7 +171,7 @@ Public Function BuildKategorieContext(ByVal wsBK As Worksheet, _
     ctx("EntityRole") = entityRole
     ctx("EntityParzelle") = entityParzelle
     
-    ' FIX v8.0: Spaces statt Underscores! EntityKey Manager speichert
+    ' FIX: Spaces statt Underscores! EntityKey Manager speichert
     ' "MITGLIED MIT PACHT" (Spaces), nicht "MITGLIED_MIT_PACHT"
     ctx("IsMitglied") = (entityRole = "MITGLIED" Or _
                           entityRole = "MITGLIED MIT PACHT" Or _
@@ -203,13 +206,11 @@ End Function
 Private Function MatchKeyword(ByVal normText As String, _
                                ByVal normKeyword As String) As Boolean
     
-    ' Schnelltest: Wenn Keyword keine Leerzeichen hat -> einfaches InStr
     If InStr(normKeyword, " ") = 0 Then
         MatchKeyword = (InStr(normText, normKeyword) > 0)
         Exit Function
     End If
     
-    ' Multi-Word: Alle Woerter muessen als Substring vorkommen
     Dim woerter() As String
     woerter = Split(normKeyword, " ")
     
@@ -230,8 +231,6 @@ End Function
 ' ExactMatchBonus (v8.0)
 ' Gibt Bonuspunkte wenn das normalisierte Keyword als
 ' zusammenhaengender Substring im Text vorkommt.
-' Verhindert Kollisionen bei Multi-Word-Matching.
-' z.B. "stvom wasser" exakt in Text -> +10 Punkte
 ' =====================================================
 Private Function ExactMatchBonus(ByVal normText As String, _
                                   ByVal normKeyword As String) As Long
@@ -243,184 +242,382 @@ Private Function ExactMatchBonus(ByVal normText As String, _
 End Function
 
 ' =====================================================
-' Hauptfunktion: Kategorie evaluieren (v8.2)
-' FIX: Braucht KEINEN Named Range mehr!
-'      Liest Regeln direkt vom Daten-Blatt mit
-'      DATA_CAT_COL_* Konstanten. Zeilengrenzen werden
-'      dynamisch ueber letzte gefuellte Zeile ermittelt.
+' Hauptfunktion: Kategorie evaluieren (v9.0)
+' Braucht KEINEN Named Range! Liest Regeln direkt vom
+' Daten-Blatt ueber DATA_CAT_COL_* Konstanten.
+' Scoring-Logik aus v7.0 wiederhergestellt.
 ' =====================================================
 Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                                       ByVal rowBK As Long, _
                                       ByVal wsData As Worksheet, _
                                       ByVal lastRuleRow As Long)
 
-    ' --- Phase 1: Kontext ---
+    ' Bereits kategorisiert? Ueberspringen
+    If Trim(wsBK.Cells(rowBK, BK_COL_KATEGORIE).value) <> "" Then Exit Sub
+
     Dim ctx As Object
     Set ctx = BuildKategorieContext(wsBK, rowBK)
 
+    ' ================================
+    ' PHASE 0: SONDERREGEL FUER 0-EURO-BETRAEGE
+    ' ================================
+    If ctx("IsNullBetrag") And ctx("IsEntgeltabschluss") Then
+        ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
+                       "Entgeltabschluss (Kontof" & ChrW(252) & "hrung)", "GRUEN"
+        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = "0-Euro-Abschluss automatisch zugeordnet"
+        Exit Sub
+    End If
+
+    ' 0-Euro ohne Sonderregel -> ueberspringen
     If ctx("IsNullBetrag") Then Exit Sub
 
     Dim normText As String
     normText = ctx("NormText")
     If normText = "" Then Exit Sub
 
-    ' --- Phase 2: Regeln durchlaufen ---
-    ' v8.2: Direkt vom Daten-Blatt (wsData) lesen
-    '       Zeilen DATA_START_ROW bis lastRuleRow
-    '       Spalten ueber DATA_CAT_COL_* Konstanten
+    ' ================================
+    ' PHASE 1: HARTE SONDERREGELN
+    ' ================================
     
-    Dim bestKat As String
+    ' 1a) Entgeltabschluss (Bankgebuehren)
+    If ctx("IsEntgeltabschluss") And ctx("IsAusgabe") Then
+        ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
+                       "Entgeltabschluss (Kontof" & ChrW(252) & "hrung)", "GRUEN"
+        Exit Sub
+    End If
+    
+    ' 1b) Bargeldauszahlung
+    If ctx("IsBargeldauszahlung") And ctx("IsAusgabe") Then
+        ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
+                       "Bargeldauszahlung", "GRUEN"
+        Exit Sub
+    End If
+
+    ' ================================
+    ' PHASE 2: KEYWORD-MATCHING MIT ERWEITERTEM SCORING
+    ' ================================
+    
+    Dim bestCategory As String
     Dim bestScore As Long
-    Dim secondScore As Long
-    Dim matchCount As Long
-    bestKat = ""
-    bestScore = 0
-    secondScore = 0
-    matchCount = 0
+    Dim bestPriority As Long
+    bestScore = -999
+    bestPriority = 999
+    bestCategory = ""
+
+    ' Dictionary: Kategorie -> Score (hoechster Score je Kategorie)
+    Dim hitCategories As Object
+    Set hitCategories = CreateObject("Scripting.Dictionary")
 
     Dim dataRow As Long
     For dataRow = DATA_START_ROW To lastRuleRow
-    
-        ' Keyword aus Spalte L (DATA_CAT_COL_KEYWORD = 12)
-        Dim rawKeyword As String
-        rawKeyword = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KEYWORD).value))
-        If rawKeyword = "" Then GoTo NextRule
 
-        ' Kategoriename aus Spalte J (DATA_CAT_COL_KATEGORIE = 10)
         Dim category As String
-        category = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KATEGORIE).value))
-        If category = "" Then GoTo NextRule
-
-        ' Keyword normalisieren
-        Dim normKeyword As String
-        normKeyword = NormalizeText(rawKeyword)
-        If normKeyword = "" Then GoTo NextRule
-
-        ' Keyword im Text suchen (Multi-Word-Matching)
-        If Not MatchKeyword(normText, normKeyword) Then GoTo NextRule
-
-        ' E/A aus Spalte K (DATA_CAT_COL_EINAUS = 11)
         Dim einAus As String
-        einAus = UCase(Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_EINAUS).value)))
-
-        ' E/A-Filter pruefen
-        If einAus = "E" And Not ctx("IsEinnahme") Then GoTo NextRule
-        If einAus = "A" And Not ctx("IsAusgabe") Then GoTo NextRule
-
-        ' Prioritaet aus Spalte M (DATA_CAT_COL_PRIORITAET = 13)
+        Dim keyword As String
         Dim prio As Long
-        prio = 5
-        On Error Resume Next
-        prio = CLng(wsData.Cells(dataRow, DATA_CAT_COL_PRIORITAET).value)
-        On Error GoTo 0
-        If prio < 1 Then prio = 1
-        If prio > 10 Then prio = 10
+        Dim faelligkeit As String
 
-        ' EntityRole aus Kontext (EntityKey-Tabelle R-X)
-        ' Keine eigene EntityRole-Spalte in der Kategorie-Tabelle
-        Dim entityRole As String
-        entityRole = ctx("EntityRole")
+        ' Spalten ueber Konstanten lesen
+        category = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KATEGORIE).value))    ' J
+        einAus = UCase(Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_EINAUS).value)))   ' K
+        keyword = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KEYWORD).value))        ' L
+        prio = Val(wsData.Cells(dataRow, DATA_CAT_COL_PRIORITAET).value)               ' M
+        faelligkeit = LCase(Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_FAELLIGKEIT).value))) ' O
+        If prio = 0 Then prio = 5
 
-        ' === SCORING ===
-        Dim score As Long
-        score = 100
+        If category = "" Or keyword = "" Then GoTo NextRule
 
-        ' Prioritaetsbonus (Prio 1 = +45, Prio 5 = +25, Prio 10 = 0)
-        score = score + (10 - prio) * 5
+        ' ================================
+        ' FILTER 0: Sammelzahlung-Kategorie NIEMALS per Keyword!
+        ' ================================
+        If LCase(category) Like "*sammelzahlung*" Then GoTo NextRule
 
-        ' EntityRole-Bonus: bekannte Entity = vertrauenswuerdiger
-        If entityRole <> "" Then score = score + 10
-
-        ' E/A-Match-Bonus (+15)
-        If einAus <> "" Then score = score + 15
-
-        ' Keyword-Laengen-Bonus (laengere Keywords = spezifischer)
-        If Len(normKeyword) > 20 Then
-            score = score + 20
-        ElseIf Len(normKeyword) > 10 Then
-            score = score + 12
-        ElseIf Len(normKeyword) > 5 Then
-            score = score + 5
+        ' ================================
+        ' FILTER 1: Einnahme/Ausgabe MUSS passen
+        ' ================================
+        If Not ctx("IsNullBetrag") Then
+            If einAus = "E" And ctx("IsAusgabe") Then GoTo NextRule
+            If einAus = "A" And ctx("IsEinnahme") Then GoTo NextRule
         End If
 
-        ' ExactMatchBonus (v8.0: +10 wenn Keyword zusammenhaengend im Text)
-        score = score + ExactMatchBonus(normText, normKeyword)
+        ' ================================
+        ' FILTER 2: Strenge EntityRole-Trennung
+        ' ================================
+        If Not PasstEntityRoleZuKategorie(ctx, category, einAus) Then GoTo NextRule
 
-        ' Betrags-Bonus aus Einstellungen
-        score = score + PruefeBetragGegenEinstellungen(category, ctx("AbsAmount"))
+        ' ================================
+        ' KEYWORD-MATCHING (Multi-Word v7.0)
+        ' ================================
+        Dim normKeyword As String
+        normKeyword = NormalizeText(keyword)
+        
+        If MatchKeyword(normText, normKeyword) Then
 
-        ' Zeitfenster-Bonus
-        score = score + PruefeZeitfenster(category, ctx("Datum"))
+            Dim score As Long
+            score = 100
+            
+            ' Prioritaetsbonus (niedrigere Prio = hoeherer Bonus)
+            score = score + (10 - prio) * 5
+            
+            ' EntityRole bekannt = hoehere Konfidenz (+20 wie in v7.0)
+            If ctx("EntityRole") <> "" Then
+                score = score + 20
+            End If
+            
+            ' Einnahme/Ausgabe stimmt exakt ueberein
+            If (einAus = "E" And ctx("IsEinnahme")) Or _
+               (einAus = "A" And ctx("IsAusgabe")) Then
+                score = score + 15
+            End If
+            
+            ' Keyword-Laenge als Qualitaetsfaktor
+            Dim kwLen As Long
+            kwLen = Len(normKeyword)
+            If kwLen >= 12 Then
+                score = score + 20
+            ElseIf kwLen >= 8 Then
+                score = score + 12
+            ElseIf kwLen >= 5 Then
+                score = score + 5
+            End If
+            
+            ' ExactMatchBonus (v8.0: +10 wenn Keyword zusammenhaengend im Text)
+            score = score + ExactMatchBonus(normText, normKeyword)
+            
+            ' Betragsvalidierung ueber Einstellungen
+            Dim betragBonus As Long
+            betragBonus = PruefeBetragGegenEinstellungen(category, ctx("AbsAmount"))
+            score = score + betragBonus
+            
+            ' Zeitfenstervalidierung ueber Einstellungen
+            If IsDate(ctx("Datum")) Then
+                Dim zeitBonus As Long
+                zeitBonus = PruefeZeitfenster(category, CDate(ctx("Datum")), faelligkeit)
+                score = score + zeitBonus
+            End If
 
-        ' Ergebnis vergleichen
-        matchCount = matchCount + 1
-        If score > bestScore Then
-            secondScore = bestScore
-            bestScore = score
-            bestKat = category
-        ElseIf score > secondScore Then
-            secondScore = score
+            If Not hitCategories.Exists(category) Then
+                hitCategories.Add category, score
+            Else
+                If score > CLng(hitCategories(category)) Then
+                    hitCategories(category) = score
+                End If
+            End If
+
+            If score > bestScore Or (score = bestScore And prio < bestPriority) Then
+                bestScore = score
+                bestPriority = prio
+                bestCategory = category
+            End If
         End If
 
 NextRule:
     Next dataRow
 
-    ' --- Phase 3: Ergebnis anwenden ---
-    If matchCount = 0 Then
-        ' ROT: Kein Match
-        ApplyKategorie wsBK, rowBK, "", RGB(255, 199, 206), "Keine passende Kategorie gefunden"
+    ' ================================
+    ' PHASE 3: ERGEBNIS AUSWERTEN MIT SCORE-DOMINANZ
+    ' ================================
+    
+    If hitCategories.count > 1 Then
+        ' Zweitbesten Score ermitteln
+        Dim zweitBesterScore As Long
+        zweitBesterScore = -999
+        Dim katKey As Variant
+        For Each katKey In hitCategories.keys
+            If CStr(katKey) <> bestCategory Then
+                If CLng(hitCategories(katKey)) > zweitBesterScore Then
+                    zweitBesterScore = CLng(hitCategories(katKey))
+                End If
+            End If
+        Next katKey
+        
+        Dim scoreDifferenz As Long
+        scoreDifferenz = bestScore - zweitBesterScore
+        
+        If scoreDifferenz >= SCORE_DOMINANZ_SCHWELLE Then
+            ' SICHERER TREFFER trotz mehrerer Matches
+            ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRUEN"
+            Exit Sub
+        End If
+        
+        ' ECHTE MEHRDEUTIGKEIT: Detaillierte Bemerkung
+        Dim bemerkung As String
+        bemerkung = hitCategories.count & " Kategorien passen:" & vbLf
+        
+        Dim katNr As Long
+        katNr = 0
+        For Each katKey In hitCategories.keys
+            katNr = katNr + 1
+            bemerkung = bemerkung & katNr & ") " & CStr(katKey) & vbLf
+        Next katKey
+        
+        bemerkung = bemerkung & vbLf & _
+                    "Bitte Kategorie manuell w" & ChrW(228) & "hlen und Betr" & ChrW(228) & "ge in Spalten M-Z aufteilen!"
+        
+        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = bemerkung
+        
+        ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
+                       KAT_SAMMELZAHLUNG, "GELB"
+        
+        Call EntsperreBetragsspalten(wsBK, rowBK, ctx("IsEinnahme"))
         Exit Sub
     End If
 
-    If matchCount = 1 Then
-        ' GRUEN: Eindeutig
-        ApplyKategorie wsBK, rowBK, bestKat, RGB(198, 239, 206), ""
+    ' Genau 1 Treffer = sicher GRUEN
+    If bestCategory <> "" Then
+        ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRUEN"
         Exit Sub
     End If
 
-    ' Mehrere Matches: Dominanz pruefen
-    If (bestScore - secondScore) >= SCORE_DOMINANZ_SCHWELLE Then
-        ' GRUEN: Klarer Sieger
-        ApplyKategorie wsBK, rowBK, bestKat, RGB(198, 239, 206), ""
+    ' Kein Treffer = ROT
+    If ctx("EntityRole") = "" Then
+        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
+            "Keine Kategorie gefunden. IBAN nicht zugeordnet - bitte Entity-Mapping pr" & ChrW(252) & "fen!"
     Else
-        ' GELB: Mehrdeutigkeit
-        ApplyKategorie wsBK, rowBK, KAT_SAMMELZAHLUNG, RGB(255, 235, 156), _
-            "Mehrere Kategorien moeglich (Diff=" & (bestScore - secondScore) & ")"
+        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
+            "Keine passende Kategorie gefunden (EntityRole: " & ctx("EntityRole") & ")"
     End If
+    ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), "Bitte Auswahl treffen!", "ROT"
 
 End Sub
 
 
 ' =====================================================
-' EntityRole-Filter pruefen
+' Betragsspalten entsperren fuer manuelle Eingabe
+' =====================================================
+Private Sub EntsperreBetragsspalten(ByVal wsBK As Worksheet, _
+                                    ByVal rowBK As Long, _
+                                    ByVal istEinnahme As Boolean)
+    Dim startCol As Long
+    Dim endCol As Long
+    Dim c As Long
+    
+    If istEinnahme Then
+        startCol = BK_COL_EINNAHMEN_START
+        endCol = BK_COL_EINNAHMEN_ENDE
+    Else
+        startCol = BK_COL_AUSGABEN_START
+        endCol = BK_COL_AUSGABEN_ENDE
+    End If
+    
+    On Error Resume Next
+    For c = startCol To endCol
+        wsBK.Cells(rowBK, c).Locked = False
+    Next c
+    On Error GoTo 0
+End Sub
+
+
+' =====================================================
+' FILTER: Strenge EntityRole-Kategorie-Trennung (v7.0)
+' Detaillierte Logik wiederhergestellt!
 ' =====================================================
 Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
-                                             ByVal roleFilter As String) As Boolean
-    PasstEntityRoleZuKategorie = False
-
-    Select Case roleFilter
-        Case "MITGLIED"
-            PasstEntityRoleZuKategorie = ctx("IsMitglied")
-        Case "VERSORGER"
-            PasstEntityRoleZuKategorie = ctx("IsVersorger")
-        Case "BANK"
-            PasstEntityRoleZuKategorie = ctx("IsBank")
-        Case "EHEMALIGES MITGLIED"
-            PasstEntityRoleZuKategorie = ctx("IsEhemaligesMitglied")
-        Case "ALLE"
-            PasstEntityRoleZuKategorie = True
-        Case Else
-            ' Direktvergleich
-            PasstEntityRoleZuKategorie = (ctx("EntityRole") = roleFilter)
-    End Select
+                                             ByVal category As String, _
+                                             ByVal einAus As String) As Boolean
+    
+    Dim catLower As String
+    catLower = LCase(category)
+    Dim role As String
+    role = ctx("EntityRole")
+    
+    PasstEntityRoleZuKategorie = True
+    
+    If role = "" Then Exit Function
+    
+    ' --- VERSORGER: Nur Versorger-typische Kategorien ---
+    If ctx("IsVersorger") Then
+        If catLower Like "*mitglied*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        
+        If catLower Like "*pacht*" And catLower Like "*mitglied*" Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        
+        If catLower Like "*endabrechnung*" And catLower Like "*mitglied*" Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        If catLower Like "*vorauszahlung*" And catLower Like "*mitglied*" Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        If catLower Like "*spende*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*beitrag*" And Not catLower Like "*verband*" Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        If catLower Like "*sammelzahlung*" Then PasstEntityRoleZuKategorie = False: Exit Function
+    End If
+    
+    ' --- MITGLIED: Nur Mitglieder-typische Kategorien ---
+    If ctx("IsMitglied") Then
+        If catLower Like "*versorger*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*stadtwerke*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*energieversorger*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*wasserwerk*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        
+        If catLower Like "*rueckzahlung*versorger*" Or _
+           catLower Like "*r" & ChrW(252) & "ckzahlung*versorger*" Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        
+        If catLower Like "*miete*" And (catLower Like "*grundst" & ChrW(252) & "ck*" Or catLower Like "*grundstueck*") Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        
+        If catLower Like "*entgeltabschluss*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*kontof" & ChrW(252) & "hrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*kontofuehrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        
+        ' Mitglied bei Ausgabe = nur Rueckerstattung/Auszahlung/Guthaben
+        If ctx("IsAusgabe") Then
+            If Not (catLower Like "*r" & ChrW(252) & "ck*" Or catLower Like "*rueck*" Or _
+                    catLower Like "*erstattung*" Or catLower Like "*gutschrift*" Or _
+                    catLower Like "*auszahlung*" Or catLower Like "*guthaben*") Then
+                PasstEntityRoleZuKategorie = False: Exit Function
+            End If
+        End If
+    End If
+    
+    ' --- BANK: Nur Bank-typische Kategorien ---
+    If ctx("IsBank") Then
+        If Not (catLower Like "*bank*" Or _
+                catLower Like "*entgelt*" Or _
+                catLower Like "*geb" & ChrW(252) & "hr*" Or catLower Like "*gebuehr*" Or _
+                catLower Like "*kontof" & ChrW(252) & "hrung*" Or catLower Like "*kontofuehrung*" Or _
+                catLower Like "*zins*") Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+    End If
+    
+    ' --- EHEMALIGES MITGLIED ---
+    If ctx("IsEhemaligesMitglied") Then
+        If catLower Like "*versorger*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*stadtwerke*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*entgeltabschluss*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*kontof" & ChrW(252) & "hrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*kontofuehrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
+        If catLower Like "*miete*" And (catLower Like "*grundst" & ChrW(252) & "ck*" Or catLower Like "*grundstueck*") Then
+            PasstEntityRoleZuKategorie = False: Exit Function
+        End If
+        
+        ' Ehemalige bei Ausgabe: Auszahlung/Guthaben/Rueckzahlung erlaubt
+        If ctx("IsAusgabe") Then
+            If Not (catLower Like "*r" & ChrW(252) & "ck*" Or catLower Like "*rueck*" Or _
+                    catLower Like "*erstattung*" Or catLower Like "*gutschrift*" Or _
+                    catLower Like "*auszahlung*" Or catLower Like "*guthaben*" Or _
+                    catLower Like "*endabrechnung*") Then
+                PasstEntityRoleZuKategorie = False: Exit Function
+            End If
+        End If
+    End If
+    
 End Function
 
 
 ' =====================================================
-' Betrags-Pruefung gegen Einstellungen (Cache-Version)
+' Betragsvalidierung ueber Einstellungen (Cache-Version)
+' mit Vielfaches-Check aus v7.0
 ' =====================================================
 Private Function PruefeBetragGegenEinstellungen(ByVal category As String, _
-                                                 ByVal absAmount As Double) As Long
+                                                 ByVal absBetrag As Double) As Long
     PruefeBetragGegenEinstellungen = 0
     If Not mCacheGeladen Then Exit Function
     If mCacheAnzahl = 0 Then Exit Function
@@ -429,17 +626,25 @@ Private Function PruefeBetragGegenEinstellungen(ByVal category As String, _
     For i = 1 To mCacheAnzahl
         If StrComp(mCacheKat(i), category, vbTextCompare) = 0 Then
             Dim sollBetrag As Double
-            sollBetrag = mCacheSoll(i)
+            sollBetrag = Abs(mCacheSoll(i))
             If sollBetrag = 0 Then Exit Function
             
-            Dim diff As Double
-            diff = Abs(absAmount - Abs(sollBetrag))
-            
-            If diff < 0.01 Then
+            ' Exakter Treffer
+            If Abs(absBetrag - sollBetrag) <= 0.01 Then
                 PruefeBetragGegenEinstellungen = 25
-            ElseIf diff <= Abs(sollBetrag) * 0.15 Then
-                PruefeBetragGegenEinstellungen = 15
+                Exit Function
             End If
+            
+            ' Vielfaches-Check (z.B. 3x Monatsbeitrag)
+            If absBetrag > sollBetrag Then
+                Dim rest As Double
+                rest = absBetrag - (Int(absBetrag / sollBetrag) * sollBetrag)
+                If Abs(rest) <= 0.01 Then
+                    PruefeBetragGegenEinstellungen = 15
+                    Exit Function
+                End If
+            End If
+            
             Exit Function
         End If
     Next i
@@ -447,122 +652,196 @@ End Function
 
 
 ' =====================================================
-' Zeitfenster-Pruefung (Cache-Version)
-' Nutzt Stichtag + Vorlauf/Nachlauf aus Einstellungen
+' Zeitfensterpruefung (Cache-Version + faelligkeit)
+' mit Vormonat-Check aus v7.0
 ' =====================================================
 Private Function PruefeZeitfenster(ByVal category As String, _
-                                    ByVal buchungsDatum As Variant) As Long
+                                    ByVal buchungsDatum As Date, _
+                                    ByVal faelligkeit As String) As Long
     PruefeZeitfenster = 0
     If Not mCacheGeladen Then Exit Function
     If mCacheAnzahl = 0 Then Exit Function
-    If Not IsDate(buchungsDatum) Then Exit Function
-    
-    Dim buchDat As Date
-    buchDat = CDate(buchungsDatum)
     
     Dim i As Long
     For i = 1 To mCacheAnzahl
         If StrComp(mCacheKat(i), category, vbTextCompare) = 0 Then
             
-            ' Stichtag-basierte Pruefung
             Dim sollTag As Long
-            sollTag = mCacheSollTag(i)
-            
             Dim vorlauf As Long
             Dim nachlauf As Long
+            
+            sollTag = mCacheSollTag(i)
             vorlauf = mCacheVorlauf(i)
             nachlauf = mCacheNachlauf(i)
             
             ' Fester Stichtag vorhanden?
             If IsDate(mCacheStichtag(i)) Then
-                Dim stichtag As Date
-                stichtag = CDate(mCacheStichtag(i))
+                Dim stichDatum As Date
+                On Error Resume Next
+                stichDatum = CDate(CStr(mCacheStichtag(i)))
+                If Err.Number <> 0 Then
+                    Err.Clear
+                    On Error GoTo 0
+                    GoTo WeiterNaechsteZeile
+                End If
+                On Error GoTo 0
                 
                 ' Stichtag auf gleiches Jahr wie Buchung setzen
                 Dim stichtagAktuell As Date
                 On Error Resume Next
-                stichtagAktuell = DateSerial(Year(buchDat), Month(stichtag), Day(stichtag))
+                stichtagAktuell = DateSerial(Year(buchungsDatum), Month(stichDatum), Day(stichDatum))
                 If Err.Number <> 0 Then
                     Err.Clear
                     On Error GoTo 0
-                    Exit Function
+                    GoTo WeiterNaechsteZeile
                 End If
                 On Error GoTo 0
                 
-                Dim diffTage As Long
-                diffTage = Abs(CLng(buchDat - stichtagAktuell))
-                
-                If diffTage = 0 Then
-                    PruefeZeitfenster = 20   ' Exakt am Stichtag
+                If buchungsDatum >= (stichtagAktuell - vorlauf) And _
+                   buchungsDatum <= (stichtagAktuell + nachlauf) Then
+                    PruefeZeitfenster = 20
                     Exit Function
                 End If
-                
-                ' Vorlauf/Nachlauf-Toleranz
-                If vorlauf > 0 Or nachlauf > 0 Then
-                    Dim fruehestens As Date
-                    Dim spaetestens As Date
-                    fruehestens = stichtagAktuell - vorlauf
-                    spaetestens = stichtagAktuell + nachlauf
-                    
-                    If buchDat >= fruehestens And buchDat <= spaetestens Then
-                        PruefeZeitfenster = 15   ' Im Toleranzfenster
-                    End If
-                End If
-                
-                Exit Function
             End If
             
             ' Soll-Tag (Tag im Monat, z.B. 15 = jeweils am 15.)
-            If sollTag > 0 And sollTag <= 31 Then
-                Dim buchTag As Long
-                buchTag = Day(buchDat)
+            If sollTag >= 1 And sollTag <= 31 Then
+                Dim sollDatum As Date
+                On Error Resume Next
+                sollDatum = DateSerial(Year(buchungsDatum), Month(buchungsDatum), sollTag)
+                If Err.Number <> 0 Then
+                    Err.Clear
+                    sollDatum = DateSerial(Year(buchungsDatum), Month(buchungsDatum) + 1, 0)
+                End If
+                On Error GoTo 0
                 
-                If buchTag = sollTag Then
-                    PruefeZeitfenster = 20   ' Exakt am Soll-Tag
+                If buchungsDatum >= (sollDatum - vorlauf) And _
+                   buchungsDatum <= (sollDatum + nachlauf) Then
+                    PruefeZeitfenster = 20
                     Exit Function
                 End If
                 
-                ' Toleranz um den Soll-Tag
-                If vorlauf > 0 Or nachlauf > 0 Then
-                    If buchTag >= (sollTag - vorlauf) And buchTag <= (sollTag + nachlauf) Then
-                        PruefeZeitfenster = 15
-                    End If
+                ' Vormonat-Check (aus v7.0)
+                Dim sollDatumVormonat As Date
+                On Error Resume Next
+                sollDatumVormonat = DateSerial(Year(buchungsDatum), Month(buchungsDatum) - 1, sollTag)
+                If Err.Number <> 0 Then
+                    Err.Clear
+                    sollDatumVormonat = DateSerial(Year(buchungsDatum), Month(buchungsDatum), 0)
                 End If
+                On Error GoTo 0
                 
-                Exit Function
+                If buchungsDatum >= (sollDatumVormonat - vorlauf) And _
+                   buchungsDatum <= (sollDatumVormonat + nachlauf) Then
+                    PruefeZeitfenster = 15
+                    Exit Function
+                End If
             End If
             
-            ' Kein Zeitfenster definiert
-            Exit Function
+WeiterNaechsteZeile:
         End If
     Next i
 End Function
 
 
 ' =====================================================
-' Kategorie + Farbe + Bemerkung anwenden
+' Monat/Periode intelligent ermitteln
 ' =====================================================
-Private Sub ApplyKategorie(ByVal wsBK As Worksheet, ByVal rowBK As Long, _
-                            ByVal kat As String, ByVal farbe As Long, _
-                            ByVal bemerkung As String)
-
-    With wsBK.Cells(rowBK, BK_COL_KATEGORIE)
-        .value = kat
-        .Interior.color = farbe
-        
-        ' Schriftfarbe
-        If farbe = RGB(198, 239, 206) Then
-            .Font.color = RGB(0, 97, 0)         ' Dunkelgruen
-        ElseIf farbe = RGB(255, 235, 156) Then
-            .Font.color = RGB(156, 101, 0)      ' Dunkelgelb
-        ElseIf farbe = RGB(255, 199, 206) Then
-            .Font.color = RGB(156, 0, 6)        ' Dunkelrot
-        Else
-            .Font.color = vbBlack
-        End If
-    End With
-
-    If bemerkung <> "" Then
-        wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = bemerkung
+Public Function ErmittleMonatPeriode(ByVal category As String, _
+                                     ByVal buchungsDatum As Date, _
+                                     ByVal faelligkeit As String) As String
+    
+    Dim monatBuchung As Long
+    monatBuchung = Month(buchungsDatum)
+    
+    If faelligkeit = "" Then faelligkeit = "monatlich"
+    
+    Select Case LCase(faelligkeit)
+        Case "j" & ChrW(228) & "hrlich", "jaehrlich"
+            ErmittleMonatPeriode = "Jahresbeitrag " & Year(buchungsDatum)
+            Exit Function
+        Case "einmalig"
+            ErmittleMonatPeriode = MonthName(monatBuchung) & " (einmalig)"
+            Exit Function
+        Case "quartalsweise", "quartal"
+            Dim quartal As Long
+            quartal = Int((monatBuchung - 1) / 3) + 1
+            ErmittleMonatPeriode = "Q" & quartal & " " & Year(buchungsDatum)
+            Exit Function
+        Case "halbjaehrlich", "halbj" & ChrW(228) & "hrlich"
+            Dim halbjahr As Long
+            halbjahr = IIf(monatBuchung <= 6, 1, 2)
+            ErmittleMonatPeriode = "H" & halbjahr & " " & Year(buchungsDatum)
+            Exit Function
+    End Select
+    
+    ' Monatlich: Pruefen ob Zahlung fuer Folgemonat via Einstellungen
+    If Not mCacheGeladen Then
+        ErmittleMonatPeriode = MonthName(monatBuchung)
+        Exit Function
     End If
+    
+    Dim idx As Long
+    For idx = 1 To mCacheAnzahl
+        If StrComp(mCacheKat(idx), category, vbTextCompare) = 0 Then
+            Dim sollTag As Long
+            Dim vorlauf As Long
+            
+            sollTag = mCacheSollTag(idx)
+            vorlauf = mCacheVorlauf(idx)
+            
+            If sollTag >= 1 And sollTag <= 31 Then
+                Dim tagBuchung As Long
+                tagBuchung = Day(buchungsDatum)
+                
+                If tagBuchung > sollTag And vorlauf > 0 Then
+                    Dim sollDatumFolge As Date
+                    On Error Resume Next
+                    sollDatumFolge = DateSerial(Year(buchungsDatum), Month(buchungsDatum) + 1, sollTag)
+                    If Err.Number <> 0 Then
+                        Err.Clear
+                        On Error GoTo 0
+                        GoTo FallbackMonat
+                    End If
+                    On Error GoTo 0
+                    
+                    Dim differenzTage As Long
+                    differenzTage = CLng(sollDatumFolge - buchungsDatum)
+                    
+                    If differenzTage >= 0 And differenzTage <= vorlauf Then
+                        ErmittleMonatPeriode = MonthName(Month(sollDatumFolge))
+                        Exit Function
+                    End If
+                End If
+            End If
+            
+            GoTo FallbackMonat
+        End If
+    Next idx
+    
+FallbackMonat:
+    ErmittleMonatPeriode = MonthName(monatBuchung)
+End Function
+
+
+' -----------------------------
+' Kategorie anwenden mit Ampelfarbe (originale Signatur v7.0)
+' -----------------------------
+Public Sub ApplyKategorie(ByVal targetCell As Range, _
+                          ByVal category As String, _
+                          ByVal confidence As String)
+    With targetCell
+        .value = category
+        .Font.color = vbBlack
+        .Interior.Pattern = xlSolid
+
+        Select Case confidence
+            Case "GRUEN": .Interior.color = RGB(198, 239, 206)
+            Case "GELB":  .Interior.color = RGB(255, 235, 156)
+            Case "ROT"
+                .Interior.color = RGB(255, 199, 206)
+                .Font.color = vbRed
+        End Select
+    End With
 End Sub
+

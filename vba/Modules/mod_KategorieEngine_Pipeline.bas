@@ -3,20 +3,18 @@ Option Explicit
 
 ' ===============================================================
 ' KATEGORIEENGINE PIPELINE
-' VERSION: 4.3 - 08.02.2026
-' FIX: Named Range rng_KategorieRegeln wird NICHT mehr benoetigt!
-'      Zeilengrenzen werden dynamisch ueber letzte gefuellte
-'      Zeile in DATA_CAT_COL_KATEGORIE ermittelt.
-' FIX: Evaluator-Signatur geaendert (wsData + lastRuleRow
-'      statt rngRules as Range)
-' NEU: Manuelle Kategorie-Eingaben werden NICHT ueberschrieben
-' NEU: ReEvaluiereAlleNichtManuellen fuer Trigger aus Daten/Einstellungen
+' VERSION: 5.0 - 08.02.2026
+' MERGE: v4.0 Logik (funktionierend) +
+'        v4.3 Infrastruktur (kein Named Range, Cache,
+'        HatManuelleKategorie, ReEvaluiereAlleNichtManuellen)
+' FIX: Evaluator-Signatur v9.0 (wsData + lastRuleRow)
+' FIX: Einstellungen-Cache Lade/Entlade um Pipeline
+' FIX: HatManuelleKategorie schuetzt manuelle Eingaben
 ' ===============================================================
 
 ' ---------------------------------------------------------------
 ' Hauptpipeline: Evaluiert NUR Zeilen ohne manuelle Eingabe
 ' Wird nach CSV-Import aufgerufen.
-' Manuelle Kategorien (vom Nutzer geaendert) werden NICHT angefasst.
 ' ---------------------------------------------------------------
 Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
 
@@ -32,7 +30,7 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
     If wsBK Is Nothing Then Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
     Set wsData = ThisWorkbook.Worksheets(WS_DATEN)
     
-    ' v4.3: Zeilengrenzen dynamisch ermitteln statt Named Range
+    ' Zeilengrenzen dynamisch ermitteln statt Named Range
     lastRuleRow = wsData.Cells(wsData.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     If lastRuleRow < DATA_START_ROW Then
         Debug.Print "Pipeline ABBRUCH: Keine Kategorien in Daten!J ab Zeile " & DATA_START_ROW & " gefunden!"
@@ -58,7 +56,6 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
 
     For r = BK_START_ROW To lastRowBK
 
-        ' Leere Zeile ueberspringen
         Dim normText As String
         normText = NormalizeBankkontoZeile(wsBK, r)
         If normText = "" Then GoTo NextRow
@@ -69,7 +66,7 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
         ' Manuelle Kategorie? NICHT anfassen
         If HatManuelleKategorie(wsBK, r) Then GoTo NextRow
 
-        ' Kategorie ermitteln (v8.2: wsData + lastRuleRow statt rngRules)
+        ' Kategorie ermitteln (v9.0: wsData + lastRuleRow)
         On Error Resume Next
         EvaluateKategorieEngineRow wsBK, r, wsData, lastRuleRow
         If Err.Number <> 0 Then
@@ -132,7 +129,7 @@ Public Sub ReEvaluiereAlleNichtManuellen()
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
     Set wsData = ThisWorkbook.Worksheets(WS_DATEN)
     
-    ' v4.3: Zeilengrenzen dynamisch
+    ' Zeilengrenzen dynamisch
     lastRuleRow = wsData.Cells(wsData.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     If lastRuleRow < DATA_START_ROW Then Exit Sub
     
@@ -173,7 +170,7 @@ Public Sub ReEvaluiereAlleNichtManuellen()
         wsBK.Cells(r, BK_COL_KATEGORIE).Validation.Delete
         On Error GoTo 0
         
-        ' Neu evaluieren (v8.2: wsData + lastRuleRow)
+        ' Neu evaluieren (v9.0: wsData + lastRuleRow)
         On Error Resume Next
         EvaluateKategorieEngineRow wsBK, r, wsData, lastRuleRow
         If Err.Number <> 0 Then Err.Clear
@@ -359,7 +356,7 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
     Set wsData = ThisWorkbook.Worksheets(WS_DATEN)
     
-    ' v4.3: Zeilengrenzen dynamisch
+    ' Zeilengrenzen dynamisch
     lastRuleRow = wsData.Cells(wsData.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     If lastRuleRow < DATA_START_ROW Then Exit Sub
     
@@ -403,7 +400,7 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
         wsBK.Cells(r, BK_COL_KATEGORIE).Validation.Delete
         On Error GoTo 0
         
-        ' Neu evaluieren (v8.2: wsData + lastRuleRow)
+        ' Neu evaluieren (v9.0: wsData + lastRuleRow)
         On Error Resume Next
         EvaluateKategorieEngineRow wsBK, r, wsData, lastRuleRow
         If Err.Number <> 0 Then Err.Clear
@@ -438,7 +435,11 @@ NextRowReEval:
     
     Application.EnableEvents = True
     Application.ScreenUpdating = True
-
+    
+    If anzahlNeu > 0 Then
+        Debug.Print "Re-Evaluierung: " & anzahlNeu & " Zeilen fuer IBAN " & Left(ibanClean, 8) & "... neu bewertet."
+    End If
+    
 End Sub
 
 
@@ -463,10 +464,6 @@ End Function
 ' Prueft ob der Nutzer manuell eine Kategorie gewaehlt/geaendert hat.
 ' Manuelle Kategorie = Kategorie-Zelle hat einen Wert UND
 ' die Zelle hat KEINE der Engine-Farben (GRUEN/GELB/ROT).
-' Wenn der Nutzer via DropDown eine Kategorie gewaehlt hat,
-' hat die Zelle keine Interior-Farbe oder eine andere als die
-' Engine-Farben -> wird als manuell erkannt.
-'
 ' GRUEN-Zeilen werden ebenfalls uebersprungen, da sie bereits
 ' erfolgreich automatisch zugeordnet wurden.
 ' ===============================================================
