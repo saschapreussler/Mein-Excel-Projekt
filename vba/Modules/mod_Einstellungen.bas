@@ -381,9 +381,6 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
         
         Dim k As Variant
         For Each k In alleKategorien.keys
-            ' Kategorie ist verfügbar wenn:
-            ' - sie noch nicht verwendet wird, ODER
-            ' - sie die eigene Kategorie dieser Zeile ist
             If Not verwendete.Exists(CStr(k)) Or _
                StrComp(CStr(k), eigeneKat, vbTextCompare) = 0 Then
                 If verfuegbareListe <> "" Then verfuegbareListe = verfuegbareListe & ","
@@ -391,8 +388,10 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
             End If
         Next k
         
+        ' DropDown nur setzen wenn es verfügbare Kategorien gibt
         If verfuegbareListe <> "" Then
             If Len(verfuegbareListe) <= 255 Then
+                ' Direkte Inline-Liste (schnell, kein Hilfsbedarf)
                 With ws.Cells(r, ES_COL_KATEGORIE).Validation
                     .Add Type:=xlValidateList, _
                          AlertStyle:=xlValidAlertStop, _
@@ -403,19 +402,31 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
                     .ShowError = True
                 End With
             Else
-                ' Fallback bei >255 Zeichen: alle Kategorien anzeigen
-                ' (Duplikat-Schutz greift zusätzlich in Tabelle9.cls)
-                Dim alleListe As String
-                alleListe = Join(alleKategorien.keys, ",")
-                With ws.Cells(r, ES_COL_KATEGORIE).Validation
-                    .Add Type:=xlValidateList, _
-                         AlertStyle:=xlValidAlertStop, _
-                         Formula1:=alleListe
-                    .IgnoreBlank = True
-                    .InCellDropdown = True
-                    .ShowInput = False
-                    .ShowError = True
-                End With
+                ' Fallback: Zellbereichsreferenz auf Daten!J
+                ' (>255 Zeichen sind als Inline-String nicht erlaubt)
+                Dim wsDaten As Worksheet
+                Dim datenLastRow As Long
+                On Error Resume Next
+                Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+                On Error GoTo 0
+                If Not wsDaten Is Nothing Then
+                    datenLastRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+                    If datenLastRow >= DATA_START_ROW Then
+                        With ws.Cells(r, ES_COL_KATEGORIE).Validation
+                            .Add Type:=xlValidateList, _
+                                 AlertStyle:=xlValidAlertStop, _
+                                 Formula1:="='" & WS_DATEN & "'!$J$" & DATA_START_ROW & _
+                                           ":$J$" & datenLastRow
+                            .IgnoreBlank = True
+                            .InCellDropdown = True
+                            .ShowInput = False
+                            .ShowError = True
+                        End With
+                    End If
+                End If
+                ' Hinweis: Bei Zellbereichsreferenz zeigt das DropDown alle
+                ' Kategorien aus Daten!J – der Duplikat-Schutz in Tabelle9.cls
+                ' verhindert trotzdem doppelte Einträge in Spalte B.
             End If
         End If
     Next r
@@ -481,7 +492,6 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     Next r
     
 End Sub
-
 
 ' ===============================================================
 ' 7. SPERREN UND ENTSPERREN
