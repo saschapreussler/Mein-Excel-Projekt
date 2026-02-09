@@ -273,7 +273,7 @@ Public Const ES_START_ROW As Long = 4
 
 Public Const ES_COL_KATEGORIE As Long = 2       ' Spalte B - Referenz Kategorie
 Public Const ES_COL_SOLL_BETRAG As Long = 3     ' Spalte C - Soll-Betrag
-Public Const ES_COL_SOLL_TAG As Long = 4        ' Spalte D - Soll-Tag (1-31) oder "Ultimo"
+Public Const ES_COL_SOLL_TAG As Long = 4        ' Spalte D - Soll-Tag (1-31)
 Public Const ES_COL_SOLL_MONATE As Long = 5     ' Spalte E - Soll-Monat(e) z.B. "03, 06, 09"
 Public Const ES_COL_STICHTAG_FIX As Long = 6    ' Spalte F - Soll-Stichtag (Fix) TT.MM.
 Public Const ES_COL_VORLAUF As Long = 7         ' Spalte G - Vorlauf-Toleranz (Tage)

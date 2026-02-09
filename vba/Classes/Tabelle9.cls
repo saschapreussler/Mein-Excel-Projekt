@@ -10,13 +10,11 @@ Attribute VB_Exposed = True
 Option Explicit
 
 ' ===============================================================
-' TABELLENBLATT-MODUL: Einstellungen (v4.3)
+' TABELLENBLATT-MODUL: Einstellungen (v4.4)
 ' Formatiert die Zahlungstermin-Tabelle bei Änderungen.
-' NEU v4.2: Löst Re-Evaluierung der Bankkonto-Kategorien aus.
-' NEU v4.3: Alphabetische Sortierung in Spalte B,
-'           Soll-Monat(e) Normalisierung (Spalte E),
-'           D/E vs F gegenseitige Sperre,
-'           Ultimo-Logik wenn nur Spalte E gefüllt ist.
+' NEU v4.4: "Ultimo" entfernt – stattdessen 31 (= "31. Tag").
+'           Duplikat-Prüfung für Spalte B.
+'           D/E vs F Sperre ohne Ultimo-Sonderbehandlung.
 ' ===============================================================
 
 Private Sub Worksheet_Activate()
@@ -69,13 +67,15 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                 GoTo WeiterFormatieren
             End If
             
-            ' Prio 4: Nur Spalte E gefüllt (kein Tag in D) -> Ultimo
-            If Trim(CStr(Me.Cells(rowES, ES_COL_SOLL_TAG).value)) = "" Or _
-               LCase(Trim(CStr(Me.Cells(rowES, ES_COL_SOLL_TAG).value))) = "ultimo" Then
-                Me.Cells(rowES, ES_COL_SOLL_TAG).value = "Ultimo"
+            ' Nur Spalte E gefüllt (kein Tag in D) -> automatisch 31 setzen
+            Dim aktuellerTag As String
+            aktuellerTag = Trim(CStr(Me.Cells(rowES, ES_COL_SOLL_TAG).value))
+            If aktuellerTag = "" Then
+                Me.Cells(rowES, ES_COL_SOLL_TAG).value = 31
                 MsgBox "Nur Soll-Monat(e) ohne Soll-Tag eingegeben." & vbLf & vbLf & _
-                       "Der Stichtag wird auf den letzten Tag im jeweiligen Monat " & _
-                       "(Ultimo) gesetzt.", vbInformation, "Ultimo-Modus"
+                       "Der Soll-Tag wird automatisch auf den 31. gesetzt," & vbLf & _
+                       "d.h. es gilt jeweils der letzte Tag im Monat.", _
+                       vbInformation, "Letzter Tag im Monat"
             End If
         End If
     End If
@@ -87,7 +87,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         Dim tagWert As String
         tagWert = Trim(CStr(Target.value))
         
-        If tagWert <> "" And LCase(tagWert) <> "ultimo" Then
+        If tagWert <> "" Then
             ' D/E vs F Sperre: Wenn D gefüllt, darf F NICHT gefüllt sein
             If Trim(CStr(Me.Cells(rowES, ES_COL_STICHTAG_FIX).value)) <> "" Then
                 MsgBox "Spalte F (Soll-Stichtag Fix) ist bereits gefüllt!" & vbLf & _
@@ -113,7 +113,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             dWert = Trim(CStr(Me.Cells(rowES, ES_COL_SOLL_TAG).value))
             eWert = Trim(CStr(Me.Cells(rowES, ES_COL_SOLL_MONATE).value))
             
-            If (dWert <> "" And LCase(dWert) <> "ultimo") Or eWert <> "" Then
+            If dWert <> "" Or eWert <> "" Then
                 MsgBox "Spalte D (Soll-Tag) oder E (Soll-Monate) ist bereits gefüllt!" & vbLf & _
                        "Entweder Spalte D/E ODER Spalte F verwenden." & vbLf & vbLf & _
                        "Die Eingabe in Spalte F wird zurückgesetzt.", vbExclamation, "Konflikt"
@@ -124,13 +124,32 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     End If
     
     ' ---------------------------------------------------------------
-    ' SPALTE B: Kategorie - alphabetisch sortieren + Cursor setzen
+    ' SPALTE B: Kategorie - Duplikat prüfen, sortieren, Cursor setzen
     ' ---------------------------------------------------------------
     If Target.Column = ES_COL_KATEGORIE Then
         Dim katWert As String
         katWert = Trim(CStr(Target.value))
         
         If katWert <> "" Then
+            ' Duplikat-Prüfung: Kommt diese Kategorie bereits in einer anderen Zeile vor?
+            Dim pruefZeile As Long
+            Dim LetzteZeile As Long
+            LetzteZeile = Me.Cells(Me.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
+            
+            For pruefZeile = ES_START_ROW To LetzteZeile
+                If pruefZeile <> rowES Then
+                    If StrComp(Trim(CStr(Me.Cells(pruefZeile, ES_COL_KATEGORIE).value)), _
+                               katWert, vbTextCompare) = 0 Then
+                        MsgBox "Die Kategorie """ & katWert & """ ist bereits in Zeile " & _
+                               pruefZeile & " vorhanden!" & vbLf & vbLf & _
+                               "Jede Kategorie darf nur einmal vorkommen.", _
+                               vbExclamation, "Duplikat"
+                        Target.ClearContents
+                        GoTo WeiterFormatieren
+                    End If
+                End If
+            Next pruefZeile
+            
             Call mod_Einstellungen.SortiereAlphabetisch(Me)
             
             ' Neue Position des Eintrags finden und Cursor setzen

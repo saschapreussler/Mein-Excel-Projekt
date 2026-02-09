@@ -3,17 +3,17 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Einstellungen
-' VERSION: 1.4 - 09.02.2026
+' VERSION: 1.5 - 09.02.2026
 ' ZWECK: Formatierung, DropDowns, Schutz/Entsperrung für
 '        die Zahlungstermin-Tabelle auf Blatt Einstellungen
 '        (Spalten B-I, ab Zeile 4, Header Zeile 3)
-' ÄNDERUNG v1.4: DropDowns korrigiert:
-'        Spalte D = 1-31 (DropDown) ?
-'        Spalte E = Freie Monatseingabe (KEIN DropDown)
-'        Spalte F = Freie Datumseingabe TT.MM. (KEIN DropDown)
-'        Spalte G = 0-31 (DropDown) ?
-'        Spalte H = 0-31 (DropDown) ?
-'        Alte Validierungen auf E und F werden explizit gelöscht.
+' ÄNDERUNG v1.5:
+'   - "Ultimo" komplett entfernt – Spalte D ist immer numerisch (1-31)
+'   - DropDown Spalte B zeigt nur verfügbare Kategorien
+'     (Alle Kategorien minus bereits verwendete in Spalte B)
+'   - Wird eine Kategorie gelöscht, steht sie beim nächsten
+'     Worksheet_Change wieder in der DropDown-Liste zur Verfügung
+'   - AutoFit für alle Spalten (B-I) inkl. Header-Berücksichtigung
 ' ===============================================================
 
 Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiß
@@ -57,7 +57,7 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     ' 6. Zellen sperren/entsperren
     Call SperreUndEntsperre(ws)
     
-    ' 7. Spaltenbreiten
+    ' 7. Spaltenbreiten (AutoFit für alle Spalten)
     Call SetzeSpaltenbreiten(ws)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -244,9 +244,9 @@ End Sub
 
 ' ===============================================================
 ' 5. SPALTENFORMATE UND AUSRICHTUNG
-'    Spalte D: ". Tag" oder Text "Ultimo"
-'    Spalte E: Text (Monate), zentriert — freie Eingabe
-'    Spalte F: Text (TT.MM.), zentriert — freie Eingabe
+'    Spalte D: ". Tag" (immer numerisch, 1-31)
+'    Spalte E: Text (Monate), zentriert – freie Eingabe
+'    Spalte F: Text (TT.MM.), zentriert – freie Eingabe
 '    Spalte G: " Tage" hinter der Zahl
 '    Spalte H: " Tage" hinter der Zahl
 ' ===============================================================
@@ -275,28 +275,15 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte D: Soll-Tag — Mischformat (Zahl mit ". Tag" ODER Text "Ultimo")
-    Dim r As Long
-    For r = ES_START_ROW To lastRow
-        Dim zellWert As Variant
-        zellWert = ws.Cells(r, ES_COL_SOLL_TAG).value
-        If IsNumeric(zellWert) And zellWert <> "" Then
-            ws.Cells(r, ES_COL_SOLL_TAG).NumberFormat = "0"". Tag"""
-        Else
-            ws.Cells(r, ES_COL_SOLL_TAG).NumberFormat = "@"
-        End If
-    Next r
-    ' Leere Zeilen: Standard für neue Eingaben
-    With ws.Range(ws.Cells(lastRow + 1, ES_COL_SOLL_TAG), _
+    ' Spalte D: Soll-Tag – immer numerisch mit ". Tag"
+    With ws.Range(ws.Cells(ES_START_ROW, ES_COL_SOLL_TAG), _
                   ws.Cells(endRow, ES_COL_SOLL_TAG))
         .NumberFormat = "0"". Tag"""
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
     End With
-    ws.Range(ws.Cells(ES_START_ROW, ES_COL_SOLL_TAG), _
-             ws.Cells(lastRow, ES_COL_SOLL_TAG)).HorizontalAlignment = xlCenter
     
-    ' Spalte E: Soll-Monat(e) — Text, zentriert (freie Eingabe, KEIN DropDown)
+    ' Spalte E: Soll-Monat(e) – Text, zentriert (freie Eingabe, KEIN DropDown)
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_SOLL_MONATE), _
                   ws.Cells(endRow, ES_COL_SOLL_MONATE))
         .NumberFormat = "@"
@@ -304,7 +291,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte F: Stichtag TT.MM. — Text, zentriert (freie Eingabe, KEIN DropDown)
+    ' Spalte F: Stichtag TT.MM. – Text, zentriert (freie Eingabe, KEIN DropDown)
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_STICHTAG_FIX), _
                   ws.Cells(endRow, ES_COL_STICHTAG_FIX))
         .NumberFormat = "@"
@@ -341,10 +328,10 @@ End Sub
 
 ' ===============================================================
 ' 6. DROPDOWN-LISTEN SETZEN
-'    Spalte B: Kategorie-DropDown (aus Daten!J)
-'    Spalte D: Tag 1-31 (DropDown, außer bei "Ultimo")
-'    Spalte E: KEIN DropDown — freie Monatseingabe
-'    Spalte F: KEIN DropDown — freie Datumseingabe TT.MM.
+'    Spalte B: Kategorie-DropDown (nur verfügbare / nicht verwendete)
+'    Spalte D: Tag 1-31 (DropDown)
+'    Spalte E: KEIN DropDown – freie Monatseingabe
+'    Spalte F: KEIN DropDown – freie Datumseingabe TT.MM.
 '    Spalte G: Vorlauf 0-31 (DropDown)
 '    Spalte H: Nachlauf 0-31 (DropDown)
 ' ===============================================================
@@ -353,7 +340,6 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     Dim lastRow As Long
     Dim nextRow As Long
     Dim r As Long
-    Dim kategorienListe As String
     Dim tagListe As String
     Dim toleranzListe As String
     
@@ -361,52 +347,103 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     nextRow = lastRow + 1
     If nextRow < ES_START_ROW Then nextRow = ES_START_ROW
     
-    ' --- Kategorie-Liste aus Daten!J erstellen ---
-    kategorienListe = HoleKategorienAlsListe()
+    ' --- Spalte B: Kategorie-DropDown (pro Zeile individuell) ---
+    ' Jede Zeile bekommt nur die Kategorien, die noch NICHT in
+    ' anderen Zeilen von Spalte B verwendet werden.
+    Dim alleKategorien As Object
+    Set alleKategorien = HoleAlleKategorien()
     
-    ' --- Spalte B: Kategorie-DropDown ---
-    For r = ES_START_ROW To nextRow
-        ws.Cells(r, ES_COL_KATEGORIE).Validation.Delete
-        If kategorienListe <> "" Then
-            With ws.Cells(r, ES_COL_KATEGORIE).Validation
-                .Add Type:=xlValidateList, _
-                     AlertStyle:=xlValidAlertStop, _
-                     Formula1:=kategorienListe
-                .IgnoreBlank = True
-                .InCellDropdown = True
-                .ShowInput = False
-                .ShowError = True
-            End With
+    ' Sammle alle bereits verwendeten Kategorien aus Spalte B
+    Dim verwendete As Object
+    Set verwendete = CreateObject("Scripting.Dictionary")
+    verwendete.CompareMode = vbTextCompare
+    
+    For r = ES_START_ROW To lastRow
+        Dim vorhandeneKat As String
+        vorhandeneKat = Trim(CStr(ws.Cells(r, ES_COL_KATEGORIE).value))
+        If vorhandeneKat <> "" Then
+            If Not verwendete.Exists(vorhandeneKat) Then
+                verwendete.Add vorhandeneKat, True
+            End If
         End If
     Next r
     
-    ' --- Spalte D: Tag 1-31 (DropDown nur wenn KEIN "Ultimo" drinsteht) ---
+    ' Für jede Zeile (inkl. nächste leere): individuelle Liste erstellen
+    For r = ES_START_ROW To nextRow
+        ws.Cells(r, ES_COL_KATEGORIE).Validation.Delete
+        
+        Dim eigeneKat As String
+        eigeneKat = Trim(CStr(ws.Cells(r, ES_COL_KATEGORIE).value))
+        
+        ' Verfügbare = Alle minus Verwendete + eigene Kategorie dieser Zeile
+        Dim verfuegbareListe As String
+        verfuegbareListe = ""
+        
+        Dim k As Variant
+        For Each k In alleKategorien.keys
+            ' Kategorie ist verfügbar wenn:
+            ' - sie noch nicht verwendet wird, ODER
+            ' - sie die eigene Kategorie dieser Zeile ist
+            If Not verwendete.Exists(CStr(k)) Or _
+               StrComp(CStr(k), eigeneKat, vbTextCompare) = 0 Then
+                If verfuegbareListe <> "" Then verfuegbareListe = verfuegbareListe & ","
+                verfuegbareListe = verfuegbareListe & CStr(k)
+            End If
+        Next k
+        
+        If verfuegbareListe <> "" Then
+            If Len(verfuegbareListe) <= 255 Then
+                With ws.Cells(r, ES_COL_KATEGORIE).Validation
+                    .Add Type:=xlValidateList, _
+                         AlertStyle:=xlValidAlertStop, _
+                         Formula1:=verfuegbareListe
+                    .IgnoreBlank = True
+                    .InCellDropdown = True
+                    .ShowInput = False
+                    .ShowError = True
+                End With
+            Else
+                ' Fallback bei >255 Zeichen: alle Kategorien anzeigen
+                ' (Duplikat-Schutz greift zusätzlich in Tabelle9.cls)
+                Dim alleListe As String
+                alleListe = Join(alleKategorien.keys, ",")
+                With ws.Cells(r, ES_COL_KATEGORIE).Validation
+                    .Add Type:=xlValidateList, _
+                         AlertStyle:=xlValidAlertStop, _
+                         Formula1:=alleListe
+                    .IgnoreBlank = True
+                    .InCellDropdown = True
+                    .ShowInput = False
+                    .ShowError = True
+                End With
+            End If
+        End If
+    Next r
+    
+    ' --- Spalte D: Tag 1-31 (DropDown für alle Zeilen) ---
     tagListe = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
     
     For r = ES_START_ROW To nextRow
         ws.Cells(r, ES_COL_SOLL_TAG).Validation.Delete
-        ' Nur DropDown wenn kein Ultimo-Text drinsteht
-        If LCase(Trim(CStr(ws.Cells(r, ES_COL_SOLL_TAG).value))) <> "ultimo" Then
-            With ws.Cells(r, ES_COL_SOLL_TAG).Validation
-                .Add Type:=xlValidateList, _
-                     AlertStyle:=xlValidAlertStop, _
-                     Formula1:=tagListe
-                .IgnoreBlank = True
-                .InCellDropdown = True
-                .ShowInput = False
-                .ShowError = True
-            End With
-        End If
+        With ws.Cells(r, ES_COL_SOLL_TAG).Validation
+            .Add Type:=xlValidateList, _
+                 AlertStyle:=xlValidAlertStop, _
+                 Formula1:=tagListe
+            .IgnoreBlank = True
+            .InCellDropdown = True
+            .ShowInput = False
+            .ShowError = True
+        End With
     Next r
     
-    ' --- Spalte E: KEIN DropDown — alte Validierung explizit löschen! ---
+    ' --- Spalte E: KEIN DropDown – alte Validierung explizit löschen! ---
     For r = ES_START_ROW To nextRow
         On Error Resume Next
         ws.Cells(r, ES_COL_SOLL_MONATE).Validation.Delete
         On Error GoTo 0
     Next r
     
-    ' --- Spalte F: KEIN DropDown — alte Validierung explizit löschen! ---
+    ' --- Spalte F: KEIN DropDown – alte Validierung explizit löschen! ---
     For r = ES_START_ROW To nextRow
         On Error Resume Next
         ws.Cells(r, ES_COL_STICHTAG_FIX).Validation.Delete
@@ -477,21 +514,45 @@ End Sub
 
 
 ' ===============================================================
-' 8. SPALTENBREITEN
+' 8. SPALTENBREITEN (AutoFit für alle Spalten B-I)
+'    Berücksichtigt Header (Zeile 3) UND Datenzeilen.
+'    Mindestbreiten stellen sicher, dass DropDowns
+'    und Formatierungen (". Tag", " Tage", "€") lesbar bleiben.
 ' ===============================================================
 Private Sub SetzeSpaltenbreiten(ByVal ws As Worksheet)
     
-    ws.Columns(ES_COL_KATEGORIE).AutoFit
-    If ws.Columns(ES_COL_KATEGORIE).ColumnWidth < 24 Then
-        ws.Columns(ES_COL_KATEGORIE).ColumnWidth = 24
-    End If
-    ws.Columns(ES_COL_SOLL_BETRAG).ColumnWidth = 14   ' C
-    ws.Columns(ES_COL_SOLL_TAG).ColumnWidth = 14      ' D
-    ws.Columns(ES_COL_SOLL_MONATE).ColumnWidth = 20   ' E
-    ws.Columns(ES_COL_STICHTAG_FIX).ColumnWidth = 14  ' F
-    ws.Columns(ES_COL_VORLAUF).ColumnWidth = 14       ' G
-    ws.Columns(ES_COL_NACHLAUF).ColumnWidth = 14      ' H
-    ws.Columns(ES_COL_SAEUMNIS).ColumnWidth = 14      ' I
+    Dim col As Long
+    Dim lastRow As Long
+    Dim endRow As Long
+    Dim minBreite As Double
+    
+    lastRow = LetzteZeile(ws)
+    endRow = lastRow + 1
+    If endRow < ES_START_ROW Then endRow = ES_START_ROW
+    
+    ' AutoFit über Header + Datenbereich für jede Spalte
+    For col = ES_COL_START To ES_COL_END
+        ' Bereich von Header-Zeile bis letzte Datenzeile + 1
+        ws.Range(ws.Cells(ES_HEADER_ROW, col), _
+                 ws.Cells(endRow, col)).Columns.AutoFit
+        
+        ' Mindestbreiten pro Spalte
+        Select Case col
+            Case ES_COL_KATEGORIE:      minBreite = 24  ' B
+            Case ES_COL_SOLL_BETRAG:    minBreite = 12  ' C
+            Case ES_COL_SOLL_TAG:       minBreite = 12  ' D
+            Case ES_COL_SOLL_MONATE:    minBreite = 18  ' E
+            Case ES_COL_STICHTAG_FIX:   minBreite = 12  ' F
+            Case ES_COL_VORLAUF:        minBreite = 12  ' G
+            Case ES_COL_NACHLAUF:       minBreite = 12  ' H
+            Case ES_COL_SAEUMNIS:       minBreite = 12  ' I
+            Case Else:                  minBreite = 10
+        End Select
+        
+        If ws.Columns(col).ColumnWidth < minBreite Then
+            ws.Columns(col).ColumnWidth = minBreite
+        End If
+    Next col
     
 End Sub
 
@@ -508,24 +569,29 @@ Private Function LetzteZeile(ByVal ws As Worksheet) As Long
 End Function
 
 
-Private Function HoleKategorienAlsListe() As String
+' ---------------------------------------------------------------
+' Alle Kategorien aus Daten!J als Dictionary holen
+' (Keys = Kategorie-Namen, dedupliziert, case-insensitive)
+' ---------------------------------------------------------------
+Private Function HoleAlleKategorien() As Object
     
     Dim wsDaten As Worksheet
     Dim lastRow As Long
     Dim r As Long
     Dim kat As String
     Dim dict As Object
-    Dim result As String
+    
+    Set dict = CreateObject("Scripting.Dictionary")
+    dict.CompareMode = vbTextCompare
     
     On Error Resume Next
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     On Error GoTo 0
+    
     If wsDaten Is Nothing Then
-        HoleKategorienAlsListe = ""
+        Set HoleAlleKategorien = dict
         Exit Function
     End If
-    
-    Set dict = CreateObject("Scripting.Dictionary")
     
     lastRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     
@@ -538,19 +604,7 @@ Private Function HoleKategorienAlsListe() As String
         End If
     Next r
     
-    If dict.count = 0 Then
-        HoleKategorienAlsListe = ""
-        Exit Function
-    End If
-    
-    result = Join(dict.keys, ",")
-    
-    If Len(result) > 255 Then
-        HoleKategorienAlsListe = "='" & WS_DATEN & "'!$J$" & DATA_START_ROW & _
-                                  ":$J$" & lastRow
-    Else
-        HoleKategorienAlsListe = result
-    End If
+    Set HoleAlleKategorien = dict
     
 End Function
 
@@ -576,4 +630,5 @@ Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long
     Call FormatiereZahlungsterminTabelle(ws)
     
 End Sub
+
 

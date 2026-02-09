@@ -77,17 +77,13 @@ Public Sub LadeEinstellungenCache()
         mCacheKat(i) = Trim(CStr(wsES.Cells(r, ES_COL_KATEGORIE).value))
         mCacheSoll(i) = wsES.Cells(r, ES_COL_SOLL_BETRAG).value
         
-        ' Soll-Tag: Zahl (1-31) oder "Ultimo" (= 0)
+        ' Soll-Tag: Zahl (1-31)
         Dim tagWert As String
         tagWert = Trim(CStr(wsES.Cells(r, ES_COL_SOLL_TAG).value))
-        If LCase(tagWert) = "ultimo" Then
-            mCacheSollTag(i) = 0  ' 0 = Ultimo (letzter Tag im Monat)
-        Else
-            On Error Resume Next
-            mCacheSollTag(i) = CLng(tagWert)
-            If Err.Number <> 0 Then mCacheSollTag(i) = 0: Err.Clear
-            On Error GoTo 0
-        End If
+        On Error Resume Next
+        mCacheSollTag(i) = CLng(tagWert)
+        If Err.Number <> 0 Then mCacheSollTag(i) = 0: Err.Clear
+        On Error GoTo 0
         
         ' Soll-Monate: "03, 06, 09" oder leer (= alle Monate)
         mCacheSollMonate(i) = Trim(CStr(wsES.Cells(r, ES_COL_SOLL_MONATE).value))
@@ -723,8 +719,7 @@ End Function
 ' 1. Spalte F (Stichtag Fix) -> exaktes Datum
 ' 2. Spalte D + E (Tag + Monate) -> kombiniert
 ' 3. Spalte D allein -> monatlich
-' 4. Spalte E allein (Ultimo) -> letzter Tag im Monat
-' =====================================================
+' 4. Tag 31 + Monate -> letzter Tag im jeweiligen Monat' =====================================================
 Private Function PruefeZeitfenster(ByVal category As String, _
                                     ByVal buchungsDatum As Date, _
                                     ByVal faelligkeit As String) As Long
@@ -789,15 +784,15 @@ Private Function PruefeZeitfenster(ByVal category As String, _
                 monatPasst = IstMonatInListe(buchungsMonat, sollMonate)
             End If
             
-            ' PRIO 4: Nur Monate, kein Tag (Ultimo = SollTag 0)
-            If sollTag = 0 And sollMonate <> "" Then
+            ' PRIO 4: Tag 31 + Monate = letzter Tag im jeweiligen Monat
+            ' (z.B. 28. Feb, 30. Apr, 31. Jan usw.)
+            If sollTag = 31 And sollMonate <> "" Then
                 If monatPasst Then
-                    ' Ultimo = letzter Tag im Monat
-                    Dim ultimoDatum As Date
-                    ultimoDatum = DateSerial(Year(buchungsDatum), buchungsMonat + 1, 0)
+                    Dim letzterTag As Date
+                    letzterTag = DateSerial(Year(buchungsDatum), buchungsMonat + 1, 0)
                     
-                    If buchungsDatum >= (ultimoDatum - vorlauf) And _
-                       buchungsDatum <= (ultimoDatum + nachlauf) Then
+                    If buchungsDatum >= (letzterTag - vorlauf) And _
+                       buchungsDatum <= (letzterTag + nachlauf) Then
                         PruefeZeitfenster = 20
                         Exit Function
                     End If
