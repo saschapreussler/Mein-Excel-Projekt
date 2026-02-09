@@ -658,6 +658,15 @@ AustrittBearbeiten:
         Me.txt_Pachtende.SelStart = 0
         Me.txt_Pachtende.SelLength = Len(Me.txt_Pachtende.value)
         
+        ' SICHERHEIT: cmd_Uebernehmen EXPLIZIT sichtbar machen
+        ' (behebt Problem wenn Nutzer auf frm_Austrittsauswahl
+        ' erst opt_Nachpaechter und dann opt_Sonstiges wählt)
+        Me.cmd_Uebernehmen.Visible = True
+        Me.cmd_Abbrechen.Visible = True
+        Me.cmd_Bearbeiten.Visible = False
+        Me.cmd_Entfernen.Visible = False
+        Me.cmd_Anlegen.Visible = False
+        
         MsgBox "Das Austrittsdatum wurde auf heute gesetzt." & vbCrLf & _
                "Grund: " & ChangeReason & vbCrLf & vbCrLf & _
                "Bitte bestätigen Sie es (oder ändern Sie es) und klicken Sie dann 'Übernehmen'.", vbInformation, "Austrittsdatum"
@@ -2125,6 +2134,7 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     
     IsFormLoaded = False
 End Function
+
 
 
 

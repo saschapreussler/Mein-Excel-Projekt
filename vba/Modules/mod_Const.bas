@@ -3,9 +3,11 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Const
-' ZWECK: Zentrale Konstanten fuer das gesamte Projekt
-' VERSION: 2.6 - 03.02.2026
-' AENDERUNG: CELL_IMPORT_PROTOKOLL auf Y500 geaendert
+' ZWECK: Zentrale Konstanten für das gesamte Projekt
+' VERSION: 2.7 - 09.02.2026
+' ÄNDERUNG: ES_COL_SOLL_MONATE hinzugefügt (Spalte E),
+'           alle folgenden ES-Spalten +1 verschoben,
+'           ES_COL_END von 8 auf 9 geändert
 ' ***************************************************************
 
 ' ===============================================================
@@ -25,7 +27,7 @@ Public Const WS_VEREINSKASSE As String = "Vereinskasse"
 Public Const RANGE_KATEGORIE_REGELN As String = "rng_KategorieRegeln"
 
 ' ===============================================================
-' C. DATEN - TEMPORAERE HILFSSPALTEN
+' C. DATEN - TEMPORÄRE HILFSSPALTEN
 ' ===============================================================
 Public Const DATA_TEMP_COL_KEY As Long = 25
 Public Const DATA_TEMP_COL_NAME As Long = 26
@@ -145,14 +147,14 @@ Public Const DATA_MAP_COL_ENTITYROLE As Long = 23
 Public Const DATA_MAP_COL_DEBUG As Long = 24
 Public Const DATA_MAP_COL_LAST As Long = 24
 
-' Aliase fuer Kompatibilitaet
+' Aliase für Kompatibilität
 Public Const DATA_MAP_COL_IBAN_OLD As Long = 19
 Public Const DATA_MAP_COL_PARZ_KEY As Long = 22
 Public Const DATA_MAP_COL_NAME As Long = 21
 Public Const DATA_MAP_COL_KONTONAME As Long = 20
 
 ' ===============================================================
-' G2. ENTITYKEY-TABELLE - ALIASE FUER mod_Formatierung
+' G2. ENTITYKEY-TABELLE - ALIASE FÜR mod_Formatierung
 ' ===============================================================
 Public Const EK_START_ROW As Long = 4
 Public Const EK_COL_ENTITYKEY As Long = 18
@@ -164,7 +166,7 @@ Public Const EK_COL_ROLE As Long = 23
 Public Const EK_COL_DEBUG As Long = 24
 
 ' ===============================================================
-' H. DATEN - DROPDOWN-FUELLBEREICHE (Spalten Y-AH)
+' H. DATEN - DROPDOWN-FÜLLBEREICHE (Spalten Y-AH)
 ' ===============================================================
 Public Const DATA_COL_IMPORT_STATUS As Long = 25
 Public Const CELL_IMPORT_PROTOKOLL As String = "Y500"
@@ -198,7 +200,7 @@ Public Const CSV_COL_IBAN As Long = 13
 Public Const CSV_COL_BETRAG As Long = 15
 
 ' ===============================================================
-' J. ZAEHLERLOGIK
+' J. ZÄHLERLOGIK
 ' ===============================================================
 Public Const COL_PARZELLE As Long = 1
 Public Const COL_STAND_ANFANG As Long = 2
@@ -254,7 +256,7 @@ Public Const ANREDE_KGA As String = "KGA"
 Public Const AUSTRITT_STATUS As String = "Ehemaliges Mitglied"
 
 ' ===============================================================
-' O. ERLAUBTE FUNKTIONEN FUER PARZELLENPACHT
+' O. ERLAUBTE FUNKTIONEN FÜR PARZELLENPACHT
 ' ===============================================================
 Public Const FUNKTION_MITGLIED_MIT_PACHT As String = "Mitglied mit Pacht"
 Public Const FUNKTION_1_VORSITZENDER As String = "1. Vorsitzende(r)"
@@ -263,21 +265,23 @@ Public Const FUNKTION_KASSIERER As String = "Kassierer"
 Public Const FUNKTION_SCHRIFTFUEHRER As String = "Schriftfuehrer"
 
 ' ===============================================================
-' P. EINSTELLUNGEN - ZAHLUNGSTERMINE (Spalten B-H)
+' P. EINSTELLUNGEN - ZAHLUNGSTERMINE (Spalten B-I)
+'    v2.7: Neue Spalte E = Soll-Monat(e), alle folgenden +1
 ' ===============================================================
 Public Const ES_HEADER_ROW As Long = 3
 Public Const ES_START_ROW As Long = 4
 
 Public Const ES_COL_KATEGORIE As Long = 2       ' Spalte B - Referenz Kategorie
 Public Const ES_COL_SOLL_BETRAG As Long = 3     ' Spalte C - Soll-Betrag
-Public Const ES_COL_SOLL_TAG As Long = 4        ' Spalte D - Soll-Tag (1-31)
-Public Const ES_COL_STICHTAG_FIX As Long = 5    ' Spalte E - Soll-Stichtag TT.MM.
-Public Const ES_COL_VORLAUF As Long = 6         ' Spalte F - Vorlauf-Toleranz (Tage)
-Public Const ES_COL_NACHLAUF As Long = 7        ' Spalte G - Nachlauf-Toleranz (Tage)
-Public Const ES_COL_SAEUMNIS As Long = 8        ' Spalte H - Saeumnis-Gebuehr
+Public Const ES_COL_SOLL_TAG As Long = 4        ' Spalte D - Soll-Tag (1-31) oder "Ultimo"
+Public Const ES_COL_SOLL_MONATE As Long = 5     ' Spalte E - Soll-Monat(e) z.B. "03, 06, 09"
+Public Const ES_COL_STICHTAG_FIX As Long = 6    ' Spalte F - Soll-Stichtag (Fix) TT.MM.
+Public Const ES_COL_VORLAUF As Long = 7         ' Spalte G - Vorlauf-Toleranz (Tage)
+Public Const ES_COL_NACHLAUF As Long = 8        ' Spalte H - Nachlauf-Toleranz (Tage)
+Public Const ES_COL_SAEUMNIS As Long = 9        ' Spalte I - Säumnis-Gebühr
 
 Public Const ES_COL_START As Long = 2           ' Erste Datenspalte (B)
-Public Const ES_COL_END As Long = 8             ' Letzte Datenspalte (H)
+Public Const ES_COL_END As Long = 9             ' Letzte Datenspalte (I)
 
 
 Public Function GetErlaubteFunktionenFuerParzelle() As Variant
@@ -289,4 +293,5 @@ Public Function GetErlaubteFunktionenFuerParzelle() As Variant
         FUNKTION_SCHRIFTFUEHRER _
     )
 End Function
+
 

@@ -3,18 +3,15 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Einstellungen
-' VERSION: 1.2 - 09.02.2026
+' VERSION: 1.3 - 09.02.2026
 ' ZWECK: Formatierung, DropDowns, Schutz/Entsperrung für
 '        die Zahlungstermin-Tabelle auf Blatt Einstellungen
-'        (Spalten B-H, ab Zeile 4, Header Zeile 3)
-' ÄNDERUNG v1.2: Spalte D zeigt ". Tag" hinter der Zahl,
-'        Spalten F und G zeigen " Tage" hinter der Zahl.
-'        Über benutzerdefiniertes Zahlenformat (NumberFormat)
-'        bleibt der Zellwert eine reine Zahl, sodass alle
-'        Formeln und CLng()-Zugriffe weiterhin funktionieren.
-' ÄNDERUNG v1.1: Formatierung exakt wie FormatiereKategorieTabelle
-'            auf dem Daten-Blatt (gleiche Zebra-Farben, gleiche
-'            Rahmenlogik mit .ColorIndex = xlAutomatic)
+'        (Spalten B-I, ab Zeile 4, Header Zeile 3)
+' ÄNDERUNG v1.3: Neue Spalte E = Soll-Monat(e),
+'        alle Spalten ab E+1 verschoben,
+'        alphabetische Sortierung in Spalte B,
+'        Spalte D: ". Tag" oder "Ultimo",
+'        Spalten G und H: " Tage" Anzeige.
 ' ===============================================================
 
 Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiß
@@ -23,7 +20,6 @@ Private Const ZEBRA_COLOR_2 As Long = &HDEE5E3  ' Hellgrau
 
 ' ===============================================================
 ' 1. HAUPTPROZEDUR: Komplette Formatierung der Tabelle
-'    Aufruf: Worksheet_Activate, nach Löschen, nach Einfügen
 ' ===============================================================
 Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     
@@ -47,7 +43,7 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     ' 2. Leerzeilen entfernen (Daten verdichten)
     Call VerdichteDaten(ws)
     
-    ' 3. Formatierung anwenden (Zebra + Rahmen in einem Schritt)
+    ' 3. Formatierung anwenden (Zebra + Rahmen)
     Call FormatiereTabelle(ws)
     
     ' 4. Spaltenformate und Ausrichtung
@@ -71,18 +67,16 @@ End Sub
 
 
 ' ===============================================================
-' 2. HEADER PRÜFEN (Zeile 3) - nur setzen wenn leer
-'    Der Designer kann die Header manuell anpassen,
-'    sie werden nicht bei jedem Aufruf überschrieben
+' 2. HEADER PRÜFEN (Zeile 3)
 ' ===============================================================
 Private Sub PruefeHeader(ByVal ws As Worksheet)
     
-    ' Nur setzen wenn die erste Header-Zelle leer ist
     If Trim(ws.Cells(ES_HEADER_ROW, ES_COL_KATEGORIE).value) <> "" Then Exit Sub
     
     ws.Cells(ES_HEADER_ROW, ES_COL_KATEGORIE).value = "Referenz Kategorie (Leistungsart)"
     ws.Cells(ES_HEADER_ROW, ES_COL_SOLL_BETRAG).value = "Soll-Betrag"
     ws.Cells(ES_HEADER_ROW, ES_COL_SOLL_TAG).value = "Soll-Tag (des Monats)"
+    ws.Cells(ES_HEADER_ROW, ES_COL_SOLL_MONATE).value = "Soll-Monat(e)"
     ws.Cells(ES_HEADER_ROW, ES_COL_STICHTAG_FIX).value = "Soll-Stichtag (Fix) TT.MM."
     ws.Cells(ES_HEADER_ROW, ES_COL_VORLAUF).value = "Vorlauf-Toleranz (Tage)"
     ws.Cells(ES_HEADER_ROW, ES_COL_NACHLAUF).value = "Nachlauf-Toleranz (Tage)"
@@ -105,8 +99,6 @@ End Sub
 
 ' ===============================================================
 ' 3. LEERZEILEN ENTFERNEN (Daten verdichten)
-'    Exakt gleiche Logik wie VerdichteSpalteOhneLuecken
-'    in mod_Formatierung
 ' ===============================================================
 Private Sub VerdichteDaten(ByVal ws As Worksheet)
     
@@ -133,7 +125,6 @@ Private Sub VerdichteDaten(ByVal ws As Worksheet)
         End If
     Next r
     
-    ' Bereich löschen und verdichtete Daten zurückschreiben
     ws.Range(ws.Cells(ES_START_ROW, ES_COL_START), _
              ws.Cells(lastRow, ES_COL_END)).ClearContents
     
@@ -149,12 +140,44 @@ End Sub
 
 
 ' ===============================================================
+' 3b. ALPHABETISCH SORTIEREN (Spalte B, A-Z)
+'     Öffentlich aufrufbar aus Tabelle9.cls
+' ===============================================================
+Public Sub SortiereAlphabetisch(ByVal ws As Worksheet)
+    
+    Dim lastRow As Long
+    lastRow = LetzteZeile(ws)
+    If lastRow < ES_START_ROW + 1 Then Exit Sub  ' Mindestens 2 Zeilen zum Sortieren
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    Dim rngSort As Range
+    Set rngSort = ws.Range(ws.Cells(ES_START_ROW, ES_COL_START), _
+                           ws.Cells(lastRow, ES_COL_END))
+    
+    ws.Sort.SortFields.Clear
+    ws.Sort.SortFields.Add2 key:=ws.Range(ws.Cells(ES_START_ROW, ES_COL_KATEGORIE), _
+                                           ws.Cells(lastRow, ES_COL_KATEGORIE)), _
+                             SortOn:=xlSortOnValues, Order:=xlAscending, _
+                             DataOption:=xlSortNormal
+    
+    With ws.Sort
+        .SetRange rngSort
+        .Header = xlNo
+        .MatchCase = False
+        .Orientation = xlTopToBottom
+        .Apply
+    End With
+    
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+End Sub
+
+
+' ===============================================================
 ' 4. FORMATIERUNG: Zebra + Rahmen
-'    Exakt gleiche Logik wie FormatiereKategorieTabelle:
-'    - Zuerst Bereich unterhalb bereinigen
-'    - Dann belegten Bereich zurücksetzen
-'    - Zebra-Farben zeilenweise
-'    - Rahmen auf gesamten belegten Bereich
 ' ===============================================================
 Private Sub FormatiereTabelle(ByVal ws As Worksheet)
     
@@ -169,14 +192,12 @@ Private Sub FormatiereTabelle(ByVal ws As Worksheet)
     
     lastRow = LetzteZeile(ws)
     
-    ' Maximale letzte Zeile über alle Spalten B-H ermitteln (für Bereinigung)
     lastRowMax = lastRow
     For col = ES_COL_START To ES_COL_END
         colLastRow = ws.Cells(ws.Rows.count, col).End(xlUp).Row
         If colLastRow > lastRowMax Then lastRowMax = colLastRow
     Next col
     
-    ' Bereich UNTERHALB der belegten Zeilen bereinigen (Rahmen + Farbe entfernen)
     If lastRowMax >= ES_START_ROW Then
         If lastRow < ES_START_ROW Then
             cleanStart = ES_START_ROW
@@ -197,11 +218,9 @@ Private Sub FormatiereTabelle(ByVal ws As Worksheet)
     Set rngTable = ws.Range(ws.Cells(ES_START_ROW, ES_COL_START), _
                             ws.Cells(lastRow, ES_COL_END))
     
-    ' Zuerst alles zurücksetzen im belegten Bereich
     rngTable.Interior.ColorIndex = xlNone
     rngTable.Borders.LineStyle = xlNone
     
-    ' Zebra-Formatierung NUR für belegte Zeilen
     For r = ES_START_ROW To lastRow
         If (r - ES_START_ROW) Mod 2 = 0 Then
             ws.Range(ws.Cells(r, ES_COL_START), ws.Cells(r, ES_COL_END)).Interior.color = ZEBRA_COLOR_1
@@ -210,8 +229,6 @@ Private Sub FormatiereTabelle(ByVal ws As Worksheet)
         End If
     Next r
     
-    ' Rahmenlinien NUR für belegte Zeilen
-    ' (exakt wie FormatiereKategorieTabelle: .ColorIndex = xlAutomatic)
     With rngTable.Borders
         .LineStyle = xlContinuous
         .Weight = xlThin
@@ -225,13 +242,10 @@ End Sub
 
 ' ===============================================================
 ' 5. SPALTENFORMATE UND AUSRICHTUNG
-'    Spalte D: Benutzerdefiniertes Format  0". Tag"
-'             -> Zellwert bleibt Zahl, Anzeige z.B. "15. Tag"
-'    Spalte F: Benutzerdefiniertes Format  0" Tage"
-'             -> Zellwert bleibt Zahl, Anzeige z.B. "5 Tage"
-'    Spalte G: Benutzerdefiniertes Format  0" Tage"
-'             -> Zellwert bleibt Zahl, Anzeige z.B. "10 Tage"
-'    Formeln und CLng()-Zugriffe sehen nur die reine Zahl.
+'    Spalte D: ". Tag" oder Text "Ultimo"
+'    Spalte E: Text (Monate), zentriert
+'    Spalte G: " Tage" hinter der Zahl
+'    Spalte H: " Tage" hinter der Zahl
 ' ===============================================================
 Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
     
@@ -258,15 +272,39 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte D: ". Tag" hinter der Zahl (Wert bleibt reine Zahl!)
-    With ws.Range(ws.Cells(ES_START_ROW, ES_COL_SOLL_TAG), _
+    ' Spalte D: Soll-Tag - Mischformat (Zahl mit ". Tag" ODER Text "Ultimo")
+    ' Da "Ultimo" ein Text ist, verwenden wir Textformat für die ganze Spalte.
+    ' Die ". Tag"-Anzeige wird über Worksheet_Change gesteuert.
+    ' Für reine Zahlen setzen wir das NumberFormat pro Zelle:
+    Dim r As Long
+    For r = ES_START_ROW To lastRow
+        Dim zellWert As Variant
+        zellWert = ws.Cells(r, ES_COL_SOLL_TAG).value
+        If IsNumeric(zellWert) And zellWert <> "" Then
+            ws.Cells(r, ES_COL_SOLL_TAG).NumberFormat = "0"". Tag"""
+        Else
+            ws.Cells(r, ES_COL_SOLL_TAG).NumberFormat = "@"
+        End If
+    Next r
+    ' Leere Zeilen: Standard für neue Eingaben
+    With ws.Range(ws.Cells(lastRow + 1, ES_COL_SOLL_TAG), _
                   ws.Cells(endRow, ES_COL_SOLL_TAG))
         .NumberFormat = "0"". Tag"""
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
     End With
+    ws.Range(ws.Cells(ES_START_ROW, ES_COL_SOLL_TAG), _
+             ws.Cells(lastRow, ES_COL_SOLL_TAG)).HorizontalAlignment = xlCenter
     
-    ' Spalte E: Text TT.MM., zentriert
+    ' Spalte E: Soll-Monat(e) - Text, zentriert
+    With ws.Range(ws.Cells(ES_START_ROW, ES_COL_SOLL_MONATE), _
+                  ws.Cells(endRow, ES_COL_SOLL_MONATE))
+        .NumberFormat = "@"
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+    
+    ' Spalte F: Stichtag TT.MM. - Text, zentriert
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_STICHTAG_FIX), _
                   ws.Cells(endRow, ES_COL_STICHTAG_FIX))
         .NumberFormat = "@"
@@ -274,7 +312,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte F: " Tage" hinter der Zahl (Wert bleibt reine Zahl!)
+    ' Spalte G: Vorlauf " Tage" hinter der Zahl
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_VORLAUF), _
                   ws.Cells(endRow, ES_COL_VORLAUF))
         .NumberFormat = "0"" Tage"""
@@ -282,7 +320,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte G: " Tage" hinter der Zahl (Wert bleibt reine Zahl!)
+    ' Spalte H: Nachlauf " Tage" hinter der Zahl
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_NACHLAUF), _
                   ws.Cells(endRow, ES_COL_NACHLAUF))
         .NumberFormat = "0"" Tage"""
@@ -290,7 +328,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte H: Währung, rechtsbündig
+    ' Spalte I: Währung, rechtsbündig
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_SAEUMNIS), _
                   ws.Cells(endRow, ES_COL_SAEUMNIS))
         .NumberFormat = "#,##0.00 " & ChrW(8364)
@@ -317,10 +355,10 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     NextRow = lastRow + 1
     If NextRow < ES_START_ROW Then NextRow = ES_START_ROW
     
-    ' --- Kategorie-Liste aus Daten!J erstellen (nicht redundant) ---
+    ' --- Kategorie-Liste aus Daten!J erstellen ---
     kategorienListe = HoleKategorienAlsListe()
     
-    ' --- Spalte B: Kategorie-DropDown für alle Datenzeilen + Eingabezeile ---
+    ' --- Spalte B: Kategorie-DropDown ---
     For r = ES_START_ROW To NextRow
         ws.Cells(r, ES_COL_KATEGORIE).Validation.Delete
         If kategorienListe <> "" Then
@@ -336,23 +374,26 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
         End If
     Next r
     
-    ' --- Spalte D: Tag 1-31 ---
+    ' --- Spalte D: Tag 1-31 (DropDown nur wenn KEIN "Ultimo" drinsteht) ---
     tagListe = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
     
     For r = ES_START_ROW To NextRow
         ws.Cells(r, ES_COL_SOLL_TAG).Validation.Delete
-        With ws.Cells(r, ES_COL_SOLL_TAG).Validation
-            .Add Type:=xlValidateList, _
-                 AlertStyle:=xlValidAlertStop, _
-                 Formula1:=tagListe
-            .IgnoreBlank = True
-            .InCellDropdown = True
-            .ShowInput = False
-            .ShowError = True
-        End With
+        ' Nur DropDown wenn kein Ultimo-Text drinsteht
+        If LCase(Trim(CStr(ws.Cells(r, ES_COL_SOLL_TAG).value))) <> "ultimo" Then
+            With ws.Cells(r, ES_COL_SOLL_TAG).Validation
+                .Add Type:=xlValidateList, _
+                     AlertStyle:=xlValidAlertStop, _
+                     Formula1:=tagListe
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = False
+                .ShowError = True
+            End With
+        End If
     Next r
     
-    ' --- Spalte F: Vorlauf 0-31 ---
+    ' --- Spalte G: Vorlauf 0-31 ---
     toleranzListe = "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
     
     For r = ES_START_ROW To NextRow
@@ -368,7 +409,7 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
         End With
     Next r
     
-    ' --- Spalte G: Nachlauf 0-31 ---
+    ' --- Spalte H: Nachlauf 0-31 ---
     For r = ES_START_ROW To NextRow
         ws.Cells(r, ES_COL_NACHLAUF).Validation.Delete
         With ws.Cells(r, ES_COL_NACHLAUF).Validation
@@ -387,9 +428,6 @@ End Sub
 
 ' ===============================================================
 ' 7. SPERREN UND ENTSPERREN
-'    - Bestehende Datenzeilen B-H: entsperrt (editierbar)
-'    - Genau 1 nächste freie Zeile: entsperrt (Neuanlage)
-'    - Alles darunter + außerhalb: gesperrt
 ' ===============================================================
 Private Sub SperreUndEntsperre(ByVal ws As Worksheet)
     
@@ -402,20 +440,16 @@ Private Sub SperreUndEntsperre(ByVal ws As Worksheet)
     If NextRow < ES_START_ROW Then NextRow = ES_START_ROW
     lockEnd = NextRow + 50
     
-    ' Gesamtes Blatt sperren
     ws.Cells.Locked = True
     
-    ' Bestehende Daten B-H entsperren (editierbar)
     If lastRow >= ES_START_ROW Then
         ws.Range(ws.Cells(ES_START_ROW, ES_COL_START), _
                  ws.Cells(lastRow, ES_COL_END)).Locked = False
     End If
     
-    ' Genau 1 nächste freie Zeile B-H entsperren (Neuanlage)
     ws.Range(ws.Cells(NextRow, ES_COL_START), _
              ws.Cells(NextRow, ES_COL_END)).Locked = False
     
-    ' Bereich darunter explizit sperren (Sicherheitspuffer)
     ws.Range(ws.Cells(NextRow + 1, ES_COL_START), _
              ws.Cells(lockEnd, ES_COL_END)).Locked = True
     
@@ -427,16 +461,17 @@ End Sub
 ' ===============================================================
 Private Sub SetzeSpaltenbreiten(ByVal ws As Worksheet)
     
-    ws.Columns(ES_COL_KATEGORIE).AutoFit              ' B: AutoFit nach Datenbreite
+    ws.Columns(ES_COL_KATEGORIE).AutoFit
     If ws.Columns(ES_COL_KATEGORIE).ColumnWidth < 24 Then
-        ws.Columns(ES_COL_KATEGORIE).ColumnWidth = 24 ' Mindestbreite 24
+        ws.Columns(ES_COL_KATEGORIE).ColumnWidth = 24
     End If
     ws.Columns(ES_COL_SOLL_BETRAG).ColumnWidth = 14   ' C
-    ws.Columns(ES_COL_SOLL_TAG).ColumnWidth = 12      ' D
-    ws.Columns(ES_COL_STICHTAG_FIX).ColumnWidth = 14  ' E
-    ws.Columns(ES_COL_VORLAUF).ColumnWidth = 14       ' F
-    ws.Columns(ES_COL_NACHLAUF).ColumnWidth = 14      ' G
-    ws.Columns(ES_COL_SAEUMNIS).ColumnWidth = 14      ' H
+    ws.Columns(ES_COL_SOLL_TAG).ColumnWidth = 14      ' D
+    ws.Columns(ES_COL_SOLL_MONATE).ColumnWidth = 20   ' E
+    ws.Columns(ES_COL_STICHTAG_FIX).ColumnWidth = 14  ' F
+    ws.Columns(ES_COL_VORLAUF).ColumnWidth = 14       ' G
+    ws.Columns(ES_COL_NACHLAUF).ColumnWidth = 14      ' H
+    ws.Columns(ES_COL_SAEUMNIS).ColumnWidth = 14      ' I
     
 End Sub
 
@@ -445,7 +480,6 @@ End Sub
 ' 9. HILFSFUNKTIONEN
 ' ===============================================================
 
-' Letzte Zeile im Bereich B ermitteln
 Private Function LetzteZeile(ByVal ws As Worksheet) As Long
     Dim lr As Long
     lr = ws.Cells(ws.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
@@ -454,7 +488,6 @@ Private Function LetzteZeile(ByVal ws As Worksheet) As Long
 End Function
 
 
-' Kategorien aus Daten!J als nicht-redundante kommaseparierte Liste
 Private Function HoleKategorienAlsListe() As String
     
     Dim wsDaten As Worksheet
@@ -492,7 +525,6 @@ Private Function HoleKategorienAlsListe() As String
     
     result = Join(dict.keys, ",")
     
-    ' Excel DropDown Limit: max 255 Zeichen in Formula1
     If Len(result) > 255 Then
         HoleKategorienAlsListe = "='" & WS_DATEN & "'!$J$" & DATA_START_ROW & _
                                   ":$J$" & lastRow

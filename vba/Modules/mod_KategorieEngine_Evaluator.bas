@@ -36,12 +36,13 @@ Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung (mehrere Positionen) 
 ' EINSTELLUNGEN-CACHE (Performance)
 ' Wird einmal geladen, dann für alle Zeilen verwendet
 ' Spalten: B=Kategorie, C=Soll-Betrag, D=Soll-Tag,
-'          E=Stichtag, F=Vorlauf, G=Nachlauf
+'          E=Soll-Monate, F=Stichtag, G=Vorlauf, H=Nachlauf
 ' =====================================================
 Private mCacheGeladen As Boolean
 Private mCacheKat() As String
 Private mCacheSoll() As Double
 Private mCacheSollTag() As Long
+Private mCacheSollMonate() As String
 Private mCacheStichtag() As Variant
 Private mCacheVorlauf() As Long
 Private mCacheNachlauf() As Long
@@ -64,6 +65,7 @@ Public Sub LadeEinstellungenCache()
     ReDim mCacheKat(1 To mCacheAnzahl)
     ReDim mCacheSoll(1 To mCacheAnzahl)
     ReDim mCacheSollTag(1 To mCacheAnzahl)
+    ReDim mCacheSollMonate(1 To mCacheAnzahl)
     ReDim mCacheStichtag(1 To mCacheAnzahl)
     ReDim mCacheVorlauf(1 To mCacheAnzahl)
     ReDim mCacheNachlauf(1 To mCacheAnzahl)
@@ -75,10 +77,20 @@ Public Sub LadeEinstellungenCache()
         mCacheKat(i) = Trim(CStr(wsES.Cells(r, ES_COL_KATEGORIE).value))
         mCacheSoll(i) = wsES.Cells(r, ES_COL_SOLL_BETRAG).value
         
-        On Error Resume Next
-        mCacheSollTag(i) = CLng(wsES.Cells(r, ES_COL_SOLL_TAG).value)
-        If Err.Number <> 0 Then mCacheSollTag(i) = 0: Err.Clear
-        On Error GoTo 0
+        ' Soll-Tag: Zahl (1-31) oder "Ultimo" (= 0)
+        Dim tagWert As String
+        tagWert = Trim(CStr(wsES.Cells(r, ES_COL_SOLL_TAG).value))
+        If LCase(tagWert) = "ultimo" Then
+            mCacheSollTag(i) = 0  ' 0 = Ultimo (letzter Tag im Monat)
+        Else
+            On Error Resume Next
+            mCacheSollTag(i) = CLng(tagWert)
+            If Err.Number <> 0 Then mCacheSollTag(i) = 0: Err.Clear
+            On Error GoTo 0
+        End If
+        
+        ' Soll-Monate: "03, 06, 09" oder leer (= alle Monate)
+        mCacheSollMonate(i) = Trim(CStr(wsES.Cells(r, ES_COL_SOLL_MONATE).value))
         
         mCacheStichtag(i) = wsES.Cells(r, ES_COL_STICHTAG_FIX).value
         
@@ -99,10 +111,12 @@ Public Sub EntladeEinstellungenCache()
     Erase mCacheKat
     Erase mCacheSoll
     Erase mCacheSollTag
+    Erase mCacheSollMonate
     Erase mCacheStichtag
     Erase mCacheVorlauf
     Erase mCacheNachlauf
 End Sub
+
 
 ' -----------------------------
 ' EntityInfo über IBAN bestimmen (kombiniert: Role + Parzelle)
@@ -704,8 +718,12 @@ End Function
 
 
 ' =====================================================
-' Zeitfensterprüfung (Cache-Version + Fälligkeit)
-' mit Vormonat-Check aus v7.0
+' Zeitfensterprüfung (Cache-Version + Fälligkeit + Soll-Monate)
+' Prioritäten:
+' 1. Spalte F (Stichtag Fix) -> exaktes Datum
+' 2. Spalte D + E (Tag + Monate) -> kombiniert
+' 3. Spalte D allein -> monatlich
+' 4. Spalte E allein (Ultimo) -> letzter Tag im Monat
 ' =====================================================
 Private Function PruefeZeitfenster(ByVal category As String, _
                                     ByVal buchungsDatum As Date, _
@@ -721,12 +739,14 @@ Private Function PruefeZeitfenster(ByVal category As String, _
             Dim sollTag As Long
             Dim vorlauf As Long
             Dim nachlauf As Long
+            Dim sollMonate As String
             
             sollTag = mCacheSollTag(i)
             vorlauf = mCacheVorlauf(i)
             nachlauf = mCacheNachlauf(i)
+            sollMonate = mCacheSollMonate(i)
             
-            ' Fester Stichtag vorhanden?
+            ' ===== PRIO 1: Fester Stichtag (Spalte F) =====
             If IsDate(mCacheStichtag(i)) Then
                 Dim stichDatum As Date
                 On Error Resume Next
@@ -738,7 +758,6 @@ Private Function PruefeZeitfenster(ByVal category As String, _
                 End If
                 On Error GoTo 0
                 
-                ' Stichtag auf gleiches Jahr wie Buchung setzen
                 Dim stichtagAktuell As Date
                 On Error Resume Next
                 stichtagAktuell = DateSerial(Year(buchungsDatum), Month(stichDatum), Day(stichDatum))
@@ -754,39 +773,96 @@ Private Function PruefeZeitfenster(ByVal category As String, _
                     PruefeZeitfenster = 20
                     Exit Function
                 End If
+                ' Stichtag hat Vorrang -> nicht weiter prüfen
+                GoTo WeiterNaechsteZeile
             End If
             
-            ' Soll-Tag (Tag im Monat, z.B. 15 = jeweils am 15.)
+            ' ===== PRIO 2/3/4: Tag und/oder Monate =====
+            Dim buchungsMonat As Long
+            buchungsMonat = Month(buchungsDatum)
+            
+            ' Prüfe ob der Buchungsmonat in den Soll-Monaten liegt
+            Dim monatPasst As Boolean
+            monatPasst = True  ' Default: alle Monate (Spalte E leer)
+            
+            If sollMonate <> "" Then
+                monatPasst = IstMonatInListe(buchungsMonat, sollMonate)
+            End If
+            
+            ' PRIO 4: Nur Monate, kein Tag (Ultimo = SollTag 0)
+            If sollTag = 0 And sollMonate <> "" Then
+                If monatPasst Then
+                    ' Ultimo = letzter Tag im Monat
+                    Dim ultimoDatum As Date
+                    ultimoDatum = DateSerial(Year(buchungsDatum), buchungsMonat + 1, 0)
+                    
+                    If buchungsDatum >= (ultimoDatum - vorlauf) And _
+                       buchungsDatum <= (ultimoDatum + nachlauf) Then
+                        PruefeZeitfenster = 20
+                        Exit Function
+                    End If
+                End If
+                GoTo WeiterNaechsteZeile
+            End If
+            
+            ' PRIO 2/3: Soll-Tag vorhanden (1-31)
             If sollTag >= 1 And sollTag <= 31 Then
-                Dim sollDatum As Date
-                On Error Resume Next
-                sollDatum = DateSerial(Year(buchungsDatum), Month(buchungsDatum), sollTag)
-                If Err.Number <> 0 Then
-                    Err.Clear
-                    sollDatum = DateSerial(Year(buchungsDatum), Month(buchungsDatum) + 1, 0)
+                If monatPasst Then
+                    Dim sollDatum As Date
+                    On Error Resume Next
+                    sollDatum = DateSerial(Year(buchungsDatum), buchungsMonat, sollTag)
+                    If Err.Number <> 0 Then
+                        Err.Clear
+                        sollDatum = DateSerial(Year(buchungsDatum), buchungsMonat + 1, 0)
+                    End If
+                    On Error GoTo 0
+                    
+                    If buchungsDatum >= (sollDatum - vorlauf) And _
+                       buchungsDatum <= (sollDatum + nachlauf) Then
+                        PruefeZeitfenster = 20
+                        Exit Function
+                    End If
                 End If
-                On Error GoTo 0
                 
-                If buchungsDatum >= (sollDatum - vorlauf) And _
-                   buchungsDatum <= (sollDatum + nachlauf) Then
-                    PruefeZeitfenster = 20
-                    Exit Function
-                End If
-                
-                ' Vormonat-Check (aus v7.0)
-                Dim sollDatumVormonat As Date
-                On Error Resume Next
-                sollDatumVormonat = DateSerial(Year(buchungsDatum), Month(buchungsDatum) - 1, sollTag)
-                If Err.Number <> 0 Then
-                    Err.Clear
-                    sollDatumVormonat = DateSerial(Year(buchungsDatum), Month(buchungsDatum), 0)
-                End If
-                On Error GoTo 0
-                
-                If buchungsDatum >= (sollDatumVormonat - vorlauf) And _
-                   buchungsDatum <= (sollDatumVormonat + nachlauf) Then
-                    PruefeZeitfenster = 15
-                    Exit Function
+                ' Vormonat-Check: Prüfe auch ob Buchung im Vorlauf des nächsten passenden Monats liegt
+                If sollMonate <> "" Then
+                    ' Prüfe ob der Folgemonat in der Liste ist
+                    Dim folgeMonat As Long
+                    folgeMonat = buchungsMonat + 1
+                    If folgeMonat > 12 Then folgeMonat = 1
+                    
+                    If IstMonatInListe(folgeMonat, sollMonate) Then
+                        Dim sollDatumFolge As Date
+                        On Error Resume Next
+                        sollDatumFolge = DateSerial(Year(buchungsDatum), buchungsMonat + 1, sollTag)
+                        If Err.Number <> 0 Then
+                            Err.Clear
+                            sollDatumFolge = DateSerial(Year(buchungsDatum), buchungsMonat + 2, 0)
+                        End If
+                        On Error GoTo 0
+                        
+                        If buchungsDatum >= (sollDatumFolge - vorlauf) And _
+                           buchungsDatum <= (sollDatumFolge + nachlauf) Then
+                            PruefeZeitfenster = 15
+                            Exit Function
+                        End If
+                    End If
+                Else
+                    ' Kein Monatsfilter -> Vormonat-Check wie bisher
+                    Dim sollDatumVormonat As Date
+                    On Error Resume Next
+                    sollDatumVormonat = DateSerial(Year(buchungsDatum), buchungsMonat - 1, sollTag)
+                    If Err.Number <> 0 Then
+                        Err.Clear
+                        sollDatumVormonat = DateSerial(Year(buchungsDatum), buchungsMonat, 0)
+                    End If
+                    On Error GoTo 0
+                    
+                    If buchungsDatum >= (sollDatumVormonat - vorlauf) And _
+                       buchungsDatum <= (sollDatumVormonat + nachlauf) Then
+                        PruefeZeitfenster = 15
+                        Exit Function
+                    End If
                 End If
             End If
             
@@ -797,14 +873,33 @@ End Function
 
 
 ' =====================================================
-' Monat/Periode intelligent ermitteln (v9.1)
-' Nutzt Einstellungen-Cache für Folgemonat-Erkennung:
-' Wenn SollTag und Vorlauf gesetzt sind, wird geprüft
-' ob die Zahlung bereits für den Folgemonat gilt.
-' Beispiel: SollTag=5, Vorlauf=10
-'   -> Folgemonat-Fälligkeit = 05.02.
-'   -> Frühester Zahlungstag = 05.02. - 10 = 26.01.
-'   -> Zahlung am 27.01. >= 26.01. -> gilt für Februar
+' Hilfsfunktion: Prüft ob ein Monat (1-12) in einer
+' kommaseparierten Monatsliste enthalten ist.
+' z.B. IstMonatInListe(3, "03, 06, 09, 12") -> True
+' =====================================================
+Private Function IstMonatInListe(ByVal monat As Long, ByVal monatListe As String) As Boolean
+    Dim teile() As String
+    Dim t As Long
+    
+    teile = Split(Replace(monatListe, " ", ""), ",")
+    
+    For t = LBound(teile) To UBound(teile)
+        If IsNumeric(teile(t)) Then
+            If CLng(teile(t)) = monat Then
+                IstMonatInListe = True
+                Exit Function
+            End If
+        End If
+    Next t
+    
+    IstMonatInListe = False
+End Function
+
+
+
+' =====================================================
+' Monat/Periode intelligent ermitteln (v9.4)
+' Berücksichtigt jetzt auch Soll-Monate (Spalte E).
 ' =====================================================
 Public Function ErmittleMonatPeriode(ByVal category As String, _
                                      ByVal buchungsDatum As Date, _
@@ -849,32 +944,30 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
             
             Dim sollTag As Long
             Dim vorlauf As Long
+            Dim sollMonate As String
             
             sollTag = mCacheSollTag(idx)
             vorlauf = mCacheVorlauf(idx)
+            sollMonate = mCacheSollMonate(idx)
             
-            ' Pruefe zuerst festen Stichtag (Spalte E)
+            ' Prüfe zuerst festen Stichtag (Spalte F)
             If IsDate(mCacheStichtag(idx)) Then
                 Dim stichDatum As Date
                 On Error Resume Next
                 stichDatum = CDate(CStr(mCacheStichtag(idx)))
                 If Err.Number = 0 Then
                     On Error GoTo 0
-                    ' Stichtag im aktuellen Buchungsmonat
                     Dim stichAktuell As Date
                     stichAktuell = DateSerial(Year(buchungsDatum), Month(buchungsDatum), Day(stichDatum))
                     
-                    ' Stichtag im Folgemonat
                     Dim stichFolge As Date
                     stichFolge = DateSerial(Year(buchungsDatum), Month(buchungsDatum) + 1, Day(stichDatum))
                     
-                    ' Liegt Buchung im Vorlauf-Fenster des Folgemonats?
                     If vorlauf > 0 And buchungsDatum >= (stichFolge - vorlauf) Then
                         ErmittleMonatPeriode = MonthName(Month(stichFolge))
                         Exit Function
                     End If
                     
-                    ' Liegt Buchung im Vorlauf-Fenster des aktuellen Monats?
                     If vorlauf > 0 And buchungsDatum >= (stichAktuell - vorlauf) Then
                         ErmittleMonatPeriode = MonthName(Month(stichAktuell))
                         Exit Function
@@ -885,18 +978,23 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
                 End If
             End If
             
-            ' Prüfe SollTag (Spalte D) - Tag im Monat
-            If sollTag >= 1 And sollTag <= 31 Then
+            ' Prüfe SollTag (Spalte D) - Tag im Monat oder Ultimo
+            Dim effektiverTag As Long
+            If sollTag = 0 And sollMonate <> "" Then
+                ' Ultimo: Letzter Tag im Buchungsmonat
+                effektiverTag = Day(DateSerial(Year(buchungsDatum), monatBuchung + 1, 0))
+            Else
+                effektiverTag = sollTag
+            End If
+            
+            If effektiverTag >= 1 And effektiverTag <= 31 Then
                 Dim tagBuchung As Long
                 tagBuchung = Day(buchungsDatum)
                 
-                ' Folgemonat-Pruefung: Zahlung NACH dem SollTag des
-                ' aktuellen Monats UND innerhalb des Vorlauf-Fensters
-                ' für den SollTag des Folgemonats
-                If vorlauf > 0 And tagBuchung > sollTag Then
+                If vorlauf > 0 And tagBuchung > effektiverTag Then
                     Dim sollDatumFolge As Date
                     On Error Resume Next
-                    sollDatumFolge = DateSerial(Year(buchungsDatum), Month(buchungsDatum) + 1, sollTag)
+                    sollDatumFolge = DateSerial(Year(buchungsDatum), Month(buchungsDatum) + 1, effektiverTag)
                     If Err.Number <> 0 Then
                         Err.Clear
                         On Error GoTo 0
@@ -908,8 +1006,13 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
                     differenzTage = CLng(sollDatumFolge - buchungsDatum)
                     
                     If differenzTage >= 0 And differenzTage <= vorlauf Then
-                        ErmittleMonatPeriode = MonthName(Month(sollDatumFolge))
-                        Exit Function
+                        ' Prüfe ob der Folgemonat in den Soll-Monaten liegt
+                        Dim folgeMon As Long
+                        folgeMon = Month(sollDatumFolge)
+                        If sollMonate = "" Or IstMonatInListe(folgeMon, sollMonate) Then
+                            ErmittleMonatPeriode = MonthName(folgeMon)
+                            Exit Function
+                        End If
                     End If
                 End If
             End If
@@ -943,6 +1046,8 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         End Select
     End With
 End Sub
+
+
 
 
 

@@ -195,6 +195,12 @@ Private Sub FuelleNachpaechterComboBox()
     Dim ws As Worksheet
     Dim lRow As Long
     Dim lastRow As Long
+    Dim fullName As String
+    
+    ' Dictionary für eindeutige Namen (verhindert Duplikate
+    ' wenn ein Mitglied mehrere Parzellen hat)
+    Dim dictNamen As Object
+    Set dictNamen = CreateObject("Scripting.Dictionary")
     
     Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     
@@ -209,8 +215,16 @@ Private Sub FuelleNachpaechterComboBox()
            StrComp(Trim(ws.Cells(lRow, M_COL_PARZELLE).value), "Verein", vbTextCompare) <> 0 Then
             
             ' Format: "Nachname, Vorname"
-            Me.cbo_Nachpaechter.AddItem ws.Cells(lRow, M_COL_NACHNAME).value & ", " & ws.Cells(lRow, M_COL_VORNAME).value
+            fullName = Trim(ws.Cells(lRow, M_COL_NACHNAME).value) & ", " & _
+                        Trim(ws.Cells(lRow, M_COL_VORNAME).value)
+            
+            ' Nur hinzufügen wenn Name noch nicht in der Liste ist
+            If Not dictNamen.Exists(fullName) Then
+                dictNamen.Add fullName, True
+                Me.cbo_Nachpaechter.AddItem fullName
+            End If
         End If
     Next lRow
+    
+    Set dictNamen = Nothing
 End Sub
-
