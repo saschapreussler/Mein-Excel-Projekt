@@ -14,9 +14,6 @@ Private Sub btn_CSVimport_Click()
     Call Importiere_Kontoauszug
 End Sub
 
-Private Sub lst_ImportReport_Click()
-End Sub
-
 Private Sub Worksheet_Activate()
     Dim arrMonate(1 To 13) As String
     
@@ -107,9 +104,9 @@ Private Sub cbo_RechnungsMonat_Change()
                 GoTo SafeExit
         End Select
         
-        ' Monat in Hilfszelle AG4 schreiben
+        ' Monat in Hilfszelle AE4 schreiben (DATA_COL_HILFSZELLE_FILTER = 31 = Spalte AE)
         ' 0 = ganzes Jahr, 1-12 = jeweiliger Monat
-        wsDaten.Range("AG4").value = monatsIndex
+        wsDaten.Range("AE4").value = monatsIndex
         
         ' Letzte Datenzeile ermitteln
         letzteDatenZeile = .Cells(.Rows.count, "A").End(xlUp).Row
@@ -117,7 +114,7 @@ Private Sub cbo_RechnungsMonat_Change()
         If letzteDatenZeile < ersteDatenZeile Then
             ' Keine Daten vorhanden - still zurücksetzen
             Me.cbo_RechnungsMonat.ListIndex = 0
-            wsDaten.Range("AG4").value = 0
+            wsDaten.Range("AE4").value = 0
             GoTo SafeExit
         End If
         
@@ -148,7 +145,7 @@ Private Sub cbo_RechnungsMonat_Change()
             ' Keine sichtbaren Daten - still zurücksetzen
             .ShowAllData
             Me.cbo_RechnungsMonat.ListIndex = 0
-            wsDaten.Range("AG4").value = 0
+            wsDaten.Range("AE4").value = 0
         End If
         
     End With
@@ -161,7 +158,6 @@ SafeExit:
     End If
 
 End Sub
-
 
 ' ===============================================================
 ' Worksheet_Change: Manuelle Kategorie-Auswahl in Spalte H
