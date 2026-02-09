@@ -61,13 +61,13 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
 
         Dim normText As String
         normText = NormalizeBankkontoZeile(wsBK, r)
-        If normText = "" Then GoTo NextRow
+        If normText = "" Then GoTo nextRow
         
         ' Manuelle Betragseingabe? NICHT anfassen
-        If HatManuelleBetragseingabe(wsBK, r) Then GoTo NextRow
+        If HatManuelleBetragseingabe(wsBK, r) Then GoTo nextRow
         
         ' Manuelle Kategorie? NICHT anfassen
-        If HatManuelleKategorie(wsBK, r) Then GoTo NextRow
+        If HatManuelleKategorie(wsBK, r) Then GoTo nextRow
 
         ' Kategorie ermitteln (v9.0: wsData + lastRuleRow)
         On Error Resume Next
@@ -96,7 +96,7 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
             SetzeKategorieDropDown wsBK, r
         End If
 
-NextRow:
+nextRow:
     Next r
 
     ' Einstellungen-Cache freigeben

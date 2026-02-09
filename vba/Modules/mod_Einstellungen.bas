@@ -3,15 +3,17 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Einstellungen
-' VERSION: 1.3 - 09.02.2026
+' VERSION: 1.4 - 09.02.2026
 ' ZWECK: Formatierung, DropDowns, Schutz/Entsperrung für
 '        die Zahlungstermin-Tabelle auf Blatt Einstellungen
 '        (Spalten B-I, ab Zeile 4, Header Zeile 3)
-' ÄNDERUNG v1.3: Neue Spalte E = Soll-Monat(e),
-'        alle Spalten ab E+1 verschoben,
-'        alphabetische Sortierung in Spalte B,
-'        Spalte D: ". Tag" oder "Ultimo",
-'        Spalten G und H: " Tage" Anzeige.
+' ÄNDERUNG v1.4: DropDowns korrigiert:
+'        Spalte D = 1-31 (DropDown) ?
+'        Spalte E = Freie Monatseingabe (KEIN DropDown)
+'        Spalte F = Freie Datumseingabe TT.MM. (KEIN DropDown)
+'        Spalte G = 0-31 (DropDown) ?
+'        Spalte H = 0-31 (DropDown) ?
+'        Alte Validierungen auf E und F werden explizit gelöscht.
 ' ===============================================================
 
 Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiß
@@ -243,7 +245,8 @@ End Sub
 ' ===============================================================
 ' 5. SPALTENFORMATE UND AUSRICHTUNG
 '    Spalte D: ". Tag" oder Text "Ultimo"
-'    Spalte E: Text (Monate), zentriert
+'    Spalte E: Text (Monate), zentriert — freie Eingabe
+'    Spalte F: Text (TT.MM.), zentriert — freie Eingabe
 '    Spalte G: " Tage" hinter der Zahl
 '    Spalte H: " Tage" hinter der Zahl
 ' ===============================================================
@@ -272,10 +275,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte D: Soll-Tag - Mischformat (Zahl mit ". Tag" ODER Text "Ultimo")
-    ' Da "Ultimo" ein Text ist, verwenden wir Textformat für die ganze Spalte.
-    ' Die ". Tag"-Anzeige wird über Worksheet_Change gesteuert.
-    ' Für reine Zahlen setzen wir das NumberFormat pro Zelle:
+    ' Spalte D: Soll-Tag — Mischformat (Zahl mit ". Tag" ODER Text "Ultimo")
     Dim r As Long
     For r = ES_START_ROW To lastRow
         Dim zellWert As Variant
@@ -296,7 +296,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
     ws.Range(ws.Cells(ES_START_ROW, ES_COL_SOLL_TAG), _
              ws.Cells(lastRow, ES_COL_SOLL_TAG)).HorizontalAlignment = xlCenter
     
-    ' Spalte E: Soll-Monat(e) - Text, zentriert
+    ' Spalte E: Soll-Monat(e) — Text, zentriert (freie Eingabe, KEIN DropDown)
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_SOLL_MONATE), _
                   ws.Cells(endRow, ES_COL_SOLL_MONATE))
         .NumberFormat = "@"
@@ -304,7 +304,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte F: Stichtag TT.MM. - Text, zentriert
+    ' Spalte F: Stichtag TT.MM. — Text, zentriert (freie Eingabe, KEIN DropDown)
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_STICHTAG_FIX), _
                   ws.Cells(endRow, ES_COL_STICHTAG_FIX))
         .NumberFormat = "@"
@@ -341,25 +341,31 @@ End Sub
 
 ' ===============================================================
 ' 6. DROPDOWN-LISTEN SETZEN
+'    Spalte B: Kategorie-DropDown (aus Daten!J)
+'    Spalte D: Tag 1-31 (DropDown, außer bei "Ultimo")
+'    Spalte E: KEIN DropDown — freie Monatseingabe
+'    Spalte F: KEIN DropDown — freie Datumseingabe TT.MM.
+'    Spalte G: Vorlauf 0-31 (DropDown)
+'    Spalte H: Nachlauf 0-31 (DropDown)
 ' ===============================================================
 Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     
     Dim lastRow As Long
-    Dim NextRow As Long
+    Dim nextRow As Long
     Dim r As Long
     Dim kategorienListe As String
     Dim tagListe As String
     Dim toleranzListe As String
     
     lastRow = LetzteZeile(ws)
-    NextRow = lastRow + 1
-    If NextRow < ES_START_ROW Then NextRow = ES_START_ROW
+    nextRow = lastRow + 1
+    If nextRow < ES_START_ROW Then nextRow = ES_START_ROW
     
     ' --- Kategorie-Liste aus Daten!J erstellen ---
     kategorienListe = HoleKategorienAlsListe()
     
     ' --- Spalte B: Kategorie-DropDown ---
-    For r = ES_START_ROW To NextRow
+    For r = ES_START_ROW To nextRow
         ws.Cells(r, ES_COL_KATEGORIE).Validation.Delete
         If kategorienListe <> "" Then
             With ws.Cells(r, ES_COL_KATEGORIE).Validation
@@ -377,7 +383,7 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     ' --- Spalte D: Tag 1-31 (DropDown nur wenn KEIN "Ultimo" drinsteht) ---
     tagListe = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
     
-    For r = ES_START_ROW To NextRow
+    For r = ES_START_ROW To nextRow
         ws.Cells(r, ES_COL_SOLL_TAG).Validation.Delete
         ' Nur DropDown wenn kein Ultimo-Text drinsteht
         If LCase(Trim(CStr(ws.Cells(r, ES_COL_SOLL_TAG).value))) <> "ultimo" Then
@@ -393,10 +399,24 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
         End If
     Next r
     
+    ' --- Spalte E: KEIN DropDown — alte Validierung explizit löschen! ---
+    For r = ES_START_ROW To nextRow
+        On Error Resume Next
+        ws.Cells(r, ES_COL_SOLL_MONATE).Validation.Delete
+        On Error GoTo 0
+    Next r
+    
+    ' --- Spalte F: KEIN DropDown — alte Validierung explizit löschen! ---
+    For r = ES_START_ROW To nextRow
+        On Error Resume Next
+        ws.Cells(r, ES_COL_STICHTAG_FIX).Validation.Delete
+        On Error GoTo 0
+    Next r
+    
     ' --- Spalte G: Vorlauf 0-31 ---
     toleranzListe = "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
     
-    For r = ES_START_ROW To NextRow
+    For r = ES_START_ROW To nextRow
         ws.Cells(r, ES_COL_VORLAUF).Validation.Delete
         With ws.Cells(r, ES_COL_VORLAUF).Validation
             .Add Type:=xlValidateList, _
@@ -410,7 +430,7 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     Next r
     
     ' --- Spalte H: Nachlauf 0-31 ---
-    For r = ES_START_ROW To NextRow
+    For r = ES_START_ROW To nextRow
         ws.Cells(r, ES_COL_NACHLAUF).Validation.Delete
         With ws.Cells(r, ES_COL_NACHLAUF).Validation
             .Add Type:=xlValidateList, _
@@ -432,13 +452,13 @@ End Sub
 Private Sub SperreUndEntsperre(ByVal ws As Worksheet)
     
     Dim lastRow As Long
-    Dim NextRow As Long
+    Dim nextRow As Long
     Dim lockEnd As Long
     
     lastRow = LetzteZeile(ws)
-    NextRow = lastRow + 1
-    If NextRow < ES_START_ROW Then NextRow = ES_START_ROW
-    lockEnd = NextRow + 50
+    nextRow = lastRow + 1
+    If nextRow < ES_START_ROW Then nextRow = ES_START_ROW
+    lockEnd = nextRow + 50
     
     ws.Cells.Locked = True
     
@@ -447,10 +467,10 @@ Private Sub SperreUndEntsperre(ByVal ws As Worksheet)
                  ws.Cells(lastRow, ES_COL_END)).Locked = False
     End If
     
-    ws.Range(ws.Cells(NextRow, ES_COL_START), _
-             ws.Cells(NextRow, ES_COL_END)).Locked = False
+    ws.Range(ws.Cells(nextRow, ES_COL_START), _
+             ws.Cells(nextRow, ES_COL_END)).Locked = False
     
-    ws.Range(ws.Cells(NextRow + 1, ES_COL_START), _
+    ws.Range(ws.Cells(nextRow + 1, ES_COL_START), _
              ws.Cells(lockEnd, ES_COL_END)).Locked = True
     
 End Sub

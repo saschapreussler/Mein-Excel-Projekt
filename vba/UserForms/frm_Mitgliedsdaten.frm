@@ -900,7 +900,7 @@ Private Sub NachpaechterParzellenWechsel(ByVal nachpaechterID As String, ByVal n
             If UCase(Trim(alteParzelle)) = "VEREIN" Then
                 ' Überspringe diese Zeile - NICHT LÖSCHEN!
                 Debug.Print "WARNUNG: Verein-Zeile übersprungen (Zeile " & r & ")"
-                GoTo NextRow
+                GoTo nextRow
             End If
             
             ' Schreibe in Mitgliederhistorie
@@ -935,7 +935,7 @@ Private Sub NachpaechterParzellenWechsel(ByVal nachpaechterID As String, ByVal n
             ' Lösche Zeile
             wsM.Rows(r).Delete Shift:=xlUp
         End If
-NextRow:
+nextRow:
     Next r
     
     ' Erstelle neue Zeile für Nachpächter auf neuer Parzelle
