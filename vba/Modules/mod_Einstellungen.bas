@@ -3,17 +3,15 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Einstellungen
-' VERSION: 1.6 - 09.02.2026
+' VERSION: 1.7 - 09.02.2026
 ' ZWECK: Formatierung, DropDowns, Schutz/Entsperrung für
 '        die Zahlungstermin-Tabelle auf Blatt Einstellungen
 '        (Spalten B-I, ab Zeile 4, Header Zeile 3)
-' ÄNDERUNG v1.6:
-'   - DropDown Spalte B: Robustere Filterlogik
-'     Alle Kategorien aus Daten!J (dedupliziert)
-'     MINUS bereits in Einstellungen!B verwendete
-'     = verfügbare Kategorien im DropDown
-'   - Für belegte Zeilen: eigene Kategorie + verfügbare
-'   - Für leere Zeilen / nächste freie: nur verfügbare
+' ÄNDERUNG v1.7:
+'   - DropDown Spalte B: Variablen-Reset pro Schleifendurchlauf
+'     (eigeneKat, zeilenListe) — behebt das Problem, dass
+'     verwendete Kategorien weiterhin im DropDown erschienen.
+'   - Fehlerbehandlung beim Validation.Add verbessert
 '   - AutoFit für alle Spalten (B-I) inkl. Header
 ' ===============================================================
 
@@ -246,8 +244,8 @@ End Sub
 ' ===============================================================
 ' 5. SPALTENFORMATE UND AUSRICHTUNG
 '    Spalte D: ". Tag" (immer numerisch, 1-31)
-'    Spalte E: Text (Monate), zentriert – freie Eingabe
-'    Spalte F: Text (TT.MM.), zentriert – freie Eingabe
+'    Spalte E: Text (Monate), zentriert — freie Eingabe
+'    Spalte F: Text (TT.MM.), zentriert — freie Eingabe
 '    Spalte G: " Tage" hinter der Zahl
 '    Spalte H: " Tage" hinter der Zahl
 ' ===============================================================
@@ -276,7 +274,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte D: Soll-Tag – immer numerisch mit ". Tag"
+    ' Spalte D: Soll-Tag — immer numerisch mit ". Tag"
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_SOLL_TAG), _
                   ws.Cells(endRow, ES_COL_SOLL_TAG))
         .NumberFormat = "0"". Tag"""
@@ -284,7 +282,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte E: Soll-Monat(e) – Text, zentriert (freie Eingabe)
+    ' Spalte E: Soll-Monat(e) — Text, zentriert (freie Eingabe)
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_SOLL_MONATE), _
                   ws.Cells(endRow, ES_COL_SOLL_MONATE))
         .NumberFormat = "@"
@@ -292,7 +290,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte F: Stichtag TT.MM. – Text, zentriert (freie Eingabe)
+    ' Spalte F: Stichtag TT.MM. — Text, zentriert (freie Eingabe)
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_STICHTAG_FIX), _
                   ws.Cells(endRow, ES_COL_STICHTAG_FIX))
         .NumberFormat = "@"
@@ -334,8 +332,8 @@ End Sub
 '                MINUS bereits in Einstellungen!B belegte
 '                PLUS eigene Kategorie der jeweiligen Zeile
 '    Spalte D: Tag 1-31 (DropDown)
-'    Spalte E: KEIN DropDown – freie Monatseingabe
-'    Spalte F: KEIN DropDown – freie Datumseingabe TT.MM.
+'    Spalte E: KEIN DropDown — freie Monatseingabe
+'    Spalte F: KEIN DropDown — freie Datumseingabe TT.MM.
 '    Spalte G: Vorlauf 0-31 (DropDown)
 '    Spalte H: Nachlauf 0-31 (DropDown)
 ' ===============================================================
@@ -346,6 +344,8 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     Dim r As Long
     Dim tagListe As String
     Dim toleranzListe As String
+    Dim eigeneKat As String
+    Dim zeilenListe As String
     
     lastRow = LetzteZeile(ws)
     nextRow = lastRow + 1
@@ -374,7 +374,7 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
         End If
     Next r
     
-    ' 3. Verfügbare Kategorien = Alle MINUS Verwendete
+    ' 3. Verfügbare Kategorien = Alle aus Daten!J MINUS bereits in Einstellungen!B verwendete
     Dim verfuegbar As Object
     Set verfuegbar = CreateObject("Scripting.Dictionary")
     verfuegbar.CompareMode = vbTextCompare
@@ -394,21 +394,26 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     End If
     
     ' 5. Pro Zeile das DropDown setzen
+    '    WICHTIG: eigeneKat und zeilenListe MÜSSEN pro Durchlauf
+    '    zurückgesetzt werden, sonst bleibt der Wert vom Vordurchlauf!
     For r = ES_START_ROW To nextRow
+    
+        ' Variablen explizit zurücksetzen (VBA-Dim in Schleifen resettet NICHT!)
+        eigeneKat = ""
+        zeilenListe = ""
+        
+        ' Alte Validation löschen
         On Error Resume Next
         ws.Cells(r, ES_COL_KATEGORIE).Validation.Delete
         On Error GoTo 0
         
-        Dim eigeneKat As String
         eigeneKat = Trim(CStr(ws.Cells(r, ES_COL_KATEGORIE).value))
         
-        Dim zeilenListe As String
-        
         If eigeneKat = "" Then
-            ' Leere Zeile: nur verfügbare (nicht verwendete) Kategorien
+            ' Leere Zeile / nächste freie: nur verfügbare (nicht verwendete) Kategorien
             zeilenListe = basisListe
         Else
-            ' Belegte Zeile: eigene Kategorie + alle verfügbaren
+            ' Belegte Zeile: eigene Kategorie steht an erster Stelle + alle verfügbaren
             If basisListe <> "" Then
                 zeilenListe = eigeneKat & "," & basisListe
             Else
@@ -419,6 +424,7 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
         ' DropDown setzen (nur wenn Liste nicht leer)
         If zeilenListe <> "" Then
             If Len(zeilenListe) <= 255 Then
+                On Error Resume Next
                 With ws.Cells(r, ES_COL_KATEGORIE).Validation
                     .Add Type:=xlValidateList, _
                          AlertStyle:=xlValidAlertStop, _
@@ -428,8 +434,9 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
                     .ShowInput = False
                     .ShowError = True
                 End With
+                On Error GoTo 0
             Else
-                ' Fallback: Zellbereichsreferenz auf Daten!J
+                ' Fallback bei >255 Zeichen: Zellbereichsreferenz auf Daten!J
                 ' (Duplikat-Schutz in Tabelle9.cls greift zusätzlich)
                 Dim wsDaten As Worksheet
                 Dim datenLastRow As Long
@@ -439,6 +446,7 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
                 If Not wsDaten Is Nothing Then
                     datenLastRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
                     If datenLastRow >= DATA_START_ROW Then
+                        On Error Resume Next
                         With ws.Cells(r, ES_COL_KATEGORIE).Validation
                             .Add Type:=xlValidateList, _
                                  AlertStyle:=xlValidAlertStop, _
@@ -449,6 +457,7 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
                             .ShowInput = False
                             .ShowError = True
                         End With
+                        On Error GoTo 0
                     End If
                 End If
             End If
@@ -461,7 +470,9 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     tagListe = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
     
     For r = ES_START_ROW To nextRow
+        On Error Resume Next
         ws.Cells(r, ES_COL_SOLL_TAG).Validation.Delete
+        On Error GoTo 0
         With ws.Cells(r, ES_COL_SOLL_TAG).Validation
             .Add Type:=xlValidateList, _
                  AlertStyle:=xlValidAlertStop, _
@@ -474,7 +485,7 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     Next r
     
     ' ===================================================================
-    ' SPALTE E: KEIN DropDown – alte Validierung explizit löschen
+    ' SPALTE E: KEIN DropDown — alte Validierung explizit löschen
     ' ===================================================================
     For r = ES_START_ROW To nextRow
         On Error Resume Next
@@ -483,7 +494,7 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     Next r
     
     ' ===================================================================
-    ' SPALTE F: KEIN DropDown – alte Validierung explizit löschen
+    ' SPALTE F: KEIN DropDown — alte Validierung explizit löschen
     ' ===================================================================
     For r = ES_START_ROW To nextRow
         On Error Resume Next
@@ -497,7 +508,9 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     toleranzListe = "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
     
     For r = ES_START_ROW To nextRow
+        On Error Resume Next
         ws.Cells(r, ES_COL_VORLAUF).Validation.Delete
+        On Error GoTo 0
         With ws.Cells(r, ES_COL_VORLAUF).Validation
             .Add Type:=xlValidateList, _
                  AlertStyle:=xlValidAlertStop, _
@@ -513,7 +526,9 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     ' SPALTE H: Nachlauf 0-31
     ' ===================================================================
     For r = ES_START_ROW To nextRow
+        On Error Resume Next
         ws.Cells(r, ES_COL_NACHLAUF).Validation.Delete
+        On Error GoTo 0
         With ws.Cells(r, ES_COL_NACHLAUF).Validation
             .Add Type:=xlValidateList, _
                  AlertStyle:=xlValidAlertStop, _
@@ -614,7 +629,7 @@ End Function
 ' ---------------------------------------------------------------
 ' Alle Kategorien aus Daten!J als Dictionary holen
 ' (Keys = Kategorie-Namen, dedupliziert, case-insensitive)
-' Liest IMMER frisch aus dem Tabellenblatt – erfasst somit
+' Liest IMMER frisch aus dem Tabellenblatt — erfasst somit
 ' auch nachträglich vom Nutzer hinzugefügte Kategorien.
 ' ---------------------------------------------------------------
 Private Function HoleAlleKategorien() As Object
@@ -640,7 +655,7 @@ Private Function HoleAlleKategorien() As Object
     lastRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     
     For r = DATA_START_ROW To lastRow
-        kat = Trim(wsDaten.Cells(r, DATA_CAT_COL_KATEGORIE).value)
+        kat = Trim(CStr(wsDaten.Cells(r, DATA_CAT_COL_KATEGORIE).value))
         If kat <> "" Then
             If Not dict.Exists(kat) Then
                 dict.Add kat, True

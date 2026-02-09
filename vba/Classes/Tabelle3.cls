@@ -15,6 +15,12 @@ Private Sub btn_CSVimport_Click()
 End Sub
 
 Private Sub Worksheet_Activate()
+
+    ' Events ABSCHALTEN bevor die ComboBox befüllt wird!
+    ' Sonst löst .ListIndex = 0 sofort cbo_RechnungsMonat_Change aus,
+    ' was bei fehlenden Daten die ComboBox wieder leert (Endlosschleife).
+    Application.EnableEvents = False
+
     Dim arrMonate(1 To 13) As String
     
     arrMonate(1) = "ganzes Jahr"
@@ -40,6 +46,8 @@ Private Sub Worksheet_Activate()
             .Style = 2 ' fmStyleDropDownList
         End If
     End With
+
+    Application.EnableEvents = True
 
     Call Initialize_ImportReport_ListBox
 End Sub
@@ -72,7 +80,7 @@ Private Sub cbo_RechnungsMonat_Change()
         ' Vorherige Filter immer aufheben
         On Error Resume Next
         .ShowAllData
-        On Error GoTo 0
+        On Error GoTo SafeExit
         
         If Me.cbo_RechnungsMonat.ListIndex = -1 Then GoTo SafeExit
         
