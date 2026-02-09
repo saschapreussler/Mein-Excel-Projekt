@@ -3,22 +3,27 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Einstellungen
-' VERSION: 1.1 - 07.02.2026
-' ZWECK: Formatierung, DropDowns, Schutz/Entsperrung fuer
+' VERSION: 1.2 - 09.02.2026
+' ZWECK: Formatierung, DropDowns, Schutz/Entsperrung f¸r
 '        die Zahlungstermin-Tabelle auf Blatt Einstellungen
 '        (Spalten B-H, ab Zeile 4, Header Zeile 3)
-' AENDERUNG: Formatierung exakt wie FormatiereKategorieTabelle
+' ƒNDERUNG v1.2: Spalte D zeigt ". Tag" hinter der Zahl,
+'        Spalten F und G zeigen " Tage" hinter der Zahl.
+'        ‹ber benutzerdefiniertes Zahlenformat (NumberFormat)
+'        bleibt der Zellwert eine reine Zahl, sodass alle
+'        Formeln und CLng()-Zugriffe weiterhin funktionieren.
+' ƒNDERUNG v1.1: Formatierung exakt wie FormatiereKategorieTabelle
 '            auf dem Daten-Blatt (gleiche Zebra-Farben, gleiche
 '            Rahmenlogik mit .ColorIndex = xlAutomatic)
 ' ===============================================================
 
-Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiss
+Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiﬂ
 Private Const ZEBRA_COLOR_2 As Long = &HDEE5E3  ' Hellgrau
 
 
 ' ===============================================================
 ' 1. HAUPTPROZEDUR: Komplette Formatierung der Tabelle
-'    Aufruf: Worksheet_Activate, nach Loeschen, nach Einfuegen
+'    Aufruf: Worksheet_Activate, nach Lˆschen, nach Einf¸gen
 ' ===============================================================
 Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     
@@ -36,7 +41,7 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     
-    ' 1. Header einmalig pruefen (nur setzen wenn leer)
+    ' 1. Header einmalig pr¸fen (nur setzen wenn leer)
     Call PruefeHeader(ws)
     
     ' 2. Leerzeilen entfernen (Daten verdichten)
@@ -66,9 +71,9 @@ End Sub
 
 
 ' ===============================================================
-' 2. HEADER PRUEFEN (Zeile 3) - nur setzen wenn leer
+' 2. HEADER PR‹FEN (Zeile 3) - nur setzen wenn leer
 '    Der Designer kann die Header manuell anpassen,
-'    sie werden nicht bei jedem Aufruf ueberschrieben
+'    sie werden nicht bei jedem Aufruf ¸berschrieben
 ' ===============================================================
 Private Sub PruefeHeader(ByVal ws As Worksheet)
     
@@ -81,7 +86,7 @@ Private Sub PruefeHeader(ByVal ws As Worksheet)
     ws.Cells(ES_HEADER_ROW, ES_COL_STICHTAG_FIX).value = "Soll-Stichtag (Fix) TT.MM."
     ws.Cells(ES_HEADER_ROW, ES_COL_VORLAUF).value = "Vorlauf-Toleranz (Tage)"
     ws.Cells(ES_HEADER_ROW, ES_COL_NACHLAUF).value = "Nachlauf-Toleranz (Tage)"
-    ws.Cells(ES_HEADER_ROW, ES_COL_SAEUMNIS).value = "Saeumnis-Gebuehr"
+    ws.Cells(ES_HEADER_ROW, ES_COL_SAEUMNIS).value = "S‰umnis-Geb¸hr"
     
     Dim rngHeader As Range
     Set rngHeader = ws.Range(ws.Cells(ES_HEADER_ROW, ES_COL_START), _
@@ -128,7 +133,7 @@ Private Sub VerdichteDaten(ByVal ws As Worksheet)
         End If
     Next r
     
-    ' Bereich loeschen und verdichtete Daten zurueckschreiben
+    ' Bereich lˆschen und verdichtete Daten zur¸ckschreiben
     ws.Range(ws.Cells(ES_START_ROW, ES_COL_START), _
              ws.Cells(lastRow, ES_COL_END)).ClearContents
     
@@ -147,7 +152,7 @@ End Sub
 ' 4. FORMATIERUNG: Zebra + Rahmen
 '    Exakt gleiche Logik wie FormatiereKategorieTabelle:
 '    - Zuerst Bereich unterhalb bereinigen
-'    - Dann belegten Bereich zuruecksetzen
+'    - Dann belegten Bereich zur¸cksetzen
 '    - Zebra-Farben zeilenweise
 '    - Rahmen auf gesamten belegten Bereich
 ' ===============================================================
@@ -164,7 +169,7 @@ Private Sub FormatiereTabelle(ByVal ws As Worksheet)
     
     lastRow = LetzteZeile(ws)
     
-    ' Maximale letzte Zeile ueber alle Spalten B-H ermitteln (fuer Bereinigung)
+    ' Maximale letzte Zeile ¸ber alle Spalten B-H ermitteln (f¸r Bereinigung)
     lastRowMax = lastRow
     For col = ES_COL_START To ES_COL_END
         colLastRow = ws.Cells(ws.Rows.count, col).End(xlUp).Row
@@ -192,11 +197,11 @@ Private Sub FormatiereTabelle(ByVal ws As Worksheet)
     Set rngTable = ws.Range(ws.Cells(ES_START_ROW, ES_COL_START), _
                             ws.Cells(lastRow, ES_COL_END))
     
-    ' Zuerst alles zuruecksetzen im belegten Bereich
+    ' Zuerst alles zur¸cksetzen im belegten Bereich
     rngTable.Interior.ColorIndex = xlNone
     rngTable.Borders.LineStyle = xlNone
     
-    ' Zebra-Formatierung NUR fuer belegte Zeilen
+    ' Zebra-Formatierung NUR f¸r belegte Zeilen
     For r = ES_START_ROW To lastRow
         If (r - ES_START_ROW) Mod 2 = 0 Then
             ws.Range(ws.Cells(r, ES_COL_START), ws.Cells(r, ES_COL_END)).Interior.color = ZEBRA_COLOR_1
@@ -205,7 +210,7 @@ Private Sub FormatiereTabelle(ByVal ws As Worksheet)
         End If
     Next r
     
-    ' Rahmenlinien NUR fuer belegte Zeilen
+    ' Rahmenlinien NUR f¸r belegte Zeilen
     ' (exakt wie FormatiereKategorieTabelle: .ColorIndex = xlAutomatic)
     With rngTable.Borders
         .LineStyle = xlContinuous
@@ -220,6 +225,13 @@ End Sub
 
 ' ===============================================================
 ' 5. SPALTENFORMATE UND AUSRICHTUNG
+'    Spalte D: Benutzerdefiniertes Format  0". Tag"
+'             -> Zellwert bleibt Zahl, Anzeige z.B. "15. Tag"
+'    Spalte F: Benutzerdefiniertes Format  0" Tage"
+'             -> Zellwert bleibt Zahl, Anzeige z.B. "5 Tage"
+'    Spalte G: Benutzerdefiniertes Format  0" Tage"
+'             -> Zellwert bleibt Zahl, Anzeige z.B. "10 Tage"
+'    Formeln und CLng()-Zugriffe sehen nur die reine Zahl.
 ' ===============================================================
 Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
     
@@ -230,7 +242,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
     endRow = lastRow + 50
     If endRow < ES_START_ROW + 50 Then endRow = ES_START_ROW + 50
     
-    ' Spalte B: Linkbuendig, kein Textumbruch
+    ' Spalte B: Linksb¸ndig, kein Textumbruch
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_KATEGORIE), _
                   ws.Cells(endRow, ES_COL_KATEGORIE))
         .HorizontalAlignment = xlLeft
@@ -238,7 +250,7 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .WrapText = False
     End With
     
-    ' Spalte C: Waehrung, rechtsbuendig
+    ' Spalte C: W‰hrung, rechtsb¸ndig
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_SOLL_BETRAG), _
                   ws.Cells(endRow, ES_COL_SOLL_BETRAG))
         .NumberFormat = "#,##0.00 " & ChrW(8364)
@@ -246,10 +258,10 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte D: Zentriert, ganze Zahlen
+    ' Spalte D: ". Tag" hinter der Zahl (Wert bleibt reine Zahl!)
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_SOLL_TAG), _
                   ws.Cells(endRow, ES_COL_SOLL_TAG))
-        .NumberFormat = "0"
+        .NumberFormat = "0"". Tag"""
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
     End With
@@ -262,23 +274,23 @@ Private Sub AnwendeSpaltenformate(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte F: Zentriert, ganze Zahlen
+    ' Spalte F: " Tage" hinter der Zahl (Wert bleibt reine Zahl!)
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_VORLAUF), _
                   ws.Cells(endRow, ES_COL_VORLAUF))
-        .NumberFormat = "0"
+        .NumberFormat = "0"" Tage"""
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte G: Zentriert, ganze Zahlen
+    ' Spalte G: " Tage" hinter der Zahl (Wert bleibt reine Zahl!)
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_NACHLAUF), _
                   ws.Cells(endRow, ES_COL_NACHLAUF))
-        .NumberFormat = "0"
+        .NumberFormat = "0"" Tage"""
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
     End With
     
-    ' Spalte H: Waehrung, rechtsbuendig
+    ' Spalte H: W‰hrung, rechtsb¸ndig
     With ws.Range(ws.Cells(ES_START_ROW, ES_COL_SAEUMNIS), _
                   ws.Cells(endRow, ES_COL_SAEUMNIS))
         .NumberFormat = "#,##0.00 " & ChrW(8364)
@@ -308,7 +320,7 @@ Private Sub SetzeDropDowns(ByVal ws As Worksheet)
     ' --- Kategorie-Liste aus Daten!J erstellen (nicht redundant) ---
     kategorienListe = HoleKategorienAlsListe()
     
-    ' --- Spalte B: Kategorie-DropDown fuer alle Datenzeilen + Eingabezeile ---
+    ' --- Spalte B: Kategorie-DropDown f¸r alle Datenzeilen + Eingabezeile ---
     For r = ES_START_ROW To NextRow
         ws.Cells(r, ES_COL_KATEGORIE).Validation.Delete
         If kategorienListe <> "" Then
@@ -376,8 +388,8 @@ End Sub
 ' ===============================================================
 ' 7. SPERREN UND ENTSPERREN
 '    - Bestehende Datenzeilen B-H: entsperrt (editierbar)
-'    - Genau 1 naechste freie Zeile: entsperrt (Neuanlage)
-'    - Alles darunter + ausserhalb: gesperrt
+'    - Genau 1 n‰chste freie Zeile: entsperrt (Neuanlage)
+'    - Alles darunter + auﬂerhalb: gesperrt
 ' ===============================================================
 Private Sub SperreUndEntsperre(ByVal ws As Worksheet)
     
@@ -399,7 +411,7 @@ Private Sub SperreUndEntsperre(ByVal ws As Worksheet)
                  ws.Cells(lastRow, ES_COL_END)).Locked = False
     End If
     
-    ' Genau 1 naechste freie Zeile B-H entsperren (Neuanlage)
+    ' Genau 1 n‰chste freie Zeile B-H entsperren (Neuanlage)
     ws.Range(ws.Cells(NextRow, ES_COL_START), _
              ws.Cells(NextRow, ES_COL_END)).Locked = False
     
@@ -492,7 +504,7 @@ End Function
 
 
 ' ===============================================================
-' 10. ZEILE LOESCHEN
+' 10. ZEILE L÷SCHEN
 ' ===============================================================
 Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long)
     
@@ -512,5 +524,4 @@ Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long
     Call FormatiereZahlungsterminTabelle(ws)
     
 End Sub
-
 

@@ -4,7 +4,7 @@ Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frm_Mitgliedsdaten
    ClientHeight    =   8580.001
    ClientLeft      =   50
    ClientTop       =   380
-   ClientWidth     =   7790
+   ClientWidth     =   7800
    OleObjectBlob   =   "frm_Mitgliedsdaten.frx":0000
    StartUpPosition =   1  'Fenstermitte
 End

@@ -4,7 +4,7 @@ Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frm_Austrittsauswahl
    ClientHeight    =   2910
    ClientLeft      =   110
    ClientTop       =   450
-   ClientWidth     =   4310
+   ClientWidth     =   4320
    OleObjectBlob   =   "frm_Austrittsauswahl.frx":0000
    StartUpPosition =   1  'Fenstermitte
 End
