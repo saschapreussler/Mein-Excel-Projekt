@@ -2,7 +2,7 @@ VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frm_Austrittsauswahl 
    Caption         =   "Austrittsgrund"
    ClientHeight    =   2910
-   ClientLeft      =   110
+   ClientLeft      =   105
    ClientTop       =   450
    ClientWidth     =   4320
    OleObjectBlob   =   "frm_Austrittsauswahl.frx":0000
