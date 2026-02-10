@@ -1,9 +1,9 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frm_Mitgliedsdaten 
    Caption         =   "Mitgliedsdaten"
-   ClientHeight    =   8580.001
-   ClientLeft      =   50
-   ClientTop       =   380
+   ClientHeight    =   8580
+   ClientLeft      =   45
+   ClientTop       =   375
    ClientWidth     =   7800
    OleObjectBlob   =   "frm_Mitgliedsdaten.frx":0000
    StartUpPosition =   1  'Fenstermitte
@@ -233,10 +233,60 @@ End Sub
 
 ' ***************************************************************
 ' HILFSPROZEDUR: Setzt den Anzeigemodus der Form
+' FIX v2: IsRemovalMode wird jetzt korrekt ausgewertet!
+'      Im RemovalMode:
+'      - Alle Daten-Labels (lbl_Anrede, lbl_Vorname, ...) SICHTBAR
+'        ? zeigen die Daten des austretenden Mitglieds
+'      - Alle Bezeichner-Labels (lbl_PachtbeginnBezeichner,
+'        lbl_PachtendeBezeichner) SICHTBAR
+'      - Alle TextBoxen UNSICHTBAR, AUSSER txt_Pachtende
+'      - Alle ComboBoxen UNSICHTBAR
+'      - Nur Buttons Übernehmen + Abbrechen sichtbar
 ' ***************************************************************
 Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boolean = False, Optional ByVal IsRemovalMode As Boolean = False)
     
     Dim ctl As MSForms.Control
+    
+    If IsRemovalMode Then
+        ' ===================================================
+        ' AUSTRITTS-MODUS: Daten-Labels sichtbar (read-only),
+        '                  nur txt_Pachtende editierbar
+        ' ===================================================
+        For Each ctl In Me.Controls
+            If TypeOf ctl Is MSForms.Label And Left(ctl.name, 4) = "lbl_" Then
+                ' ALLE Labels sichtbar: sowohl Bezeichner-Labels
+                ' (lbl_PachtbeginnBezeichner, lbl_PachtendeBezeichner)
+                ' als auch Daten-Labels (lbl_Anrede, lbl_Vorname, ...)
+                ctl.Visible = True
+            ElseIf TypeOf ctl Is MSForms.TextBox Then
+                ' Nur txt_Pachtende sichtbar (editierbar)
+                If ctl.name = "txt_Pachtende" Then
+                    ctl.Visible = True
+                Else
+                    ctl.Visible = False
+                End If
+            ElseIf TypeOf ctl Is MSForms.ComboBox Then
+                ' Alle ComboBoxen ausblenden
+                ctl.Visible = False
+            End If
+        Next ctl
+        
+        ' Buttons: nur Übernehmen + Abbrechen
+        Me.cmd_Uebernehmen.Visible = True
+        Me.cmd_Abbrechen.Visible = True
+        Me.cmd_Bearbeiten.Visible = False
+        Me.cmd_Entfernen.Visible = False
+        Me.cmd_Anlegen.Visible = False
+        
+        ' Label-Text anpassen (Pachtende / Mitgliedsende)
+        Call AktualisiereLabelsFuerFunktion
+        
+        Exit Sub
+    End If
+    
+    ' ===================================================
+    ' NORMALER MODUS (wie bisher, unverändert)
+    ' ===================================================
     For Each ctl In Me.Controls
         If TypeOf ctl Is MSForms.Label And Left(ctl.name, 4) = "lbl_" Then
             ' Bezeichner-Labels sollen IMMER sichtbar sein
@@ -647,7 +697,8 @@ Private Sub cmd_Entfernen_Click()
 AustrittBearbeiten:
     If pachtEndeVal = "" Then
         ' Pachtende ist noch leer - Benutzer kann es eintragen
-        Call SetMode(True, False, False)
+        ' FIX: IsRemovalMode = True -> nur txt_Pachtende sichtbar!
+        Call SetMode(True, False, True)
         
         ' Speichere Grund temporär im Tag des Formulars
         Me.Tag = lRow & "|" & ChangeReason & "|" & nachpaechterID & "|" & nachpaechterName
@@ -658,18 +709,9 @@ AustrittBearbeiten:
         Me.txt_Pachtende.SelStart = 0
         Me.txt_Pachtende.SelLength = Len(Me.txt_Pachtende.value)
         
-        ' SICHERHEIT: cmd_Uebernehmen EXPLIZIT sichtbar machen
-        ' (behebt Problem wenn Nutzer auf frm_Austrittsauswahl
-        ' erst opt_Nachpaechter und dann opt_Sonstiges wählt)
-        Me.cmd_Uebernehmen.Visible = True
-        Me.cmd_Abbrechen.Visible = True
-        Me.cmd_Bearbeiten.Visible = False
-        Me.cmd_Entfernen.Visible = False
-        Me.cmd_Anlegen.Visible = False
-        
         MsgBox "Das Austrittsdatum wurde auf heute gesetzt." & vbCrLf & _
                "Grund: " & ChangeReason & vbCrLf & vbCrLf & _
-               "Bitte bestätigen Sie es (oder ändern Sie es) und klicken Sie dann 'Übernehmen'.", vbInformation, "Austrittsdatum"
+               "Bitte best" & ChrW(228) & "tigen Sie es (oder " & ChrW(228) & "ndern Sie es) und klicken Sie dann '" & ChrW(220) & "bernehmen'.", vbInformation, "Austrittsdatum"
         Exit Sub
     Else
         ' Pachtende ist bereits gesetzt - Mitglied in Historie verschieben
