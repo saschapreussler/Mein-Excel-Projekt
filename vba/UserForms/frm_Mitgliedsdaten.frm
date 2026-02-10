@@ -676,13 +676,13 @@ Private Sub cmd_Entfernen_Click()
             If ChangeReason = "" Then ChangeReason = "Tod des Mitglieds"
             nachpaechterID = ""
             nachpaechterName = ""
-            GoTo AustrittBearbeiten
+            GoTo PruefeMehrfachParzellen
             
         Case 3 ' Kündigung
             If ChangeReason = "" Then ChangeReason = "Kündigung"
             nachpaechterID = ""
             nachpaechterName = ""
-            GoTo AustrittBearbeiten
+            GoTo PruefeMehrfachParzellen
             
         ' ENTFERNT: Case 4 ' Parzellenwechsel
             
@@ -690,17 +690,125 @@ Private Sub cmd_Entfernen_Click()
             If ChangeReason = "" Then ChangeReason = "Sonstiges"
             nachpaechterID = ""
             nachpaechterName = ""
-            GoTo AustrittBearbeiten
+            GoTo PruefeMehrfachParzellen
     End Select
+    
+    Exit Sub  ' Sicherheits-Exit
+
+' ==========================================================
+' NEU v2.8: Prüfung ob Mitglied mehrere Parzellen hat
+' ==========================================================
+PruefeMehrfachParzellen:
+    Dim alleParzellen As String
+    Dim parzellenArray() As String
+    Dim anzahlParzellen As Long
+    Dim mehrfachAntwort As VbMsgBoxResult
+    Dim parzellenOhneVerein As String
+    Dim tmpArray() As String
+    Dim p As Long
+    
+    alleParzellen = GetParzellenVonMitglied(OldMemberID)
+    
+    ' Zähle Parzellen (ohne "Verein")
+    parzellenOhneVerein = ""
+    If alleParzellen <> "" Then
+        tmpArray = Split(alleParzellen, ", ")
+        For p = LBound(tmpArray) To UBound(tmpArray)
+            If UCase(Trim(tmpArray(p))) <> "VEREIN" Then
+                If parzellenOhneVerein = "" Then
+                    parzellenOhneVerein = Trim(tmpArray(p))
+                Else
+                    parzellenOhneVerein = parzellenOhneVerein & ", " & Trim(tmpArray(p))
+                End If
+            End If
+        Next p
+    End If
+    
+    If parzellenOhneVerein <> "" Then
+        parzellenArray = Split(parzellenOhneVerein, ", ")
+        anzahlParzellen = UBound(parzellenArray) - LBound(parzellenArray) + 1
+    Else
+        anzahlParzellen = 0
+    End If
+    
+    If anzahlParzellen > 1 Then
+        ' *** MITGLIED HAT MEHRERE PARZELLEN ***
+        mehrfachAntwort = MsgBox( _
+            "HINWEIS: " & vorname & " " & nachname & " hat " & anzahlParzellen & " Parzellen:" & vbCrLf & _
+            parzellenOhneVerein & vbCrLf & vbCrLf & _
+            "Aktuell wird der Austritt f" & ChrW(252) & "r Parzelle " & OldParzelle & " bearbeitet." & vbCrLf & _
+            "(Grund: " & ChangeReason & ")" & vbCrLf & vbCrLf & _
+            "M" & ChrW(246) & "chten Sie:" & vbCrLf & _
+            "JA = Komplett austreten (ALLE " & anzahlParzellen & " Parzellen abgeben)" & vbCrLf & _
+            "NEIN = Nur Parzelle " & OldParzelle & " abgeben (auf den anderen Parzellen bleiben)" & vbCrLf & _
+            "ABBRECHEN = Vorgang abbrechen", _
+            vbYesNoCancel + vbQuestion, "Mehrere Parzellen erkannt")
         
+        If mehrfachAntwort = vbCancel Then
+            ' Abbruch
+            Me.Tag = lRow
+            Exit Sub
+            
+        ElseIf mehrfachAntwort = vbYes Then
+            ' *** KOMPLETT-AUSTRITT: Alle Parzellen abgeben ***
+            GoTo AustrittBearbeitenKomplett
+            
+        Else ' vbNo
+            ' *** NUR DIESE PARZELLE: Nur die aktuelle Parzelle abgeben ***
+            GoTo AustrittBearbeiten
+        End If
+    Else
+        ' *** NUR EINE PARZELLE: Normaler Austritt ***
+        GoTo AustrittBearbeiten
+    End If
+
+' ==========================================================
+' NEU v2.8: Komplett-Austritt bei mehreren Parzellen
+' ==========================================================
+AustrittBearbeitenKomplett:
+    If pachtEndeVal = "" Then
+        ' Pachtende ist noch leer - Benutzer kann es eintragen
+        Call SetMode(True, False, True)
         
+        ' Tag-Format: lRow|Grund|NachpaechterID|NachpaechterName|KOMPLETT
+        Me.Tag = lRow & "|" & ChangeReason & "|" & nachpaechterID & "|" & nachpaechterName & "|KOMPLETT"
+        
+        ' Fülle Pachtende mit heutigem Datum und MARKIERE ES komplett
+        Me.txt_Pachtende.value = Format(Date, "dd.mm.yyyy")
+        Me.txt_Pachtende.SetFocus
+        Me.txt_Pachtende.SelStart = 0
+        Me.txt_Pachtende.SelLength = Len(Me.txt_Pachtende.value)
+        
+        MsgBox "KOMPLETT-AUSTRITT: Das Austrittsdatum wurde auf heute gesetzt." & vbCrLf & _
+               "Grund: " & ChangeReason & vbCrLf & vbCrLf & _
+               "ALLE Parzellen (" & parzellenOhneVerein & ") werden abgegeben!" & vbCrLf & vbCrLf & _
+               "Bitte best" & ChrW(228) & "tigen Sie das Datum und klicken Sie dann '" & ChrW(220) & "bernehmen'.", vbInformation, "Komplett-Austritt"
+        Exit Sub
+    Else
+        ' Pachtende ist bereits gesetzt
+        austrittsDatum = CDate(pachtEndeVal)
+    End If
+    
+    ' Führe Komplett-Austritt sofort durch
+    Call VerschiebeAlleParzellenInHistorie(OldMemberID, nachname, vorname, austrittsDatum, ChangeReason)
+    
+    ' Formatierung neu anwenden
+    Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+    
+    If IsFormLoaded("frm_Mitgliederverwaltung") Then
+        frm_Mitgliederverwaltung.RefreshMitgliederListe
+    End If
+    
+    Unload Me
+    Exit Sub
+    
 AustrittBearbeiten:
     If pachtEndeVal = "" Then
         ' Pachtende ist noch leer - Benutzer kann es eintragen
         ' FIX: IsRemovalMode = True -> nur txt_Pachtende sichtbar!
         Call SetMode(True, False, True)
         
-        ' Speichere Grund temporär im Tag des Formulars
+        ' Speichere Grund temporär im Tag des Formulars (ohne KOMPLETT-Flag)
         Me.Tag = lRow & "|" & ChangeReason & "|" & nachpaechterID & "|" & nachpaechterName
         
         ' Fülle Pachtende mit heutigem Datum und MARKIERE ES komplett
@@ -711,6 +819,7 @@ AustrittBearbeiten:
         
         MsgBox "Das Austrittsdatum wurde auf heute gesetzt." & vbCrLf & _
                "Grund: " & ChangeReason & vbCrLf & vbCrLf & _
+               "Nur Parzelle " & OldParzelle & " wird abgegeben." & vbCrLf & vbCrLf & _
                "Bitte best" & ChrW(228) & "tigen Sie es (oder " & ChrW(228) & "ndern Sie es) und klicken Sie dann '" & ChrW(220) & "bernehmen'.", vbInformation, "Austrittsdatum"
         Exit Sub
     Else
@@ -718,7 +827,7 @@ AustrittBearbeiten:
         austrittsDatum = CDate(pachtEndeVal)
     End If
     
-    ' Verschiebe Mitglied in Mitgliederhistorie
+    ' Verschiebe NUR DIESE PARZELLE in Mitgliederhistorie
     Call VerschiebeInHistorie(lRow, OldParzelle, OldMemberID, nachname, vorname, austrittsDatum, ChangeReason, nachpaechterName, nachpaechterID)
     
     ' Formatierung neu anwenden
@@ -735,6 +844,7 @@ TagError:
     MsgBox "Fehler beim Lesen der Zeilennummer: " & Err.Description, vbCritical
     Exit Sub
 End Sub
+
 
 ' ***************************************************************
 ' HILFSPROZEDUR: BearbeiteNachpaechterUebernahme
@@ -1379,7 +1489,7 @@ Private Sub cmd_Uebernehmen_Click()
     Dim nachpaechterID As String
     Dim nachpaechterName As String
     
-    ' Prüfe ob Tag im Format "lRow|Grund|NachpaechterID|NachpaechterName" vorliegt (bei Austritt)
+    ' Prüfe ob Tag im Format "lRow|Grund|NachpaechterID|NachpaechterName[|KOMPLETT]" vorliegt
     If InStr(Me.Tag, "|") > 0 Then
         tagParts = Split(Me.Tag, "|")
         
@@ -1391,19 +1501,26 @@ Private Sub cmd_Uebernehmen_Click()
             If UBound(tagParts) >= 2 Then nachpaechterID = tagParts(2)
             If UBound(tagParts) >= 3 Then nachpaechterName = tagParts(3)
             
-            Call cmd_Uebernehmen_MitAustritt(lRow, grund, nachpaechterName, nachpaechterID)
+            ' NEU v2.8: Prüfe auf KOMPLETT-Flag
+            Dim istKomplettAustritt As Boolean
+            istKomplettAustritt = False
+            If UBound(tagParts) >= 4 Then
+                If UCase(tagParts(4)) = "KOMPLETT" Then
+                    istKomplettAustritt = True
+                End If
+            End If
+            
+            If istKomplettAustritt Then
+                ' KOMPLETT-AUSTRITT: Alle Parzellen des Mitglieds verschieben
+                Call cmd_Uebernehmen_MitKomplettAustritt(lRow, grund)
+            Else
+                ' Normaler Einzel-Parzellen-Austritt
+                Call cmd_Uebernehmen_MitAustritt(lRow, grund, nachpaechterName, nachpaechterID)
+            End If
             Exit Sub
         End If
     End If
     
-    ' Normale Validierung für Bearbeiten-Modus
-    On Error GoTo TagError
-    lRow = GetLRowFromTag()
-    
-    If lRow = 0 Or lRow < M_START_ROW Then
-        MsgBox "Interner Fehler: Keine gültige Zeilennummer für das Speichern gefunden.", vbCritical
-        Exit Sub
-    End If
     On Error GoTo 0
     
     Dim wsM As Worksheet
@@ -1618,6 +1735,7 @@ ErrorHandler:
     If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     MsgBox "Fehler beim Speichern der Änderungen: " & Err.Description, vbCritical
 End Sub
+
 ' ***************************************************************
 ' HILFSPROZEDUR: Speichert Mitgliedsdaten in Worksheet
 ' ***************************************************************
@@ -1814,6 +1932,161 @@ Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As Strin
     
 ErrorHandler:
     MsgBox "Fehler beim Austritt: " & Err.Description, vbCritical
+End Sub
+
+
+' ***************************************************************
+' NEU v2.8: cmd_Uebernehmen_MitKomplettAustritt
+' Wird aufgerufen wenn Komplett-Austritt (alle Parzellen) bestätigt wird
+' ***************************************************************
+Private Sub cmd_Uebernehmen_MitKomplettAustritt(ByVal lRow As Long, ByVal grund As String)
+    
+    Dim wsM As Worksheet
+    Dim nachname As String
+    Dim vorname As String
+    Dim OldMemberID As String
+    Dim austrittsDatum As Date
+    
+    On Error GoTo ErrorHandler
+    
+    Set wsM = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    
+    If Me.txt_Pachtende.value = "" Then
+        MsgBox "Austrittsdatum darf nicht leer sein.", vbCritical
+        Exit Sub
+    End If
+    
+    If Not IstGueltigesDatum(Me.txt_Pachtende.value) Then
+        MsgBox "Austrittsdatum: Bitte ein g" & ChrW(252) & "ltiges Datum eingeben (Format: TT.MM.JJJJ).", vbExclamation
+        Exit Sub
+    End If
+    
+    austrittsDatum = CDate(Me.txt_Pachtende.value)
+    nachname = wsM.Cells(lRow, M_COL_NACHNAME).value
+    vorname = wsM.Cells(lRow, M_COL_VORNAME).value
+    OldMemberID = wsM.Cells(lRow, M_COL_MEMBER_ID).value
+    
+    ' Verschiebe ALLE Parzellen des Mitglieds in die Historie
+    Call VerschiebeAlleParzellenInHistorie(OldMemberID, nachname, vorname, austrittsDatum, grund)
+    
+    ' Formatierung neu anwenden
+    Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+    
+    If IsFormLoaded("frm_Mitgliederverwaltung") Then
+        frm_Mitgliederverwaltung.RefreshMitgliederListe
+    End If
+    
+    Unload Me
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "Fehler beim Komplett-Austritt: " & Err.Description, vbCritical
+End Sub
+
+' ***************************************************************
+' NEU v2.8: VerschiebeAlleParzellenInHistorie
+' Verschiebt ALLE Einträge eines Mitglieds (alle Parzellen)
+' von der Mitgliederliste in die Mitgliederhistorie.
+' Wird beim Komplett-Austritt bei Mehrfach-Parzellen aufgerufen.
+' ***************************************************************
+Private Sub VerschiebeAlleParzellenInHistorie(ByVal memberID As String, _
+                                               ByVal nachname As String, ByVal vorname As String, _
+                                               ByVal austrittsDatum As Date, ByVal grund As String)
+    
+    Dim wsM As Worksheet
+    Dim wsH As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim nextHistRow As Long
+    Dim parzelle As String
+    Dim deletedCount As Long
+    Dim parzellenListe As String
+    
+    On Error GoTo ErrorHandler
+    
+    Set wsM = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
+    
+    ' Entsperre beide Blätter
+    wsM.Unprotect PASSWORD:=PASSWORD
+    wsH.Unprotect PASSWORD:=PASSWORD
+    
+    lastRow = wsM.Cells(wsM.Rows.count, M_COL_NACHNAME).End(xlUp).Row
+    deletedCount = 0
+    parzellenListe = ""
+    
+    ' RÜCKWÄRTS durchlaufen wegen Zeilen-Löschung!
+    For r = lastRow To M_START_ROW Step -1
+        If wsM.Cells(r, M_COL_MEMBER_ID).value = memberID Then
+            parzelle = wsM.Cells(r, M_COL_PARZELLE).value
+            
+            ' === SICHERHEITSCHECK: NIEMALS Verein-Zeile löschen ===
+            If UCase(Trim(parzelle)) = "VEREIN" Then
+                Debug.Print "WARNUNG: Verein-Zeile " & ChrW(252) & "bersprungen (Zeile " & r & ") bei Komplett-Austritt"
+                GoTo NextRowKomplett
+            End If
+            
+            ' Sammle Parzellen für die MsgBox
+            If parzellenListe = "" Then
+                parzellenListe = parzelle
+            Else
+                parzellenListe = parzelle & ", " & parzellenListe
+            End If
+            
+            ' Finde nächste freie Zeile in Mitgliederhistorie
+            nextHistRow = wsH.Cells(wsH.Rows.count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row + 1
+            If nextHistRow < H_START_ROW Then nextHistRow = H_START_ROW
+            
+            ' Schreibe Daten in Mitgliederhistorie (Spalten A-J)
+            wsH.Cells(nextHistRow, H_COL_PARZELLE).value = parzelle                            ' A: Parzelle
+            wsH.Cells(nextHistRow, H_COL_MEMBER_ID_ALT).value = memberID                       ' B: Member ID
+            wsH.Cells(nextHistRow, H_COL_NAME_EHEM_PAECHTER).value = nachname & ", " & vorname  ' C: Name
+            
+            On Error Resume Next
+            wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = austrittsDatum                    ' D: Austrittsdatum
+            If Err.Number = 0 Then
+                wsH.Cells(nextHistRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
+            End If
+            On Error GoTo ErrorHandler
+            
+            wsH.Cells(nextHistRow, H_COL_GRUND).value = grund                                  ' E: Grund
+            wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = ""                         ' F: kein Nachpächter
+            wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = ""                           ' G: kein Nachpächter
+            wsH.Cells(nextHistRow, H_COL_KOMMENTAR).value = "Komplett-Austritt (alle Parzellen)" ' H: Kommentar
+            wsH.Cells(nextHistRow, H_COL_ENDABRECHNUNG).value = ""                             ' I: Endabrechnung
+            
+            On Error Resume Next
+            wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).value = Now                               ' J: Systemzeit
+            If Err.Number = 0 Then
+                wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
+            End If
+            On Error GoTo ErrorHandler
+            
+            ' Lösche Zeile aus Mitgliederliste
+            wsM.Rows(r).Delete Shift:=xlUp
+            deletedCount = deletedCount + 1
+        End If
+NextRowKomplett:
+    Next r
+    
+    ' Schütze Blätter wieder
+    wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    MsgBox "KOMPLETT-AUSTRITT durchgef" & ChrW(252) & "hrt!" & vbCrLf & vbCrLf & _
+           "Mitglied: " & nachname & ", " & vorname & vbCrLf & _
+           "Parzellen: " & parzellenListe & vbCrLf & _
+           "Anzahl verschobener Eintr" & ChrW(228) & "ge: " & deletedCount & vbCrLf & _
+           "Grund: " & grund & vbCrLf & _
+           "Datum: " & Format(austrittsDatum, "dd.mm.yyyy"), vbInformation, "Austritt abgeschlossen"
+    
+    Exit Sub
+    
+ErrorHandler:
+    On Error GoTo 0
+    If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    If Not wsH Is Nothing Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    MsgBox "Fehler beim Komplett-Austritt: " & Err.Description, vbCritical
 End Sub
 
 
