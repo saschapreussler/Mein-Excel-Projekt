@@ -189,6 +189,9 @@ Public Const DATA_COL_AUSGABEN As Long = 33
 Public Const DATA_COL_DD_ROLE As Long = 30
 Public Const DATA_COL_DD_PARZELLE As Long = 6
 
+' Hilfsspalte BA auf Daten für Einstellungen-DropDown Fallback
+Public Const DATA_COL_ES_HILF As Long = 53      ' Spalte BA
+
 ' ===============================================================
 ' I. CSV-IMPORT (SPARKASSE)
 ' ===============================================================

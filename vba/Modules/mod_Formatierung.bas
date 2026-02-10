@@ -17,7 +17,7 @@ Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiss
 Private Const ZEBRA_COLOR_2 As Long = &HDEE5E3  ' Hellgrau
 
 ' ===============================================================
-' NEU v5.3: Blendet Hilfsspalten aus (D-I, Z-AB, AE-AH)
+' NEU v5.4: Blendet Hilfsspalten aus (D-I, Z-AB, AE-AH, BA)
 ' ===============================================================
 Public Sub BlendeDatenSpaltenAus()
     
@@ -41,6 +41,9 @@ Public Sub BlendeDatenSpaltenAus()
     
     ' Spalten AE-AH (31-34) ausblenden
     ws.Range("AE:AH").EntireColumn.Hidden = True
+    
+    ' NEU v2.1: Spalte BA (53) ausblenden (Einstellungen-DropDown Hilfsspalte)
+    ws.Columns(DATA_COL_ES_HILF).Hidden = True
     
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
