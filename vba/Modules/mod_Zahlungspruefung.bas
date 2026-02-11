@@ -3,19 +3,21 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Zahlungspruefung
-' VERSION: 1.0 - 11.02.2026
+' VERSION: 1.1 - 11.02.2026 (FIX: Public Sub statt Private)
 ' ZWECK: Zahlungsprüfung für Mitgliederliste + Einstellungen
 '        - Prüft Zahlungseingänge gegen Soll-Werte
 '        - Behandelt Dezember-Vorauszahlungen
 '        - Erkennt Sammelüberweisungen
 '        - Bietet manuelle Zuordnung bei Problemfällen
 '        - Dokumentiert Aufschlüsselung in Spalte L
+' FIX v1.1: LadeEinstellungenCacheZP -> PUBLIC (war Private)
+'           EntladeEinstellungenCacheZP -> PUBLIC (war Private)
 ' ***************************************************************
 
 ' ===============================================================
 ' CACHE FÜR EINSTELLUNGEN (Performance-Optimierung)
 ' ===============================================================
-Private Type EinstellungsRegel
+Private Type EinstellungsRegelZP
     kategorie As String
     SollBetrag As Double
     SollTag As Long
@@ -26,14 +28,14 @@ Private Type EinstellungsRegel
     SaeumnisGebuehr As Double
 End Type
 
-Private m_EinstellungenCache() As EinstellungsRegel
-Private m_EinstellungenGeladen As Boolean
+Private m_EinstellungenCacheZP() As EinstellungsRegelZP
+Private m_EinstellungenGeladenZP As Boolean
 
 ' ===============================================================
 ' DEZEMBER-CACHE (für Vorauszahlungen)
 ' Struktur: Schlüssel = EntityKey, Wert = Array von Dezember-Zahlungen
 ' ===============================================================
-Private m_DezemberCache As Object   ' Dictionary mit EntityKey -> Collection von Beträgen
+Private m_DezemberCacheZP As Object   ' Dictionary mit EntityKey -> Collection von Beträgen
 
 ' ===============================================================
 ' AMPELFARBEN (Konsistenz mit KategorieEngine)
@@ -73,17 +75,17 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     Set wsEinst = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
     
     ' Einstellungen-Cache laden (falls noch nicht geschehen)
-    If Not m_EinstellungenGeladen Then Call LadeEinstellungenCacheZP
+    If Not m_EinstellungenGeladenZP Then Call LadeEinstellungenCacheZP
     
     ' 1. Soll-Wert aus Einstellungen holen
-    soll = HoleSollBetrag(kategorie)
+    soll = HoleSollBetragZP(kategorie)
     If soll = 0 Then
         PruefeZahlungen = "GELB|Soll:0.00|Ist:0.00|Keine Einstellung"
         Exit Function
     End If
     
     ' 2. Soll-Datum berechnen (mit Dezember-Vorauszahlungs-Logik)
-    sollDatum = BerechneSollDatum(kategorie, monat, jahr)
+    sollDatum = BerechneSollDatumZP(kategorie, monat, jahr)
     
     ' 3. Ist-Wert aus Bankkonto!Spalte H + EntityKey ermitteln
     ist = 0
@@ -141,20 +143,20 @@ End Function
 ' ===============================================================
 ' Soll-Betrag aus Einstellungen holen (mit Cache)
 ' ===============================================================
-Private Function HoleSollBetrag(ByVal kategorie As String) As Double
+Private Function HoleSollBetragZP(ByVal kategorie As String) As Double
     
     Dim i As Long
     
-    If Not m_EinstellungenGeladen Then Call LadeEinstellungenCacheZP
+    If Not m_EinstellungenGeladenZP Then Call LadeEinstellungenCacheZP
     
-    For i = LBound(m_EinstellungenCache) To UBound(m_EinstellungenCache)
-        If StrComp(m_EinstellungenCache(i).kategorie, kategorie, vbTextCompare) = 0 Then
-            HoleSollBetrag = m_EinstellungenCache(i).SollBetrag
+    For i = LBound(m_EinstellungenCacheZP) To UBound(m_EinstellungenCacheZP)
+        If StrComp(m_EinstellungenCacheZP(i).kategorie, kategorie, vbTextCompare) = 0 Then
+            HoleSollBetragZP = m_EinstellungenCacheZP(i).SollBetrag
             Exit Function
         End If
     Next i
     
-    HoleSollBetrag = 0
+    HoleSollBetragZP = 0
     
 End Function
 
@@ -162,28 +164,28 @@ End Function
 ' ===============================================================
 ' Soll-Datum berechnen (mit Spalte D/E vs F Logik)
 ' ===============================================================
-Private Function BerechneSollDatum(ByVal kategorie As String, _
-                                    ByVal monat As Long, _
-                                    ByVal jahr As Long) As Date
+Private Function BerechneSollDatumZP(ByVal kategorie As String, _
+                                      ByVal monat As Long, _
+                                      ByVal jahr As Long) As Date
     
     Dim i As Long
-    Dim regel As EinstellungsRegel
+    Dim regel As EinstellungsRegelZP
     Dim tag As Long
     Dim istMonatGueltig As Boolean
     
-    If Not m_EinstellungenGeladen Then Call LadeEinstellungenCacheZP
+    If Not m_EinstellungenGeladenZP Then Call LadeEinstellungenCacheZP
     
     ' 1. Regel finden
-    For i = LBound(m_EinstellungenCache) To UBound(m_EinstellungenCache)
-        If StrComp(m_EinstellungenCache(i).kategorie, kategorie, vbTextCompare) = 0 Then
-            regel = m_EinstellungenCache(i)
+    For i = LBound(m_EinstellungenCacheZP) To UBound(m_EinstellungenCacheZP)
+        If StrComp(m_EinstellungenCacheZP(i).kategorie, kategorie, vbTextCompare) = 0 Then
+            regel = m_EinstellungenCacheZP(i)
             Exit For
         End If
     Next i
     
     If regel.kategorie = "" Then
         ' Keine Regel gefunden -> 1. des Monats als Fallback
-        BerechneSollDatum = DateSerial(jahr, monat, 1)
+        BerechneSollDatumZP = DateSerial(jahr, monat, 1)
         Exit Function
     End If
     
@@ -198,10 +200,10 @@ Private Function BerechneSollDatum(ByVal kategorie As String, _
             fixMonat = CLng(teile(1))
             ' Nur wenn der fixMonat zum aktuellen Monat passt
             If fixMonat = monat Then
-                BerechneSollDatum = DateSerial(jahr, monat, tag)
+                BerechneSollDatumZP = DateSerial(jahr, monat, tag)
             Else
                 ' Falscher Monat -> keine Zahlung fällig
-                BerechneSollDatum = DateSerial(jahr, monat, 1)
+                BerechneSollDatumZP = DateSerial(jahr, monat, 1)
             End If
             Exit Function
         End If
@@ -228,7 +230,7 @@ Private Function BerechneSollDatum(ByVal kategorie As String, _
     
     If Not istMonatGueltig Then
         ' Monat ist nicht in SollMonate enthalten -> keine Zahlung fällig
-        BerechneSollDatum = DateSerial(jahr, monat, 1)
+        BerechneSollDatumZP = DateSerial(jahr, monat, 1)
         Exit Function
     End If
     
@@ -237,9 +239,9 @@ Private Function BerechneSollDatum(ByVal kategorie As String, _
     If tag = 0 Then tag = 1
     If tag > 28 Then
         ' Letzter Tag im Monat (31 = Ultimo-Ersatz)
-        BerechneSollDatum = DateSerial(jahr, monat + 1, 0)  ' 0. Tag des Folgemonats = letzter Tag
+        BerechneSollDatumZP = DateSerial(jahr, monat + 1, 0)  ' 0. Tag des Folgemonats = letzter Tag
     Else
-        BerechneSollDatum = DateSerial(jahr, monat, tag)
+        BerechneSollDatumZP = DateSerial(jahr, monat, tag)
     End If
     
 End Function
@@ -247,8 +249,9 @@ End Function
 
 ' ===============================================================
 ' Einstellungen-Cache laden (Performance-Optimierung)
+' FIX v1.1: PUBLIC statt PRIVATE (wird von mod_Uebersicht_Generator aufgerufen)
 ' ===============================================================
-Private Sub LadeEinstellungenCacheZP()
+Public Sub LadeEinstellungenCacheZP()
     
     Dim wsEinst As Worksheet
     Dim lastRow As Long
@@ -260,17 +263,17 @@ Private Sub LadeEinstellungenCacheZP()
     On Error GoTo 0
     
     If wsEinst Is Nothing Then
-        m_EinstellungenGeladen = False
+        m_EinstellungenGeladenZP = False
         Exit Sub
     End If
     
     lastRow = wsEinst.Cells(wsEinst.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
     If lastRow < ES_START_ROW Then
-        m_EinstellungenGeladen = False
+        m_EinstellungenGeladenZP = False
         Exit Sub
     End If
     
-    ReDim m_EinstellungenCache(0 To lastRow - ES_START_ROW)
+    ReDim m_EinstellungenCacheZP(0 To lastRow - ES_START_ROW)
     idx = 0
     
     For r = ES_START_ROW To lastRow
@@ -278,7 +281,7 @@ Private Sub LadeEinstellungenCacheZP()
         kat = Trim(CStr(wsEinst.Cells(r, ES_COL_KATEGORIE).value))
         If kat = "" Then GoTo NextEinstRow
         
-        With m_EinstellungenCache(idx)
+        With m_EinstellungenCacheZP(idx)
             .kategorie = kat
             .SollBetrag = wsEinst.Cells(r, ES_COL_SOLL_BETRAG).value
             .SollTag = wsEinst.Cells(r, ES_COL_SOLL_TAG).value
@@ -296,10 +299,10 @@ NextEinstRow:
     
     ' Array auf tatsächliche Größe reduzieren
     If idx > 0 Then
-        ReDim Preserve m_EinstellungenCache(0 To idx - 1)
-        m_EinstellungenGeladen = True
+        ReDim Preserve m_EinstellungenCacheZP(0 To idx - 1)
+        m_EinstellungenGeladenZP = True
     Else
-        m_EinstellungenGeladen = False
+        m_EinstellungenGeladenZP = False
     End If
     
 End Sub
@@ -307,11 +310,12 @@ End Sub
 
 ' ===============================================================
 ' Einstellungen-Cache freigeben (Speicher sparen)
+' FIX v1.1: PUBLIC statt PRIVATE (wird von mod_Uebersicht_Generator aufgerufen)
 ' ===============================================================
 Public Sub EntladeEinstellungenCacheZP()
     
-    Erase m_EinstellungenCache
-    m_EinstellungenGeladen = False
+    Erase m_EinstellungenCacheZP
+    m_EinstellungenGeladenZP = False
     
 End Sub
 
@@ -320,7 +324,7 @@ End Sub
 ' DEZEMBER-VORAUSZAHLUNGEN: Cache initialisieren
 ' Wird von mod_Uebersicht_Generator aufgerufen (vor Jahreswechsel)
 ' ===============================================================
-Public Sub InitialisiereNachDezemberCache(ByVal jahr As Long)
+Public Sub InitialisiereNachDezemberCacheZP(ByVal jahr As Long)
     
     Dim wsBK As Worksheet
     Dim lastRow As Long
@@ -332,7 +336,7 @@ Public Sub InitialisiereNachDezemberCache(ByVal jahr As Long)
     Dim col As Collection
     
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
-    Set m_DezemberCache = CreateObject("Scripting.Dictionary")
+    Set m_DezemberCacheZP = CreateObject("Scripting.Dictionary")
     
     lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     
@@ -356,11 +360,11 @@ Public Sub InitialisiereNachDezemberCache(ByVal jahr As Long)
         Dim cacheKey As String
         cacheKey = entityKey & "|" & kategorie
         
-        If Not m_DezemberCache.Exists(cacheKey) Then
+        If Not m_DezemberCacheZP.Exists(cacheKey) Then
             Set col = New Collection
-            m_DezemberCache.Add col, cacheKey
+            m_DezemberCacheZP.Add col, cacheKey
         Else
-            Set col = m_DezemberCache(cacheKey)
+            Set col = m_DezemberCacheZP(cacheKey)
         End If
         
         col.Add zahlBetrag
@@ -374,8 +378,8 @@ End Sub
 ' ===============================================================
 ' DEZEMBER-VORAUSZAHLUNGEN: Betrag aus Cache holen
 ' ===============================================================
-Public Function HoleDezemberVorauszahlung(ByVal entityKey As String, _
-                                           ByVal kategorie As String) As Double
+Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
+                                             ByVal kategorie As String) As Double
     
     Dim cacheKey As String
     Dim col As Collection
@@ -384,24 +388,24 @@ Public Function HoleDezemberVorauszahlung(ByVal entityKey As String, _
     
     cacheKey = entityKey & "|" & kategorie
     
-    If m_DezemberCache Is Nothing Then
-        HoleDezemberVorauszahlung = 0
+    If m_DezemberCacheZP Is Nothing Then
+        HoleDezemberVorauszahlungZP = 0
         Exit Function
     End If
     
-    If Not m_DezemberCache.Exists(cacheKey) Then
-        HoleDezemberVorauszahlung = 0
+    If Not m_DezemberCacheZP.Exists(cacheKey) Then
+        HoleDezemberVorauszahlungZP = 0
         Exit Function
     End If
     
-    Set col = m_DezemberCache(cacheKey)
+    Set col = m_DezemberCacheZP(cacheKey)
     summe = 0
     
     For Each v In col
         summe = summe + CDbl(v)
     Next v
     
-    HoleDezemberVorauszahlung = summe
+    HoleDezemberVorauszahlungZP = summe
     
 End Function
 
@@ -411,8 +415,8 @@ End Function
 ' Wird von Bankkonto.Worksheet_Change aufgerufen wenn Nutzer
 ' eine Sammelüberweisung markiert (z.B. via Checkbox/Flag)
 ' ===============================================================
-Public Sub BearbeiteSammelUeberweisung(ByVal wsBK As Worksheet, _
-                                        ByVal zeile As Long)
+Public Sub BearbeiteSammelUeberweisungZP(ByVal wsBK As Worksheet, _
+                                          ByVal zeile As Long)
     
     On Error GoTo ErrorHandler
     
@@ -430,7 +434,7 @@ Public Sub BearbeiteSammelUeberweisung(ByVal wsBK As Worksheet, _
     Dim sollBetraege() As Double
     Dim anzahl As Long
     
-    Call HoleKategorienAusEinstellungen(kategorien, sollBetraege, anzahl)
+    Call HoleKategorienAusEinstellungenZP(kategorien, sollBetraege, anzahl)
     
     If anzahl = 0 Then
         MsgBox "Keine Kategorien in Einstellungen gefunden!", vbExclamation
@@ -440,7 +444,7 @@ Public Sub BearbeiteSammelUeberweisung(ByVal wsBK As Worksheet, _
     ' 3. UserForm anzeigen für manuelle Zuordnung
     ' (Hier müsste eine eigene UserForm erstellt werden - Beispiel-Code:)
     Dim ergebnis As String
-    ergebnis = ZeigeSammelZuordnungDialog(gesamtBetrag, kategorien, sollBetraege, anzahl)
+    ergebnis = ZeigeSammelZuordnungDialogZP(gesamtBetrag, kategorien, sollBetraege, anzahl)
     
     ' 4. Ergebnis in Spalte L (Bemerkung) schreiben
     If ergebnis <> "" Then
@@ -465,9 +469,9 @@ End Sub
 ' ===============================================================
 ' HILFSFUNKTION: Holt alle Kategorien aus Einstellungen
 ' ===============================================================
-Private Sub HoleKategorienAusEinstellungen(ByRef kategorien() As String, _
-                                            ByRef sollBetraege() As Double, _
-                                            ByRef anzahl As Long)
+Private Sub HoleKategorienAusEinstellungenZP(ByRef kategorien() As String, _
+                                              ByRef sollBetraege() As Double, _
+                                              ByRef anzahl As Long)
     
     Dim wsEinst As Worksheet
     Dim lastRow As Long
@@ -502,10 +506,10 @@ End Sub
 ' HILFSFUNKTION: Zeigt Dialog für Sammelzuordnung
 ' (Platzhalter - müsste eigene UserForm sein)
 ' ===============================================================
-Private Function ZeigeSammelZuordnungDialog(ByVal gesamtBetrag As Double, _
-                                             ByRef kategorien() As String, _
-                                             ByRef sollBetraege() As Double, _
-                                             ByVal anzahl As Long) As String
+Private Function ZeigeSammelZuordnungDialogZP(ByVal gesamtBetrag As Double, _
+                                               ByRef kategorien() As String, _
+                                               ByRef sollBetraege() As Double, _
+                                               ByVal anzahl As Long) As String
     
     ' PLATZHALTER: Hier würde eine UserForm (z.B. frm_SammelZuordnung) geladen werden
     ' Die UserForm hätte:
@@ -520,13 +524,13 @@ Private Function ZeigeSammelZuordnungDialog(ByVal gesamtBetrag As Double, _
                "Pachtgebühr: 25.00 €" & vbLf & _
                "Wasserkosten: 12.50 €"
     
-    ZeigeSammelZuordnungDialog = ergebnis
+    ZeigeSammelZuordnungDialogZP = ergebnis
     
     ' In der echten Implementierung würde hier stehen:
     ' Load frm_SammelZuordnung
     ' frm_SammelZuordnung.InitialisiereMit gesamtBetrag, kategorien, sollBetraege, anzahl
     ' frm_SammelZuordnung.Show vbModal
-    ' ZeigeSammelZuordnungDialog = frm_SammelZuordnung.GetErgebnis
+    ' ZeigeSammelZuordnungDialogZP = frm_SammelZuordnung.GetErgebnis
     ' Unload frm_SammelZuordnung
     
 End Function
@@ -536,8 +540,8 @@ End Function
 ' MANUELLE ZUORDNUNG: Monatszuordnung bei Problemfällen
 ' Wird aufgerufen wenn eine Zahlung keinem Monat zugeordnet werden kann
 ' ===============================================================
-Public Function FrageNachManuellerMonatszuordnung(ByVal wsBK As Worksheet, _
-                                                    ByVal zeile As Long) As Long
+Public Function FrageNachManuellerMonatszuordnungZP(ByVal wsBK As Worksheet, _
+                                                      ByVal zeile As Long) As Long
     
     Dim zahlDatum As Date
     Dim betrag As Double
@@ -559,13 +563,13 @@ Public Function FrageNachManuellerMonatszuordnung(ByVal wsBK As Worksheet, _
     antwort = InputBox(prompt, "Manuelle Monatszuordnung", Month(zahlDatum))
     
     If antwort = "" Then
-        FrageNachManuellerMonatszuordnung = 0  ' Abbruch
+        FrageNachManuellerMonatszuordnungZP = 0  ' Abbruch
         Exit Function
     End If
     
     If Not IsNumeric(antwort) Then
         MsgBox "Ungültige Eingabe! Es muss eine Zahl zwischen 1 und 12 sein.", vbExclamation
-        FrageNachManuellerMonatszuordnung = 0
+        FrageNachManuellerMonatszuordnungZP = 0
         Exit Function
     End If
     
@@ -573,7 +577,7 @@ Public Function FrageNachManuellerMonatszuordnung(ByVal wsBK As Worksheet, _
     
     If monat < 1 Or monat > 12 Then
         MsgBox "Ungültige Eingabe! Es muss eine Zahl zwischen 1 und 12 sein.", vbExclamation
-        FrageNachManuellerMonatszuordnung = 0
+        FrageNachManuellerMonatszuordnungZP = 0
         Exit Function
     End If
     
@@ -582,7 +586,7 @@ Public Function FrageNachManuellerMonatszuordnung(ByVal wsBK As Worksheet, _
     
     MsgBox "Zahlung wurde Monat " & monat & "/" & Year(zahlDatum) & " zugeordnet.", vbInformation
     
-    FrageNachManuellerMonatszuordnung = monat
+    FrageNachManuellerMonatszuordnungZP = monat
     
 End Function
 
