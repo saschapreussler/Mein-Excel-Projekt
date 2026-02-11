@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Zahlungspruefung
-' VERSION: 1.2 - 11.02.2026
+' VERSION: 1.3 - 11.02.2026
 ' ZWECK: Zahlungsprüfung für Mitgliederliste + Einstellungen
 '        - Prüft Zahlungseingänge gegen Soll-Werte
 '        - Behandelt Dezember-Vorauszahlungen
@@ -16,6 +16,12 @@ Option Explicit
 '           EntladeEinstellungenCacheZP -> PUBLIC (war Private)
 ' NEU v1.2: + Public Sub SetzeMonatPeriode (aus mod_Banking_Data)
 '           + Public Function HoleFaelligkeitFuerKategorie (aus mod_Banking_Data)
+' FIX v1.3: PruefeZahlungen komplett überarbeitet:
+'           - EntityKey wird über Daten!R+S (IBAN) aufgelöst
+'           - Bankkonto-Suche läuft über BK_COL_IBAN (Spalte D)
+'           - Dezimalformat: Punkt als Trenner (systemunabhängig)
+'           - IBAN-Cache (EntityKey -> IBAN) hinzugefügt
+'           - Dezember-Cache: ebenfalls über IBAN statt INTERNE_NR
 ' ***************************************************************
 
 ' ===============================================================
@@ -25,7 +31,7 @@ Private Type EinstellungsRegelZP
     kategorie As String
     SollBetrag As Double
     SollTag As Long
-    SollMonate As String           ' z.B. "03, 06, 09"
+    sollMonate As String           ' z.B. "03, 06, 09"
     StichtagFix As String          ' z.B. "15.03"
     VorlaufTage As Long
     NachlaufTage As Long
@@ -36,10 +42,16 @@ Private m_EinstellungenCacheZP() As EinstellungsRegelZP
 Private m_EinstellungenGeladenZP As Boolean
 
 ' ===============================================================
-' DEZEMBER-CACHE (für Vorauszahlungen)
-' Struktur: Schlüssel = EntityKey, Wert = Array von Dezember-Zahlungen
+' IBAN-CACHE: EntityKey -> IBAN (aus Daten!R+S)
 ' ===============================================================
-Private m_DezemberCacheZP As Object   ' Dictionary mit EntityKey -> Collection von Beträgen
+Private m_EntityIBANCacheZP As Object   ' Dictionary: EntityKey -> IBAN
+Private m_EntityIBANCacheGeladenZP As Boolean
+
+' ===============================================================
+' DEZEMBER-CACHE (für Vorauszahlungen)
+' Struktur: Schlüssel = IBAN|Kategorie, Wert = Collection von Beträgen
+' ===============================================================
+Private m_DezemberCacheZP As Object   ' Dictionary mit IBAN|Kategorie -> Collection von Beträgen
 
 ' ===============================================================
 ' AMPELFARBEN (Konsistenz mit KategorieEngine)
@@ -52,6 +64,16 @@ Private Const AMPEL_ROT As Long = 9871103
 ' ===============================================================
 ' HAUPTFUNKTION: Prüft ALLE Zahlungen eines Mitglieds/einer Kategorie
 ' Wird von mod_Uebersicht_Generator aufgerufen
+'
+' Rückgabe: "STATUS|Soll:XX.XX|Ist:XX.XX"
+'           Dezimaltrenner im Rückgabewert ist IMMER Punkt (.)
+'           damit das Parsen systemunabhängig funktioniert.
+'
+' LOGIK v1.3:
+'   1. EntityKey -> IBAN über Daten-Blatt (Spalte R+S) auflösen
+'   2. Bankkonto nach IBAN (Spalte D) + Kategorie (Spalte H)
+'      + Monat/Jahr (Spalte A) durchsuchen
+'   3. Beträge (Spalte B) summieren -> Ist-Wert
 ' ===============================================================
 Public Function PruefeZahlungen(ByVal entityKey As String, _
                                  ByVal kategorie As String, _
@@ -60,49 +82,60 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     
     On Error GoTo ErrorHandler
     
-    ' Rückgabewert: "GRÜN|Soll:50.00|Ist:50.00" oder "ROT|Soll:50.00|Ist:0.00" oder "GELB|Soll:50.00|Ist:45.00"
-    
     Dim wsBK As Worksheet
-    Dim wsEinst As Worksheet
     Dim soll As Double
     Dim ist As Double
     Dim status As String
-    Dim sollDatum As Date
     Dim r As Long
     Dim lastRow As Long
     Dim zahlDatum As Date
     Dim zahlBetrag As Double
     Dim zahlKat As String
-    Dim entityKeyZeile As String
+    Dim ibanZeile As String
+    Dim entityIBAN As String
     
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
-    Set wsEinst = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
     
     ' Einstellungen-Cache laden (falls noch nicht geschehen)
     If Not m_EinstellungenGeladenZP Then Call LadeEinstellungenCacheZP
     
-    ' 1. Soll-Wert aus Einstellungen holen
+    ' IBAN-Cache laden (falls noch nicht geschehen)
+    If Not m_EntityIBANCacheGeladenZP Then Call LadeEntityIBANCacheZP
+    
+    ' 1. IBAN zum EntityKey auflösen (über Daten!R+S)
+    entityIBAN = ""
+    If Not m_EntityIBANCacheZP Is Nothing Then
+        If m_EntityIBANCacheZP.Exists(entityKey) Then
+            entityIBAN = m_EntityIBANCacheZP(entityKey)
+        End If
+    End If
+    
+    If entityIBAN = "" Then
+        ' Kein IBAN zum EntityKey gefunden -> keine Prüfung möglich
+        PruefeZahlungen = "GELB|Soll:0.00|Ist:0.00|Keine IBAN zum EntityKey"
+        Exit Function
+    End If
+    
+    ' 2. Soll-Wert aus Einstellungen holen
     soll = HoleSollBetragZP(kategorie)
     If soll = 0 Then
         PruefeZahlungen = "GELB|Soll:0.00|Ist:0.00|Keine Einstellung"
         Exit Function
     End If
     
-    ' 2. Soll-Datum berechnen (mit Dezember-Vorauszahlungs-Logik)
-    sollDatum = BerechneSollDatumZP(kategorie, monat, jahr)
-    
-    ' 3. Ist-Wert aus Bankkonto!Spalte H + EntityKey ermitteln
+    ' 3. Ist-Wert aus Bankkonto ermitteln
+    '    Suche über: IBAN (Spalte D) + Kategorie (Spalte H) + Monat/Jahr (Spalte A)
     ist = 0
     lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     
     For r = BK_START_ROW To lastRow
+        ' Datum prüfen
+        If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo NextZahlRow
         zahlDatum = wsBK.Cells(r, BK_COL_DATUM).value
-        If Not IsDate(zahlDatum) Then GoTo NextZahlRow
         
-        ' Nur Zahlungen im relevanten Zeitraum (Monat ± Toleranzen)
-        If Year(zahlDatum) <> jahr Then GoTo NextZahlRow
-        If Month(zahlDatum) <> monat Then
-            ' Dezember-Sonderfall: Vorauszahlung für Januar prüfen
+        ' Jahr prüfen
+        If Year(zahlDatum) <> jahr Then
+            ' Dezember-Sonderfall: Vorauszahlung aus Dezember des Vorjahres für Januar
             If monat = 1 And Month(zahlDatum) = 12 And Year(zahlDatum) = jahr - 1 Then
                 ' Vorauszahlung aus Dezember des Vorjahres -> zulässig
             Else
@@ -110,15 +143,20 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
             End If
         End If
         
-        ' EntityKey prüfen (Spalte J = INTERNE_NR = EntityKey)
-        entityKeyZeile = Trim(CStr(wsBK.Cells(r, BK_COL_INTERNE_NR).value))
-        If entityKeyZeile <> entityKey Then GoTo NextZahlRow
+        ' Monat prüfen (nur wenn Jahr passt)
+        If Year(zahlDatum) = jahr Then
+            If Month(zahlDatum) <> monat Then GoTo NextZahlRow
+        End If
         
-        ' Kategorie prüfen (Spalte H)
+        ' IBAN prüfen (Spalte D = BK_COL_IBAN)
+        ibanZeile = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
+        If StrComp(ibanZeile, entityIBAN, vbTextCompare) <> 0 Then GoTo NextZahlRow
+        
+        ' Kategorie prüfen (Spalte H = BK_COL_KATEGORIE)
         zahlKat = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
         If StrComp(zahlKat, kategorie, vbTextCompare) <> 0 Then GoTo NextZahlRow
         
-        ' Betrag addieren
+        ' Betrag addieren (Spalte B = BK_COL_BETRAG)
         zahlBetrag = wsBK.Cells(r, BK_COL_BETRAG).value
         ist = ist + Abs(zahlBetrag)
         
@@ -134,14 +172,79 @@ NextZahlRow:
         status = "ROT"
     End If
     
-    ' 5. Ergebnis formatieren
-    PruefeZahlungen = status & "|Soll:" & Format(soll, "0.00") & "|Ist:" & Format(ist, "0.00")
+    ' 5. Ergebnis formatieren (IMMER Punkt als Dezimaltrenner!)
+    PruefeZahlungen = status & "|Soll:" & FormatDezimalPunkt(soll) & "|Ist:" & FormatDezimalPunkt(ist)
     Exit Function
     
 ErrorHandler:
     PruefeZahlungen = "ROT|Fehler:" & Err.Description
     
 End Function
+
+
+' ===============================================================
+' HILFSFUNKTION: Double -> String mit Punkt als Dezimaltrenner
+' Wird intern verwendet, damit das Parsen systemunabhängig
+' funktioniert (deutsch: Komma -> Punkt).
+' ===============================================================
+Private Function FormatDezimalPunkt(ByVal wert As Double) As String
+    Dim s As String
+    s = Format(wert, "0.00")
+    ' Lokales Dezimalkomma durch Punkt ersetzen
+    s = Replace(s, ",", ".")
+    FormatDezimalPunkt = s
+End Function
+
+
+' ===============================================================
+' IBAN-CACHE: Lädt EntityKey -> IBAN Zuordnung aus Daten!R+S
+' ===============================================================
+Private Sub LadeEntityIBANCacheZP()
+    
+    Dim wsDaten As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim ek As String
+    Dim iban As String
+    
+    Set m_EntityIBANCacheZP = CreateObject("Scripting.Dictionary")
+    m_EntityIBANCacheGeladenZP = False
+    
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    
+    If wsDaten Is Nothing Then Exit Sub
+    
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
+    If lastRow < EK_START_ROW Then Exit Sub
+    
+    For r = EK_START_ROW To lastRow
+        ek = Trim(CStr(wsDaten.Cells(r, EK_COL_ENTITYKEY).value))
+        iban = Replace(Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)), " ", "")
+        
+        If ek <> "" And iban <> "" Then
+            ' 1 EntityKey = genau 1 IBAN
+            If Not m_EntityIBANCacheZP.Exists(ek) Then
+                m_EntityIBANCacheZP.Add ek, iban
+            End If
+        End If
+    Next r
+    
+    m_EntityIBANCacheGeladenZP = True
+    
+End Sub
+
+
+' ===============================================================
+' IBAN-CACHE: Freigeben
+' ===============================================================
+Private Sub EntladeEntityIBANCacheZP()
+    
+    Set m_EntityIBANCacheZP = Nothing
+    m_EntityIBANCacheGeladenZP = False
+    
+End Sub
 
 
 ' ===============================================================
@@ -216,10 +319,10 @@ Private Function BerechneSollDatumZP(ByVal kategorie As String, _
     ' 3. Spalte D/E verwenden (SollTag + SollMonate)
     ' Prüfen ob der aktuelle Monat in SollMonate enthalten ist
     istMonatGueltig = False
-    If regel.SollMonate <> "" Then
+    If regel.sollMonate <> "" Then
         ' Format: "03, 06, 09"
         Dim monate() As String
-        monate = Split(regel.SollMonate, ",")
+        monate = Split(regel.sollMonate, ",")
         Dim m As Long
         For m = LBound(monate) To UBound(monate)
             If CLng(Trim(monate(m))) = monat Then
@@ -289,7 +392,7 @@ Public Sub LadeEinstellungenCacheZP()
             .kategorie = kat
             .SollBetrag = wsEinst.Cells(r, ES_COL_SOLL_BETRAG).value
             .SollTag = wsEinst.Cells(r, ES_COL_SOLL_TAG).value
-            .SollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
+            .sollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
             .StichtagFix = Trim(CStr(wsEinst.Cells(r, ES_COL_STICHTAG_FIX).value))
             .VorlaufTage = wsEinst.Cells(r, ES_COL_VORLAUF).value
             .NachlaufTage = wsEinst.Cells(r, ES_COL_NACHLAUF).value
@@ -315,11 +418,15 @@ End Sub
 ' ===============================================================
 ' Einstellungen-Cache freigeben (Speicher sparen)
 ' FIX v1.1: PUBLIC statt PRIVATE (wird von mod_Uebersicht_Generator aufgerufen)
+' v1.3: Gibt auch IBAN-Cache frei
 ' ===============================================================
 Public Sub EntladeEinstellungenCacheZP()
     
     Erase m_EinstellungenCacheZP
     m_EinstellungenGeladenZP = False
+    
+    ' IBAN-Cache ebenfalls freigeben
+    Call EntladeEntityIBANCacheZP
     
 End Sub
 
@@ -327,6 +434,7 @@ End Sub
 ' ===============================================================
 ' DEZEMBER-VORAUSZAHLUNGEN: Cache initialisieren
 ' Wird von mod_Uebersicht_Generator aufgerufen (vor Jahreswechsel)
+' v1.3: Suche über IBAN (Spalte D) statt INTERNE_NR (Spalte J)
 ' ===============================================================
 Public Sub InitialisiereNachDezemberCacheZP(ByVal jahr As Long)
     
@@ -335,7 +443,7 @@ Public Sub InitialisiereNachDezemberCacheZP(ByVal jahr As Long)
     Dim r As Long
     Dim zahlDatum As Date
     Dim zahlBetrag As Double
-    Dim entityKey As String
+    Dim ibanWert As String
     Dim kategorie As String
     Dim col As Collection
     
@@ -345,28 +453,29 @@ Public Sub InitialisiereNachDezemberCacheZP(ByVal jahr As Long)
     lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     
     For r = BK_START_ROW To lastRow
+        If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo NextDezRow
         zahlDatum = wsBK.Cells(r, BK_COL_DATUM).value
-        If Not IsDate(zahlDatum) Then GoTo NextDezRow
         
         ' Nur Dezember des Vorjahres
         If Year(zahlDatum) <> jahr - 1 Then GoTo NextDezRow
         If Month(zahlDatum) <> 12 Then GoTo NextDezRow
         
-        entityKey = Trim(CStr(wsBK.Cells(r, BK_COL_INTERNE_NR).value))
-        If entityKey = "" Then GoTo NextDezRow
+        ' IBAN aus Spalte D (statt EntityKey aus Spalte J)
+        ibanWert = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
+        If ibanWert = "" Then GoTo NextDezRow
         
         kategorie = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
         If kategorie = "" Then GoTo NextDezRow
         
         zahlBetrag = Abs(wsBK.Cells(r, BK_COL_BETRAG).value)
         
-        ' In Dictionary speichern: Schlüssel = EntityKey & "|" & Kategorie
+        ' In Dictionary speichern: Schlüssel = IBAN & "|" & Kategorie
         Dim cacheKey As String
-        cacheKey = entityKey & "|" & kategorie
+        cacheKey = ibanWert & "|" & kategorie
         
         If Not m_DezemberCacheZP.Exists(cacheKey) Then
             Set col = New Collection
-            m_DezemberCacheZP.Add col, cacheKey
+            m_DezemberCacheZP.Add cacheKey, col
         Else
             Set col = m_DezemberCacheZP(cacheKey)
         End If
@@ -381,6 +490,7 @@ End Sub
 
 ' ===============================================================
 ' DEZEMBER-VORAUSZAHLUNGEN: Betrag aus Cache holen
+' v1.3: Parameter geändert: entityKey -> wird intern zu IBAN aufgelöst
 ' ===============================================================
 Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
                                              ByVal kategorie As String) As Double
@@ -389,8 +499,22 @@ Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
     Dim col As Collection
     Dim summe As Double
     Dim v As Variant
+    Dim entityIBAN As String
     
-    cacheKey = entityKey & "|" & kategorie
+    ' EntityKey -> IBAN auflösen
+    entityIBAN = ""
+    If Not m_EntityIBANCacheZP Is Nothing Then
+        If m_EntityIBANCacheZP.Exists(entityKey) Then
+            entityIBAN = m_EntityIBANCacheZP(entityKey)
+        End If
+    End If
+    
+    If entityIBAN = "" Then
+        HoleDezemberVorauszahlungZP = 0
+        Exit Function
+    End If
+    
+    cacheKey = entityIBAN & "|" & kategorie
     
     If m_DezemberCacheZP Is Nothing Then
         HoleDezemberVorauszahlungZP = 0
@@ -549,19 +673,19 @@ Public Function FrageNachManuellerMonatszuordnungZP(ByVal wsBK As Worksheet, _
     
     Dim zahlDatum As Date
     Dim betrag As Double
-    Dim name As String
+    Dim Name As String
     Dim prompt As String
     Dim antwort As String
     Dim monat As Long
     
     zahlDatum = wsBK.Cells(zeile, BK_COL_DATUM).value
     betrag = wsBK.Cells(zeile, BK_COL_BETRAG).value
-    name = Trim(CStr(wsBK.Cells(zeile, BK_COL_NAME).value))
+    Name = Trim(CStr(wsBK.Cells(zeile, BK_COL_NAME).value))
     
     prompt = "Die Zahlung kann keinem Monat zugeordnet werden:" & vbLf & vbLf & _
              "Datum: " & Format(zahlDatum, "dd.mm.yyyy") & vbLf & _
              "Betrag: " & Format(betrag, "#,##0.00 ") & ChrW(8364) & vbLf & _
-             "Name: " & name & vbLf & vbLf & _
+             "Name: " & Name & vbLf & vbLf & _
              "Bitte geben Sie den Zielmonat ein (1-12):"
     
     antwort = InputBox(prompt, "Manuelle Monatszuordnung", Month(zahlDatum))
@@ -652,12 +776,50 @@ End Sub
 ' ===============================================================
 ' NEU v1.2: FÄLLIGKEIT AUS KATEGORIE-TABELLE (Spalte O) HOLEN
 ' Verschoben aus mod_Banking_Data, jetzt Public für alle Module.
+' v1.3: Prüft zuerst Einstellungen-Blatt (Spalte B = Kategorie),
+'       dann erst Daten-Blatt (Spalte O = Fälligkeit) als Fallback.
 ' ===============================================================
 Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
                                               ByVal kategorie As String) As String
     Dim lastRow As Long
     Dim r As Long
     
+    ' PRIO 1: Einstellungen-Blatt prüfen (Spalte B = Kategorie)
+    '         Wenn Kategorie dort existiert, ist sie als "monatlich" zu werten
+    '         (Einstellungen definieren die Zahlungstermine)
+    Dim wsEinst As Worksheet
+    On Error Resume Next
+    Set wsEinst = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    
+    If Not wsEinst Is Nothing Then
+        lastRow = wsEinst.Cells(wsEinst.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
+        For r = ES_START_ROW To lastRow
+            If StrComp(Trim(CStr(wsEinst.Cells(r, ES_COL_KATEGORIE).value)), kategorie, vbTextCompare) = 0 Then
+                ' Kategorie in Einstellungen gefunden
+                ' Fälligkeit aus SollMonate ableiten
+                Dim sollMonate As String
+                sollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
+                If sollMonate = "" Then
+                    ' Keine Monate angegeben -> gilt für ALLE Monate = monatlich
+                    HoleFaelligkeitFuerKategorie = "monatlich"
+                Else
+                    ' Spezifische Monate angegeben
+                    Dim anzMonate As Long
+                    anzMonate = UBound(Split(sollMonate, ",")) + 1
+                    Select Case anzMonate
+                        Case 1: HoleFaelligkeitFuerKategorie = "jährlich"
+                        Case 2: HoleFaelligkeitFuerKategorie = "halbjährlich"
+                        Case 4: HoleFaelligkeitFuerKategorie = "vierteljährlich"
+                        Case Else: HoleFaelligkeitFuerKategorie = "monatlich"
+                    End Select
+                End If
+                Exit Function
+            End If
+        Next r
+    End If
+    
+    ' PRIO 2: Fallback auf Daten-Blatt (Spalte O = Fälligkeit)
     lastRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     
     For r = DATA_START_ROW To lastRow

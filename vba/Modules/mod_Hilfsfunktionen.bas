@@ -41,7 +41,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
         ' Deaktiviere DisplayAlerts um Warnungen zu unterdrücken
         Application.DisplayAlerts = False
         Set wsTemp = ThisWorkbook.Worksheets.Add(After:=wsM)
-        wsTemp.name = TEMP_WS_NAME
+        wsTemp.Name = TEMP_WS_NAME
         ' Verstecke das Worksheet (optional, für zusätzliche Sicherheit)
         wsTemp.Visible = xlSheetVeryHidden
         Application.DisplayAlerts = True
@@ -97,7 +97,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
             On Error GoTo ErrorHandler
             
             ' Neuen benannten Bereich definieren
-            ThisWorkbook.Names.Add name:="rng_MitgliederNamen", RefersTo:=rngTarget
+            ThisWorkbook.Names.Add Name:="rng_MitgliederNamen", RefersTo:=rngTarget
         End If
     End If
     
@@ -153,8 +153,8 @@ Public Sub BereinigeTempWorksheets()
     
     ' Sammle alle Worksheets die "TEMP" im Namen haben
     For Each ws In ThisWorkbook.Worksheets
-        If InStr(1, ws.name, "TEMP", vbTextCompare) > 0 Then
-            wsToDelete.Add ws.name
+        If InStr(1, ws.Name, "TEMP", vbTextCompare) > 0 Then
+            wsToDelete.Add ws.Name
         End If
     Next ws
     
@@ -178,7 +178,7 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     ' Gehe alle geladenen UserForms in der VBA-Collection durch
     For i = 0 To VBA.UserForms.count - 1
         ' Vergleiche den Klassennamen des geladenen Formulars mit dem gesuchten Namen
-        If StrComp(VBA.UserForms.item(i).name, FormName, vbTextCompare) = 0 Then
+        If StrComp(VBA.UserForms.item(i).Name, FormName, vbTextCompare) = 0 Then
             IsFormLoaded = True ' Formular gefunden und ist geladen
             Exit Function
         End If

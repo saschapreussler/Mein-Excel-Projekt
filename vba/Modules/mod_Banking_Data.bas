@@ -3,7 +3,11 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Data
-' VERSION: 3.9 - 11.02.2026
+' VERSION: 4.0 - 11.02.2026
+' ÄNDERUNG v4.0:
+'   - NEU: Schritt 7 in Importiere_Kontoauszug:
+'     Übersicht generieren nach CSV-Import (nur bei neuen Daten)
+'     Aufruf: mod_Uebersicht_Generator.GeneriereUebersicht
 ' ÄNDERUNG v3.9:
 '   - Setze_Monat_Periode ENTFERNT (verschoben nach
 '     mod_Zahlungspruefung.SetzeMonatPeriode)
@@ -136,13 +140,13 @@ Public Sub Importiere_Kontoauszug()
         wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
         Exit Sub
     End If
-    wsTemp.name = tempSheetName
+    wsTemp.Name = tempSheetName
     Err.Clear
     On Error GoTo 0
     
     On Error Resume Next
     With wsTemp.QueryTables.Add(Connection:="TEXT;" & strFile, Destination:=wsTemp.Cells(1, 1))
-        .name = "CSV_Import"
+        .Name = "CSV_Import"
         .FieldNames = True
         .TextFilePlatform = xlUTF8Value
         .TextFileStartRow = 1
@@ -293,13 +297,22 @@ ImportAbschluss:
     Err.Clear
     On Error GoTo 0
     
+    ' 7. Übersicht aktualisieren (nur wenn neue Datensätze importiert wurden)
+    '    v4.0: NEU - Übersichtsblatt nach jedem erfolgreichen Import generieren
+    If rowsProcessed > 0 Then
+        On Error Resume Next
+        Call mod_Uebersicht_Generator.GeneriereUebersicht(Year(Date))
+        Err.Clear
+        On Error GoTo 0
+    End If
+    
     ' Blattschutz wird von der Pipeline selbst verwaltet (Protect am Ende).
     ' Hier nochmals sicherstellen falls Pipeline nicht lief:
     On Error Resume Next
     wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
     
-    ' 7. Formeln wiederherstellen (könnten durch Import/Sort überschrieben sein)
+    ' 8. Formeln wiederherstellen (könnten durch Import/Sort überschrieben sein)
     Call StelleFormelnWiederHer(wsZiel)
     
     wsZiel.Activate
@@ -1117,3 +1130,4 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+

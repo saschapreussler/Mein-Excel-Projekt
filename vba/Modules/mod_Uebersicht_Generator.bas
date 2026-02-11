@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
-' VERSION: 1.1 - 11.02.2026
+' VERSION: 1.2 - 11.02.2026
 ' ZWECK: Generiert Übersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - 12 Monate (Januar - Dezember)
@@ -13,6 +13,8 @@ Option Explicit
 '          Parzelle 2 (2 Personen, Gemeinschaftskonto) korrekt
 ' FIX v1.1: InitialisiereNachDezemberCache -> InitialisiereNachDezemberCacheZP
 '           MsgBox-Text: 'Uebersicht' -> 'Übersicht' (Umlaut-Vorgabe)
+' FIX v1.2: Parsen des Rückgabewerts: Val() statt CDbl() für
+'           systemunabhängiges Parsen (Punkt als Dezimaltrenner)
 ' ***************************************************************
 
 ' ===============================================================
@@ -114,7 +116,6 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0)
     Call mod_Zahlungspruefung.LadeEinstellungenCacheZP
     
     ' Dezember-Cache initialisieren (für Vorauszahlungen)
-    ' FIX v1.1: Korrekter Prozedurname mit Suffix ZP
     Call mod_Zahlungspruefung.InitialisiereNachDezemberCacheZP(jahr)
     
     ' Mitgliederliste laden (nur aktive Mitglieder mit Parzelle)
@@ -138,11 +139,13 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0)
                 ergebnis = mod_Zahlungspruefung.PruefeZahlungen(entityKey, kategorie, monat, jahr)
                 
                 ' Ergebnis parsen: "GRÜN|Soll:50.00|Ist:50.00"
+                ' WICHTIG: Dezimaltrenner ist IMMER Punkt (.)
+                '          Val() parst immer mit Punkt, unabhängig vom System
                 teile = Split(ergebnis, "|")
                 If UBound(teile) >= 2 Then
                     status = teile(0)
-                    soll = CDbl(Replace(Split(teile(1), ":")(1), ",", "."))
-                    ist = CDbl(Replace(Split(teile(2), ":")(1), ",", "."))
+                    soll = Val(Split(teile(1), ":")(1))
+                    ist = Val(Split(teile(2), ":")(1))
                 Else
                     status = "ROT"
                     soll = 0
@@ -339,4 +342,3 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     rngTable.VerticalAlignment = xlCenter
     
 End Sub
-

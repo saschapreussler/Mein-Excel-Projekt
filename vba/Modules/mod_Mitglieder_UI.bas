@@ -391,7 +391,7 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     Dim f As Object
     
     For Each f In VBA.UserForms
-        If StrComp(f.name, FormName, vbTextCompare) = 0 Then
+        If StrComp(f.Name, FormName, vbTextCompare) = 0 Then
             IsFormLoaded = True
             Exit Function
         End If

@@ -318,7 +318,7 @@ Private Sub SetzeKategorieDropDown(ByVal wsBK As Worksheet, ByVal rowBK As Long)
     
     ' Validierungs-Formel als Bereichsreferenz
     Dim listRange As String
-    listRange = "='" & wsData.name & "'!" & _
+    listRange = "='" & wsData.Name & "'!" & _
                 wsData.Cells(DATA_START_ROW, listCol).Address(True, True) & ":" & _
                 wsData.Cells(lastListRow, listCol).Address(True, True)
     

@@ -295,7 +295,7 @@ End Function
 ' ===============================================================
 ' HILFSFUNKTION: Zerlegt einen Namen in normalisierte Worte
 ' ===============================================================
-Private Function ZerlegeInWorte(ByVal name As String) As Object
+Private Function ZerlegeInWorte(ByVal Name As String) As Object
     Dim dict As Object
     Set dict = CreateObject("Scripting.Dictionary")
     
@@ -303,18 +303,18 @@ Private Function ZerlegeInWorte(ByVal name As String) As Object
     Dim wort As String
     Dim i As Long
     
-    name = UCase(Trim(name))
-    name = Replace(name, ",", " ")
-    name = Replace(name, ".", " ")
-    name = Replace(name, "-", " ")
-    name = EntferneMehrfacheLeerzeichen(name)
+    Name = UCase(Trim(Name))
+    Name = Replace(Name, ",", " ")
+    Name = Replace(Name, ".", " ")
+    Name = Replace(Name, "-", " ")
+    Name = EntferneMehrfacheLeerzeichen(Name)
     
-    If name = "" Then
+    If Name = "" Then
         Set ZerlegeInWorte = dict
         Exit Function
     End If
     
-    parts = Split(name, " ")
+    parts = Split(Name, " ")
     
     For i = LBound(parts) To UBound(parts)
         wort = Trim(parts(i))
