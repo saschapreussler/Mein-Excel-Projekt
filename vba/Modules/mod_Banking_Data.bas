@@ -3,8 +3,15 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Data
-' VERSION: 3.8 - 08.02.2026
-' ÄNDERUNG: Setze_Monat_Periode mit Cache-Unterstützung
+' VERSION: 3.9 - 11.02.2026
+' ÄNDERUNG v3.9:
+'   - Setze_Monat_Periode ENTFERNT (verschoben nach
+'     mod_Zahlungspruefung.SetzeMonatPeriode)
+'   - HoleFaelligkeitFuerKategorie ENTFERNT (verschoben nach
+'     mod_Zahlungspruefung.HoleFaelligkeitFuerKategorie)
+'   - Aufruf in Importiere_Kontoauszug geändert auf
+'     mod_Zahlungspruefung.SetzeMonatPeriode
+' ÄNDERUNG v3.8: Setze_Monat_Periode mit Cache-Unterstützung
 '            Private ErmittleMonatPeriode ENTFERNT (nutzt Public
 '            Version aus mod_KategorieEngine_Evaluator)
 ' ===============================================================
@@ -12,10 +19,10 @@ Option Explicit
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
 
 ' Farb-Konstanten für ListBox-Hintergrund (OLE_COLOR / BGR)
-Private Const LB_COLOR_GRUEN As Long = &HC0FFC0     ' hellgruen
+Private Const LB_COLOR_GRUEN As Long = &HC0FFC0     ' hellgrün
 Private Const LB_COLOR_GELB As Long = &HC0FFFF      ' hellgelb
 Private Const LB_COLOR_ROT As Long = &HC0C0FF       ' hellrot
-Private Const LB_COLOR_WEISS As Long = &HFFFFFF     ' weiss
+Private Const LB_COLOR_WEISS As Long = &HFFFFFF     ' weiß
 
 ' Trennzeichen für Serialisierung in Zelle Y500
 Private Const PROTO_SEP As String = "||"
@@ -24,7 +31,7 @@ Private Const PROTO_SEP As String = "||"
 Private Const PROTO_ZEILE As Long = 500
 Private Const PROTO_SPALTE As Long = 25              ' Spalte Y
 
-' Maximale Anzahl Import-Bloecke im Speicher (je 5 Zeilen)
+' Maximale Anzahl Import-Blöcke im Speicher (je 5 Zeilen)
 Private Const MAX_BLOECKE As Long = 100
 ' 100 x 5 = 500 Zeilen maximal
 Private Const MAX_ZEILEN As Long = 500
@@ -280,9 +287,9 @@ ImportAbschluss:
     ' und nicht das "On Error Resume Next" von oben erbt!
     If rowsProcessed > 0 Then Call KategorieEngine_Pipeline(wsZiel)
     
-    ' 6. Monat/Periode setzen
+    ' 6. Monat/Periode setzen (v3.9: verschoben nach mod_Zahlungspruefung)
     On Error Resume Next
-    Call Setze_Monat_Periode(wsZiel)
+    Call mod_Zahlungspruefung.SetzeMonatPeriode(wsZiel)
     Err.Clear
     On Error GoTo 0
     
@@ -327,7 +334,7 @@ ImportAbschluss:
     
     msgText = "CSV-Import Ergebnis:" & vbCrLf & _
               String(30, "=") & vbCrLf & vbCrLf & _
-              "Datens" & ChrW(228) & "tze in CSV:" & vbTab & rowsTotalInFile & vbCrLf & _
+              "Datensätze in CSV:" & vbTab & rowsTotalInFile & vbCrLf & _
               "Importiert:" & vbTab & vbTab & rowsProcessed & " / " & rowsTotalInFile & vbCrLf & _
               "Duplikate:" & vbTab & vbTab & rowsIgnoredDupe & vbCrLf & _
               "Fehler:" & vbTab & vbTab & vbTab & rowsFailedImport & vbCrLf & vbCrLf
@@ -335,12 +342,12 @@ ImportAbschluss:
     If rowsFailedImport > 0 Then
         msgText = msgText & "ACHTUNG: " & rowsFailedImport & " Zeilen konnten nicht verarbeitet werden!"
     ElseIf rowsProcessed = 0 And rowsIgnoredDupe > 0 Then
-        msgText = msgText & "Alle Eintr" & ChrW(228) & "ge waren bereits in der Datenbank vorhanden."
+        msgText = msgText & "Alle Einträge waren bereits in der Datenbank vorhanden."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe = 0 Then
-        msgText = msgText & "Alle Datens" & ChrW(228) & "tze wurden erfolgreich importiert."
+        msgText = msgText & "Alle Datensätze wurden erfolgreich importiert."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe > 0 Then
-        msgText = msgText & rowsProcessed & " neue Datens" & ChrW(228) & "tze importiert," & vbCrLf & _
-                  rowsIgnoredDupe & " Duplikate " & ChrW(252) & "bersprungen."
+        msgText = msgText & rowsProcessed & " neue Datensätze importiert," & vbCrLf & _
+                  rowsIgnoredDupe & " Duplikate übersprungen."
     End If
     
     MsgBox msgText, msgIcon, msgTitle
@@ -367,7 +374,7 @@ End Sub
 ' 1b. ENTITYKEY-PRÜFUNG NACH IMPORT
 '     Prüft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
 '     eine vollständige Zuordnung in Spalte W (EntityRole) haben.
-'     Bei fehlenden Eintraegen: MsgBox mit Angebot zur Navigation.
+'     Bei fehlenden Einträgen: MsgBox mit Angebot zur Navigation.
 ' ===============================================================
 Private Sub PruefeUnvollstaendigeEntityKeys()
     
@@ -416,7 +423,7 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
         End If
     Next r
     
-    ' Keine fehlenden Eintraege -> nichts tun
+    ' Keine fehlenden Einträge -> nichts tun
     If anzahlOhneRole = 0 Then Exit Sub
     
     ' MsgBox zusammenbauen
@@ -432,14 +439,14 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
     hinweis = hinweis & vbCrLf & vbCrLf & _
               "Ohne diese Zuordnung kann die Kategorie-Engine die Buchungen " & _
               "nicht korrekt verarbeiten." & vbCrLf & vbCrLf & _
-              "M" & ChrW(246) & "chten Sie die fehlenden Angaben jetzt vervollst" & ChrW(228) & "ndigen?"
+              "Möchten Sie die fehlenden Angaben jetzt vervollständigen?"
     
     Dim antwort As VbMsgBoxResult
     antwort = MsgBox(hinweis, vbYesNo + vbExclamation, _
-                     "Unvollst" & ChrW(228) & "ndige IBAN-Zuordnungen")
+                     "Unvollständige IBAN-Zuordnungen")
     
     If antwort = vbYes Then
-        ' Zum Daten-Blatt wechseln und erste leere Zelle in Spalte W anwaehlen
+        ' Zum Daten-Blatt wechseln und erste leere Zelle in Spalte W anwählen
         wsDaten.Activate
         
         On Error Resume Next
@@ -552,13 +559,13 @@ Private Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    ' Spalte B (Betrag): Waehrung + rechtsbuendig
+    ' Spalte B (Betrag): Währung + rechtsbündig
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), ws.Cells(lastRow, BK_COL_BETRAG))
         .NumberFormat = euroFormat
         .HorizontalAlignment = xlRight
     End With
     
-    ' Spalten M-Z: Waehrung
+    ' Spalten M-Z: Währung
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
     
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), ws.Cells(lastRow, BK_COL_BEMERKUNG))
@@ -611,79 +618,6 @@ Public Sub Sortiere_Bankkonto_nach_Datum()
     
 End Sub
 
-' ===============================================================
-' 6. MONAT/PERIODE SETZEN (intelligent über Einstellungen)
-'    v3.8: Nutzt Public ErmittleMonatPeriode aus
-'    mod_KategorieEngine_Evaluator mit Cache-Unterstützung.
-' ===============================================================
-Private Sub Setze_Monat_Periode(ByVal ws As Worksheet)
-    
-    Dim lastRow As Long
-    Dim r As Long
-    Dim monatWert As Variant
-    Dim datumWert As Variant
-    Dim kategorie As String
-    Dim faelligkeit As String
-    
-    If ws Is Nothing Then Exit Sub
-    
-    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
-    If lastRow < BK_START_ROW Then Exit Sub
-    
-    ' Faelligkeit aus Kategorie-Tabelle vorladen
-    Dim wsDaten As Worksheet
-    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
-    
-    ' v3.8: Einstellungen-Cache laden für Folgemonat-Erkennung
-    Call LadeEinstellungenCache
-    
-    For r = BK_START_ROW To lastRow
-        datumWert = ws.Cells(r, BK_COL_DATUM).value
-        monatWert = ws.Cells(r, BK_COL_MONAT_PERIODE).value
-        
-        If IsDate(datumWert) And (isEmpty(monatWert) Or monatWert = "") Then
-            kategorie = Trim(ws.Cells(r, BK_COL_KATEGORIE).value)
-            
-            If kategorie <> "" Then
-                ' Faelligkeit aus Kategorie-Tabelle holen (Spalte O)
-                faelligkeit = HoleFaelligkeitFuerKategorie(wsDaten, kategorie)
-                ' v3.8: Nutzt Public Version aus Evaluator (mit Cache + Folgemonat)
-                ws.Cells(r, BK_COL_MONAT_PERIODE).value = _
-                    ErmittleMonatPeriode(kategorie, CDate(datumWert), faelligkeit)
-            Else
-                ' Keine Kategorie: Fallback auf Buchungsmonat
-                ws.Cells(r, BK_COL_MONAT_PERIODE).value = MonthName(Month(datumWert))
-            End If
-        End If
-    Next r
-    
-    ' v3.8: Einstellungen-Cache wieder freigeben
-    Call EntladeEinstellungenCache
-    
-End Sub
-
-' ---------------------------------------------------------------
-' 6b. Faelligkeit aus Kategorie-Tabelle (Spalte O) holen
-' ---------------------------------------------------------------
-Private Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
-                                               ByVal kategorie As String) As String
-    Dim lastRow As Long
-    Dim r As Long
-    
-    lastRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
-    
-    For r = DATA_START_ROW To lastRow
-        If Trim(wsDaten.Cells(r, DATA_CAT_COL_KATEGORIE).value) = kategorie Then
-            HoleFaelligkeitFuerKategorie = LCase(Trim(wsDaten.Cells(r, DATA_CAT_COL_FAELLIGKEIT).value))
-            Exit Function
-        End If
-    Next r
-    
-    HoleFaelligkeitFuerKategorie = "monatlich"
-End Function
-
-
-
 
 '--- Ende Teil 2 von 3 ---
 '--- Anfang Teil 3 von 3 ---
@@ -698,22 +632,22 @@ End Function
 '    - ActiveX ListBox "lst_ImportReport" auf Bankkonto-Blatt
 '    - Speicher: Daten!Y500 (eine einzige Zelle, serialisiert
 '      mit "||" als Trennzeichen zwischen Zeilen)
-'    - Befuellung: .Clear / .AddItem (ActiveX-Methoden)
+'    - Befüllung: .Clear / .AddItem (ActiveX-Methoden)
 '    - Hintergrundfarbe: .BackColor direkt auf der ListBox
 '    - Pro Import-Vorgang: 5 Zeilen (Datum, X/Y, Dupes, Fehler, ----)
-'    - Max 100 Bloecke = 500 Zeilen Historie
+'    - Max 100 Blöcke = 500 Zeilen Historie
 '    - WICHTIG: EnableEvents=False beim Schreiben in Daten!Y500
 '      um Worksheet_Change-Kaskade zu verhindern
-'    - WICHTIG: Position/Groesse werden VOR .Clear gesichert
+'    - WICHTIG: Position/Größe werden VOR .Clear gesichert
 '      und NACH .AddItem wiederhergestellt, da ActiveX-ListBox
-'      .AddItem die OLE-Container-Groesse veraendern kann.
-'      Der Designer bestimmt die Ausgangsgroesse.
+'      .AddItem die OLE-Container-Größe verändern kann.
+'      Der Designer bestimmt die Ausgangsgröße.
 ' ===============================================================
 
 ' ---------------------------------------------------------------
-' 7a. Initialize: Liest Y500, befuellt ActiveX ListBox,
+' 7a. Initialize: Liest Y500, befüllt ActiveX ListBox,
 '     setzt Hintergrundfarbe.
-'     Aufruf: Workbook_Open, Worksheet_Activate, nach Loeschen
+'     Aufruf: Workbook_Open, Worksheet_Activate, nach Löschen
 ' ---------------------------------------------------------------
 Public Sub Initialize_ImportReport_ListBox()
     
@@ -735,7 +669,7 @@ Public Sub Initialize_ImportReport_ListBox()
     
     If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
     
-    ' OLEObject holen und Position/Groesse VORHER sichern
+    ' OLEObject holen und Position/Größe VORHER sichern
     On Error Resume Next
     Set oleObj = wsBK.OLEObjects(FORM_LISTBOX_NAME)
     On Error GoTo 0
@@ -769,7 +703,7 @@ Public Sub Initialize_ImportReport_ListBox()
         lb.AddItem "vorhanden."
         lb.BackColor = LB_COLOR_WEISS
     Else
-        ' Protokoll-Zeilen aus Y500 deserialisieren und einfuegen
+        ' Protokoll-Zeilen aus Y500 deserialisieren und einfügen
         zeilen = Split(gespeichert, PROTO_SEP)
         anzahl = UBound(zeilen) + 1
         If anzahl > MAX_ZEILEN Then anzahl = MAX_ZEILEN
@@ -778,11 +712,11 @@ Public Sub Initialize_ImportReport_ListBox()
             lb.AddItem zeilen(i)
         Next i
         
-        ' Farbe aus juengstem Block bestimmen
+        ' Farbe aus jüngstem Block bestimmen
         Call FaerbeListBoxAusProtokoll(lb, zeilen)
     End If
     
-    ' Position und Groesse WIEDERHERSTELLEN (AddItem kann sie aendern)
+    ' Position und Größe WIEDERHERSTELLEN (AddItem kann sie ändern)
     On Error Resume Next
     oleObj.Left = savLeft
     oleObj.Top = savTop
@@ -793,7 +727,7 @@ Public Sub Initialize_ImportReport_ListBox()
 End Sub
 
 ' ---------------------------------------------------------------
-' 7b. Update: Neuen 5-Zeilen-Block OBEN einfuegen,
+' 7b. Update: Neuen 5-Zeilen-Block OBEN einfügen,
 '     in Y500 serialisiert speichern, ListBox aktualisieren.
 ' ---------------------------------------------------------------
 Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported As Long, _
@@ -820,7 +754,7 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     
     If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
     
-    ' OLEObject holen und Position/Groesse VORHER sichern
+    ' OLEObject holen und Position/Größe VORHER sichern
     On Error Resume Next
     Set oleObj = wsBK.OLEObjects(FORM_LISTBOX_NAME)
     On Error GoTo 0
@@ -839,7 +773,7 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     ' --- 5-Zeilen-Block zusammenbauen ---
     neuerBlock = "Import: " & Format(Now, "DD.MM.YYYY  HH:MM:SS") & _
                  PROTO_SEP & _
-                 imported & " / " & totalRows & " Datens" & ChrW(228) & "tze importiert" & _
+                 imported & " / " & totalRows & " Datensätze importiert" & _
                  PROTO_SEP & _
                  dupes & " Duplikate erkannt" & _
                  PROTO_SEP & _
@@ -879,7 +813,7 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
     ' --- In Y500 speichern (eine einzige Zelle!) ---
     wsDaten.Cells(PROTO_ZEILE, PROTO_SPALTE).value = gesamt
     
-    ' --- Daten-Blatt schuetzen ---
+    ' --- Daten-Blatt schützen ---
     On Error Resume Next
     wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
@@ -903,7 +837,7 @@ Private Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported 
         Call FaerbeListBoxNachImport(lb, imported, dupes, failed)
     End If
     
-    ' Position und Groesse WIEDERHERSTELLEN (AddItem kann sie aendern)
+    ' Position und Größe WIEDERHERSTELLEN (AddItem kann sie ändern)
     On Error Resume Next
     oleObj.Left = savLeft
     oleObj.Top = savTop
@@ -915,7 +849,7 @@ End Sub
 
 ' ---------------------------------------------------------------
 ' 7c. Farbcodierung nach Import-Ergebnis (direkt auf ListBox)
-'     GRUEN  = Alles OK (dupes = 0, failed = 0)
+'     GRÜN   = Alles OK (dupes = 0, failed = 0)
 '     GELB   = Duplikate vorhanden (dupes > 0, failed = 0)
 '     ROT    = Fehler vorhanden (failed > 0)
 ' ---------------------------------------------------------------
@@ -1015,7 +949,7 @@ Private Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
         "Bankkonto!$A$28:$A$5000;""<="" & DATUM(Startmen" & ChrW(252) & "!$F$1;Daten!$AE$4+1;0))=0;"""";" & _
         """Kontostand nach der letzten Buchung im Monat am: "" & TEXT(MAXWENNS(Bankkonto!$A$28:$A$5000;" & _
         "Bankkonto!$A$28:$A$5000;"">="" & DATUM(Startmen" & ChrW(252) & "!$F$1;Daten!$AE$4;1);" & _
-        "Bankkonto!$A$28:$A$5000;""<="" & DATUM(Startmen" & ChrW(252) & "!$F$1;Daten!$AE$4+1;0));""TT.MM.JJJJ"")))"
+        "Bankkonto!$A$28:$A$5000;""<="" & DATUM(Startmen" & ChrW(252) & "!$F$1;Daten!$AE$4+1;0));""TT.MM.JJJJ""))))"
     
     ' E8-E14: Einnahmen (Spalten M-S) mit SUMMEWENNS + WENN=0 leer
     ws.Range("E8").FormulaLocal = _
@@ -1060,7 +994,7 @@ Private Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
 End Sub
 
 ' ---------------------------------------------------------------
-' 8b. Alle Bankkontozeilen loeschen
+' 8b. Alle Bankkontozeilen löschen
 ' ---------------------------------------------------------------
 Public Sub LoescheAlleBankkontoZeilen()
     
@@ -1088,7 +1022,7 @@ Public Sub LoescheAlleBankkontoZeilen()
         ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 26)).Interior.ColorIndex = xlNone
     End If
     
-    ' Formeln wiederherstellen (wurden durch ClearContents geloescht)
+    ' Formeln wiederherstellen (wurden durch ClearContents gelöscht)
     Call StelleFormelnWiederHer(ws)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -1183,6 +1117,3 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
-
-
-

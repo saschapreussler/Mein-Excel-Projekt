@@ -4,8 +4,10 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Const
 ' ZWECK: Zentrale Konstanten für das gesamte Projekt
-' VERSION: 2.7 - 09.02.2026
-' ÄNDERUNG: ES_COL_SOLL_MONATE hinzugefügt (Spalte E),
+' VERSION: 2.8 - 11.02.2026
+' ÄNDERUNG v2.8: WS_UEBERSICHT von "Uebersicht" auf "Übersicht"
+'                geändert (Tabellenblatt heißt "Übersicht")
+' ÄNDERUNG v2.7: ES_COL_SOLL_MONATE hinzugefügt (Spalte E),
 '           alle folgenden ES-Spalten +1 verschoben,
 '           ES_COL_END von 8 auf 9 geändert
 ' ***************************************************************
@@ -16,7 +18,7 @@ Option Explicit
 Public Const WS_BANKKONTO As String = "Bankkonto"
 Public Const WS_DATEN As String = "Daten"
 Public Const WS_MITGLIEDER As String = "Mitgliederliste"
-Public Const WS_UEBERSICHT As String = "Uebersicht"
+Public Const WS_UEBERSICHT As String = "Übersicht"
 Public Const WS_MITGLIEDER_HISTORIE As String = "Mitgliederhistorie"
 Public Const WS_EINSTELLUNGEN As String = "Einstellungen"
 Public Const WS_VEREINSKASSE As String = "Vereinskasse"
@@ -296,6 +298,4 @@ Public Function GetErlaubteFunktionenFuerParzelle() As Variant
         FUNKTION_SCHRIFTFUEHRER _
     )
 End Function
-
-
 

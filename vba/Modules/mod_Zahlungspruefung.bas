@@ -3,15 +3,19 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Zahlungspruefung
-' VERSION: 1.1 - 11.02.2026 (FIX: Public Sub statt Private)
+' VERSION: 1.2 - 11.02.2026
 ' ZWECK: Zahlungsprüfung für Mitgliederliste + Einstellungen
 '        - Prüft Zahlungseingänge gegen Soll-Werte
 '        - Behandelt Dezember-Vorauszahlungen
 '        - Erkennt Sammelüberweisungen
 '        - Bietet manuelle Zuordnung bei Problemfällen
 '        - Dokumentiert Aufschlüsselung in Spalte L
+'        - SetzeMonatPeriode (verschoben aus mod_Banking_Data)
+'        - HoleFaelligkeitFuerKategorie (verschoben aus mod_Banking_Data)
 ' FIX v1.1: LadeEinstellungenCacheZP -> PUBLIC (war Private)
 '           EntladeEinstellungenCacheZP -> PUBLIC (war Private)
+' NEU v1.2: + Public Sub SetzeMonatPeriode (aus mod_Banking_Data)
+'           + Public Function HoleFaelligkeitFuerKategorie (aus mod_Banking_Data)
 ' ***************************************************************
 
 ' ===============================================================
@@ -520,9 +524,9 @@ Private Function ZeigeSammelZuordnungDialogZP(ByVal gesamtBetrag As Double, _
     
     ' Beispiel-Rückgabe:
     Dim ergebnis As String
-    ergebnis = "Mitgliedsbeitrag: 7.50 €" & vbLf & _
-               "Pachtgebühr: 25.00 €" & vbLf & _
-               "Wasserkosten: 12.50 €"
+    ergebnis = "Mitgliedsbeitrag: 7.50 " & ChrW(8364) & vbLf & _
+               "Pachtgebühr: 25.00 " & ChrW(8364) & vbLf & _
+               "Wasserkosten: 12.50 " & ChrW(8364)
     
     ZeigeSammelZuordnungDialogZP = ergebnis
     
@@ -556,7 +560,7 @@ Public Function FrageNachManuellerMonatszuordnungZP(ByVal wsBK As Worksheet, _
     
     prompt = "Die Zahlung kann keinem Monat zugeordnet werden:" & vbLf & vbLf & _
              "Datum: " & Format(zahlDatum, "dd.mm.yyyy") & vbLf & _
-             "Betrag: " & Format(betrag, "#,##0.00 €") & vbLf & _
+             "Betrag: " & Format(betrag, "#,##0.00 ") & ChrW(8364) & vbLf & _
              "Name: " & name & vbLf & vbLf & _
              "Bitte geben Sie den Zielmonat ein (1-12):"
     
@@ -588,5 +592,81 @@ Public Function FrageNachManuellerMonatszuordnungZP(ByVal wsBK As Worksheet, _
     
     FrageNachManuellerMonatszuordnungZP = monat
     
+End Function
+
+
+' ===============================================================
+' NEU v1.2: MONAT/PERIODE SETZEN (verschoben aus mod_Banking_Data)
+' Intelligent über Einstellungen mit Cache-Unterstützung.
+' Nutzt Public ErmittleMonatPeriode aus mod_KategorieEngine_Evaluator.
+' Wird von mod_Banking_Data.Importiere_Kontoauszug aufgerufen.
+' ===============================================================
+Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
+    
+    Dim lastRow As Long
+    Dim r As Long
+    Dim monatWert As Variant
+    Dim datumWert As Variant
+    Dim kategorie As String
+    Dim faelligkeit As String
+    
+    If ws Is Nothing Then Exit Sub
+    
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Sub
+    
+    ' Fälligkeit aus Kategorie-Tabelle vorladen
+    Dim wsDaten As Worksheet
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    ' Einstellungen-Cache laden für Folgemonat-Erkennung
+    ' (expliziter Aufruf auf mod_KategorieEngine_Evaluator)
+    Call mod_KategorieEngine_Evaluator.LadeEinstellungenCache
+    
+    For r = BK_START_ROW To lastRow
+        datumWert = ws.Cells(r, BK_COL_DATUM).value
+        monatWert = ws.Cells(r, BK_COL_MONAT_PERIODE).value
+        
+        If IsDate(datumWert) And (isEmpty(monatWert) Or monatWert = "") Then
+            kategorie = Trim(ws.Cells(r, BK_COL_KATEGORIE).value)
+            
+            If kategorie <> "" Then
+                ' Fälligkeit aus Kategorie-Tabelle holen (Spalte O)
+                faelligkeit = HoleFaelligkeitFuerKategorie(wsDaten, kategorie)
+                ' Nutzt Public Version aus Evaluator (mit Cache + Folgemonat)
+                ws.Cells(r, BK_COL_MONAT_PERIODE).value = _
+                    mod_KategorieEngine_Evaluator.ErmittleMonatPeriode(kategorie, CDate(datumWert), faelligkeit)
+            Else
+                ' Keine Kategorie: Fallback auf Buchungsmonat
+                ws.Cells(r, BK_COL_MONAT_PERIODE).value = MonthName(Month(datumWert))
+            End If
+        End If
+    Next r
+    
+    ' Einstellungen-Cache wieder freigeben
+    Call mod_KategorieEngine_Evaluator.EntladeEinstellungenCache
+    
+End Sub
+
+
+' ===============================================================
+' NEU v1.2: FÄLLIGKEIT AUS KATEGORIE-TABELLE (Spalte O) HOLEN
+' Verschoben aus mod_Banking_Data, jetzt Public für alle Module.
+' ===============================================================
+Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
+                                              ByVal kategorie As String) As String
+    Dim lastRow As Long
+    Dim r As Long
+    
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    
+    For r = DATA_START_ROW To lastRow
+        If Trim(wsDaten.Cells(r, DATA_CAT_COL_KATEGORIE).value) = kategorie Then
+            HoleFaelligkeitFuerKategorie = LCase(Trim(wsDaten.Cells(r, DATA_CAT_COL_FAELLIGKEIT).value))
+            Exit Function
+        End If
+    Next r
+    
+    HoleFaelligkeitFuerKategorie = "monatlich"
 End Function
 
