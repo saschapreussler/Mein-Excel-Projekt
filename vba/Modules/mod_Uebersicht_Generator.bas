@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
-' VERSION: 1.0 - 11.02.2026
+' VERSION: 1.1 - 11.02.2026
 ' ZWECK: Generiert Übersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - 12 Monate (Januar - Dezember)
@@ -11,6 +11,8 @@ Option Explicit
 '        - Zeigt Soll/Ist/Status für jede Kombination
 '        - Behandelt Parzelle 5 (2 Personen, getrennte Konten) und
 '          Parzelle 2 (2 Personen, Gemeinschaftskonto) korrekt
+' FIX v1.1: InitialisiereNachDezemberCache -> InitialisiereNachDezemberCacheZP
+'           MsgBox-Text: 'Uebersicht' -> 'Übersicht' (Umlaut-Vorgabe)
 ' ***************************************************************
 
 ' ===============================================================
@@ -86,7 +88,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0)
     On Error GoTo ErrorHandler
     
     If wsUeb Is Nothing Or wsMitgl Is Nothing Then
-        MsgBox "Blatt 'Uebersicht' oder 'Mitgliederliste' nicht gefunden!", vbCritical
+        MsgBox "Blatt 'Übersicht' oder 'Mitgliederliste' nicht gefunden!", vbCritical
         Exit Sub
     End If
     
@@ -112,7 +114,8 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0)
     Call mod_Zahlungspruefung.LadeEinstellungenCacheZP
     
     ' Dezember-Cache initialisieren (für Vorauszahlungen)
-    Call mod_Zahlungspruefung.InitialisiereNachDezemberCache(jahr)
+    ' FIX v1.1: Korrekter Prozedurname mit Suffix ZP
+    Call mod_Zahlungspruefung.InitialisiereNachDezemberCacheZP(jahr)
     
     ' Mitgliederliste laden (nur aktive Mitglieder mit Parzelle)
     Set mitglieder = HoleAktiveMitglieder(wsMitgl)
@@ -324,7 +327,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     
     ' Zahlenformat
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_SOLL), _
-                wsUeb.Cells(endRow, UEB_COL_IST)).NumberFormat = "#,##0.00 €"
+                wsUeb.Cells(endRow, UEB_COL_IST)).NumberFormat = "#,##0.00 "
     
     ' Ausrichtung
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_PARZELLE), _
