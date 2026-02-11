@@ -18,7 +18,7 @@ Option Explicit
 Private Sub cmd_NeuesMitglied_Click()
     
     With frm_Mitgliedsdaten
-        .Tag = "NEU"
+        .tag = "NEU"
         .Show
     End With
 
@@ -59,7 +59,7 @@ Public Sub OeffneMitgliedsDetails()
     End If
 
     With frm_Mitgliedsdaten
-        .Tag = lRow
+        .tag = lRow
         
         .lbl_Parzelle.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 0)
         .lbl_Anrede.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 2)

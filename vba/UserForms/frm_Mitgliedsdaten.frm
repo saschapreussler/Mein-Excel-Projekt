@@ -121,7 +121,7 @@ Private Function GetLRowFromTag() As Long
     Dim tagStr As String
     Dim tagParts() As String
     
-    tagStr = CStr(Me.Tag)
+    tagStr = CStr(Me.tag)
     
     ' Prüfe ob Tag das Format "lRow|..." hat
     If InStr(tagStr, "|") > 0 Then
@@ -302,7 +302,7 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
         End If
     Next ctl
     
-    If CStr(Me.Tag) = "NEU" Or InStr(CStr(Me.Tag), "NACHPAECHTER_NEU") > 0 Then
+    If CStr(Me.tag) = "NEU" Or InStr(CStr(Me.tag), "NACHPAECHTER_NEU") > 0 Then
         Me.cmd_Bearbeiten.Visible = False
         Me.cmd_Entfernen.Visible = False
         Me.cmd_Uebernehmen.Visible = False
@@ -330,7 +330,7 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
     ' Aktualisiere Labels nach Funktion
     Call AktualisiereLabelsFuerFunktion
     
-    If CStr(Me.Tag) <> "NEU" And InStr(CStr(Me.Tag), "NACHPAECHTER_NEU") = 0 Then
+    If CStr(Me.tag) <> "NEU" And InStr(CStr(Me.tag), "NACHPAECHTER_NEU") = 0 Then
         Dim lRow As Long
         lRow = GetLRowFromTag()
         
@@ -364,7 +364,7 @@ Private Sub cbo_Parzelle_Change()
     Dim tagStr As String
     
     ' Nur im NEU-Modus aktiv (nicht beim Bearbeiten)
-    tagStr = CStr(Me.Tag)
+    tagStr = CStr(Me.tag)
     If tagStr <> "NEU" And InStr(tagStr, "NACHPAECHTER_NEU") = 0 Then
         Exit Sub
     End If
@@ -526,7 +526,7 @@ End Sub
 Private Sub cmd_Abbrechen_Click()
     Dim tagStr As String
     
-    tagStr = CStr(Me.Tag)
+    tagStr = CStr(Me.tag)
     
     If tagStr = "NEU" Or InStr(tagStr, "NACHPAECHTER_NEU") > 0 Then
         Unload Me
@@ -538,7 +538,7 @@ Private Sub cmd_Abbrechen_Click()
         Dim tagParts() As String
         tagParts = Split(tagStr, "|")
         If IsNumericTag(tagParts(0)) Then
-            Me.Tag = tagParts(0)  ' Nur lRow behalten
+            Me.tag = tagParts(0)  ' Nur lRow behalten
         End If
     End If
     
@@ -569,7 +569,7 @@ Private Sub cmd_Entfernen_Click()
     
     ' Sichere Tag-Extraktion mit Fehlerbehandlung
     On Error GoTo TagError
-    tagStr = CStr(Me.Tag)
+    tagStr = CStr(Me.tag)
     
     ' Extrahiere lRow aus Tag (unterstützt auch "lRow|Grund|..." Format)
     lRow = GetLRowFromTag()
@@ -608,7 +608,7 @@ Private Sub cmd_Entfernen_Click()
     
     If auswahlOption = 0 Then
         ' Benutzer hat abgebrochen - stelle ursprünglichen Tag wieder her
-        Me.Tag = lRow
+        Me.tag = lRow
         Exit Sub
     End If
     
@@ -619,7 +619,7 @@ Private Sub cmd_Entfernen_Click()
             ' Prüfe ob neuer Nachpächter angelegt werden muss
             If nachpaechterID = "NACHPAECHTER_NEU" Then
                 ' Speichere aktuellen Zustand im Tag
-                Me.Tag = lRow & "|" & ChangeReason & "|NACHPAECHTER_NEU|" & OldParzelle
+                Me.tag = lRow & "|" & ChangeReason & "|NACHPAECHTER_NEU|" & OldParzelle
                 
                 ' Verstecke aktuelles Formular
                 Me.Hide
@@ -629,7 +629,7 @@ Private Sub cmd_Entfernen_Click()
                 Set frmNachpaechter = New frm_Mitgliedsdaten
                 
                 With frmNachpaechter
-                    .Tag = "NACHPAECHTER_NEU|" & OldParzelle & "|" & Format(Date, "dd.mm.yyyy")
+                    .tag = "NACHPAECHTER_NEU|" & OldParzelle & "|" & Format(Date, "dd.mm.yyyy")
                     
                     ' Leere alle Felder
                     .cbo_Anrede.value = ""
@@ -746,7 +746,7 @@ PruefeMehrfachParzellen:
         
         If mehrfachAntwort = vbCancel Then
             ' Abbruch
-            Me.Tag = lRow
+            Me.tag = lRow
             Exit Sub
             
         ElseIf mehrfachAntwort = vbYes Then
@@ -771,7 +771,7 @@ AustrittBearbeitenKomplett:
         Call SetMode(True, False, True)
         
         ' Tag-Format: lRow|Grund|NachpaechterID|NachpaechterName|KOMPLETT
-        Me.Tag = lRow & "|" & ChangeReason & "|" & nachpaechterID & "|" & nachpaechterName & "|KOMPLETT"
+        Me.tag = lRow & "|" & ChangeReason & "|" & nachpaechterID & "|" & nachpaechterName & "|KOMPLETT"
         
         ' Fülle Pachtende mit heutigem Datum und MARKIERE ES komplett
         Me.txt_Pachtende.value = Format(Date, "dd.mm.yyyy")
@@ -809,7 +809,7 @@ AustrittBearbeiten:
         Call SetMode(True, False, True)
         
         ' Speichere Grund temporär im Tag des Formulars (ohne KOMPLETT-Flag)
-        Me.Tag = lRow & "|" & ChangeReason & "|" & nachpaechterID & "|" & nachpaechterName
+        Me.tag = lRow & "|" & ChangeReason & "|" & nachpaechterID & "|" & nachpaechterName
         
         ' Fülle Pachtende mit heutigem Datum und MARKIERE ES komplett
         Me.txt_Pachtende.value = Format(Date, "dd.mm.yyyy")
@@ -1490,8 +1490,8 @@ Private Sub cmd_Uebernehmen_Click()
     Dim nachpaechterName As String
     
     ' Prüfe ob Tag im Format "lRow|Grund|NachpaechterID|NachpaechterName[|KOMPLETT]" vorliegt
-    If InStr(Me.Tag, "|") > 0 Then
-        tagParts = Split(Me.Tag, "|")
+    If InStr(Me.tag, "|") > 0 Then
+        tagParts = Split(Me.tag, "|")
         
         ' Prüfe ob erstes Element numerisch ist
         If IsNumericTag(tagParts(0)) And UBound(tagParts) >= 1 Then
@@ -2311,7 +2311,7 @@ Private Sub UserForm_Activate()
     On Error GoTo ErrorHandler
     
     Dim tagStr As String
-    tagStr = CStr(Me.Tag)
+    tagStr = CStr(Me.tag)
     
     ' DEBUG: Zeige Tag-Wert (optional auskommentieren nach Test)
     Debug.Print "DEBUG UserForm_Activate - Tag = '" & tagStr & "'"
