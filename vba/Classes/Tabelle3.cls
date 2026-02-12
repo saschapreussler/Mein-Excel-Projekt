@@ -9,6 +9,15 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
 Option Explicit
 
+' ===============================================================
+' Modulweite Variablen für den Vergleich (alter Wert)
+' Werden in Worksheet_SelectionChange gespeichert und in
+' Worksheet_Change ausgewertet, um unnötige Verarbeitung
+' bei "Doppelklick + Enter ohne Änderung" zu verhindern.
+' ===============================================================
+Private m_AlterWertH As String
+Private m_AlterWertI As String
+
 Private Sub btn_CSVimport_Click()
     ' Ruft die Hauptprozedur im Standardmodul mod_Datenpflege auf
     Call Importiere_Kontoauszug
@@ -120,7 +129,7 @@ Private Sub cbo_RechnungsMonat_Change()
         letzteDatenZeile = .Cells(.Rows.count, "A").End(xlUp).Row
         
         If letzteDatenZeile < ersteDatenZeile Then
-            ' Keine Daten vorhanden - still zur" & ChrW(252) & "cksetzen
+            ' Keine Daten vorhanden - still zurücksetzen
             Me.cbo_RechnungsMonat.ListIndex = 0
             wsDaten.Range("AE4").value = 0
             GoTo SafeExit
@@ -144,13 +153,13 @@ Private Sub cbo_RechnungsMonat_Change()
                 Criteria2:="<=" & CLng(letztesDesMonats)
         End If
         
-        ' Sichtbare Daten pr" & ChrW(252) & "fen
+        ' Sichtbare Daten prüfen
         On Error Resume Next
         visibleCellsCount = rngFilterBereich.SpecialCells(xlCellTypeVisible).count
         On Error GoTo 0
         
         If visibleCellsCount <= 1 And monatsIndex > 0 Then
-            ' Keine sichtbaren Daten - still zur" & ChrW(252) & "cksetzen
+            ' Keine sichtbaren Daten - still zurücksetzen
             .ShowAllData
             Me.cbo_RechnungsMonat.ListIndex = 0
             wsDaten.Range("AE4").value = 0
@@ -168,26 +177,51 @@ SafeExit:
 End Sub
 
 ' ===============================================================
+' NEU v9.7: Worksheet_SelectionChange
+' Speichert den aktuellen Wert der ausgewählten Zelle in
+' m_AlterWertH (Spalte H) bzw. m_AlterWertI (Spalte I),
+' damit Worksheet_Change prüfen kann ob sich der Wert
+' tatsächlich geändert hat.
+' ===============================================================
+Private Sub Worksheet_SelectionChange(ByVal Target As Range)
+    ' Nur einzelne Zelle merken
+    If Target.Cells.count <> 1 Then Exit Sub
+    If Target.Row < BK_START_ROW Then Exit Sub
+    
+    Select Case Target.Column
+        Case BK_COL_KATEGORIE
+            m_AlterWertH = Trim(CStr(Target.value))
+        Case BK_COL_MONAT_PERIODE
+            m_AlterWertI = Trim(CStr(Target.value))
+    End Select
+End Sub
+
+' ===============================================================
 ' Worksheet_Change: Manuelle Auswahl in Spalte H oder Spalte I
 ' ---------------------------------------------------------------
-' v9.6: Reagiert auf ZWEI Spalten:
+' v9.7: Reagiert auf ZWEI Spalten:
 '   Spalte H (BK_COL_KATEGORIE = 8): Kategorie-Auswahl
 '   Spalte I (BK_COL_MONAT_PERIODE = 9): Monat-Auswahl (DropDown)
 '
+' NEU v9.7: Prüft ob sich der Wert tatsächlich geändert hat.
+'   Verhindert unnötige Verarbeitung bei Doppelklick+Enter
+'   ohne echte Wertänderung. Alter Wert wird in
+'   Worksheet_SelectionChange gespeichert.
+'
 ' Spalte H - Kategorie:
-'   - Sammelzahlung: Pr" & ChrW(252) & "ft ob bereits zugeordnet (GR" & ChrW(220) & "N), fragt
+'   - Sammelzahlung: Prüft ob bereits zugeordnet (GRÜN), fragt
 '     per MsgBox ob neu zugeordnet werden soll.
-'   - Normale Kategorie: Spalten M-Z leeren, GR" & ChrW(220) & "N setzen,
+'   - Normale Kategorie: Spalten M-Z leeren, GRÜN setzen,
 '     "manuell zugeordnet" als Bemerkung, ApplyBetragsZuordnung
 '   - ErmittleMonatPeriode mit 5 Parametern (inkl. Lern-Check)
-'   - "GELB|Monatsname" R" & ChrW(252) & "ckgabe wird erkannt und verarbeitet
+'   - "GELB|Monatsname" Rückgabe wird erkannt und verarbeitet
 '
 ' Spalte I - Monat/Periode:
 '   - v9.6 FIX: Lern-Vermerk NUR wenn Zelle vorher GELB war
 '     (= Automatik war unsicher). Programmatische Änderungen
 '     durch SetzeMonatPeriode triggern KEINEN Vermerk mehr.
-'   - Spalte I: hell-gr" & ChrW(252) & "ner Hintergrund (manuell best" & ChrW(228) & "tigt)
-'   - Spalte L: Lern-Vermerk anh" & ChrW(228) & "ngen (mit vbLf)
+'   - Spalte I: hell-grüner Hintergrund (manuell bestätigt)
+'   - Spalte L: Lern-Vermerk anhängen (mit vbLf)
 ' ===============================================================
 Private Sub Worksheet_Change(ByVal Target As Range)
     
@@ -202,10 +236,28 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
         Case BK_COL_KATEGORIE
             ' --- Spalte H: Kategorie-Auswahl ---
+            ' v9.7: Prüfen ob sich der Wert tatsächlich geändert hat
+            Dim neuerWertH As String
+            neuerWertH = Trim(CStr(Target.value))
+            
+            If neuerWertH = m_AlterWertH Then
+                ' Keine Änderung -> nichts tun
+                Exit Sub
+            End If
+            
             Call VerarbeiteKategorieAenderung(Target)
         
         Case BK_COL_MONAT_PERIODE
-            ' --- Spalte I: Monat/Periode manuell gew" & ChrW(228) & "hlt ---
+            ' --- Spalte I: Monat/Periode manuell gewählt ---
+            ' v9.7: Prüfen ob sich der Wert tatsächlich geändert hat
+            Dim neuerWertI As String
+            neuerWertI = Trim(CStr(Target.value))
+            
+            If neuerWertI = m_AlterWertI Then
+                ' Keine Änderung -> nichts tun
+                Exit Sub
+            End If
+            
             Call VerarbeiteMonatAenderung(Target)
         
         Case Else
@@ -218,7 +270,7 @@ End Sub
 
 
 ' ===============================================================
-' Spalte H: Kategorie-" & ChrW(196) & "nderung verarbeiten
+' Spalte H: Kategorie-Änderung verarbeiten
 ' (Bisherige Logik aus Worksheet_Change, jetzt ausgelagert)
 ' v9.5: ErmittleMonatPeriode mit 5 Parametern + GELB-Parsing
 ' ===============================================================
@@ -244,19 +296,19 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
     ' Sammelzahlung? -> Spezialbehandlung
     If LCase(kategorie) Like "*sammelzahlung*" Then
         
-        ' Pr" & ChrW(252) & "fen ob die Zeile bereits GR" & ChrW(220) & "N ist (= bereits vollst" & ChrW(228) & "ndig zugeordnet)
+        ' Prüfen ob die Zeile bereits GRÜN ist (= bereits vollständig zugeordnet)
         Dim aktFarbe As Long
         aktFarbe = Target.Interior.color
         
         If aktFarbe = RGB(198, 239, 206) Then
-            ' Bereits vollst" & ChrW(228) & "ndig zugeordnet -> Nutzer fragen
+            ' Bereits vollständig zugeordnet -> Nutzer fragen
             Dim antwort As VbMsgBoxResult
             antwort = MsgBox("Diese Sammelzahlung wurde bereits vollst" & ChrW(228) & "ndig zugeordnet." & vbLf & vbLf & _
                              "M" & ChrW(246) & "chten Sie die Zuordnung verwerfen und neu aufteilen?", _
                              vbQuestion + vbYesNo, "Sammelzahlung - Zeile " & rowBK)
             
             If antwort = vbNo Then
-                ' Nutzer will NICHT neu zuordnen -> nichts tun, GR" & ChrW(220) & "N bleibt
+                ' Nutzer will NICHT neu zuordnen -> nichts tun, GRÜN bleibt
                 GoTo ChangeCleanup
             End If
             ' Nutzer will NEU zuordnen -> weiter zu VerarbeiteSammelzahlung
@@ -266,15 +318,15 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
         GoTo ChangeCleanup
     End If
     
-    ' --- NORMALE KATEGORIE (auch bei " & ChrW(196) & "nderung von GR" & ChrW(220) & "N) ---
+    ' --- NORMALE KATEGORIE (auch bei Änderung von GRÜN) ---
     
-    ' 1. Alte Betr" & ChrW(228) & "ge in Spalten M-Z l" & ChrW(246) & "schen
+    ' 1. Alte Beträge in Spalten M-Z löschen
     Dim c As Long
     For c = BK_COL_EINNAHMEN_START To BK_COL_AUSGABEN_ENDE
         ws.Cells(rowBK, c).ClearContents
     Next c
     
-    ' 2. Kategorie GR" & ChrW(220) & "N f" & ChrW(228) & "rben
+    ' 2. Kategorie GRÜN färben
     ApplyKategorie ws.Cells(rowBK, BK_COL_KATEGORIE), kategorie, "GRUEN"
     
     ' 3. Bemerkung setzen
@@ -301,12 +353,12 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
             Call LadeEinstellungenCache
             
             ' v9.5: ErmittleMonatPeriode mit 5 Parametern
-            ' (inkl. wsBK + aktuelleZeile f" & ChrW(252) & "r Lern-Mechanismus)
+            ' (inkl. wsBK + aktuelleZeile für Lern-Mechanismus)
             Dim ergebnis As String
             ergebnis = ErmittleMonatPeriode(kategorie, CDate(ws.Cells(rowBK, BK_COL_DATUM).value), _
                                             faelligkeit, ws, rowBK)
             
-            ' v9.5: "GELB|Monatsname" R" & ChrW(252) & "ckgabe verarbeiten
+            ' v9.5: "GELB|Monatsname" Rückgabe verarbeiten
             If Left(ergebnis, 5) = "GELB|" Then
                 ' GELB-Fall: Monat extrahieren und setzen
                 Dim monatName As String
@@ -314,10 +366,10 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
                 
                 ws.Cells(rowBK, BK_COL_MONAT_PERIODE).value = monatName
                 
-                ' GELB-Hintergrund setzen (= Nutzer soll pr" & ChrW(252) & "fen)
+                ' GELB-Hintergrund setzen (= Nutzer soll prüfen)
                 ws.Cells(rowBK, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 235, 156)
                 
-                ' Bemerkung: Hinweis anh" & ChrW(228) & "ngen
+                ' Bemerkung: Hinweis anhängen
                 Dim bestehend As String
                 bestehend = Trim(CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value))
                 
@@ -339,7 +391,7 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
         End If
     End If
     
-    ' 5. Betragszuordnung ausf" & ChrW(252) & "hren
+    ' 5. Betragszuordnung ausführen
     ApplyBetragsZuordnung ws, rowBK
 
 ChangeCleanup:
@@ -362,18 +414,18 @@ End Sub
 
 
 ' ===============================================================
-' Spalte I: Monat/Periode manuell ge" & ChrW(228) & "ndert (DropDown)
+' Spalte I: Monat/Periode manuell geändert (DropDown)
 ' v9.6: FIX - Lern-Vermerk NUR wenn Zelle vorher GELB war
 ' ---------------------------------------------------------------
 ' WICHTIG: Der Lern-Vermerk wird NUR geschrieben wenn der
 ' Hintergrund der Zelle vorher GELB war (RGB 255,235,156).
 ' Das bedeutet: Die Automatik (ErmittleMonatPeriode) war
 ' unsicher und hat die Zelle GELB markiert. Wenn der Nutzer
-' dann manuell einen Monat w" & ChrW(228) & "hlt, ist DAS eine echte
-' manuelle Best" & ChrW(228) & "tigung die dokumentiert werden muss.
+' dann manuell einen Monat wählt, ist DAS eine echte
+' manuelle Bestätigung die dokumentiert werden muss.
 '
 ' Wenn die Zelle NICHT gelb war (z.B. programmatisch gesetzt
-' durch SetzeMonatPeriode oder bereits gr" & ChrW(252) & "n), wird KEIN
+' durch SetzeMonatPeriode oder bereits grün), wird KEIN
 ' Lern-Vermerk geschrieben.
 ' ===============================================================
 Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
@@ -383,10 +435,10 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     If monatWert = "" Then Exit Sub
     
     ' =============================================
-    ' v9.6 FIX: Pr" & ChrW(252) & "fe ob die Zelle vorher GELB war
+    ' v9.6 FIX: Prüfe ob die Zelle vorher GELB war
     ' Nur bei GELB handelt es sich um eine echte manuelle
-    ' Best" & ChrW(228) & "tigung durch den Nutzer. Bei allen anderen
-    ' Hintergrundfarben (kein Hintergrund, gr" & ChrW(252) & "n, etc.)
+    ' Bestätigung durch den Nutzer. Bei allen anderen
+    ' Hintergrundfarben (kein Hintergrund, grün, etc.)
     ' wurde der Wert programmatisch gesetzt -> kein Vermerk.
     ' =============================================
     Dim vorherigeFarbe As Long
@@ -396,7 +448,7 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     Dim istVorherGelb As Boolean
     istVorherGelb = (vorherigeFarbe = RGB(255, 235, 156))
     
-    ' Wenn NICHT gelb -> keine manuelle Best" & ChrW(228) & "tigung, nichts tun
+    ' Wenn NICHT gelb -> keine manuelle Bestätigung, nichts tun
     If Not istVorherGelb Then Exit Sub
     
     On Error GoTo MonatError
@@ -412,13 +464,13 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo MonatError
     
-    ' 1. Hell-gr" & ChrW(252) & "nen Hintergrund setzen (= manuell best" & ChrW(228) & "tigt)
+    ' 1. Hell-grünen Hintergrund setzen (= manuell bestätigt)
     ws.Cells(rowBK, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206)
     
-    ' 2. Lern-Vermerk in Spalte L anh" & ChrW(228) & "ngen
-    '    Der Vermerk enth" & ChrW(228) & "lt "Folgemonat" als Marker f" & ChrW(252) & "r den Lern-Check
-    '    in ErmittleMonatPeriode. Zus" & ChrW(228) & "tzlich wird der gew" & ChrW(228) & "hlte Monat
-    '    dokumentiert, damit nachvollziehbar ist was der Nutzer gew" & ChrW(228) & "hlt hat.
+    ' 2. Lern-Vermerk in Spalte L anhängen
+    '    Der Vermerk enthält "Folgemonat" als Marker für den Lern-Check
+    '    in ErmittleMonatPeriode. Zusätzlich wird der gewählte Monat
+    '    dokumentiert, damit nachvollziehbar ist was der Nutzer gewählt hat.
     Dim bestehendeBemerkung As String
     bestehendeBemerkung = Trim(CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value))
     
@@ -428,9 +480,9 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     If bestehendeBemerkung = "" Then
         ws.Cells(rowBK, BK_COL_BEMERKUNG).value = lernVermerk
     Else
-        ' Pr" & ChrW(252) & "fen ob der Lern-Vermerk schon vorhanden ist (Vermeidung von Duplikaten)
+        ' Prüfen ob der Lern-Vermerk schon vorhanden ist (Vermeidung von Duplikaten)
         If InStr(LCase(bestehendeBemerkung), "folgemonat manuell best") = 0 Then
-            ' Noch kein Lern-Vermerk -> anh" & ChrW(228) & "ngen
+            ' Noch kein Lern-Vermerk -> anhängen
             ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bestehendeBemerkung & vbLf & lernVermerk
         Else
             ' Lern-Vermerk bereits vorhanden -> aktualisieren
@@ -453,7 +505,7 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
                 End If
             Next z
             
-            ' Neuen Lern-Vermerk anh" & ChrW(228) & "ngen
+            ' Neuen Lern-Vermerk anhängen
             If neueBemerkung = "" Then
                 ws.Cells(rowBK, BK_COL_BEMERKUNG).value = lernVermerk
             Else
@@ -463,7 +515,7 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     End If
     
     ' 3. Auch den evtl. vorhandenen GELB-Hinweis aus der Ultimo-5-Logik entfernen
-    '    (der ist jetzt nicht mehr relevant, da der Nutzer manuell best" & ChrW(228) & "tigt hat)
+    '    (der ist jetzt nicht mehr relevant, da der Nutzer manuell bestätigt hat)
     Dim aktBemerkung As String
     aktBemerkung = CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value)
     
@@ -512,16 +564,16 @@ End Sub
 ' ---------------------------------------------------------------
 ' Komfortable InputBox mit:
 ' - Name des Zahlers und Verwendungszweck als Kontext
-' - Buchstaben-K" & ChrW(252) & "rzel (A, B, C...) f" & ChrW(252) & "r KATEGORIEN (nicht Spalten!)
+' - Buchstaben-Kürzel (A, B, C...) für KATEGORIEN (nicht Spalten!)
 '   Die Kategorien werden dynamisch aus der Kategorie-Tabelle
 '   (Spalte J auf Daten!) gelesen, nach E/A getrennt, nicht redundant.
-' - Eingabe: K" & ChrW(252) & "rzel;Betrag (z.B. "A;25,00")
-'   Semikolon trennt K" & ChrW(252) & "rzel vom Betrag, Komma = Dezimalzeichen
-' - Jede Kategorie hat " & ChrW(252) & "ber Spalte N (Zielspalte) eine Zuordnung
+' - Eingabe: Kürzel;Betrag (z.B. "A;25,00")
+'   Semikolon trennt Kürzel vom Betrag, Komma = Dezimalzeichen
+' - Jede Kategorie hat über Spalte N (Zielspalte) eine Zuordnung
 '   wohin der Betrag auf dem Bankkonto gebucht wird.
-' - Bei mehrfacher Buchung in die gleiche Spalte werden Betr" & ChrW(228) & "ge addiert.
-' - GR" & ChrW(220) & "N nur wenn ALLES zugeordnet, GELB bei teilweise/nichts.
-' - Die Schleife endet sofort wenn der Betrag vollst" & ChrW(228) & "ndig zugeordnet
+' - Bei mehrfacher Buchung in die gleiche Spalte werden Beträge addiert.
+' - GRÜN nur wenn ALLES zugeordnet, GELB bei teilweise/nichts.
+' - Die Schleife endet sofort wenn der Betrag vollständig zugeordnet
 '   ist - es erscheint KEINE weitere InputBox mit "0,00 offen".
 ' ===============================================================
 Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
@@ -531,7 +583,7 @@ Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
     Dim absBetrag As Double
     absBetrag = Abs(betrag)
     
-    ' Rundung auf 2 Nachkommastellen (verhindert Flie" & ChrW(223) & "komma-Probleme)
+    ' Rundung auf 2 Nachkommastellen (verhindert Fließkomma-Probleme)
     absBetrag = Round(absBetrag, 2)
     
     Dim istEinnahme As Boolean
@@ -601,7 +653,7 @@ NextKatRow:
         Exit Sub
     End If
     
-    ' K" & ChrW(252) & "rzel-Arrays aufbauen: A=erste Kategorie, B=zweite, usw.
+    ' Kürzel-Arrays aufbauen: A=erste Kategorie, B=zweite, usw.
     Dim kuerzelBuchstabe() As String
     Dim kuerzelKatName() As String
     Dim kuerzelZielHeader() As String
@@ -619,7 +671,7 @@ NextKatRow:
         kuerzelZielHeader(idx) = CStr(dictKat(k))
     Next k
     
-    ' K" & ChrW(252) & "rzel-Liste f" & ChrW(252) & "r Anzeige zusammenbauen
+    ' Kürzel-Liste für Anzeige zusammenbauen
     Dim spaltenInfo As String
     spaltenInfo = IIf(istEinnahme, "EINNAHMEN", "AUSGABEN") & "-Kategorien:" & vbLf
     Dim i As Long
@@ -634,7 +686,7 @@ NextKatRow:
     Dim zugeordnet As Double
     zugeordnet = 0
     
-    ' Spaltenbereich f" & ChrW(252) & "r Einnahmen/Ausgaben
+    ' Spaltenbereich für Einnahmen/Ausgaben
     Dim startCol As Long
     Dim endCol As Long
     If istEinnahme Then
@@ -645,16 +697,16 @@ NextKatRow:
         endCol = BK_COL_AUSGABEN_ENDE
     End If
     
-    ' Sammelzahlungs-Dokumentation f" & ChrW(252) & "r Spalte L aufbauen
+    ' Sammelzahlungs-Dokumentation für Spalte L aufbauen
     Dim sammelDoku As String
     sammelDoku = ""
     
     Do
-        ' *** PR" & ChrW(220) & "FUNG VOR der InputBox: Ist der Betrag bereits vollst" & ChrW(228) & "ndig zugeordnet? ***
+        ' *** PRÜFUNG VOR der InputBox: Ist der Betrag bereits vollständig zugeordnet? ***
         restBetrag = Round(absBetrag - zugeordnet, 2)
         
         If restBetrag <= 0.01 Then
-            ' Betrag ist vollst" & ChrW(228) & "ndig zugeordnet -> Schleife sofort beenden
+            ' Betrag ist vollständig zugeordnet -> Schleife sofort beenden
             ' KEINE weitere InputBox anzeigen!
             Exit Do
         End If
@@ -679,7 +731,7 @@ NextKatRow:
         ' Leerzeichen entfernen
         eingabe = Replace(eingabe, " ", "")
         
-        ' Eingabe parsen: "K" & ChrW(252) & "rzel;Betrag" - Semikolon ist IMMER der Trenner
+        ' Eingabe parsen: "Kürzel;Betrag" - Semikolon ist IMMER der Trenner
         ' Komma ist Dezimalzeichen (Euro,Cent)
         Dim trennPos As Long
         trennPos = InStr(eingabe, ";")
@@ -696,7 +748,7 @@ NextKatRow:
         
         Dim teilBetragStr As String
         teilBetragStr = Mid(eingabe, trennPos + 1)
-        ' Komma -> Punkt f" & ChrW(252) & "r Val() (Komma ist Dezimalzeichen)
+        ' Komma -> Punkt für Val() (Komma ist Dezimalzeichen)
         teilBetragStr = Replace(teilBetragStr, ",", ".")
         
         Dim teilBetrag As Double
@@ -715,7 +767,7 @@ NextKatRow:
             GoTo WeiterEingabe
         End If
         
-        ' K" & ChrW(252) & "rzel in Kategorie " & ChrW(252) & "bersetzen
+        ' Kürzel in Kategorie übersetzen
         Dim gefundenIdx As Long
         gefundenIdx = 0
         For i = 1 To anzahlKat
@@ -731,7 +783,7 @@ NextKatRow:
             GoTo WeiterEingabe
         End If
         
-        ' Zielspalte " & ChrW(252) & "ber die Kategorietabelle bestimmen (Spalte N = Zielspalte)
+        ' Zielspalte über die Kategorietabelle bestimmen (Spalte N = Zielspalte)
         Dim zielHeader As String
         zielHeader = kuerzelZielHeader(gefundenIdx)
         
@@ -772,7 +824,7 @@ NextKatRow:
         
         zugeordnet = Round(zugeordnet + teilBetrag, 2)
         
-        ' Dokumentation f" & ChrW(252) & "r Spalte L aufbauen
+        ' Dokumentation für Spalte L aufbauen
         If sammelDoku <> "" Then sammelDoku = sammelDoku & vbLf
         sammelDoku = sammelDoku & kuerzelKatName(gefundenIdx) & ": " & _
                      Format(teilBetrag, "#,##0.00") & " " & ChrW(8364)
@@ -781,10 +833,10 @@ WeiterEingabe:
     Loop
     
     ' ===============================================================
-    ' Farbe und Bemerkung abh" & ChrW(228) & "ngig vom Zuordnungsstatus
+    ' Farbe und Bemerkung abhängig vom Zuordnungsstatus
     ' ===============================================================
     
-    ' Endg" & ChrW(252) & "ltigen Restbetrag nochmal sauber berechnen
+    ' Endgültigen Restbetrag nochmal sauber berechnen
     restBetrag = Round(absBetrag - zugeordnet, 2)
     
     If zugeordnet < 0.01 Then
@@ -794,7 +846,7 @@ WeiterEingabe:
     End If
     
     If restBetrag <= 0.01 Then
-        ' ALLES zugeordnet -> GR" & ChrW(220) & "N (sicher)
+        ' ALLES zugeordnet -> GRÜN (sicher)
         ApplyKategorie ws.Cells(rowBK, BK_COL_KATEGORIE), _
                        ws.Cells(rowBK, BK_COL_KATEGORIE).value, "GRUEN"
         ws.Cells(rowBK, BK_COL_BEMERKUNG).value = _
