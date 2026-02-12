@@ -3,11 +3,11 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
-' VERSION: 1.3 - 12.02.2026
+' VERSION: 1.4 - 12.02.2026
 ' ZWECK: Generiert Übersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - 12 Monate (Januar - Dezember)
-'        - 5 Kategorien (Mitgliedsbeitrag, Pachtgebühr, Wasser, Strom, Müll)
+'        - Kategorien dynamisch aus Einstellungen
 '        - Zeigt Soll/Ist/Status für jede Kombination
 '        - Behandelt Parzelle 5 (2 Personen, getrennte Konten) und
 '          Parzelle 2 (2 Personen, Gemeinschaftskonto) korrekt
@@ -16,12 +16,13 @@ Option Explicit
 ' FIX v1.2: Parsen des Rückgabewerts: Val() statt CDbl() für
 '           systemunabhängiges Parsen (Punkt als Dezimaltrenner)
 ' FIX v1.3: "Typen unverträglich" behoben:
-'           - HoleAktiveMitglieder: parzelle jetzt As Variant
-'             (Spalte B kann "Verein" oder Text enthalten)
-'           - IsNumeric-Prüfung vor CLng-Konvertierung
-'           - Status-Vergleich: ChrW(220) statt hart kodiertem Ü
+'           - HoleAktiveMitglieder: parzelleWert jetzt As Variant
+'           - Status-Vergleich: StrComp statt Select Case
 '           - Ergebnis-Parsen: robuster gegen unerwartete Formate
 '           - Zahlenformat: deutsches Format "#.##0,00 €"
+' FIX v1.4: ChrW() in Const nicht erlaubt -> Private Variablen
+'           + InitKategorienUndStatus() als Init-Prozedur
+'           Wird automatisch am Anfang von GeneriereUebersicht aufgerufen
 ' ***************************************************************
 
 ' ===============================================================
@@ -40,20 +41,45 @@ Private Const UEB_COL_IST As Long = 6           ' F - Ist
 Private Const UEB_COL_STATUS As Long = 7        ' G - Status (GRÜN/GELB/ROT)
 Private Const UEB_COL_BEMERKUNG As Long = 8     ' H - Bemerkung
 
-' Kategorien (müssen mit Einstellungen übereinstimmen!)
-Private Const KAT_MITGLIEDSBEITRAG As String = "Mitgliedsbeitrag"
-Private Const KAT_PACHTGEBUEHR As String = "Pachtgeb" & ChrW(252) & "hr"
-Private Const KAT_WASSER As String = "Wasserkosten"
-Private Const KAT_STROM As String = "Stromkosten"
-Private Const KAT_MUELL As String = "M" & ChrW(252) & "llgeb" & ChrW(252) & "hren"
-
 ' Ampelfarben
 Private Const AMPEL_GRUEN As Long = 12968900
 Private Const AMPEL_GELB As Long = 10086143
 Private Const AMPEL_ROT As Long = 9871103
 
-' Status-String für GRÜN (einheitlich mit ChrW für Encoding-Sicherheit)
-Private Const STATUS_GRUEN As String = "GR" & ChrW(220) & "N"
+' ===============================================================
+' KATEGORIEN + STATUS (als Variablen wegen ChrW in Umlauten)
+' Werden in InitKategorienUndStatus() befüllt.
+' ===============================================================
+Private m_KAT_MITGLIEDSBEITRAG As String
+Private m_KAT_PACHTGEBUEHR As String
+Private m_KAT_WASSER As String
+Private m_KAT_STROM As String
+Private m_KAT_MUELL As String
+Private m_STATUS_GRUEN As String
+Private m_KatInitialisiert As Boolean
+
+
+' ===============================================================
+' Initialisiert Kategorie-Variablen und Status-String
+' Muss VOR der ersten Nutzung aufgerufen werden.
+' Wird automatisch von GeneriereUebersicht aufgerufen.
+' ===============================================================
+Private Sub InitKategorienUndStatus()
+    
+    If m_KatInitialisiert Then Exit Sub
+    
+    m_KAT_MITGLIEDSBEITRAG = "Mitgliedsbeitrag"
+    m_KAT_PACHTGEBUEHR = "Pachtgeb" & ChrW(252) & "hr"
+    m_KAT_WASSER = "Wasserkosten"
+    m_KAT_STROM = "Stromkosten"
+    m_KAT_MUELL = "M" & ChrW(252) & "llgeb" & ChrW(252) & "hren"
+    
+    ' Status-String für GRÜN (einheitlich mit ChrW für Encoding-Sicherheit)
+    m_STATUS_GRUEN = "GR" & ChrW(220) & "N"
+    
+    m_KatInitialisiert = True
+    
+End Sub
 
 
 ' ===============================================================
@@ -62,6 +88,9 @@ Private Const STATUS_GRUEN As String = "GR" & ChrW(220) & "N"
 Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0)
     
     On Error GoTo ErrorHandler
+    
+    ' Kategorien + Status initialisieren (Encoding-sicher)
+    Call InitKategorienUndStatus
     
     Dim wsUeb As Worksheet
     Dim wsMitgl As Worksheet
@@ -85,12 +114,12 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0)
     ' Jahr-Parameter validieren
     If jahr = 0 Then jahr = Year(Date)
     
-    ' Kategorien definieren
-    kategorien(1) = KAT_MITGLIEDSBEITRAG
-    kategorien(2) = KAT_PACHTGEBUEHR
-    kategorien(3) = KAT_WASSER
-    kategorien(4) = KAT_STROM
-    kategorien(5) = KAT_MUELL
+    ' Kategorien aus initialisierten Variablen zuweisen
+    kategorien(1) = m_KAT_MITGLIEDSBEITRAG
+    kategorien(2) = m_KAT_PACHTGEBUEHR
+    kategorien(3) = m_KAT_WASSER
+    kategorien(4) = m_KAT_STROM
+    kategorien(5) = m_KAT_MUELL
     
     ' Worksheets holen
     On Error Resume Next
@@ -187,8 +216,8 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0)
                 wsUeb.Cells(rowIdx, UEB_COL_IST).value = ist
                 wsUeb.Cells(rowIdx, UEB_COL_STATUS).value = status
                 
-                ' Farbe setzen (FIX v1.3: Vergleich mit ChrW statt hart kodiertem Ü)
-                If StrComp(status, STATUS_GRUEN, vbTextCompare) = 0 Then
+                ' Farbe setzen (FIX v1.3: StrComp statt Select Case)
+                If StrComp(status, m_STATUS_GRUEN, vbTextCompare) = 0 Then
                     wsUeb.Cells(rowIdx, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
                 ElseIf StrComp(status, "GELB", vbTextCompare) = 0 Then
                     wsUeb.Cells(rowIdx, UEB_COL_STATUS).Interior.color = AMPEL_GELB
@@ -304,8 +333,8 @@ Private Function HoleAktiveMitglieder(ByVal wsMitgl As Worksheet) As Collection
         
         ' FIX v1.3: Prüfen ob Parzelle numerisch ist
         ' "Verein", leere Zellen oder sonstiger Text werden übersprungen
-        If Not IsNumeric(parzelleWert) Then GoTo NextMitglRow
         If isEmpty(parzelleWert) Then GoTo NextMitglRow
+        If Not IsNumeric(parzelleWert) Then GoTo NextMitglRow
         
         parzelleNr = CLng(parzelleWert)
         
