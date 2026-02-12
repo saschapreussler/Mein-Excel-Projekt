@@ -745,12 +745,12 @@ Private Function PruefeZeitfenster(ByVal category As String, _
             Dim SollTag As Long
             Dim vorlauf As Long
             Dim nachlauf As Long
-            Dim sollMonate As String
+            Dim SollMonate As String
             
             SollTag = mCacheSollTag(i)
             vorlauf = mCacheVorlauf(i)
             nachlauf = mCacheNachlauf(i)
-            sollMonate = mCacheSollMonate(i)
+            SollMonate = mCacheSollMonate(i)
             
             ' ===== PRIO 1: Fester Stichtag (Spalte F) =====
             If IsDate(mCacheStichtag(i)) Then
@@ -791,13 +791,13 @@ Private Function PruefeZeitfenster(ByVal category As String, _
             Dim monatPasst As Boolean
             monatPasst = True  ' Default: alle Monate (Spalte E leer)
             
-            If sollMonate <> "" Then
-                monatPasst = IstMonatInListe(buchungsMonat, sollMonate)
+            If SollMonate <> "" Then
+                monatPasst = IstMonatInListe(buchungsMonat, SollMonate)
             End If
             
             ' PRIO 4: Tag 31 + Monate = letzter Tag im jeweiligen Monat
             ' (z.B. 28. Feb, 30. Apr, 31. Jan usw.)
-            If SollTag = 31 And sollMonate <> "" Then
+            If SollTag = 31 And SollMonate <> "" Then
                 If monatPasst Then
                     Dim letzterTag As Date
                     letzterTag = DateSerial(Year(buchungsDatum), buchungsMonat + 1, 0)
@@ -831,13 +831,13 @@ Private Function PruefeZeitfenster(ByVal category As String, _
                 End If
                 
                 ' Vormonat-Check: Prüfe auch ob Buchung im Vorlauf des nächsten passenden Monats liegt
-                If sollMonate <> "" Then
+                If SollMonate <> "" Then
                     ' Prüfe ob der Folgemonat in der Liste ist
                     Dim folgeMonat As Long
                     folgeMonat = buchungsMonat + 1
                     If folgeMonat > 12 Then folgeMonat = 1
                     
-                    If IstMonatInListe(folgeMonat, sollMonate) Then
+                    If IstMonatInListe(folgeMonat, SollMonate) Then
                         Dim sollDatumFolge As Date
                         On Error Resume Next
                         sollDatumFolge = DateSerial(Year(buchungsDatum), buchungsMonat + 1, SollTag)
@@ -962,11 +962,11 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
             
             Dim SollTag As Long
             Dim vorlauf As Long
-            Dim sollMonate As String
+            Dim SollMonate As String
             
             SollTag = mCacheSollTag(idx)
             vorlauf = mCacheVorlauf(idx)
-            sollMonate = mCacheSollMonate(idx)
+            SollMonate = mCacheSollMonate(idx)
             
             ' Prüfe zuerst festen Stichtag (Spalte F)
             If IsDate(mCacheStichtag(idx)) Then
@@ -1029,7 +1029,7 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
                 If folgeMonatNr > 12 Then folgeMonatNr = 1
                 
                 ' Prüfe ob Folgemonat in Soll-Monaten liegt (falls eingeschränkt)
-                If sollMonate <> "" And Not IstMonatInListe(folgeMonatNr, sollMonate) Then
+                If SollMonate <> "" And Not IstMonatInListe(folgeMonatNr, SollMonate) Then
                     ' Folgemonat ist KEIN Soll-Monat -> normaler Buchungsmonat
                     GoTo FallbackMonat
                 End If
@@ -1106,7 +1106,7 @@ NaechsteLernZeile:
                         ' Prüfe ob der Folgemonat in den Soll-Monaten liegt
                         Dim folgeMon As Long
                         folgeMon = Month(sollDatumFolge)
-                        If sollMonate = "" Or IstMonatInListe(folgeMon, sollMonate) Then
+                        If SollMonate = "" Or IstMonatInListe(folgeMon, SollMonate) Then
                             ErmittleMonatPeriode = MonthName(folgeMon)
                             Exit Function
                         End If

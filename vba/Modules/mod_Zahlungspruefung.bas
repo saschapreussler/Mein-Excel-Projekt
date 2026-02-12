@@ -3,53 +3,36 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Zahlungspruefung
-' VERSION: 1.5 - 12.02.2026
-' ZWECK: Zahlungsprüfung für Mitgliederliste + Einstellungen
-'        - Prüft Zahlungseingänge gegen Soll-Werte
+' VERSION: 2.0 - 12.02.2026
+' ZWECK: Zahlungspruefung fuer Mitgliederliste + Einstellungen
+'        - Prueft Zahlungseingaenge gegen Soll-Werte
 '        - Behandelt Dezember-Vorauszahlungen
-'        - Erkennt Sammelüberweisungen
-'        - Bietet manuelle Zuordnung bei Problemfällen
-'        - Dokumentiert Aufschlüsselung in Spalte L
+'        - Erkennt Sammelueberweisungen
+'        - Bietet manuelle Zuordnung bei Problemfaellen
+'        - Dokumentiert Aufschluesselung in Spalte L
 '        - SetzeMonatPeriode (verschoben aus mod_Banking_Data)
 '        - HoleFaelligkeitFuerKategorie (verschoben aus mod_Banking_Data)
-' FIX v1.1: LadeEinstellungenCacheZP -> PUBLIC (war Private)
-'           EntladeEinstellungenCacheZP -> PUBLIC (war Private)
-' NEU v1.2: + Public Sub SetzeMonatPeriode (aus mod_Banking_Data)
-'           + Public Function HoleFaelligkeitFuerKategorie (aus mod_Banking_Data)
-' FIX v1.3: PruefeZahlungen komplett überarbeitet:
-'           - EntityKey wird über Daten!R+S (IBAN) aufgelöst
-'           - Bankkonto-Suche läuft über BK_COL_IBAN (Spalte D)
-'           - Dezimalformat: Punkt als Trenner (systemunabhängig)
-'           - IBAN-Cache (EntityKey -> IBAN) hinzugefügt
-'           - Dezember-Cache: ebenfalls über IBAN statt INTERNE_NR
-' NEU v1.4: SetzeMonatPeriode überarbeitet:
-'           - Verarbeitet "GELB|Monatsname" Rückgabe aus
-'             ErmittleMonatPeriode (Ultimo-5-Logik)
-'           - GELB-Hintergrund in Spalte I bei unklaren Fällen
-'           - DropDown-Liste (Januar-Dezember) auf ALLE Zellen
-'             in Spalte I (ab BK_START_ROW)
-'           - Übergibt wsBK + aktuelleZeile an ErmittleMonatPeriode
-'             für den Lern-Mechanismus
-'           - Entsperrt Spalten H, I, J, L für Nutzereingaben
-'           - NEU: SetzeMonatDropDowns (Hilfsprozedur)
-'           - NEU: EntsperreSpaltenFuerNutzer (Hilfsprozedur)
-' FIX v1.5: SetzeMonatPeriode:
-'           - Application.EnableEvents = False VOR dem Beschreiben
-'             von Spalte I, damit Worksheet_Change NICHT getriggert
-'             wird und der Lern-Vermerk NICHT in alle Zeilen
-'             geschrieben wird ("Typen-Unverträglichkeit" behoben).
-'           - Application.EnableEvents wird am Ende wieder auf True
-'             gesetzt (mit sicherem Cleanup bei Fehler).
+' NEU v2.0:
+'   - SetzeBankkontoDropDowns: Oeffentliche Prozedur die ALLE
+'     DropDowns (H + I) setzt. Wird von Worksheet_Activate aufgerufen.
+'   - SetzeKategorieDropDowns: DropDown in Spalte H (Bankkonto)
+'     dynamisch aus Hilfsspalten AF/AG auf Blatt "Daten"
+'   - AktualisiereKategorieHilfsspalten: Befuellt Spalte AF + AG
+'     auf Blatt "Daten" mit eindeutigen Kategorienamen (E/A getrennt)
+'   - PruefeZahlungen: Bei Soll=0 (variabler Betrag) wird trotzdem
+'     geprueft ob eine Zahlung eingegangen ist (nicht mehr Abbruch)
+'   - SetzeMonatDropDowns + EntsperreSpaltenFuerNutzer: Blattschutz
+'     wird korrekt aufgehoben und danach wieder gesetzt
 ' ***************************************************************
 
 ' ===============================================================
-' CACHE FÜR EINSTELLUNGEN (Performance-Optimierung)
+' CACHE FUER EINSTELLUNGEN (Performance-Optimierung)
 ' ===============================================================
 Private Type EinstellungsRegelZP
     kategorie As String
     SollBetrag As Double
     SollTag As Long
-    sollMonate As String           ' z.B. "03, 06, 09"
+    SollMonate As String           ' z.B. "03, 06, 09"
     StichtagFix As String          ' z.B. "15.03"
     VorlaufTage As Long
     NachlaufTage As Long
@@ -66,35 +49,264 @@ Private m_EntityIBANCacheZP As Object   ' Dictionary: EntityKey -> IBAN
 Private m_EntityIBANCacheGeladenZP As Boolean
 
 ' ===============================================================
-' DEZEMBER-CACHE (für Vorauszahlungen)
-' Struktur: Schlüssel = IBAN|Kategorie, Wert = Collection von Beträgen
+' DEZEMBER-CACHE (fuer Vorauszahlungen)
+' Struktur: Schluessel = IBAN|Kategorie, Wert = Collection von Betraegen
 ' ===============================================================
-Private m_DezemberCacheZP As Object   ' Dictionary mit IBAN|Kategorie -> Collection von Beträgen
+Private m_DezemberCacheZP As Object
 
 ' ===============================================================
 ' AMPELFARBEN (Konsistenz mit KategorieEngine)
 ' ===============================================================
-Private Const AMPEL_GRUEN As Long = 12968900   ' RGB(196, 225, 196) -> hell-grün (Lern-Marker)
-Private Const AMPEL_GELB As Long = 10086143    ' RGB(255, 235, 156) -> gelb (unklar)
-Private Const AMPEL_ROT As Long = 9871103      ' RGB(255, 199, 206) -> rot
+Private Const AMPEL_GRUEN As Long = 12968900
+Private Const AMPEL_GELB As Long = 10086143
+Private Const AMPEL_ROT As Long = 9871103
 
-' Hell-grün für manuell bestätigte Monatszuordnung (Spalte I)
-Private Const FARBE_HELLGRUEN_MANUELL As Long = 13565382  ' RGB(198, 239, 206)
+' Hell-gruen fuer manuell bestaetigte Monatszuordnung (Spalte I)
+Private Const FARBE_HELLGRUEN_MANUELL As Long = 13565382
 
 
 ' ===============================================================
-' HAUPTFUNKTION: Prüft ALLE Zahlungen eines Mitglieds/einer Kategorie
+' v2.0 NEU: OEFFENTLICH: Setzt ALLE DropDowns auf dem Bankkonto-Blatt
+' Wird von Tabelle3.Worksheet_Activate UND nach CSV-Import aufgerufen.
+' Setzt:
+'   - Spalte H (Kategorie): E- oder A-Kategorien je nach Betrag
+'   - Spalte I (Monat/Periode): Januar bis Dezember
+'   - Entsperrt editierbare Spalten (H, I, J, L)
+' ===============================================================
+Public Sub SetzeBankkontoDropDowns(ByVal wsBK As Worksheet)
+    
+    Dim lastRow As Long
+    
+    If wsBK Is Nothing Then Exit Sub
+    
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Sub
+    
+    ' Hilfsspalten auf Daten-Blatt aktualisieren (AF + AG)
+    Call AktualisiereKategorieHilfsspalten
+    
+    ' Blattschutz aufheben (noetig fuer Data Validation)
+    On Error Resume Next
+    wsBK.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    ' DropDowns setzen
+    Call SetzeKategorieDropDowns(wsBK, lastRow)
+    Call SetzeMonatDropDowns(wsBK, lastRow)
+    
+    ' Spalten entsperren fuer Nutzereingaben
+    Call EntsperreSpaltenFuerNutzer(wsBK, lastRow)
+    
+    ' Blattschutz wieder aktivieren
+    On Error Resume Next
+    wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
+End Sub
+
+
+' ===============================================================
+' v2.0 NEU: Befuellt Hilfsspalten AF (32) + AG (33) auf Blatt "Daten"
+' mit eindeutigen Kategorienamen, getrennt nach E und A.
+' AF = Einnahmen-Kategorien (K = "E")
+' AG = Ausgaben-Kategorien (K = "A")
+' Quelle: Spalte J (DATA_CAT_COL_KATEGORIE = 10)
+'         Spalte K (DATA_CAT_COL_EINAUS = 11)
+' ===============================================================
+Public Sub AktualisiereKategorieHilfsspalten()
+    
+    Dim wsDaten As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim katName As String
+    Dim einAus As String
+    
+    Dim dictE As Object
+    Dim dictA As Object
+    
+    Set dictE = CreateObject("Scripting.Dictionary")
+    Set dictA = CreateObject("Scripting.Dictionary")
+    
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    
+    If wsDaten Is Nothing Then Exit Sub
+    
+    On Error Resume Next
+    wsDaten.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+    If lastRow < DATA_START_ROW Then GoTo ProtectAndExit
+    
+    ' Eindeutige Kategorien sammeln
+    For r = DATA_START_ROW To lastRow
+        katName = Trim(CStr(wsDaten.Cells(r, DATA_CAT_COL_KATEGORIE).value))
+        If katName = "" Then GoTo NextHilfsRow
+        
+        einAus = UCase(Trim(CStr(wsDaten.Cells(r, DATA_CAT_COL_EINAUS).value)))
+        
+        If einAus = "E" Then
+            If Not dictE.Exists(katName) Then dictE.Add katName, katName
+        ElseIf einAus = "A" Then
+            If Not dictA.Exists(katName) Then dictA.Add katName, katName
+        End If
+        
+NextHilfsRow:
+    Next r
+    
+    ' Hilfsspalten leeren (ab Zeile 4, max 200 Zeilen sicherheitshalber)
+    Dim maxClear As Long
+    maxClear = wsDaten.Cells(wsDaten.Rows.count, DATA_COL_KAT_EINNAHMEN).End(xlUp).Row
+    If maxClear < DATA_START_ROW + 200 Then maxClear = DATA_START_ROW + 200
+    
+    wsDaten.Range(wsDaten.Cells(DATA_START_ROW, DATA_COL_KAT_EINNAHMEN), _
+                  wsDaten.Cells(maxClear, DATA_COL_KAT_EINNAHMEN)).ClearContents
+    wsDaten.Range(wsDaten.Cells(DATA_START_ROW, DATA_COL_KAT_AUSGABEN), _
+                  wsDaten.Cells(maxClear, DATA_COL_KAT_AUSGABEN)).ClearContents
+    
+    ' Einnahmen in Spalte AF (DATA_COL_KAT_EINNAHMEN = 32) schreiben
+    Dim idx As Long
+    idx = DATA_START_ROW
+    Dim key As Variant
+    For Each key In dictE.keys
+        wsDaten.Cells(idx, DATA_COL_KAT_EINNAHMEN).value = CStr(key)
+        idx = idx + 1
+    Next key
+    
+    ' Ausgaben in Spalte AG (DATA_COL_KAT_AUSGABEN = 33) schreiben
+    idx = DATA_START_ROW
+    For Each key In dictA.keys
+        wsDaten.Cells(idx, DATA_COL_KAT_AUSGABEN).value = CStr(key)
+        idx = idx + 1
+    Next key
+    
+ProtectAndExit:
+    On Error Resume Next
+    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
+    Set dictE = Nothing
+    Set dictA = Nothing
+    
+End Sub
+
+
+' ===============================================================
+' v2.0 NEU: Setzt DropDown-Listen in Spalte H (Kategorie)
+' Fuer jede Zeile: Betrag > 0 -> Einnahmen (AF), Betrag < 0 -> Ausgaben (AG)
+' Referenziert dynamisch auf den befuellten Bereich in AF bzw. AG
+' ===============================================================
+Private Sub SetzeKategorieDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
+    
+    If lastRow < BK_START_ROW Then Exit Sub
+    
+    Dim wsDaten As Worksheet
+    
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    
+    If wsDaten Is Nothing Then Exit Sub
+    
+    ' Letzter befuellter Eintrag in AF und AG ermitteln
+    Dim lastE As Long
+    lastE = wsDaten.Cells(wsDaten.Rows.count, DATA_COL_KAT_EINNAHMEN).End(xlUp).Row
+    If lastE < DATA_START_ROW Then lastE = DATA_START_ROW
+    
+    Dim lastA As Long
+    lastA = wsDaten.Cells(wsDaten.Rows.count, DATA_COL_KAT_AUSGABEN).End(xlUp).Row
+    If lastA < DATA_START_ROW Then lastA = DATA_START_ROW
+    
+    ' Spaltenbuchstaben fuer Validation-Formeln berechnen
+    Dim spalteBuchstabeE As String
+    spalteBuchstabeE = SpalteNrZuBuchstabe(DATA_COL_KAT_EINNAHMEN)
+    
+    Dim spalteBuchstabeA As String
+    spalteBuchstabeA = SpalteNrZuBuchstabe(DATA_COL_KAT_AUSGABEN)
+    
+    ' Daten-Blattname fuer Formel
+    Dim datenName As String
+    datenName = wsDaten.Name
+    
+    ' Validation-Formeln: =Daten!$AF$4:$AF$xx
+    Dim formelEinnahmen As String
+    formelEinnahmen = "=" & datenName & "!$" & spalteBuchstabeE & "$" & DATA_START_ROW & _
+                      ":$" & spalteBuchstabeE & "$" & lastE
+    
+    Dim formelAusgaben As String
+    formelAusgaben = "=" & datenName & "!$" & spalteBuchstabeA & "$" & DATA_START_ROW & _
+                     ":$" & spalteBuchstabeA & "$" & lastA
+    
+    ' Pro Zeile die passende Validation setzen
+    Dim r As Long
+    Dim betrag As Double
+    Dim formel As String
+    
+    On Error Resume Next
+    
+    For r = BK_START_ROW To lastRow
+        betrag = 0
+        If IsNumeric(ws.Cells(r, BK_COL_BETRAG).value) Then
+            betrag = CDbl(ws.Cells(r, BK_COL_BETRAG).value)
+        End If
+        
+        If betrag > 0 Then
+            formel = formelEinnahmen
+        ElseIf betrag < 0 Then
+            formel = formelAusgaben
+        Else
+            ' Betrag = 0 oder leer: Einnahmen als Default
+            formel = formelEinnahmen
+        End If
+        
+        With ws.Cells(r, BK_COL_KATEGORIE).Validation
+            .Delete
+            .Add Type:=xlValidateList, _
+                 AlertStyle:=xlValidAlertInformation, _
+                 Operator:=xlBetween, _
+                 Formula1:=formel
+            .IgnoreBlank = True
+            .InCellDropdown = True
+            .ShowInput = False
+            .ShowError = False
+        End With
+    Next r
+    
+    On Error GoTo 0
+    
+End Sub
+
+
+' ===============================================================
+' v2.0 NEU: Hilfsfunktion: Spaltennummer -> Spaltenbuchstabe
+' (1="A", 26="Z", 27="AA", 28="AB", 32="AF", 33="AG" etc.)
+' ===============================================================
+Private Function SpalteNrZuBuchstabe(ByVal spalte As Long) As String
+    Dim temp As String
+    temp = ""
+    Do While spalte > 0
+        Dim rest As Long
+        rest = (spalte - 1) Mod 26
+        temp = Chr(65 + rest) & temp
+        spalte = (spalte - 1) \ 26
+    Loop
+    SpalteNrZuBuchstabe = temp
+End Function
+
+
+' ===============================================================
+' HAUPTFUNKTION: Prueft ALLE Zahlungen eines Mitglieds/einer Kategorie
 ' Wird von mod_Uebersicht_Generator aufgerufen
 '
-' Rückgabe: "STATUS|Soll:XX.XX|Ist:XX.XX"
-'           Dezimaltrenner im Rückgabewert ist IMMER Punkt (.)
-'           damit das Parsen systemunabhängig funktioniert.
+' Rueckgabe: "STATUS|Soll:XX.XX|Ist:XX.XX"
+'           Dezimaltrenner im Rueckgabewert ist IMMER Punkt (.)
 '
-' LOGIK v1.3:
-'   1. EntityKey -> IBAN über Daten-Blatt (Spalte R+S) auflösen
-'   2. Bankkonto nach IBAN (Spalte D) + Kategorie (Spalte H)
-'      + Monat/Jahr (Spalte A) durchsuchen
-'   3. Beträge (Spalte B) summieren -> Ist-Wert
+' v2.0 FIX: Bei Soll=0 (variabler Betrag, z.B. "Strom/Wasser
+'           Abschlagszahlung") wird NICHT mehr abgebrochen, sondern
+'           es wird geprueft ob eine Zahlung eingegangen ist.
+'           Status: GRUEN wenn Ist>0, ROT wenn Ist=0
 ' ===============================================================
 Public Function PruefeZahlungen(ByVal entityKey As String, _
                                  ByVal kategorie As String, _
@@ -123,7 +335,7 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     ' IBAN-Cache laden (falls noch nicht geschehen)
     If Not m_EntityIBANCacheGeladenZP Then Call LadeEntityIBANCacheZP
     
-    ' 1. IBAN zum EntityKey auflösen (über Daten!R+S)
+    ' 1. IBAN zum EntityKey aufloesen (ueber Daten!R+S)
     entityIBAN = ""
     If Not m_EntityIBANCacheZP Is Nothing Then
         If m_EntityIBANCacheZP.Exists(entityKey) Then
@@ -132,48 +344,49 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     End If
     
     If entityIBAN = "" Then
-        ' Kein IBAN zum EntityKey gefunden -> keine Prüfung möglich
         PruefeZahlungen = "GELB|Soll:0.00|Ist:0.00|Keine IBAN zum EntityKey"
         Exit Function
     End If
     
     ' 2. Soll-Wert aus Einstellungen holen
     soll = HoleSollBetragZP(kategorie)
-    If soll = 0 Then
-        PruefeZahlungen = "GELB|Soll:0.00|Ist:0.00|Keine Einstellung"
-        Exit Function
-    End If
+    
+    ' v2.0 FIX: NICHT mehr abbrechen bei soll=0!
+    ' Bei variablem Betrag (soll=0) wird trotzdem geprueft ob Zahlung da ist.
+    ' Alte Logik war:
+    '   If soll = 0 Then PruefeZahlungen = "GELB|..." : Exit Function
+    ' Das ist ENTFERNT, damit auch Kategorien ohne festen Soll-Betrag
+    ' (z.B. "Strom/Wasser Abschlagszahlung") geprueft werden.
     
     ' 3. Ist-Wert aus Bankkonto ermitteln
-    '    Suche über: IBAN (Spalte D) + Kategorie (Spalte H) + Monat/Jahr (Spalte A)
     ist = 0
     lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     
     For r = BK_START_ROW To lastRow
-        ' Datum prüfen
+        ' Datum pruefen
         If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo NextZahlRow
         zahlDatum = wsBK.Cells(r, BK_COL_DATUM).value
         
-        ' Jahr prüfen
+        ' Jahr pruefen
         If Year(zahlDatum) <> jahr Then
-            ' Dezember-Sonderfall: Vorauszahlung aus Dezember des Vorjahres für Januar
+            ' Dezember-Sonderfall: Vorauszahlung Dezember Vorjahr fuer Januar
             If monat = 1 And Month(zahlDatum) = 12 And Year(zahlDatum) = jahr - 1 Then
-                ' Vorauszahlung aus Dezember des Vorjahres -> zulässig
+                ' Vorauszahlung aus Dezember des Vorjahres -> zulaessig
             Else
                 GoTo NextZahlRow
             End If
         End If
         
-        ' Monat prüfen (nur wenn Jahr passt)
+        ' Monat pruefen (nur wenn Jahr passt)
         If Year(zahlDatum) = jahr Then
             If Month(zahlDatum) <> monat Then GoTo NextZahlRow
         End If
         
-        ' IBAN prüfen (Spalte D = BK_COL_IBAN)
+        ' IBAN pruefen (Spalte D = BK_COL_IBAN)
         ibanZeile = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
         If StrComp(ibanZeile, entityIBAN, vbTextCompare) <> 0 Then GoTo NextZahlRow
         
-        ' Kategorie prüfen (Spalte H = BK_COL_KATEGORIE)
+        ' Kategorie pruefen (Spalte H = BK_COL_KATEGORIE)
         zahlKat = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
         If StrComp(zahlKat, kategorie, vbTextCompare) <> 0 Then GoTo NextZahlRow
         
@@ -184,13 +397,25 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
 NextZahlRow:
     Next r
     
-    ' 4. Status ermitteln (GRÜN/GELB/ROT)
-    If ist >= soll Then
-        status = "GR" & ChrW(220) & "N"
-    ElseIf ist > 0 Then
-        status = "GELB"
+    ' 4. Status ermitteln (GRUEN/GELB/ROT)
+    '    v2.0: Unterscheidung fester Soll vs. variabler Soll
+    If soll > 0 Then
+        ' Fester Soll-Betrag vorhanden: Betrags-Vergleich
+        If ist >= soll Then
+            status = "GR" & ChrW(220) & "N"
+        ElseIf ist > 0 Then
+            status = "GELB"
+        Else
+            status = "ROT"
+        End If
     Else
-        status = "ROT"
+        ' Kein fester Soll-Betrag (variabel): nur Eingangs-Pruefung
+        ' GRUEN wenn Zahlung eingegangen, ROT wenn nicht
+        If ist > 0 Then
+            status = "GR" & ChrW(220) & "N"
+        Else
+            status = "ROT"
+        End If
     End If
     
     ' 5. Ergebnis formatieren (IMMER Punkt als Dezimaltrenner!)
@@ -205,20 +430,17 @@ End Function
 
 ' ===============================================================
 ' HILFSFUNKTION: Double -> String mit Punkt als Dezimaltrenner
-' Wird intern verwendet, damit das Parsen systemunabhängig
-' funktioniert (deutsch: Komma -> Punkt).
 ' ===============================================================
 Private Function FormatDezimalPunkt(ByVal wert As Double) As String
     Dim s As String
     s = Format(wert, "0.00")
-    ' Lokales Dezimalkomma durch Punkt ersetzen
     s = Replace(s, ",", ".")
     FormatDezimalPunkt = s
 End Function
 
 
 ' ===============================================================
-' IBAN-CACHE: Lädt EntityKey -> IBAN Zuordnung aus Daten!R+S
+' IBAN-CACHE: Laedt EntityKey -> IBAN Zuordnung aus Daten!R+S
 ' ===============================================================
 Private Sub LadeEntityIBANCacheZP()
     
@@ -245,7 +467,6 @@ Private Sub LadeEntityIBANCacheZP()
         iban = Replace(Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)), " ", "")
         
         If ek <> "" And iban <> "" Then
-            ' 1 EntityKey = genau 1 IBAN
             If Not m_EntityIBANCacheZP.Exists(ek) Then
                 m_EntityIBANCacheZP.Add ek, iban
             End If
@@ -277,12 +498,14 @@ Private Function HoleSollBetragZP(ByVal kategorie As String) As Double
     
     If Not m_EinstellungenGeladenZP Then Call LadeEinstellungenCacheZP
     
+    On Error Resume Next
     For i = LBound(m_EinstellungenCacheZP) To UBound(m_EinstellungenCacheZP)
         If StrComp(m_EinstellungenCacheZP(i).kategorie, kategorie, vbTextCompare) = 0 Then
             HoleSollBetragZP = m_EinstellungenCacheZP(i).SollBetrag
             Exit Function
         End If
     Next i
+    On Error GoTo 0
     
     HoleSollBetragZP = 0
     
@@ -312,25 +535,21 @@ Private Function BerechneSollDatumZP(ByVal kategorie As String, _
     Next i
     
     If regel.kategorie = "" Then
-        ' Keine Regel gefunden -> 1. des Monats als Fallback
         BerechneSollDatumZP = DateSerial(jahr, monat, 1)
         Exit Function
     End If
     
-    ' 2. Prüfen: Spalte F (Stichtag Fix) hat Vorrang
+    ' 2. Pruefen: Spalte F (Stichtag Fix) hat Vorrang
     If regel.StichtagFix <> "" Then
-        ' Format: "TT.MM." -> z.B. "15.03"
         Dim teile() As String
         teile = Split(regel.StichtagFix, ".")
         If UBound(teile) >= 1 Then
             tag = CLng(teile(0))
             Dim fixMonat As Long
             fixMonat = CLng(teile(1))
-            ' Nur wenn der fixMonat zum aktuellen Monat passt
             If fixMonat = monat Then
                 BerechneSollDatumZP = DateSerial(jahr, monat, tag)
             Else
-                ' Falscher Monat -> keine Zahlung fällig
                 BerechneSollDatumZP = DateSerial(jahr, monat, 1)
             End If
             Exit Function
@@ -338,36 +557,32 @@ Private Function BerechneSollDatumZP(ByVal kategorie As String, _
     End If
     
     ' 3. Spalte D/E verwenden (SollTag + SollMonate)
-    ' Prüfen ob der aktuelle Monat in SollMonate enthalten ist
     istMonatGueltig = False
-    If regel.sollMonate <> "" Then
-        ' Format: "03, 06, 09"
+    If regel.SollMonate <> "" Then
         Dim monate() As String
-        monate = Split(regel.sollMonate, ",")
+        monate = Split(regel.SollMonate, ",")
         Dim m As Long
         For m = LBound(monate) To UBound(monate)
-            If CLng(Trim(monate(m))) = monat Then
-                istMonatGueltig = True
-                Exit For
+            If IsNumeric(Trim(monate(m))) Then
+                If CLng(Trim(monate(m))) = monat Then
+                    istMonatGueltig = True
+                    Exit For
+                End If
             End If
         Next m
     Else
-        ' Keine Monate angegeben -> gilt für ALLE Monate
         istMonatGueltig = True
     End If
     
     If Not istMonatGueltig Then
-        ' Monat ist nicht in SollMonate enthalten -> keine Zahlung fällig
         BerechneSollDatumZP = DateSerial(jahr, monat, 1)
         Exit Function
     End If
     
-    ' Tag aus SollTag
     tag = regel.SollTag
     If tag = 0 Then tag = 1
     If tag > 28 Then
-        ' Letzter Tag im Monat (31 = Ultimo-Ersatz)
-        BerechneSollDatumZP = DateSerial(jahr, monat + 1, 0)  ' 0. Tag des Folgemonats = letzter Tag
+        BerechneSollDatumZP = DateSerial(jahr, monat + 1, 0)
     Else
         BerechneSollDatumZP = DateSerial(jahr, monat, tag)
     End If
@@ -377,7 +592,6 @@ End Function
 
 ' ===============================================================
 ' Einstellungen-Cache laden (Performance-Optimierung)
-' FIX v1.1: PUBLIC statt PRIVATE (wird von mod_Uebersicht_Generator aufgerufen)
 ' ===============================================================
 Public Sub LadeEinstellungenCacheZP()
     
@@ -411,13 +625,39 @@ Public Sub LadeEinstellungenCacheZP()
         
         With m_EinstellungenCacheZP(idx)
             .kategorie = kat
-            .SollBetrag = wsEinst.Cells(r, ES_COL_SOLL_BETRAG).value
-            .SollTag = wsEinst.Cells(r, ES_COL_SOLL_TAG).value
-            .sollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
+            
+            If IsNumeric(wsEinst.Cells(r, ES_COL_SOLL_BETRAG).value) Then
+                .SollBetrag = CDbl(wsEinst.Cells(r, ES_COL_SOLL_BETRAG).value)
+            Else
+                .SollBetrag = 0
+            End If
+            
+            If IsNumeric(wsEinst.Cells(r, ES_COL_SOLL_TAG).value) Then
+                .SollTag = CLng(wsEinst.Cells(r, ES_COL_SOLL_TAG).value)
+            Else
+                .SollTag = 0
+            End If
+            
+            .SollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
             .StichtagFix = Trim(CStr(wsEinst.Cells(r, ES_COL_STICHTAG_FIX).value))
-            .VorlaufTage = wsEinst.Cells(r, ES_COL_VORLAUF).value
-            .NachlaufTage = wsEinst.Cells(r, ES_COL_NACHLAUF).value
-            .SaeumnisGebuehr = wsEinst.Cells(r, ES_COL_SAEUMNIS).value
+            
+            If IsNumeric(wsEinst.Cells(r, ES_COL_VORLAUF).value) Then
+                .VorlaufTage = CLng(wsEinst.Cells(r, ES_COL_VORLAUF).value)
+            Else
+                .VorlaufTage = 0
+            End If
+            
+            If IsNumeric(wsEinst.Cells(r, ES_COL_NACHLAUF).value) Then
+                .NachlaufTage = CLng(wsEinst.Cells(r, ES_COL_NACHLAUF).value)
+            Else
+                .NachlaufTage = 0
+            End If
+            
+            If IsNumeric(wsEinst.Cells(r, ES_COL_SAEUMNIS).value) Then
+                .SaeumnisGebuehr = CDbl(wsEinst.Cells(r, ES_COL_SAEUMNIS).value)
+            Else
+                .SaeumnisGebuehr = 0
+            End If
         End With
         
         idx = idx + 1
@@ -425,7 +665,6 @@ Public Sub LadeEinstellungenCacheZP()
 NextEinstRow:
     Next r
     
-    ' Array auf tatsächliche Größe reduzieren
     If idx > 0 Then
         ReDim Preserve m_EinstellungenCacheZP(0 To idx - 1)
         m_EinstellungenGeladenZP = True
@@ -438,15 +677,12 @@ End Sub
 
 ' ===============================================================
 ' Einstellungen-Cache freigeben (Speicher sparen)
-' FIX v1.1: PUBLIC statt PRIVATE (wird von mod_Uebersicht_Generator aufgerufen)
-' v1.3: Gibt auch IBAN-Cache frei
 ' ===============================================================
 Public Sub EntladeEinstellungenCacheZP()
     
     Erase m_EinstellungenCacheZP
     m_EinstellungenGeladenZP = False
     
-    ' IBAN-Cache ebenfalls freigeben
     Call EntladeEntityIBANCacheZP
     
 End Sub
@@ -454,8 +690,6 @@ End Sub
 
 ' ===============================================================
 ' DEZEMBER-VORAUSZAHLUNGEN: Cache initialisieren
-' Wird von mod_Uebersicht_Generator aufgerufen (vor Jahreswechsel)
-' v1.3: Suche über IBAN (Spalte D) statt INTERNE_NR (Spalte J)
 ' ===============================================================
 Public Sub InitialisiereNachDezemberCacheZP(ByVal jahr As Long)
     
@@ -477,11 +711,9 @@ Public Sub InitialisiereNachDezemberCacheZP(ByVal jahr As Long)
         If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo NextDezRow
         zahlDatum = wsBK.Cells(r, BK_COL_DATUM).value
         
-        ' Nur Dezember des Vorjahres
         If Year(zahlDatum) <> jahr - 1 Then GoTo NextDezRow
         If Month(zahlDatum) <> 12 Then GoTo NextDezRow
         
-        ' IBAN aus Spalte D (statt EntityKey aus Spalte J)
         ibanWert = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
         If ibanWert = "" Then GoTo NextDezRow
         
@@ -490,7 +722,6 @@ Public Sub InitialisiereNachDezemberCacheZP(ByVal jahr As Long)
         
         zahlBetrag = Abs(wsBK.Cells(r, BK_COL_BETRAG).value)
         
-        ' In Dictionary speichern: Schlüssel = IBAN & "|" & Kategorie
         Dim cacheKey As String
         cacheKey = ibanWert & "|" & kategorie
         
@@ -511,7 +742,6 @@ End Sub
 
 ' ===============================================================
 ' DEZEMBER-VORAUSZAHLUNGEN: Betrag aus Cache holen
-' v1.3: Parameter geändert: entityKey -> wird intern zu IBAN aufgelöst
 ' ===============================================================
 Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
                                              ByVal kategorie As String) As Double
@@ -522,7 +752,6 @@ Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
     Dim v As Variant
     Dim entityIBAN As String
     
-    ' EntityKey -> IBAN auflösen
     entityIBAN = ""
     If Not m_EntityIBANCacheZP Is Nothing Then
         If m_EntityIBANCacheZP.Exists(entityKey) Then
@@ -560,16 +789,13 @@ End Function
 
 
 ' ===============================================================
-' SAMMELÜBERWEISUNG: Erkennung und manuelle Zuordnung
-' Wird von Bankkonto.Worksheet_Change aufgerufen wenn Nutzer
-' eine Sammelüberweisung markiert (z.B. via Checkbox/Flag)
+' SAMMELUEBERWEISUNGEN: Erkennung und manuelle Zuordnung
 ' ===============================================================
 Public Sub BearbeiteSammelUeberweisungZP(ByVal wsBK As Worksheet, _
                                           ByVal zeile As Long)
     
     On Error GoTo ErrorHandler
     
-    ' 1. Gesamtbetrag aus Spalte B holen
     Dim gesamtBetrag As Double
     gesamtBetrag = Abs(wsBK.Cells(zeile, BK_COL_BETRAG).value)
     
@@ -578,7 +804,6 @@ Public Sub BearbeiteSammelUeberweisungZP(ByVal wsBK As Worksheet, _
         Exit Sub
     End If
     
-    ' 2. Verfügbare Kategorien aus Einstellungen holen
     Dim kategorien() As String
     Dim sollBetraege() As Double
     Dim anzahl As Long
@@ -590,19 +815,12 @@ Public Sub BearbeiteSammelUeberweisungZP(ByVal wsBK As Worksheet, _
         Exit Sub
     End If
     
-    ' 3. UserForm anzeigen für manuelle Zuordnung
-    ' (Hier müsste eine eigene UserForm erstellt werden - Beispiel-Code:)
     Dim ergebnis As String
     ergebnis = ZeigeSammelZuordnungDialogZP(gesamtBetrag, kategorien, sollBetraege, anzahl)
     
-    ' 4. Ergebnis in Spalte L (Bemerkung) schreiben
     If ergebnis <> "" Then
         wsBK.Cells(zeile, BK_COL_BEMERKUNG).value = "SAMMEL:" & vbLf & ergebnis
-        
-        ' Optional: Automatische Betragszuordnung in Spalten M-Z
-        ' (würde hier implementiert werden)
-        
-        MsgBox "Sammelüberweisung erfolgreich zugeordnet!", vbInformation
+        MsgBox "Sammel" & ChrW(252) & "berweisung erfolgreich zugeordnet!", vbInformation
     Else
         MsgBox "Zuordnung abgebrochen.", vbInformation
     End If
@@ -610,7 +828,7 @@ Public Sub BearbeiteSammelUeberweisungZP(ByVal wsBK As Worksheet, _
     Exit Sub
     
 ErrorHandler:
-    MsgBox "Fehler bei Sammelüberweisung: " & Err.Description, vbCritical
+    MsgBox "Fehler bei Sammel" & ChrW(252) & "berweisung: " & Err.Description, vbCritical
     
 End Sub
 
@@ -652,42 +870,25 @@ End Sub
 
 
 ' ===============================================================
-' HILFSFUNKTION: Zeigt Dialog für Sammelzuordnung
-' (Platzhalter - müsste eigene UserForm sein)
+' HILFSFUNKTION: Zeigt Dialog fuer Sammelzuordnung (Platzhalter)
 ' ===============================================================
 Private Function ZeigeSammelZuordnungDialogZP(ByVal gesamtBetrag As Double, _
                                                ByRef kategorien() As String, _
                                                ByRef sollBetraege() As Double, _
                                                ByVal anzahl As Long) As String
     
-    ' PLATZHALTER: Hier würde eine UserForm (z.B. frm_SammelZuordnung) geladen werden
-    ' Die UserForm hätte:
-    ' - Label mit Gesamtbetrag
-    ' - ListBox mit Kategorien
-    ' - TextBoxen für Teilbeträge
-    ' - OK/Abbrechen Buttons
-    
-    ' Beispiel-Rückgabe:
     Dim ergebnis As String
-    ergebnis = "Mitgliedsbeitrag: 7.50 " & ChrW(8364) & vbLf & _
-               "Pachtgebühr: 25.00 " & ChrW(8364) & vbLf & _
-               "Wasserkosten: 12.50 " & ChrW(8364)
+    ergebnis = "Mitgliedsbeitrag: 7,50 " & ChrW(8364) & vbLf & _
+               "Pachtgeb" & ChrW(252) & "hr: 25,00 " & ChrW(8364) & vbLf & _
+               "Wasserkosten: 12,50 " & ChrW(8364)
     
     ZeigeSammelZuordnungDialogZP = ergebnis
-    
-    ' In der echten Implementierung würde hier stehen:
-    ' Load frm_SammelZuordnung
-    ' frm_SammelZuordnung.InitialisiereMit gesamtBetrag, kategorien, sollBetraege, anzahl
-    ' frm_SammelZuordnung.Show vbModal
-    ' ZeigeSammelZuordnungDialogZP = frm_SammelZuordnung.GetErgebnis
-    ' Unload frm_SammelZuordnung
     
 End Function
 
 
 ' ===============================================================
-' MANUELLE ZUORDNUNG: Monatszuordnung bei Problemfällen
-' Wird aufgerufen wenn eine Zahlung keinem Monat zugeordnet werden kann
+' MANUELLE ZUORDNUNG: Monatszuordnung bei Problemfaellen
 ' ===============================================================
 Public Function FrageNachManuellerMonatszuordnungZP(ByVal wsBK As Worksheet, _
                                                       ByVal zeile As Long) As Long
@@ -712,12 +913,12 @@ Public Function FrageNachManuellerMonatszuordnungZP(ByVal wsBK As Worksheet, _
     antwort = InputBox(prompt, "Manuelle Monatszuordnung", Month(zahlDatum))
     
     If antwort = "" Then
-        FrageNachManuellerMonatszuordnungZP = 0  ' Abbruch
+        FrageNachManuellerMonatszuordnungZP = 0
         Exit Function
     End If
     
     If Not IsNumeric(antwort) Then
-        MsgBox "Ungültige Eingabe! Es muss eine Zahl zwischen 1 und 12 sein.", vbExclamation
+        MsgBox "Ung" & ChrW(252) & "ltige Eingabe! Es muss eine Zahl zwischen 1 und 12 sein.", vbExclamation
         FrageNachManuellerMonatszuordnungZP = 0
         Exit Function
     End If
@@ -725,12 +926,11 @@ Public Function FrageNachManuellerMonatszuordnungZP(ByVal wsBK As Worksheet, _
     monat = CLng(antwort)
     
     If monat < 1 Or monat > 12 Then
-        MsgBox "Ungültige Eingabe! Es muss eine Zahl zwischen 1 und 12 sein.", vbExclamation
+        MsgBox "Ung" & ChrW(252) & "ltige Eingabe! Es muss eine Zahl zwischen 1 und 12 sein.", vbExclamation
         FrageNachManuellerMonatszuordnungZP = 0
         Exit Function
     End If
     
-    ' Zuordnung in Spalte I (MONAT_PERIODE) speichern
     wsBK.Cells(zeile, BK_COL_MONAT_PERIODE).value = Format(monat, "00") & "/" & Year(zahlDatum)
     
     MsgBox "Zahlung wurde Monat " & monat & "/" & Year(zahlDatum) & " zugeordnet.", vbInformation
@@ -741,28 +941,10 @@ End Function
 
 
 ' ===============================================================
-' v1.5: MONAT/PERIODE SETZEN (überarbeitet)
-' Intelligent über Einstellungen mit Cache-Unterstützung.
-' Nutzt Public ErmittleMonatPeriode aus mod_KategorieEngine_Evaluator.
-' Wird von mod_Banking_Data.Importiere_Kontoauszug aufgerufen.
-'
+' v1.5: MONAT/PERIODE SETZEN (ueberarbeitet)
 ' FIX v1.5: Application.EnableEvents = False VOR dem Beschreiben
-'           von Spalte I (und anderen Spalten), damit
-'           Worksheet_Change NICHT getriggert wird.
-'           Dadurch werden folgende Fehler behoben:
-'           1. "Typen-Unverträglichkeit" bei der Übersichts-Erstellung
-'           2. "Folgemonat manuell bestätigt" steht NICHT mehr
-'              in jeder Zeile, sondern NUR wo der Nutzer manuell
-'              bestätigt hat (über das DropDown in Spalte I bei
-'              GELB markierten Zellen).
-'
-' NEU v1.4:
-'   - Verarbeitet "GELB|Monatsname" Rückgabe (Ultimo-5-Logik)
-'   - Setzt GELB-Hintergrund in Spalte I bei unklaren Fällen
-'   - Übergibt wsBK + aktuelleZeile für Lern-Mechanismus
-'   - Setzt DropDown-Listen (Januar-Dezember) auf ALLE Zellen
-'     in Spalte I (ab BK_START_ROW)
-'   - Entsperrt Spalten H, I, J, L für Nutzereingaben
+'           von Spalte I, damit Worksheet_Change NICHT getriggert wird.
+' v2.0: Am Ende wird SetzeBankkontoDropDowns aufgerufen (fuer H + I)
 ' ===============================================================
 Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
     
@@ -774,7 +956,6 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
     Dim faelligkeit As String
     Dim ergebnis As String
     
-    ' v1.5 FIX: Vorherigen Zustand von EnableEvents merken und sicher abschalten
     Dim eventsWaren As Boolean
     eventsWaren = Application.EnableEvents
     
@@ -785,20 +966,13 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    ' =============================================
-    ' v1.5 FIX: Events ABSCHALTEN bevor Spalte I
-    ' beschrieben wird! Sonst triggert jedes .value =
-    ' den Worksheet_Change -> VerarbeiteMonatAenderung
-    ' -> Lern-Vermerk in JEDER Zeile + Typ-Fehler!
-    ' =============================================
+    ' Events ABSCHALTEN bevor Spalte I beschrieben wird
     Application.EnableEvents = False
     
-    ' Fälligkeit aus Kategorie-Tabelle vorladen
     Dim wsDaten As Worksheet
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     
-    ' Einstellungen-Cache laden für Folgemonat-Erkennung
-    ' (expliziter Aufruf auf mod_KategorieEngine_Evaluator)
+    ' Einstellungen-Cache laden
     Call mod_KategorieEngine_Evaluator.LadeEinstellungenCache
     
     For r = BK_START_ROW To lastRow
@@ -809,31 +983,18 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
             kategorie = Trim(CStr(ws.Cells(r, BK_COL_KATEGORIE).value))
             
             If kategorie <> "" Then
-                ' Fälligkeit aus Kategorie-Tabelle holen (Spalte O)
                 faelligkeit = HoleFaelligkeitFuerKategorie(wsDaten, kategorie)
                 
-                ' Nutzt Public Version aus Evaluator (mit Cache + Folgemonat + Lern-Check)
-                ' v1.4: Übergibt jetzt wsBK + aktuelleZeile für den Lern-Mechanismus
                 ergebnis = mod_KategorieEngine_Evaluator.ErmittleMonatPeriode( _
                     kategorie, CDate(datumWert), faelligkeit, ws, r)
                 
-                ' =============================================
-                ' v1.4: "GELB|Monatsname" Rückgabe verarbeiten
-                ' Wenn ErmittleMonatPeriode unsicher ist (Ultimo-5-Bereich,
-                ' kein Lernmuster), kommt "GELB|Januar" zurück.
-                ' -> Spalte I: Monatsname setzen + GELB hinterlegen
-                ' =============================================
                 If Left(ergebnis, 5) = "GELB|" Then
-                    ' GELB-Fall: Monat extrahieren und setzen
                     Dim monatName As String
-                    monatName = Mid(ergebnis, 6) ' alles nach "GELB|"
+                    monatName = Mid(ergebnis, 6)
                     
                     ws.Cells(r, BK_COL_MONAT_PERIODE).value = monatName
-                    
-                    ' GELB-Hintergrund setzen (= Nutzer soll prüfen)
                     ws.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 235, 156)
                     
-                    ' Bemerkung: Hinweis anhängen
                     Dim bestehendeBemerkung As String
                     bestehendeBemerkung = Trim(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value))
                     
@@ -847,11 +1008,9 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
                         ws.Cells(r, BK_COL_BEMERKUNG).value = bestehendeBemerkung & vbLf & gelbHinweis
                     End If
                 Else
-                    ' Normaler Fall: Monat direkt setzen (kein GELB)
                     ws.Cells(r, BK_COL_MONAT_PERIODE).value = ergebnis
                 End If
             Else
-                ' Keine Kategorie: Fallback auf Buchungsmonat
                 ws.Cells(r, BK_COL_MONAT_PERIODE).value = MonthName(Month(datumWert))
             End If
         End If
@@ -860,27 +1019,16 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
     ' Einstellungen-Cache wieder freigeben
     Call mod_KategorieEngine_Evaluator.EntladeEinstellungenCache
     
-    ' =============================================
-    ' v1.4: DropDown-Listen auf ALLE Zellen in Spalte I setzen
-    ' (Januar bis Dezember) - auch auf bereits befüllte Zellen
-    ' =============================================
-    Call SetzeMonatDropDowns(ws, lastRow)
-    
-    ' =============================================
-    ' v1.4: Spalten H, I, J, L entsperren für Nutzereingaben
-    ' (Locked = False, damit der Nutzer trotz Blattschutz
-    '  Kategorien, Monate, Spalte J und Bemerkungen ändern kann)
-    ' =============================================
-    Call EntsperreSpaltenFuerNutzer(ws, lastRow)
-    
     ' v1.5 FIX: Events wieder einschalten
     Application.EnableEvents = eventsWaren
+    
+    ' v2.0: ALLE DropDowns setzen (H + I) und Spalten entsperren
+    Call SetzeBankkontoDropDowns(ws)
+    
     Exit Sub
 
 SetzeMonatPeriodeError:
-    ' v1.5 FIX: Bei Fehler Events SICHER wieder einschalten
     Application.EnableEvents = eventsWaren
-    ' Fehler nicht verschlucken - Debug-Info ausgeben
     Debug.Print "Fehler in SetzeMonatPeriode: " & Err.Number & " - " & Err.Description
     
 End Sub
@@ -888,18 +1036,11 @@ End Sub
 
 ' ===============================================================
 ' v1.4: DropDown-Listen (Januar-Dezember) auf Spalte I setzen
-' Setzt Data Validation auf alle Zellen in Spalte I
-' von BK_START_ROW bis lastRow.
-' Bestehende DropDowns werden überschrieben (kein Schaden,
-' da die Liste immer gleich ist).
-' Bereits manuell bestätigte Werte (hell-grün) bleiben erhalten,
-' der Nutzer kann sie aber jederzeit über das DropDown ändern.
 ' ===============================================================
 Private Sub SetzeMonatDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
     
     If lastRow < BK_START_ROW Then Exit Sub
     
-    ' Monatsliste als kommaseparierter String für Data Validation
     Dim monatsListe As String
     monatsListe = "Januar,Februar,M" & ChrW(228) & "rz,April,Mai,Juni," & _
                   "Juli,August,September,Oktober,November,Dezember"
@@ -910,7 +1051,7 @@ Private Sub SetzeMonatDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
     
     On Error Resume Next
     With rngMonat.Validation
-        .Delete   ' Bestehende Validation entfernen
+        .Delete
         .Add Type:=xlValidateList, _
              AlertStyle:=xlValidAlertInformation, _
              Operator:=xlBetween, _
@@ -918,8 +1059,7 @@ Private Sub SetzeMonatDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
         .IgnoreBlank = True
         .InCellDropdown = True
         .ShowInput = False
-        .ShowError = False  ' Keine Fehlermeldung bei freier Eingabe
-        '                     (z.B. "Q1 2026", "Jahresbeitrag 2026" etc.)
+        .ShowError = False
     End With
     On Error GoTo 0
     
@@ -927,14 +1067,7 @@ End Sub
 
 
 ' ===============================================================
-' v1.4: Spalten H, I, J, L entsperren für Nutzereingaben
-' Setzt Locked = False auf die Zellen in den angegebenen Spalten,
-' damit der Nutzer trotz Blattschutz (UserInterfaceOnly:=True)
-' folgende Spalten bearbeiten kann:
-'   H = Kategorie (BK_COL_KATEGORIE)
-'   I = Monat/Periode (BK_COL_MONAT_PERIODE)
-'   J = Interne Nr (BK_COL_INTERNE_NR) - Spalte 10
-'   L = Bemerkung (BK_COL_BEMERKUNG)
+' v1.4: Spalten H, I, J, L entsperren fuer Nutzereingaben
 ' ===============================================================
 Private Sub EntsperreSpaltenFuerNutzer(ByVal ws As Worksheet, ByVal lastRow As Long)
     
@@ -951,8 +1084,8 @@ Private Sub EntsperreSpaltenFuerNutzer(ByVal ws As Worksheet, ByVal lastRow As L
              ws.Cells(lastRow, BK_COL_MONAT_PERIODE)).Locked = False
     
     ' Spalte J (Interne Nr) = Spalte 10
-    ws.Range(ws.Cells(BK_START_ROW, 10), _
-             ws.Cells(lastRow, 10)).Locked = False
+    ws.Range(ws.Cells(BK_START_ROW, BK_COL_INTERNE_NR), _
+             ws.Cells(lastRow, BK_COL_INTERNE_NR)).Locked = False
     
     ' Spalte L (Bemerkung)
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), _
@@ -964,19 +1097,14 @@ End Sub
 
 
 ' ===============================================================
-' v1.4: FÄLLIGKEIT AUS KATEGORIE-TABELLE (Spalte O) HOLEN
-' Verschoben aus mod_Banking_Data, jetzt Public für alle Module.
-' v1.3: Prüft zuerst Einstellungen-Blatt (Spalte B = Kategorie),
-'       dann erst Daten-Blatt (Spalte O = Fälligkeit) als Fallback.
+' FAELLIGKEIT AUS KATEGORIE-TABELLE (Spalte O) HOLEN
 ' ===============================================================
 Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
                                               ByVal kategorie As String) As String
     Dim lastRow As Long
     Dim r As Long
     
-    ' PRIO 1: Einstellungen-Blatt prüfen (Spalte B = Kategorie)
-    '         Wenn Kategorie dort existiert, ist sie als "monatlich" zu werten
-    '         (Einstellungen definieren die Zahlungstermine)
+    ' PRIO 1: Einstellungen-Blatt pruefen (Spalte B = Kategorie)
     Dim wsEinst As Worksheet
     On Error Resume Next
     Set wsEinst = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
@@ -986,17 +1114,13 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
         lastRow = wsEinst.Cells(wsEinst.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
         For r = ES_START_ROW To lastRow
             If StrComp(Trim(CStr(wsEinst.Cells(r, ES_COL_KATEGORIE).value)), kategorie, vbTextCompare) = 0 Then
-                ' Kategorie in Einstellungen gefunden
-                ' Fälligkeit aus SollMonate ableiten
-                Dim sollMonate As String
-                sollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
-                If sollMonate = "" Then
-                    ' Keine Monate angegeben -> gilt für ALLE Monate = monatlich
+                Dim SollMonate As String
+                SollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
+                If SollMonate = "" Then
                     HoleFaelligkeitFuerKategorie = "monatlich"
                 Else
-                    ' Spezifische Monate angegeben
                     Dim anzMonate As Long
-                    anzMonate = UBound(Split(sollMonate, ",")) + 1
+                    anzMonate = UBound(Split(SollMonate, ",")) + 1
                     Select Case anzMonate
                         Case 1: HoleFaelligkeitFuerKategorie = "j" & ChrW(228) & "hrlich"
                         Case 2: HoleFaelligkeitFuerKategorie = "halbj" & ChrW(228) & "hrlich"
@@ -1009,7 +1133,7 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
         Next r
     End If
     
-    ' PRIO 2: Fallback auf Daten-Blatt (Spalte O = Fälligkeit)
+    ' PRIO 2: Fallback auf Daten-Blatt (Spalte O = Faelligkeit)
     lastRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     
     For r = DATA_START_ROW To lastRow

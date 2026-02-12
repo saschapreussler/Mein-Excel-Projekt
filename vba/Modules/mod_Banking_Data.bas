@@ -299,7 +299,7 @@ ImportAbschluss:
     
     ' 7. Übersicht aktualisieren (nur wenn neue Datensätze importiert wurden)
     '    v4.0: NEU - Übersichtsblatt nach jedem erfolgreichen Import generieren
-    If rowsProcessed > 0 Then
+     If rowsProcessed > 0 Then
         On Error Resume Next
         Call mod_Uebersicht_Generator.GeneriereUebersicht(Year(Date))
         Err.Clear
