@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Zahlungspruefung
-' VERSION: 1.4 - 12.02.2026
+' VERSION: 1.5 - 12.02.2026
 ' ZWECK: Zahlungsprüfung für Mitgliederliste + Einstellungen
 '        - Prüft Zahlungseingänge gegen Soll-Werte
 '        - Behandelt Dezember-Vorauszahlungen
@@ -33,6 +33,13 @@ Option Explicit
 '           - Entsperrt Spalten H, I, J, L für Nutzereingaben
 '           - NEU: SetzeMonatDropDowns (Hilfsprozedur)
 '           - NEU: EntsperreSpaltenFuerNutzer (Hilfsprozedur)
+' FIX v1.5: SetzeMonatPeriode:
+'           - Application.EnableEvents = False VOR dem Beschreiben
+'             von Spalte I, damit Worksheet_Change NICHT getriggert
+'             wird und der Lern-Vermerk NICHT in alle Zeilen
+'             geschrieben wird ("Typen-Unverträglichkeit" behoben).
+'           - Application.EnableEvents wird am Ende wieder auf True
+'             gesetzt (mit sicherem Cleanup bei Fehler).
 ' ***************************************************************
 
 ' ===============================================================
@@ -734,10 +741,20 @@ End Function
 
 
 ' ===============================================================
-' v1.4: MONAT/PERIODE SETZEN (überarbeitet)
+' v1.5: MONAT/PERIODE SETZEN (überarbeitet)
 ' Intelligent über Einstellungen mit Cache-Unterstützung.
 ' Nutzt Public ErmittleMonatPeriode aus mod_KategorieEngine_Evaluator.
 ' Wird von mod_Banking_Data.Importiere_Kontoauszug aufgerufen.
+'
+' FIX v1.5: Application.EnableEvents = False VOR dem Beschreiben
+'           von Spalte I (und anderen Spalten), damit
+'           Worksheet_Change NICHT getriggert wird.
+'           Dadurch werden folgende Fehler behoben:
+'           1. "Typen-Unverträglichkeit" bei der Übersichts-Erstellung
+'           2. "Folgemonat manuell bestätigt" steht NICHT mehr
+'              in jeder Zeile, sondern NUR wo der Nutzer manuell
+'              bestätigt hat (über das DropDown in Spalte I bei
+'              GELB markierten Zellen).
 '
 ' NEU v1.4:
 '   - Verarbeitet "GELB|Monatsname" Rückgabe (Ultimo-5-Logik)
@@ -757,10 +774,24 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
     Dim faelligkeit As String
     Dim ergebnis As String
     
+    ' v1.5 FIX: Vorherigen Zustand von EnableEvents merken und sicher abschalten
+    Dim eventsWaren As Boolean
+    eventsWaren = Application.EnableEvents
+    
+    On Error GoTo SetzeMonatPeriodeError
+    
     If ws Is Nothing Then Exit Sub
     
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
+    
+    ' =============================================
+    ' v1.5 FIX: Events ABSCHALTEN bevor Spalte I
+    ' beschrieben wird! Sonst triggert jedes .value =
+    ' den Worksheet_Change -> VerarbeiteMonatAenderung
+    ' -> Lern-Vermerk in JEDER Zeile + Typ-Fehler!
+    ' =============================================
+    Application.EnableEvents = False
     
     ' Fälligkeit aus Kategorie-Tabelle vorladen
     Dim wsDaten As Worksheet
@@ -774,7 +805,7 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
         datumWert = ws.Cells(r, BK_COL_DATUM).value
         monatWert = ws.Cells(r, BK_COL_MONAT_PERIODE).value
         
-        If IsDate(datumWert) And (isEmpty(monatWert) Or monatWert = "") Then
+        If IsDate(datumWert) And (isEmpty(monatWert) Or CStr(monatWert) = "") Then
             kategorie = Trim(CStr(ws.Cells(r, BK_COL_KATEGORIE).value))
             
             If kategorie <> "" Then
@@ -807,7 +838,7 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
                     bestehendeBemerkung = Trim(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value))
                     
                     Dim gelbHinweis As String
-                    gelbHinweis = "Ultimo-5: Bitte prüfen ob Zahlung für " & _
+                    gelbHinweis = "Ultimo-5: Bitte pr" & ChrW(252) & "fen ob Zahlung f" & ChrW(252) & "r " & _
                                   monatName & " oder Folgemonat gilt"
                     
                     If bestehendeBemerkung = "" Then
@@ -841,6 +872,16 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
     '  Kategorien, Monate, Spalte J und Bemerkungen ändern kann)
     ' =============================================
     Call EntsperreSpaltenFuerNutzer(ws, lastRow)
+    
+    ' v1.5 FIX: Events wieder einschalten
+    Application.EnableEvents = eventsWaren
+    Exit Sub
+
+SetzeMonatPeriodeError:
+    ' v1.5 FIX: Bei Fehler Events SICHER wieder einschalten
+    Application.EnableEvents = eventsWaren
+    ' Fehler nicht verschlucken - Debug-Info ausgeben
+    Debug.Print "Fehler in SetzeMonatPeriode: " & Err.Number & " - " & Err.Description
     
 End Sub
 
