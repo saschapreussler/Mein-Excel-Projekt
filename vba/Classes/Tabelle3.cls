@@ -88,7 +88,7 @@ Private Sub cbo_RechnungsMonat_Change()
         If IsNumeric(wsStart.Range("F1").value) Then
             jahr = CLng(wsStart.Range("F1").value)
         Else
-            MsgBox "Fehler: Ungültiges Abrechnungsjahr in Startmenü!F1", vbCritical
+            MsgBox "Fehler: Ung" & ChrW(252) & "ltiges Abrechnungsjahr in Startmen" & ChrW(252) & "!F1", vbCritical
             GoTo SafeExit
         End If
         
@@ -120,7 +120,7 @@ Private Sub cbo_RechnungsMonat_Change()
         letzteDatenZeile = .Cells(.Rows.count, "A").End(xlUp).Row
         
         If letzteDatenZeile < ersteDatenZeile Then
-            ' Keine Daten vorhanden - still zurücksetzen
+            ' Keine Daten vorhanden - still zur" & ChrW(252) & "cksetzen
             Me.cbo_RechnungsMonat.ListIndex = 0
             wsDaten.Range("AE4").value = 0
             GoTo SafeExit
@@ -144,13 +144,13 @@ Private Sub cbo_RechnungsMonat_Change()
                 Criteria2:="<=" & CLng(letztesDesMonats)
         End If
         
-        ' Sichtbare Daten prüfen
+        ' Sichtbare Daten pr" & ChrW(252) & "fen
         On Error Resume Next
         visibleCellsCount = rngFilterBereich.SpecialCells(xlCellTypeVisible).count
         On Error GoTo 0
         
         If visibleCellsCount <= 1 And monatsIndex > 0 Then
-            ' Keine sichtbaren Daten - still zurücksetzen
+            ' Keine sichtbaren Daten - still zur" & ChrW(252) & "cksetzen
             .ShowAllData
             Me.cbo_RechnungsMonat.ListIndex = 0
             wsDaten.Range("AE4").value = 0
@@ -168,23 +168,61 @@ SafeExit:
 End Sub
 
 ' ===============================================================
-' Worksheet_Change: Manuelle Kategorie-Auswahl in Spalte H
+' Worksheet_Change: Manuelle Auswahl in Spalte H oder Spalte I
 ' ---------------------------------------------------------------
-' Erkennt wenn der Nutzer per DropDown eine Kategorie in Spalte H
-' (BK_COL_KATEGORIE = 8) manuell auswählt oder ändert und:
-' - Sammelzahlung: Prüft ob bereits zugeordnet (GRÜN), fragt
-'   per MsgBox ob neu zugeordnet werden soll.
-' - Normale Kategorie: Spalten M-Z leeren, GRÜN setzen,
-'   "manuell zugeordnet" als Bemerkung, ApplyBetragsZuordnung
-' - Bei Kategorie-Änderung (auch von GRÜN): alte Beträge
-'   werden gelöscht und neu zugeordnet.
+' v9.5: Reagiert jetzt auf ZWEI Spalten:
+'   Spalte H (BK_COL_KATEGORIE = 8): Kategorie-Auswahl
+'   Spalte I (BK_COL_MONAT_PERIODE = 9): Monat-Auswahl (DropDown)
+'
+' Spalte H - Kategorie:
+'   - Sammelzahlung: Prüft ob bereits zugeordnet (GRÜN), fragt
+'     per MsgBox ob neu zugeordnet werden soll.
+'   - Normale Kategorie: Spalten M-Z leeren, GRÜN setzen,
+'     "manuell zugeordnet" als Bemerkung, ApplyBetragsZuordnung
+'   - ErmittleMonatPeriode mit 5 Parametern (inkl. Lern-Check)
+'   - "GELB|Monatsname" Rückgabe wird erkannt und verarbeitet
+'
+' Spalte I - Monat/Periode:
+'   - Nutzer wählt manuell einen Monat über das DropDown
+'   - Spalte I: hell-grüner Hintergrund (manuell bestätigt)
+'   - Spalte L: Lern-Vermerk anhängen (mit vbLf)
+'   - Übersichts-Blatt wird NICHT sofort aktualisiert
+'     (das passiert beim nächsten "Aktualisieren"-Lauf)
 ' ===============================================================
 Private Sub Worksheet_Change(ByVal Target As Range)
     
-    ' Nur Spalte H (Kategorie), ab Datenzeile 28, einzelne Zelle
+    ' Nur einzelne Zelle, ab Datenzeile 28
     If Target.Cells.count <> 1 Then Exit Sub
-    If Target.Column <> BK_COL_KATEGORIE Then Exit Sub
     If Target.Row < BK_START_ROW Then Exit Sub
+    
+    ' =============================================
+    ' WEICHE: Spalte H oder Spalte I?
+    ' =============================================
+    Select Case Target.Column
+    
+        Case BK_COL_KATEGORIE
+            ' --- Spalte H: Kategorie-Auswahl ---
+            Call VerarbeiteKategorieAenderung(Target)
+        
+        Case BK_COL_MONAT_PERIODE
+            ' --- Spalte I: Monat/Periode manuell gewählt ---
+            Call VerarbeiteMonatAenderung(Target)
+        
+        Case Else
+            ' Andere Spalten: nichts tun
+            Exit Sub
+    
+    End Select
+    
+End Sub
+
+
+' ===============================================================
+' Spalte H: Kategorie-Änderung verarbeiten
+' (Bisherige Logik aus Worksheet_Change, jetzt ausgelagert)
+' v9.5: ErmittleMonatPeriode mit 5 Parametern + GELB-Parsing
+' ===============================================================
+Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
     
     Dim kategorie As String
     kategorie = Trim(Target.value)
@@ -213,8 +251,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         If aktFarbe = RGB(198, 239, 206) Then
             ' Bereits vollständig zugeordnet -> Nutzer fragen
             Dim antwort As VbMsgBoxResult
-            antwort = MsgBox("Diese Sammelzahlung wurde bereits vollständig zugeordnet." & vbLf & vbLf & _
-                             "Möchten Sie die Zuordnung verwerfen und neu aufteilen?", _
+            antwort = MsgBox("Diese Sammelzahlung wurde bereits vollst" & ChrW(228) & "ndig zugeordnet." & vbLf & vbLf & _
+                             "M" & ChrW(246) & "chten Sie die Zuordnung verwerfen und neu aufteilen?", _
                              vbQuestion + vbYesNo, "Sammelzahlung - Zeile " & rowBK)
             
             If antwort = vbNo Then
@@ -261,8 +299,42 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             Next rD
             
             Call LadeEinstellungenCache
-            ws.Cells(rowBK, BK_COL_MONAT_PERIODE).value = _
-                ErmittleMonatPeriode(kategorie, CDate(ws.Cells(rowBK, BK_COL_DATUM).value), faelligkeit)
+            
+            ' v9.5: ErmittleMonatPeriode mit 5 Parametern
+            ' (inkl. wsBK + aktuelleZeile für Lern-Mechanismus)
+            Dim ergebnis As String
+            ergebnis = ErmittleMonatPeriode(kategorie, CDate(ws.Cells(rowBK, BK_COL_DATUM).value), _
+                                            faelligkeit, ws, rowBK)
+            
+            ' v9.5: "GELB|Monatsname" Rückgabe verarbeiten
+            If Left(ergebnis, 5) = "GELB|" Then
+                ' GELB-Fall: Monat extrahieren und setzen
+                Dim monatName As String
+                monatName = Mid(ergebnis, 6) ' alles nach "GELB|"
+                
+                ws.Cells(rowBK, BK_COL_MONAT_PERIODE).value = monatName
+                
+                ' GELB-Hintergrund setzen (= Nutzer soll prüfen)
+                ws.Cells(rowBK, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 235, 156)
+                
+                ' Bemerkung: Hinweis anhängen
+                Dim bestehend As String
+                bestehend = Trim(CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value))
+                
+                Dim gelbHinweis As String
+                gelbHinweis = "Ultimo-5: Bitte pr" & ChrW(252) & "fen ob Zahlung f" & ChrW(252) & "r " & _
+                              monatName & " oder Folgemonat gilt"
+                
+                If bestehend = "" Then
+                    ws.Cells(rowBK, BK_COL_BEMERKUNG).value = gelbHinweis
+                Else
+                    ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bestehend & vbLf & gelbHinweis
+                End If
+            Else
+                ' Normaler Fall: Monat direkt setzen (kein GELB)
+                ws.Cells(rowBK, BK_COL_MONAT_PERIODE).value = ergebnis
+            End If
+            
             Call EntladeEinstellungenCache
         End If
     End If
@@ -283,7 +355,133 @@ ChangeError:
     On Error GoTo 0
     Application.EnableEvents = True
     If Err.Number <> 0 Then
-        MsgBox "Fehler in Worksheet_Change: " & Err.Description, vbExclamation
+        MsgBox "Fehler in Worksheet_Change (Kategorie): " & Err.Description, vbExclamation
+        Err.Clear
+    End If
+End Sub
+
+
+' ===============================================================
+' Spalte I: Monat/Periode manuell geändert (DropDown)
+' v9.5: NEU
+' Wenn der Nutzer über das DropDown in Spalte I einen Monat
+' manuell auswählt oder ändert:
+' 1. Spalte I: hell-grüner Hintergrund = manuell bestätigt
+' 2. Spalte L: Lern-Vermerk anhängen (mit vbLf vorweg wenn
+'    bereits Text vorhanden)
+' 3. Der Lern-Vermerk enthält "Folgemonat" als Marker, damit
+'    ErmittleMonatPeriode in Zukunft bei gleicher IBAN +
+'    Kategorie automatisch den Folgemonat zuordnet.
+' ===============================================================
+Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
+    
+    Dim monatWert As String
+    monatWert = Trim(Target.value)
+    If monatWert = "" Then Exit Sub
+    
+    On Error GoTo MonatError
+    Application.EnableEvents = False
+    
+    Dim ws As Worksheet
+    Set ws = Me
+    
+    Dim rowBK As Long
+    rowBK = Target.Row
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo MonatError
+    
+    ' 1. Hell-grünen Hintergrund setzen (= manuell bestätigt)
+    ws.Cells(rowBK, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206)
+    
+    ' 2. Lern-Vermerk in Spalte L anhängen
+    '    Der Vermerk enthält "Folgemonat" als Marker für den Lern-Check
+    '    in ErmittleMonatPeriode. Zusätzlich wird der gewählte Monat
+    '    dokumentiert, damit nachvollziehbar ist was der Nutzer gewählt hat.
+    Dim bestehendeBemerkung As String
+    bestehendeBemerkung = Trim(CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value))
+    
+    Dim lernVermerk As String
+    lernVermerk = "Folgemonat manuell best" & ChrW(228) & "tigt: " & monatWert
+    
+    If bestehendeBemerkung = "" Then
+        ws.Cells(rowBK, BK_COL_BEMERKUNG).value = lernVermerk
+    Else
+        ' Prüfen ob der Lern-Vermerk schon vorhanden ist (Vermeidung von Duplikaten)
+        If InStr(LCase(bestehendeBemerkung), "folgemonat manuell best") = 0 Then
+            ' Noch kein Lern-Vermerk -> anhängen
+            ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bestehendeBemerkung & vbLf & lernVermerk
+        Else
+            ' Lern-Vermerk bereits vorhanden -> aktualisieren
+            ' (alten Vermerk durch neuen ersetzen)
+            Dim zeilen() As String
+            zeilen = Split(bestehendeBemerkung, vbLf)
+            
+            Dim neueBemerkung As String
+            neueBemerkung = ""
+            
+            Dim z As Long
+            For z = LBound(zeilen) To UBound(zeilen)
+                If InStr(LCase(zeilen(z)), "folgemonat manuell best") = 0 Then
+                    ' Zeile behalten (kein alter Lern-Vermerk)
+                    If neueBemerkung = "" Then
+                        neueBemerkung = zeilen(z)
+                    Else
+                        neueBemerkung = neueBemerkung & vbLf & zeilen(z)
+                    End If
+                End If
+            Next z
+            
+            ' Neuen Lern-Vermerk anhängen
+            If neueBemerkung = "" Then
+                ws.Cells(rowBK, BK_COL_BEMERKUNG).value = lernVermerk
+            Else
+                ws.Cells(rowBK, BK_COL_BEMERKUNG).value = neueBemerkung & vbLf & lernVermerk
+            End If
+        End If
+    End If
+    
+    ' 3. Auch den evtl. vorhandenen GELB-Hinweis aus der Ultimo-5-Logik entfernen
+    '    (der ist jetzt nicht mehr relevant, da der Nutzer manuell bestätigt hat)
+    Dim aktBemerkung As String
+    aktBemerkung = CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value)
+    
+    If InStr(LCase(aktBemerkung), "ultimo-5: bitte pr") > 0 Then
+        Dim zeilen2() As String
+        zeilen2 = Split(aktBemerkung, vbLf)
+        
+        Dim bereinigt As String
+        bereinigt = ""
+        
+        Dim z2 As Long
+        For z2 = LBound(zeilen2) To UBound(zeilen2)
+            If InStr(LCase(zeilen2(z2)), "ultimo-5: bitte pr") = 0 Then
+                If bereinigt = "" Then
+                    bereinigt = zeilen2(z2)
+                Else
+                    bereinigt = bereinigt & vbLf & zeilen2(z2)
+                End If
+            End If
+        Next z2
+        
+        ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bereinigt
+    End If
+
+MonatCleanup:
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    Application.EnableEvents = True
+    Exit Sub
+
+MonatError:
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    Application.EnableEvents = True
+    If Err.Number <> 0 Then
+        MsgBox "Fehler in Worksheet_Change (Monat): " & Err.Description, vbExclamation
         Err.Clear
     End If
 End Sub
@@ -378,7 +576,7 @@ NextKatRow:
     anzahlKat = dictKat.count
     
     If anzahlKat = 0 Then
-        MsgBox "Keine Kategorien für " & IIf(istEinnahme, "Einnahmen", "Ausgaben") & _
+        MsgBox "Keine Kategorien f" & ChrW(252) & "r " & IIf(istEinnahme, "Einnahmen", "Ausgaben") & _
                " in der Kategorie-Tabelle gefunden!", vbCritical
         Exit Sub
     End If
@@ -445,7 +643,7 @@ NextKatRow:
                  spaltenInfo & vbLf & _
                  "Bereits zugeordnet: " & Format(zugeordnet, "#,##0.00") & " " & ChrW(8364) & vbLf & _
                  "Noch offen: " & Format(restBetrag, "#,##0.00") & " " & ChrW(8364) & vbLf & vbLf & _
-                 "Eingabe: Kürzel;Betrag  (z.B. A;25,00)" & vbLf & _
+                 "Eingabe: K" & ChrW(252) & "rzel;Betrag  (z.B. A;25,00)" & vbLf & _
                  "Abbrechen = Rest nicht zuordnen"
         
         Dim eingabe As String
@@ -463,9 +661,9 @@ NextKatRow:
         trennPos = InStr(eingabe, ";")
         
         If trennPos = 0 Or trennPos >= Len(eingabe) Then
-            MsgBox "Ungültiges Format!" & vbLf & _
+            MsgBox "Ung" & ChrW(252) & "ltiges Format!" & vbLf & _
                    "Bitte im Format 'A;25,00' eingeben." & vbLf & _
-                   "Semikolon trennt Kürzel vom Betrag.", vbExclamation
+                   "Semikolon trennt K" & ChrW(252) & "rzel vom Betrag.", vbExclamation
             GoTo WeiterEingabe
         End If
         
@@ -482,13 +680,13 @@ NextKatRow:
         teilBetrag = Round(teilBetrag, 2)
         
         If teilBetrag <= 0 Then
-            MsgBox "Ungültiger Betrag: " & Mid(eingabe, trennPos + 1), vbExclamation
+            MsgBox "Ung" & ChrW(252) & "ltiger Betrag: " & Mid(eingabe, trennPos + 1), vbExclamation
             GoTo WeiterEingabe
         End If
         
         If teilBetrag > restBetrag + 0.01 Then
             MsgBox "Betrag " & Format(teilBetrag, "#,##0.00") & " " & ChrW(8364) & _
-                   " ist größer als der Restbetrag " & _
+                   " ist gr" & ChrW(246) & ChrW(223) & "er als der Restbetrag " & _
                    Format(restBetrag, "#,##0.00") & " " & ChrW(8364) & "!", vbExclamation
             GoTo WeiterEingabe
         End If
@@ -504,8 +702,8 @@ NextKatRow:
         Next i
         
         If gefundenIdx = 0 Then
-            MsgBox "Kürzel '" & eingabeKuerzel & "' nicht gefunden!" & vbLf & _
-                   "Erlaubte Kürzel: A bis " & kuerzelBuchstabe(anzahlKat), vbExclamation
+            MsgBox "K" & ChrW(252) & "rzel '" & eingabeKuerzel & "' nicht gefunden!" & vbLf & _
+                   "Erlaubte K" & ChrW(252) & "rzel: A bis " & kuerzelBuchstabe(anzahlKat), vbExclamation
             GoTo WeiterEingabe
         End If
         
@@ -571,7 +769,7 @@ WeiterEingabe:
         ApplyKategorie ws.Cells(rowBK, BK_COL_KATEGORIE), _
                        ws.Cells(rowBK, BK_COL_KATEGORIE).value, "GRUEN"
         ws.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-            "manuell zugeordnet (Sammelzahlung vollständig aufgeteilt)"
+            "manuell zugeordnet (Sammelzahlung vollst" & ChrW(228) & "ndig aufgeteilt)"
     Else
         ' TEILWEISE zugeordnet -> GELB bleibt
         ApplyKategorie ws.Cells(rowBK, BK_COL_KATEGORIE), _
