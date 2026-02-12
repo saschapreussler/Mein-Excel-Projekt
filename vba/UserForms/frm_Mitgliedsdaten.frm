@@ -253,14 +253,14 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
         '                  nur txt_Pachtende editierbar
         ' ===================================================
         For Each ctl In Me.Controls
-            If TypeOf ctl Is MSForms.Label And Left(ctl.name, 4) = "lbl_" Then
+            If TypeOf ctl Is MSForms.Label And Left(ctl.Name, 4) = "lbl_" Then
                 ' ALLE Labels sichtbar: sowohl Bezeichner-Labels
                 ' (lbl_PachtbeginnBezeichner, lbl_PachtendeBezeichner)
                 ' als auch Daten-Labels (lbl_Anrede, lbl_Vorname, ...)
                 ctl.Visible = True
             ElseIf TypeOf ctl Is MSForms.TextBox Then
                 ' Nur txt_Pachtende sichtbar (editierbar)
-                If ctl.name = "txt_Pachtende" Then
+                If ctl.Name = "txt_Pachtende" Then
                     ctl.Visible = True
                 Else
                     ctl.Visible = False
@@ -288,9 +288,9 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
     ' NORMALER MODUS (wie bisher, unverändert)
     ' ===================================================
     For Each ctl In Me.Controls
-        If TypeOf ctl Is MSForms.Label And Left(ctl.name, 4) = "lbl_" Then
+        If TypeOf ctl Is MSForms.Label And Left(ctl.Name, 4) = "lbl_" Then
             ' Bezeichner-Labels sollen IMMER sichtbar sein
-            If ctl.name = "lbl_PachtbeginnBezeichner" Or ctl.name = "lbl_PachtendeBezeichner" Then
+            If ctl.Name = "lbl_PachtbeginnBezeichner" Or ctl.Name = "lbl_PachtendeBezeichner" Then
                 ctl.Visible = True
             Else
                 ' Alle anderen Labels (Datenlabels): SICHTBAR im ViewMode, UNSICHTBAR im EditMode
@@ -2441,7 +2441,7 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     Dim i As Long
     
     For i = 0 To VBA.UserForms.count - 1
-        If StrComp(VBA.UserForms.item(i).name, FormName, vbTextCompare) = 0 Then
+        If StrComp(VBA.UserForms.item(i).Name, FormName, vbTextCompare) = 0 Then
             IsFormLoaded = True
             Exit Function
         End If
