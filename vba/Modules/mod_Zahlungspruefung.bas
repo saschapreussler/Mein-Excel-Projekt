@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Zahlungspruefung
-' VERSION: 1.3 - 11.02.2026
+' VERSION: 1.4 - 12.02.2026
 ' ZWECK: Zahlungsprüfung für Mitgliederliste + Einstellungen
 '        - Prüft Zahlungseingänge gegen Soll-Werte
 '        - Behandelt Dezember-Vorauszahlungen
@@ -22,6 +22,17 @@ Option Explicit
 '           - Dezimalformat: Punkt als Trenner (systemunabhängig)
 '           - IBAN-Cache (EntityKey -> IBAN) hinzugefügt
 '           - Dezember-Cache: ebenfalls über IBAN statt INTERNE_NR
+' NEU v1.4: SetzeMonatPeriode überarbeitet:
+'           - Verarbeitet "GELB|Monatsname" Rückgabe aus
+'             ErmittleMonatPeriode (Ultimo-5-Logik)
+'           - GELB-Hintergrund in Spalte I bei unklaren Fällen
+'           - DropDown-Liste (Januar-Dezember) auf ALLE Zellen
+'             in Spalte I (ab BK_START_ROW)
+'           - Übergibt wsBK + aktuelleZeile an ErmittleMonatPeriode
+'             für den Lern-Mechanismus
+'           - Entsperrt Spalten H, I, J, L für Nutzereingaben
+'           - NEU: SetzeMonatDropDowns (Hilfsprozedur)
+'           - NEU: EntsperreSpaltenFuerNutzer (Hilfsprozedur)
 ' ***************************************************************
 
 ' ===============================================================
@@ -56,9 +67,12 @@ Private m_DezemberCacheZP As Object   ' Dictionary mit IBAN|Kategorie -> Collect
 ' ===============================================================
 ' AMPELFARBEN (Konsistenz mit KategorieEngine)
 ' ===============================================================
-Private Const AMPEL_GRUEN As Long = 12968900
-Private Const AMPEL_GELB As Long = 10086143
-Private Const AMPEL_ROT As Long = 9871103
+Private Const AMPEL_GRUEN As Long = 12968900   ' RGB(196, 225, 196) -> hell-grün (Lern-Marker)
+Private Const AMPEL_GELB As Long = 10086143    ' RGB(255, 235, 156) -> gelb (unklar)
+Private Const AMPEL_ROT As Long = 9871103      ' RGB(255, 199, 206) -> rot
+
+' Hell-grün für manuell bestätigte Monatszuordnung (Spalte I)
+Private Const FARBE_HELLGRUEN_MANUELL As Long = 13565382  ' RGB(198, 239, 206)
 
 
 ' ===============================================================
@@ -165,7 +179,7 @@ NextZahlRow:
     
     ' 4. Status ermitteln (GRÜN/GELB/ROT)
     If ist >= soll Then
-        status = "GRÜN"
+        status = "GR" & ChrW(220) & "N"
     ElseIf ist > 0 Then
         status = "GELB"
     Else
@@ -720,10 +734,18 @@ End Function
 
 
 ' ===============================================================
-' NEU v1.2: MONAT/PERIODE SETZEN (verschoben aus mod_Banking_Data)
+' v1.4: MONAT/PERIODE SETZEN (überarbeitet)
 ' Intelligent über Einstellungen mit Cache-Unterstützung.
 ' Nutzt Public ErmittleMonatPeriode aus mod_KategorieEngine_Evaluator.
 ' Wird von mod_Banking_Data.Importiere_Kontoauszug aufgerufen.
+'
+' NEU v1.4:
+'   - Verarbeitet "GELB|Monatsname" Rückgabe (Ultimo-5-Logik)
+'   - Setzt GELB-Hintergrund in Spalte I bei unklaren Fällen
+'   - Übergibt wsBK + aktuelleZeile für Lern-Mechanismus
+'   - Setzt DropDown-Listen (Januar-Dezember) auf ALLE Zellen
+'     in Spalte I (ab BK_START_ROW)
+'   - Entsperrt Spalten H, I, J, L für Nutzereingaben
 ' ===============================================================
 Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
     
@@ -733,6 +755,7 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
     Dim datumWert As Variant
     Dim kategorie As String
     Dim faelligkeit As String
+    Dim ergebnis As String
     
     If ws Is Nothing Then Exit Sub
     
@@ -752,14 +775,50 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
         monatWert = ws.Cells(r, BK_COL_MONAT_PERIODE).value
         
         If IsDate(datumWert) And (isEmpty(monatWert) Or monatWert = "") Then
-            kategorie = Trim(ws.Cells(r, BK_COL_KATEGORIE).value)
+            kategorie = Trim(CStr(ws.Cells(r, BK_COL_KATEGORIE).value))
             
             If kategorie <> "" Then
                 ' Fälligkeit aus Kategorie-Tabelle holen (Spalte O)
                 faelligkeit = HoleFaelligkeitFuerKategorie(wsDaten, kategorie)
-                ' Nutzt Public Version aus Evaluator (mit Cache + Folgemonat)
-                ws.Cells(r, BK_COL_MONAT_PERIODE).value = _
-                    mod_KategorieEngine_Evaluator.ErmittleMonatPeriode(kategorie, CDate(datumWert), faelligkeit)
+                
+                ' Nutzt Public Version aus Evaluator (mit Cache + Folgemonat + Lern-Check)
+                ' v1.4: Übergibt jetzt wsBK + aktuelleZeile für den Lern-Mechanismus
+                ergebnis = mod_KategorieEngine_Evaluator.ErmittleMonatPeriode( _
+                    kategorie, CDate(datumWert), faelligkeit, ws, r)
+                
+                ' =============================================
+                ' v1.4: "GELB|Monatsname" Rückgabe verarbeiten
+                ' Wenn ErmittleMonatPeriode unsicher ist (Ultimo-5-Bereich,
+                ' kein Lernmuster), kommt "GELB|Januar" zurück.
+                ' -> Spalte I: Monatsname setzen + GELB hinterlegen
+                ' =============================================
+                If Left(ergebnis, 5) = "GELB|" Then
+                    ' GELB-Fall: Monat extrahieren und setzen
+                    Dim monatName As String
+                    monatName = Mid(ergebnis, 6) ' alles nach "GELB|"
+                    
+                    ws.Cells(r, BK_COL_MONAT_PERIODE).value = monatName
+                    
+                    ' GELB-Hintergrund setzen (= Nutzer soll prüfen)
+                    ws.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 235, 156)
+                    
+                    ' Bemerkung: Hinweis anhängen
+                    Dim bestehendeBemerkung As String
+                    bestehendeBemerkung = Trim(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value))
+                    
+                    Dim gelbHinweis As String
+                    gelbHinweis = "Ultimo-5: Bitte prüfen ob Zahlung für " & _
+                                  monatName & " oder Folgemonat gilt"
+                    
+                    If bestehendeBemerkung = "" Then
+                        ws.Cells(r, BK_COL_BEMERKUNG).value = gelbHinweis
+                    Else
+                        ws.Cells(r, BK_COL_BEMERKUNG).value = bestehendeBemerkung & vbLf & gelbHinweis
+                    End If
+                Else
+                    ' Normaler Fall: Monat direkt setzen (kein GELB)
+                    ws.Cells(r, BK_COL_MONAT_PERIODE).value = ergebnis
+                End If
             Else
                 ' Keine Kategorie: Fallback auf Buchungsmonat
                 ws.Cells(r, BK_COL_MONAT_PERIODE).value = MonthName(Month(datumWert))
@@ -770,11 +829,101 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
     ' Einstellungen-Cache wieder freigeben
     Call mod_KategorieEngine_Evaluator.EntladeEinstellungenCache
     
+    ' =============================================
+    ' v1.4: DropDown-Listen auf ALLE Zellen in Spalte I setzen
+    ' (Januar bis Dezember) - auch auf bereits befüllte Zellen
+    ' =============================================
+    Call SetzeMonatDropDowns(ws, lastRow)
+    
+    ' =============================================
+    ' v1.4: Spalten H, I, J, L entsperren für Nutzereingaben
+    ' (Locked = False, damit der Nutzer trotz Blattschutz
+    '  Kategorien, Monate, Spalte J und Bemerkungen ändern kann)
+    ' =============================================
+    Call EntsperreSpaltenFuerNutzer(ws, lastRow)
+    
 End Sub
 
 
 ' ===============================================================
-' NEU v1.2: FÄLLIGKEIT AUS KATEGORIE-TABELLE (Spalte O) HOLEN
+' v1.4: DropDown-Listen (Januar-Dezember) auf Spalte I setzen
+' Setzt Data Validation auf alle Zellen in Spalte I
+' von BK_START_ROW bis lastRow.
+' Bestehende DropDowns werden überschrieben (kein Schaden,
+' da die Liste immer gleich ist).
+' Bereits manuell bestätigte Werte (hell-grün) bleiben erhalten,
+' der Nutzer kann sie aber jederzeit über das DropDown ändern.
+' ===============================================================
+Private Sub SetzeMonatDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
+    
+    If lastRow < BK_START_ROW Then Exit Sub
+    
+    ' Monatsliste als kommaseparierter String für Data Validation
+    Dim monatsListe As String
+    monatsListe = "Januar,Februar,M" & ChrW(228) & "rz,April,Mai,Juni," & _
+                  "Juli,August,September,Oktober,November,Dezember"
+    
+    Dim rngMonat As Range
+    Set rngMonat = ws.Range(ws.Cells(BK_START_ROW, BK_COL_MONAT_PERIODE), _
+                            ws.Cells(lastRow, BK_COL_MONAT_PERIODE))
+    
+    On Error Resume Next
+    With rngMonat.Validation
+        .Delete   ' Bestehende Validation entfernen
+        .Add Type:=xlValidateList, _
+             AlertStyle:=xlValidAlertInformation, _
+             Operator:=xlBetween, _
+             Formula1:=monatsListe
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .ShowInput = False
+        .ShowError = False  ' Keine Fehlermeldung bei freier Eingabe
+        '                     (z.B. "Q1 2026", "Jahresbeitrag 2026" etc.)
+    End With
+    On Error GoTo 0
+    
+End Sub
+
+
+' ===============================================================
+' v1.4: Spalten H, I, J, L entsperren für Nutzereingaben
+' Setzt Locked = False auf die Zellen in den angegebenen Spalten,
+' damit der Nutzer trotz Blattschutz (UserInterfaceOnly:=True)
+' folgende Spalten bearbeiten kann:
+'   H = Kategorie (BK_COL_KATEGORIE)
+'   I = Monat/Periode (BK_COL_MONAT_PERIODE)
+'   J = Interne Nr (BK_COL_INTERNE_NR) - Spalte 10
+'   L = Bemerkung (BK_COL_BEMERKUNG)
+' ===============================================================
+Private Sub EntsperreSpaltenFuerNutzer(ByVal ws As Worksheet, ByVal lastRow As Long)
+    
+    If lastRow < BK_START_ROW Then Exit Sub
+    
+    On Error Resume Next
+    
+    ' Spalte H (Kategorie)
+    ws.Range(ws.Cells(BK_START_ROW, BK_COL_KATEGORIE), _
+             ws.Cells(lastRow, BK_COL_KATEGORIE)).Locked = False
+    
+    ' Spalte I (Monat/Periode)
+    ws.Range(ws.Cells(BK_START_ROW, BK_COL_MONAT_PERIODE), _
+             ws.Cells(lastRow, BK_COL_MONAT_PERIODE)).Locked = False
+    
+    ' Spalte J (Interne Nr) = Spalte 10
+    ws.Range(ws.Cells(BK_START_ROW, 10), _
+             ws.Cells(lastRow, 10)).Locked = False
+    
+    ' Spalte L (Bemerkung)
+    ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), _
+             ws.Cells(lastRow, BK_COL_BEMERKUNG)).Locked = False
+    
+    On Error GoTo 0
+    
+End Sub
+
+
+' ===============================================================
+' v1.4: FÄLLIGKEIT AUS KATEGORIE-TABELLE (Spalte O) HOLEN
 ' Verschoben aus mod_Banking_Data, jetzt Public für alle Module.
 ' v1.3: Prüft zuerst Einstellungen-Blatt (Spalte B = Kategorie),
 '       dann erst Daten-Blatt (Spalte O = Fälligkeit) als Fallback.
@@ -808,9 +957,9 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
                     Dim anzMonate As Long
                     anzMonate = UBound(Split(sollMonate, ",")) + 1
                     Select Case anzMonate
-                        Case 1: HoleFaelligkeitFuerKategorie = "jährlich"
-                        Case 2: HoleFaelligkeitFuerKategorie = "halbjährlich"
-                        Case 4: HoleFaelligkeitFuerKategorie = "vierteljährlich"
+                        Case 1: HoleFaelligkeitFuerKategorie = "j" & ChrW(228) & "hrlich"
+                        Case 2: HoleFaelligkeitFuerKategorie = "halbj" & ChrW(228) & "hrlich"
+                        Case 4: HoleFaelligkeitFuerKategorie = "viertelj" & ChrW(228) & "hrlich"
                         Case Else: HoleFaelligkeitFuerKategorie = "monatlich"
                     End Select
                 End If

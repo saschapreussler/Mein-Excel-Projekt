@@ -3,7 +3,7 @@ Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - EVALUATOR
-' VERSION: 9.3 - 08.02.2026
+' VERSION: 9.5 - 12.02.2026
 ' MERGE: v7.0 Scoring-Logik (funktionierend) +
 '        v8.2 Infrastruktur (kein Named Range, Cache,
 '        kombiniertes GetEntityInfo, ExactMatchBonus)
@@ -24,6 +24,13 @@ Option Explicit
 '       Prio-Bonus erhöht: (10-prio)*8 statt *5
 '       Damit wird STVOM-WASSER PARZ.9 korrekt als
 '       Strom/Wasser erkannt (Differenz >=20)
+' v9.5: NEU: Ultimo-5-Logik in ErmittleMonatPeriode
+'       Wenn SollTag >= (Ultimo - 5) und Buchung im
+'       Ultimo-5-Bereich: Folgemonat-Erkennung mit
+'       Lern-Mechanismus (hell-grüner Hintergrund +
+'       Vermerk in Spalte L als Marker).
+'       GELB-Rückgabe: "GELB|Monatsname" wenn unklar.
+'       IstMonatInListe ist jetzt Public.
 ' =====================================================
 
 ' Mindest-Score-Differenz für sichere Zuordnung
@@ -31,6 +38,9 @@ Private Const SCORE_DOMINANZ_SCHWELLE As Long = 20
 
 ' Kategorie für echte Mehrdeutigkeit (nur programmatisch!)
 Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung (mehrere Positionen) Mitglied"
+
+' Farbe für "Folgemonat manuell bestätigt" (hell-grün)
+Private Const FARBE_HELLGRUEN As Long = 12968900  ' RGB(196, 225, 196) -> &HC4E1C4 -> Long
 
 ' =====================================================
 ' EINSTELLUNGEN-CACHE (Performance)
@@ -248,7 +258,7 @@ End Function
 ' =====================================================
 ' ExactMatchBonus (v8.0)
 ' Gibt Bonuspunkte wenn das normalisierte Keyword als
-' zusammenhaengender Substring im Text vorkommt.
+' zusammenhängender Substring im Text vorkommt.
 ' =====================================================
 Private Function ExactMatchBonus(ByVal normText As String, _
                                   ByVal normKeyword As String) As Long
@@ -300,14 +310,14 @@ End Function
 ' Braucht KEINEN Named Range! Liest Regeln direkt vom
 ' Daten-Blatt über DATA_CAT_COL_* Konstanten.
 ' Scoring-Logik aus v7.0 wiederhergestellt.
-' v9.3: WordCountBonus + erhoehter Prio-Bonus
+' v9.3: WordCountBonus + erhöhter Prio-Bonus
 ' =====================================================
 Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                                       ByVal rowBK As Long, _
                                       ByVal wsData As Worksheet, _
                                       ByVal lastRuleRow As Long)
 
-    ' Bereits kategorisiert? Ueberspringen
+    ' Bereits kategorisiert? Überspringen
     If Trim(wsBK.Cells(rowBK, BK_COL_KATEGORIE).value) <> "" Then Exit Sub
 
     Dim ctx As Object
@@ -323,7 +333,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         Exit Sub
     End If
 
-    ' 0-Euro ohne Sonderregel -> ueberspringen
+    ' 0-Euro ohne Sonderregel -> überspringen
     If ctx("IsNullBetrag") Then Exit Sub
 
     Dim normText As String
@@ -334,7 +344,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     ' PHASE 1: HARTE SONDERREGELN
     ' ================================
     
-    ' 1a) Entgeltabschluss (Bankgebuehren)
+    ' 1a) Entgeltabschluss (Bankgebühren)
     If ctx("IsEntgeltabschluss") And ctx("IsAusgabe") Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
                        "Entgeltabschluss (Kontof" & ChrW(252) & "hrung)", "GRUEN"
@@ -359,7 +369,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     bestPriority = 999
     bestCategory = ""
 
-    ' Dictionary: Kategorie -> Score (hoechster Score je Kategorie)
+    ' Dictionary: Kategorie -> Score (höchster Score je Kategorie)
     Dim hitCategories As Object
     Set hitCategories = CreateObject("Scripting.Dictionary")
 
@@ -411,7 +421,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
             Dim score As Long
             score = 100
             
-            ' Prioritaetsbonus (niedrigere Prio = hoeherer Bonus)
+            ' Prioritätsbonus (niedrigere Prio = höherer Bonus)
             ' v9.3: Faktor 8 statt 5 für stärkere Differenzierung
             score = score + (10 - prio) * 8
             
@@ -437,7 +447,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                 score = score + 5
             End If
             
-            ' ExactMatchBonus (v8.0: +10 wenn Keyword zusammenhaengend im Text)
+            ' ExactMatchBonus (v8.0: +10 wenn Keyword zusammenhängend im Text)
             score = score + ExactMatchBonus(normText, normKeyword)
             
             ' WordCountBonus (v9.3: Anzahl Wörter im Keyword * 5)
@@ -511,7 +521,7 @@ NextRule:
             If katNr < hitCategories.count Then
                 bemerkung = bemerkung & katNr & ") " & CStr(katKey) & vbLf
             Else
-                ' Letzte Kategorie: KEIN abschliessendes vbLf
+                ' Letzte Kategorie: KEIN abschließendes vbLf
                 bemerkung = bemerkung & katNr & ") " & CStr(katKey)
             End If
         Next katKey
@@ -525,7 +535,7 @@ NextRule:
         Exit Sub
     End If
 
-    ' Genau 1 Treffer = sicher GRUEN
+    ' Genau 1 Treffer = sicher GRÜN
     If bestCategory <> "" Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRUEN"
         Exit Sub
@@ -628,7 +638,7 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
         If catLower Like "*kontof" & ChrW(252) & "hrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*kontofuehrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         
-        ' Mitglied bei Ausgabe = nur Rueckerstattung/Auszahlung/Guthaben
+        ' Mitglied bei Ausgabe = nur Rückerstattung/Auszahlung/Guthaben
         If ctx("IsAusgabe") Then
             If Not (catLower Like "*r" & ChrW(252) & "ck*" Or catLower Like "*rueck*" Or _
                     catLower Like "*erstattung*" Or catLower Like "*gutschrift*" Or _
@@ -660,7 +670,7 @@ Private Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
             PasstEntityRoleZuKategorie = False: Exit Function
         End If
         
-        ' Ehemalige bei Ausgabe: Auszahlung/Guthaben/Rueckzahlung erlaubt
+        ' Ehemalige bei Ausgabe: Auszahlung/Guthaben/Rückzahlung erlaubt
         If ctx("IsAusgabe") Then
             If Not (catLower Like "*r" & ChrW(252) & "ck*" Or catLower Like "*rueck*" Or _
                     catLower Like "*erstattung*" Or catLower Like "*gutschrift*" Or _
@@ -719,7 +729,8 @@ End Function
 ' 1. Spalte F (Stichtag Fix) -> exaktes Datum
 ' 2. Spalte D + E (Tag + Monate) -> kombiniert
 ' 3. Spalte D allein -> monatlich
-' 4. Tag 31 + Monate -> letzter Tag im jeweiligen Monat' =====================================================
+' 4. Tag 31 + Monate -> letzter Tag im jeweiligen Monat
+' =====================================================
 Private Function PruefeZeitfenster(ByVal category As String, _
                                     ByVal buchungsDatum As Date, _
                                     ByVal faelligkeit As String) As Long
@@ -871,8 +882,9 @@ End Function
 ' Hilfsfunktion: Prüft ob ein Monat (1-12) in einer
 ' kommaseparierten Monatsliste enthalten ist.
 ' z.B. IstMonatInListe(3, "03, 06, 09, 12") -> True
+' JETZT PUBLIC (wird auch in mod_Zahlungspruefung benötigt)
 ' =====================================================
-Private Function IstMonatInListe(ByVal monat As Long, ByVal monatListe As String) As Boolean
+Public Function IstMonatInListe(ByVal monat As Long, ByVal monatListe As String) As Boolean
     Dim teile() As String
     Dim t As Long
     
@@ -893,12 +905,23 @@ End Function
 
 
 ' =====================================================
-' Monat/Periode intelligent ermitteln (v9.4)
+' Monat/Periode intelligent ermitteln (v9.5)
 ' Berücksichtigt jetzt auch Soll-Monate (Spalte E).
+' NEU v9.5: Ultimo-5-Logik + Lern-Mechanismus
+' - Wenn SollTag >= (Ultimo - 5) oder SollTag = 31:
+'   Prüft ob die Buchung im "Ultimo - 5 Tage"-Bereich liegt.
+'   Wenn ja: Sucht nach gelerntem Muster (hell-grüner
+'   Hintergrund in Spalte I + Lern-Vermerk in Spalte L
+'   für gleiche IBAN + Kategorie).
+'   -> Muster gefunden: Folgemonat automatisch
+'   -> Kein Muster: Rückgabe "GELB|Monatsname"
+'      (Aufrufer setzt dann GELB in Spalte I)
 ' =====================================================
 Public Function ErmittleMonatPeriode(ByVal category As String, _
                                      ByVal buchungsDatum As Date, _
-                                     ByVal faelligkeit As String) As String
+                                     ByVal faelligkeit As String, _
+                                     Optional ByVal wsBK As Worksheet = Nothing, _
+                                     Optional ByVal aktuelleZeile As Long = 0) As String
     
     Dim monatBuchung As Long
     monatBuchung = Month(buchungsDatum)
@@ -973,19 +996,98 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
                 End If
             End If
             
-            ' Prüfe SollTag (Spalte D) - Tag im Monat oder Ultimo
+            ' =============================================
+            ' NEU v9.5: Ultimo-5-Logik
+            ' Prüfe ob SollTag im Ultimo-Bereich liegt
+            ' =============================================
+            Dim letzterTagMonat As Long
+            letzterTagMonat = Day(DateSerial(Year(buchungsDatum), monatBuchung + 1, 0))
+            
             Dim effektiverTag As Long
-            If SollTag = 0 And sollMonate <> "" Then
-                ' Ultimo: Letzter Tag im Buchungsmonat
-                effektiverTag = Day(DateSerial(Year(buchungsDatum), monatBuchung + 1, 0))
+            If SollTag = 31 Or SollTag = 0 Then
+                ' Ultimo: letzter Tag im Monat
+                effektiverTag = letzterTagMonat
             Else
                 effektiverTag = SollTag
             End If
             
-            If effektiverTag >= 1 And effektiverTag <= 31 Then
-                Dim tagBuchung As Long
-                tagBuchung = Day(buchungsDatum)
+            ' Prüfe ob dieser SollTag im Ultimo-Bereich liegt (>= Ultimo - 5)
+            Dim istUltimoBereich As Boolean
+            istUltimoBereich = (effektiverTag >= (letzterTagMonat - 5))
+            
+            Dim tagBuchung As Long
+            tagBuchung = Day(buchungsDatum)
+            
+            ' Liegt die Buchung im Ultimo-5-Bereich?
+            ' D.h. Buchungstag >= (Ultimo - 5) UND Buchungstag < Ultimo
+            ' (Zahlung am Ultimo selbst = normaler Monat, nicht "zu früh")
+            If istUltimoBereich And tagBuchung >= (letzterTagMonat - 5) And tagBuchung < letzterTagMonat Then
                 
+                ' Folgemonat ermitteln
+                Dim folgeMonatNr As Long
+                folgeMonatNr = monatBuchung + 1
+                If folgeMonatNr > 12 Then folgeMonatNr = 1
+                
+                ' Prüfe ob Folgemonat in Soll-Monaten liegt (falls eingeschränkt)
+                If sollMonate <> "" And Not IstMonatInListe(folgeMonatNr, sollMonate) Then
+                    ' Folgemonat ist KEIN Soll-Monat -> normaler Buchungsmonat
+                    GoTo FallbackMonat
+                End If
+                
+                ' =============================================
+                ' Lern-Check: Gibt es vorherige Zeilen mit
+                ' gleicher IBAN + Kategorie wo Spalte I hell-grün
+                ' ist und Spalte L den Lern-Vermerk enthält?
+                ' =============================================
+                If Not wsBK Is Nothing And aktuelleZeile > 0 Then
+                    Dim ibanAktuell As String
+                    ibanAktuell = UCase(Replace(Trim(wsBK.Cells(aktuelleZeile, BK_COL_IBAN).value), " ", ""))
+                    
+                    If ibanAktuell <> "" Then
+                        Dim suchZeile As Long
+                        Dim musterGefunden As Boolean
+                        musterGefunden = False
+                        
+                        For suchZeile = BK_START_ROW To aktuelleZeile - 1
+                            ' Gleiche IBAN?
+                            Dim ibanZeile As String
+                            ibanZeile = UCase(Replace(Trim(wsBK.Cells(suchZeile, BK_COL_IBAN).value), " ", ""))
+                            If ibanZeile <> ibanAktuell Then GoTo NaechsteLernZeile
+                            
+                            ' Gleiche Kategorie?
+                            If StrComp(Trim(wsBK.Cells(suchZeile, BK_COL_KATEGORIE).value), category, vbTextCompare) <> 0 Then GoTo NaechsteLernZeile
+                            
+                            ' Hell-grüner Hintergrund in Spalte I?
+                            If wsBK.Cells(suchZeile, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206) Then
+                                ' Lern-Vermerk in Spalte L?
+                                If InStr(LCase(CStr(wsBK.Cells(suchZeile, BK_COL_BEMERKUNG).value)), "folgemonat") > 0 Then
+                                    musterGefunden = True
+                                    Exit For
+                                End If
+                            End If
+NaechsteLernZeile:
+                        Next suchZeile
+                        
+                        If musterGefunden Then
+                            ' Gelernt! -> Folgemonat automatisch zuordnen
+                            ErmittleMonatPeriode = MonthName(folgeMonatNr)
+                            Exit Function
+                        End If
+                    End If
+                End If
+                
+                ' Kein Lernmuster gefunden -> GELB-Rückgabe
+                ' Der Aufrufer (mod_Banking_Data) erkennt "GELB|..." und
+                ' setzt Spalte I auf GELB + den Monatsnamen
+                ErmittleMonatPeriode = "GELB|" & MonthName(monatBuchung)
+                Exit Function
+                
+            End If
+            
+            ' =============================================
+            ' Bisherige Logik: SollTag + Vorlauf (nicht Ultimo-Bereich)
+            ' =============================================
+            If effektiverTag >= 1 And effektiverTag <= 31 Then
                 If vorlauf > 0 And tagBuchung > effektiverTag Then
                     Dim sollDatumFolge As Date
                     On Error Resume Next
@@ -1041,8 +1143,4 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         End Select
     End With
 End Sub
-
-
-
-
 
