@@ -1349,13 +1349,15 @@ End Sub
 
 ' ===============================================================
 ' BANKKONTO-BLATT FORMATIEREN
-' FIX v5.2: Umlaute in MsgBox
+' FIX v5.4: DropDown-Listen für Spalte H (Kategorie) und
+'           Spalte I (Monat/Periode) hinzugefügt
 ' ===============================================================
 Public Sub FormatiereBlattBankkonto()
     
     Dim ws As Worksheet
     Dim lastRow As Long
     Dim euroFormat As String
+    Dim r As Long
     
     Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
     
@@ -1386,6 +1388,114 @@ Public Sub FormatiereBlattBankkonto()
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), _
              ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
     
+    ' =============================================================
+    ' NEU v5.4: DropDown-Listen für Spalte H (Kategorie)
+    ' Alle Zellen ab BK_START_ROW bis lastRow bekommen ein DropDown
+    ' mit ALLEN Kategorien (Einnahmen + Ausgaben) + Sammelzahlung
+    ' =============================================================
+    
+    ' Prüfen ob die Named Ranges existieren
+    Dim hatEinnahmen As Boolean
+    Dim hatAusgaben As Boolean
+    hatEinnahmen = NamedRangeExists("lst_KategorienEinnahmen")
+    hatAusgaben = NamedRangeExists("lst_KategorienAusgaben")
+    
+    If hatEinnahmen Or hatAusgaben Then
+        ' Kategorie-DropDown für JEDE Datenzeile in Spalte H setzen
+        ' Kombination aus Einnahmen + Ausgaben (INDIRECT-Formel)
+        ' Da Excel keine 2 Named Ranges in einer Validation erlaubt,
+        ' bauen wir die Liste manuell aus den Kategorien auf dem Daten-Blatt
+        
+        Dim wsDaten As Worksheet
+        Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+        
+        Dim dictAlleKat As Object
+        Set dictAlleKat = CreateObject("Scripting.Dictionary")
+        
+        Dim lastRowKat As Long
+        lastRowKat = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+        
+        Dim katName As String
+        If lastRowKat >= DATA_START_ROW Then
+            For r = DATA_START_ROW To lastRowKat
+                katName = Trim(CStr(wsDaten.Cells(r, DATA_CAT_COL_KATEGORIE).value))
+                If katName <> "" Then
+                    If Not dictAlleKat.Exists(katName) Then
+                        dictAlleKat.Add katName, katName
+                    End If
+                End If
+            Next r
+        End If
+        
+        ' Kategorie-Liste als kommagetrennte Zeichenkette aufbauen
+        Dim katListe As String
+        katListe = ""
+        Dim kk As Variant
+        For Each kk In dictAlleKat.keys
+            If katListe <> "" Then katListe = katListe & ","
+            katListe = katListe & CStr(kk)
+        Next kk
+        
+        ' DropDown setzen (nur wenn es Kategorien gibt)
+        If katListe <> "" Then
+            For r = BK_START_ROW To lastRow
+                On Error Resume Next
+                ws.Cells(r, BK_COL_KATEGORIE).Validation.Delete
+                On Error GoTo ErrorHandler
+                
+                ' Prüfe ob die Zelle leer oder befüllt ist
+                ' DropDown wird IMMER gesetzt, damit der Nutzer ändern kann
+                With ws.Cells(r, BK_COL_KATEGORIE).Validation
+                    .Add Type:=xlValidateList, _
+                         AlertStyle:=xlValidAlertWarning, _
+                         Formula1:=katListe
+                    .IgnoreBlank = True
+                    .InCellDropdown = True
+                    .ShowInput = False
+                    .ShowError = False   ' Warnung, nicht blockieren (Nutzer darf Freitext)
+                End With
+                
+                ' Zelle entsperren damit DropDown funktioniert
+                ws.Cells(r, BK_COL_KATEGORIE).Locked = False
+            Next r
+        End If
+    End If
+    
+    ' =============================================================
+    ' NEU v5.4: DropDown-Listen für Spalte I (Monat/Periode)
+    ' Nur die 12 Monate (Januar - Dezember)
+    ' =============================================================
+    Dim hatMonatListe As Boolean
+    hatMonatListe = NamedRangeExists("lst_MonatPeriode")
+    
+    Dim monatFormel As String
+    If hatMonatListe Then
+        monatFormel = "=lst_MonatPeriode"
+    Else
+        ' Fallback: Monate direkt als Kommaliste
+        monatFormel = "Januar,Februar,M" & ChrW(228) & "rz,April,Mai,Juni," & _
+                      "Juli,August,September,Oktober,November,Dezember"
+    End If
+    
+    For r = BK_START_ROW To lastRow
+        On Error Resume Next
+        ws.Cells(r, BK_COL_MONAT_PERIODE).Validation.Delete
+        On Error GoTo ErrorHandler
+        
+        With ws.Cells(r, BK_COL_MONAT_PERIODE).Validation
+            .Add Type:=xlValidateList, _
+                 AlertStyle:=xlValidAlertWarning, _
+                 Formula1:=monatFormel
+            .IgnoreBlank = True
+            .InCellDropdown = True
+            .ShowInput = False
+            .ShowError = False   ' Warnung, nicht blockieren (z.B. "Jahresbeitrag 2026")
+        End With
+        
+        ' Zelle entsperren damit DropDown funktioniert
+        ws.Cells(r, BK_COL_MONAT_PERIODE).Locked = False
+    Next r
+    
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
     Application.ScreenUpdating = True
@@ -1394,7 +1504,9 @@ Public Sub FormatiereBlattBankkonto()
            "- Alle Zellen vertikal zentriert" & vbCrLf & _
            "- Spalte L mit Textumbruch" & vbCrLf & _
            "- Zeilenh" & ChrW(246) & "he angepasst" & vbCrLf & _
-           "- W" & ChrW(228) & "hrung mit Euro-Zeichen", vbInformation
+           "- W" & ChrW(228) & "hrung mit Euro-Zeichen" & vbCrLf & _
+           "- DropDown-Listen in Spalte H (Kategorie)" & vbCrLf & _
+           "- DropDown-Listen in Spalte I (Monat/Periode)", vbInformation
     
     Exit Sub
     
@@ -1404,7 +1516,6 @@ ErrorHandler:
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     MsgBox "Fehler bei der Formatierung: " & Err.Description, vbCritical
 End Sub
-
 ' ===============================================================
 ' Prueft ob Named Range existiert
 ' ===============================================================
