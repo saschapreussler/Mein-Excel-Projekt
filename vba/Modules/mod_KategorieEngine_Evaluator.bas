@@ -905,17 +905,14 @@ End Function
 
 
 ' =====================================================
-' Monat/Periode intelligent ermitteln (v9.5)
-' Berücksichtigt jetzt auch Soll-Monate (Spalte E).
-' NEU v9.5: Ultimo-5-Logik + Lern-Mechanismus
-' - Wenn SollTag >= (Ultimo - 5) oder SollTag = 31:
-'   Prüft ob die Buchung im "Ultimo - 5 Tage"-Bereich liegt.
-'   Wenn ja: Sucht nach gelerntem Muster (hell-grüner
-'   Hintergrund in Spalte I + Lern-Vermerk in Spalte L
-'   für gleiche IBAN + Kategorie).
-'   -> Muster gefunden: Folgemonat automatisch
-'   -> Kein Muster: Rückgabe "GELB|Monatsname"
-'      (Aufrufer setzt dann GELB in Spalte I)
+' Monat/Periode intelligent ermitteln (v10.0)
+' v10.0 NEU:
+'   - "jährlich (jahr)":       -> "[Kategoriename] [Jahr]"
+'   - "jährlich (jahr/folgejahr)": -> "[Kategoriename] [Jahr]/[Folgejahr]"
+'   - "jährlich" Fallback:     -> "jährlich"
+'   - Sammelzahlung wird NICHT mit "Jahresbeitrag" befüllt
+'   - Ultimo-5 Bemerkung ohne "Ultimo-5:" Präfix
+'   - Dynamischer Kategoriename aus Blatt "Daten" Spalte J
 ' =====================================================
 Public Function ErmittleMonatPeriode(ByVal category As String, _
                                      ByVal buchungsDatum As Date, _
@@ -926,27 +923,74 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
     Dim monatBuchung As Long
     monatBuchung = Month(buchungsDatum)
     
+    Dim jahrBuchung As Long
+    jahrBuchung = Year(buchungsDatum)
+    
     If faelligkeit = "" Then faelligkeit = "monatlich"
     
+    ' =============================================
+    ' v10.0: Sammelzahlung NIEMALS automatisch zuordnen!
+    ' Spalte I wird von VerarbeiteSammelzahlung gesetzt.
+    ' =============================================
+    If LCase(category) Like "*sammelzahlung*" Then
+        ErmittleMonatPeriode = ""
+        Exit Function
+    End If
+    
+    ' =============================================
     ' Nicht-monatliche Perioden: direkt zuordnen
-    Select Case LCase(faelligkeit)
-        Case "j" & ChrW(228) & "hrlich", "jaehrlich"
-            ErmittleMonatPeriode = "Jahresbeitrag " & Year(buchungsDatum)
-            Exit Function
-        Case "einmalig"
-            ErmittleMonatPeriode = MonthName(monatBuchung) & " (einmalig)"
-            Exit Function
-        Case "quartalsweise", "quartal"
-            Dim quartal As Long
-            quartal = Int((monatBuchung - 1) / 3) + 1
-            ErmittleMonatPeriode = "Q" & quartal & " " & Year(buchungsDatum)
-            Exit Function
-        Case "halbjaehrlich", "halbj" & ChrW(228) & "hrlich"
-            Dim halbjahr As Long
-            halbjahr = IIf(monatBuchung <= 6, 1, 2)
-            ErmittleMonatPeriode = "H" & halbjahr & " " & Year(buchungsDatum)
-            Exit Function
-    End Select
+    ' v10.0: Neue Fälligkeitstypen mit Jahr/Folgejahr
+    ' =============================================
+    Dim faelligkeitLC As String
+    faelligkeitLC = LCase(faelligkeit)
+    
+    ' --- "jährlich (jahr/folgejahr)" ---
+    ' z.B. Versicherung -> "Versicherung 2025/2026"
+    If faelligkeitLC Like "*hrlich (jahr/folgejahr)*" Or _
+       faelligkeitLC Like "*jaehrlich (jahr/folgejahr)*" Or _
+       faelligkeitLC = "j" & ChrW(228) & "hrlich (jahr/folgejahr)" Then
+        ErmittleMonatPeriode = category & " " & jahrBuchung & "/" & (jahrBuchung + 1)
+        Exit Function
+    End If
+    
+    ' --- "jährlich (jahr)" ---
+    ' z.B. Endabrechnung -> "Endabrechnung 2025"
+    If faelligkeitLC Like "*hrlich (jahr)*" Or _
+       faelligkeitLC Like "*jaehrlich (jahr)*" Or _
+       faelligkeitLC = "j" & ChrW(228) & "hrlich (jahr)" Then
+        ErmittleMonatPeriode = category & " " & jahrBuchung
+        Exit Function
+    End If
+    
+    ' --- "jährlich" (Fallback) ---
+    If faelligkeitLC = "j" & ChrW(228) & "hrlich" Or _
+       faelligkeitLC = "jaehrlich" Then
+        ErmittleMonatPeriode = "j" & ChrW(228) & "hrlich"
+        Exit Function
+    End If
+    
+    ' --- Einmalig ---
+    If faelligkeitLC = "einmalig" Then
+        ErmittleMonatPeriode = MonthName(monatBuchung) & " (einmalig)"
+        Exit Function
+    End If
+    
+    ' --- Quartal ---
+    If faelligkeitLC = "quartalsweise" Or faelligkeitLC = "quartal" Then
+        Dim quartal As Long
+        quartal = Int((monatBuchung - 1) / 3) + 1
+        ErmittleMonatPeriode = "Q" & quartal & " " & jahrBuchung
+        Exit Function
+    End If
+    
+    ' --- Halbjährlich ---
+    If faelligkeitLC = "halbjaehrlich" Or _
+       faelligkeitLC = "halbj" & ChrW(228) & "hrlich" Then
+        Dim halbjahr As Long
+        halbjahr = IIf(monatBuchung <= 6, 1, 2)
+        ErmittleMonatPeriode = "H" & halbjahr & " " & jahrBuchung
+        Exit Function
+    End If
     
     ' ==============================================
     ' Monatlich: Folgemonat-Erkennung via Cache
@@ -997,48 +1041,35 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
             End If
             
             ' =============================================
-            ' NEU v9.5: Ultimo-5-Logik
-            ' Prüfe ob SollTag im Ultimo-Bereich liegt
+            ' Ultimo-5-Logik (v9.5, Bemerkung v10.0 angepasst)
             ' =============================================
             Dim letzterTagMonat As Long
             letzterTagMonat = Day(DateSerial(Year(buchungsDatum), monatBuchung + 1, 0))
             
             Dim effektiverTag As Long
             If SollTag = 31 Or SollTag = 0 Then
-                ' Ultimo: letzter Tag im Monat
                 effektiverTag = letzterTagMonat
             Else
                 effektiverTag = SollTag
             End If
             
-            ' Prüfe ob dieser SollTag im Ultimo-Bereich liegt (>= Ultimo - 5)
             Dim istUltimoBereich As Boolean
             istUltimoBereich = (effektiverTag >= (letzterTagMonat - 5))
             
             Dim tagBuchung As Long
             tagBuchung = Day(buchungsDatum)
             
-            ' Liegt die Buchung im Ultimo-5-Bereich?
-            ' D.h. Buchungstag >= (Ultimo - 5) UND Buchungstag < Ultimo
-            ' (Zahlung am Ultimo selbst = normaler Monat, nicht "zu früh")
             If istUltimoBereich And tagBuchung >= (letzterTagMonat - 5) And tagBuchung < letzterTagMonat Then
                 
-                ' Folgemonat ermitteln
                 Dim folgeMonatNr As Long
                 folgeMonatNr = monatBuchung + 1
                 If folgeMonatNr > 12 Then folgeMonatNr = 1
                 
-                ' Prüfe ob Folgemonat in Soll-Monaten liegt (falls eingeschränkt)
                 If SollMonate <> "" And Not IstMonatInListe(folgeMonatNr, SollMonate) Then
-                    ' Folgemonat ist KEIN Soll-Monat -> normaler Buchungsmonat
                     GoTo FallbackMonat
                 End If
                 
-                ' =============================================
-                ' Lern-Check: Gibt es vorherige Zeilen mit
-                ' gleicher IBAN + Kategorie wo Spalte I hell-grün
-                ' ist und Spalte L den Lern-Vermerk enthält?
-                ' =============================================
+                ' Lern-Check
                 If Not wsBK Is Nothing And aktuelleZeile > 0 Then
                     Dim ibanAktuell As String
                     ibanAktuell = UCase(Replace(Trim(wsBK.Cells(aktuelleZeile, BK_COL_IBAN).value), " ", ""))
@@ -1049,17 +1080,13 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
                         musterGefunden = False
                         
                         For suchZeile = BK_START_ROW To aktuelleZeile - 1
-                            ' Gleiche IBAN?
                             Dim ibanZeile As String
                             ibanZeile = UCase(Replace(Trim(wsBK.Cells(suchZeile, BK_COL_IBAN).value), " ", ""))
                             If ibanZeile <> ibanAktuell Then GoTo NaechsteLernZeile
                             
-                            ' Gleiche Kategorie?
                             If StrComp(Trim(wsBK.Cells(suchZeile, BK_COL_KATEGORIE).value), category, vbTextCompare) <> 0 Then GoTo NaechsteLernZeile
                             
-                            ' Hell-grüner Hintergrund in Spalte I?
                             If wsBK.Cells(suchZeile, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206) Then
-                                ' Lern-Vermerk in Spalte L?
                                 If InStr(LCase(CStr(wsBK.Cells(suchZeile, BK_COL_BEMERKUNG).value)), "folgemonat") > 0 Then
                                     musterGefunden = True
                                     Exit For
@@ -1069,24 +1096,19 @@ NaechsteLernZeile:
                         Next suchZeile
                         
                         If musterGefunden Then
-                            ' Gelernt! -> Folgemonat automatisch zuordnen
                             ErmittleMonatPeriode = MonthName(folgeMonatNr)
                             Exit Function
                         End If
                     End If
                 End If
                 
-                ' Kein Lernmuster gefunden -> GELB-Rückgabe
-                ' Der Aufrufer (mod_Banking_Data) erkennt "GELB|..." und
-                ' setzt Spalte I auf GELB + den Monatsnamen
+                ' v10.0: GELB-Rückgabe OHNE "Ultimo-5:" Präfix
                 ErmittleMonatPeriode = "GELB|" & MonthName(monatBuchung)
                 Exit Function
                 
             End If
             
-            ' =============================================
             ' Bisherige Logik: SollTag + Vorlauf (nicht Ultimo-Bereich)
-            ' =============================================
             If effektiverTag >= 1 And effektiverTag <= 31 Then
                 If vorlauf > 0 And tagBuchung > effektiverTag Then
                     Dim sollDatumFolge As Date
@@ -1103,7 +1125,6 @@ NaechsteLernZeile:
                     differenzTage = CLng(sollDatumFolge - buchungsDatum)
                     
                     If differenzTage >= 0 And differenzTage <= vorlauf Then
-                        ' Prüfe ob der Folgemonat in den Soll-Monaten liegt
                         Dim folgeMon As Long
                         folgeMon = Month(sollDatumFolge)
                         If SollMonate = "" Or IstMonatInListe(folgeMon, SollMonate) Then
@@ -1121,7 +1142,6 @@ NaechsteLernZeile:
 FallbackMonat:
     ErmittleMonatPeriode = MonthName(monatBuchung)
 End Function
-
 
 ' -----------------------------
 ' Kategorie anwenden mit Ampelfarbe (originale Signatur v7.0)

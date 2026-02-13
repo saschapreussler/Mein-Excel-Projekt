@@ -317,11 +317,11 @@ NextKat:
     Dim endTime As Double
     endTime = Timer
     
-    MsgBox ChrW(220) & "bersicht erfolgreich generiert!" & vbLf & vbLf & _
-           "Zeilen: " & (rowIdx - UEBERSICHT_START_ROW) & vbLf & _
-           "Kategorien: " & anzahlKat & " (dynamisch aus Einstellungen)" & vbLf & _
-           "Dauer: " & Format(endTime - startTime, "0.00") & " Sekunden", _
-           vbInformation, "Fertig"
+    ' v2.1: MsgBox entfernt - Info nur noch in Debug-Fenster
+    Debug.Print ChrW(220) & "bersicht generiert: " & _
+                (rowIdx - UEBERSICHT_START_ROW) & " Zeilen, " & _
+                anzahlKat & " Kategorien, " & _
+                Format(endTime - startTime, "0.00") & " Sek."
     
     Exit Sub
     
@@ -607,4 +607,6 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     rngTable.VerticalAlignment = xlCenter
     
 End Sub
+
+
 

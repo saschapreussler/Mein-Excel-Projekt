@@ -999,9 +999,9 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
                     bestehendeBemerkung = Trim(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value))
                     
                     Dim gelbHinweis As String
-                    gelbHinweis = "Ultimo-5: Bitte pr" & ChrW(252) & "fen ob Zahlung f" & ChrW(252) & "r " & _
+                    gelbHinweis = "Bitte pr" & ChrW(252) & "fen ob Zahlung f" & ChrW(252) & "r " & _
                                   monatName & " oder Folgemonat gilt"
-                    
+                                  
                     If bestehendeBemerkung = "" Then
                         ws.Cells(r, BK_COL_BEMERKUNG).value = gelbHinweis
                     Else
@@ -1035,15 +1035,87 @@ End Sub
 
 
 ' ===============================================================
-' v1.4: DropDown-Listen (Januar-Dezember) auf Spalte I setzen
+' v2.1: DropDown-Listen auf Spalte I setzen
+' Enthält jetzt: Januar-Dezember + dynamische jährliche Einträge
+' aus der Kategorie-Tabelle (Fälligkeit "jährlich (jahr)" und
+' "jährlich (jahr/folgejahr)")
 ' ===============================================================
 Private Sub SetzeMonatDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
     
     If lastRow < BK_START_ROW Then Exit Sub
     
+    ' Abrechnungsjahr aus Startmenü!F1 lesen
+    Dim abrJahr As Long
+    On Error Resume Next
+    abrJahr = CLng(ThisWorkbook.Worksheets("Startmen" & ChrW(252)).Range("F1").value)
+    On Error GoTo 0
+    If abrJahr = 0 Then abrJahr = Year(Date)
+    
+    ' Basis: Januar bis Dezember
     Dim monatsListe As String
     monatsListe = "Januar,Februar,M" & ChrW(228) & "rz,April,Mai,Juni," & _
                   "Juli,August,September,Oktober,November,Dezember"
+    
+    ' Dynamische Einträge aus Kategorie-Tabelle (Daten!J+O)
+    Dim wsDaten As Worksheet
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    
+    If Not wsDaten Is Nothing Then
+        Dim lastRuleRow As Long
+        lastRuleRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+        
+        ' Dictionary für Eindeutigkeit
+        Dim dictExtra As Object
+        Set dictExtra = CreateObject("Scripting.Dictionary")
+        
+        Dim r As Long
+        Dim katName As String
+        Dim katFaell As String
+        Dim extraEintrag As String
+        
+        For r = DATA_START_ROW To lastRuleRow
+            katName = Trim(CStr(wsDaten.Cells(r, DATA_CAT_COL_KATEGORIE).value))
+            katFaell = LCase(Trim(CStr(wsDaten.Cells(r, DATA_CAT_COL_FAELLIGKEIT).value)))
+            
+            If katName = "" Then GoTo NextDDRow
+            
+            extraEintrag = ""
+            
+            ' "jährlich (jahr/folgejahr)" -> "Kategoriename Jahr/Folgejahr"
+            If katFaell Like "*hrlich (jahr/folgejahr)*" Or _
+               katFaell = "j" & ChrW(228) & "hrlich (jahr/folgejahr)" Then
+                extraEintrag = katName & " " & abrJahr & "/" & (abrJahr + 1)
+            
+            ' "jährlich (jahr)" -> "Kategoriename Jahr"
+            ElseIf katFaell Like "*hrlich (jahr)*" Or _
+                   katFaell = "j" & ChrW(228) & "hrlich (jahr)" Then
+                extraEintrag = katName & " " & abrJahr
+            End If
+            
+            If extraEintrag <> "" Then
+                If Not dictExtra.Exists(extraEintrag) Then
+                    dictExtra.Add extraEintrag, True
+                End If
+            End If
+NextDDRow:
+        Next r
+        
+        ' Zusätzliche Einträge anhängen
+        Dim k As Variant
+        For Each k In dictExtra.keys
+            monatsListe = monatsListe & "," & CStr(k)
+        Next k
+        
+        ' "Sammelzahlung" als festen Eintrag hinzufügen
+        monatsListe = monatsListe & ",Sammelzahlung"
+        
+        ' "jährlich" als Fallback-Eintrag hinzufügen
+        monatsListe = monatsListe & ",j" & ChrW(228) & "hrlich"
+        
+        Set dictExtra = Nothing
+    End If
     
     Dim rngMonat As Range
     Set rngMonat = ws.Range(ws.Cells(BK_START_ROW, BK_COL_MONAT_PERIODE), _
@@ -1064,7 +1136,6 @@ Private Sub SetzeMonatDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
     On Error GoTo 0
     
 End Sub
-
 
 ' ===============================================================
 ' v1.4: Spalten H, I, J, L entsperren fuer Nutzereingaben
@@ -1096,24 +1167,40 @@ Private Sub EntsperreSpaltenFuerNutzer(ByVal ws As Worksheet, ByVal lastRow As L
 End Sub
 
 
-' ===============================================================
-' FAELLIGKEIT AUS KATEGORIE-TABELLE (Spalte O) HOLEN
-' ===============================================================
-Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
-                                              ByVal kategorie As String) As String
-    Dim lastRow As Long
-    Dim r As Long
-    
-    ' PRIO 1: Einstellungen-Blatt pruefen (Spalte B = Kategorie)
-    Dim wsEinst As Worksheet
-    On Error Resume Next
-    Set wsEinst = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
-    On Error GoTo 0
-    
-    If Not wsEinst Is Nothing Then
-        lastRow = wsEinst.Cells(wsEinst.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
-        For r = ES_START_ROW To lastRow
-            If StrComp(Trim(CStr(wsEinst.Cells(r, ES_COL_KATEGORIE).value)), kategorie, vbTextCompare) = 0 Then
+                ' v2.1: Zuerst Fälligkeitsspalte O auf Blatt "Daten" prüfen
+                '       (dort stehen die neuen Typen "jährlich (jahr)" etc.)
+                Dim faellDaten As String
+                faellDaten = ""
+                
+                Dim wsDatenZP As Worksheet
+                On Error Resume Next
+                Set wsDatenZP = ThisWorkbook.Worksheets(WS_DATEN)
+                On Error GoTo 0
+                
+                If Not wsDatenZP Is Nothing Then
+                    Dim lastRuleRowZP As Long
+                    lastRuleRowZP = wsDatenZP.Cells(wsDatenZP.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+                    Dim rZP As Long
+                    For rZP = DATA_START_ROW To lastRuleRowZP
+                        If StrComp(Trim(CStr(wsDatenZP.Cells(rZP, DATA_CAT_COL_KATEGORIE).value)), kategorie, vbTextCompare) = 0 Then
+                            faellDaten = LCase(Trim(CStr(wsDatenZP.Cells(rZP, DATA_CAT_COL_FAELLIGKEIT).value)))
+                            Exit For
+                        End If
+                    Next rZP
+                End If
+                
+                ' Wenn in Spalte O ein spezieller Typ steht, diesen zurückgeben
+                If faellDaten Like "*hrlich (jahr/folgejahr)*" Or _
+                   faellDaten = "j" & ChrW(228) & "hrlich (jahr/folgejahr)" Then
+                    HoleFaelligkeitFuerKategorie = "j" & ChrW(228) & "hrlich (jahr/folgejahr)"
+                    Exit Function
+                ElseIf faellDaten Like "*hrlich (jahr)*" Or _
+                       faellDaten = "j" & ChrW(228) & "hrlich (jahr)" Then
+                    HoleFaelligkeitFuerKategorie = "j" & ChrW(228) & "hrlich (jahr)"
+                    Exit Function
+                End If
+                
+                ' Fallback: Bisherige Logik über SollMonate
                 Dim SollMonate As String
                 SollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
                 If SollMonate = "" Then
@@ -1131,18 +1218,4 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
                 Exit Function
             End If
         Next r
-    End If
-    
-    ' PRIO 2: Fallback auf Daten-Blatt (Spalte O = Faelligkeit)
-    lastRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
-    
-    For r = DATA_START_ROW To lastRow
-        If Trim(wsDaten.Cells(r, DATA_CAT_COL_KATEGORIE).value) = kategorie Then
-            HoleFaelligkeitFuerKategorie = LCase(Trim(wsDaten.Cells(r, DATA_CAT_COL_FAELLIGKEIT).value))
-            Exit Function
-        End If
-    Next r
-    
-    HoleFaelligkeitFuerKategorie = "monatlich"
-End Function
 
