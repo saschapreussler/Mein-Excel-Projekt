@@ -1,3 +1,48 @@
+Public Function HoleFaelligkeitFuerKategorie(ByVal wsEinst As Worksheet, ByVal kategorie As String) As String
+    ' v2.1: Zuerst Fälligkeitsspalte O auf Blatt "Daten" prüfen
+    Dim faellDaten As String
+    faellDaten = ""
+    Dim wsDatenZP As Worksheet
+    On Error Resume Next
+    Set wsDatenZP = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If Not wsDatenZP Is Nothing Then
+        Dim lastRuleRowZP As Long
+        lastRuleRowZP = wsDatenZP.Cells(wsDatenZP.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+        Dim rZP As Long
+        For rZP = DATA_START_ROW To lastRuleRowZP
+            If StrComp(Trim(CStr(wsDatenZP.Cells(rZP, DATA_CAT_COL_KATEGORIE).value)), kategorie, vbTextCompare) = 0 Then
+                faellDaten = LCase(Trim(CStr(wsDatenZP.Cells(rZP, DATA_CAT_COL_FAELLIGKEIT).value)))
+                Exit For
+            End If
+        Next rZP
+    End If
+    ' Wenn in Spalte O ein spezieller Typ steht, diesen zurückgeben
+    If faellDaten Like "*hrlich (jahr/folgejahr)*" Or _
+       faellDaten = "j" & ChrW(228) & "hrlich (jahr/folgejahr)" Then
+        HoleFaelligkeitFuerKategorie = "j" & ChrW(228) & "hrlich (jahr/folgejahr)"
+        Exit Function
+    ElseIf faellDaten Like "*hrlich (jahr)*" Or _
+           faellDaten = "j" & ChrW(228) & "hrlich (jahr)" Then
+        HoleFaelligkeitFuerKategorie = "j" & ChrW(228) & "hrlich (jahr)"
+        Exit Function
+    End If
+    ' Fallback: Bisherige Logik über SollMonate
+    Dim SollMonate As String
+    SollMonate = Trim(CStr(wsEinst.Cells(2, ES_COL_SOLL_MONATE).value)) ' Annahme: Zeile 2 als Beispiel, ggf. anpassen
+    If SollMonate = "" Then
+        HoleFaelligkeitFuerKategorie = "monatlich"
+    Else
+        Dim anzMonate As Long
+        anzMonate = UBound(Split(SollMonate, ",")) + 1
+        Select Case anzMonate
+            Case 1: HoleFaelligkeitFuerKategorie = "j" & ChrW(228) & "hrlich"
+            Case 2: HoleFaelligkeitFuerKategorie = "halbj" & ChrW(228) & "hrlich"
+            Case 4: HoleFaelligkeitFuerKategorie = "viertelj" & ChrW(228) & "hrlich"
+            Case Else: HoleFaelligkeitFuerKategorie = "monatlich"
+        End Select
+    End If
+End Function
 Attribute VB_Name = "mod_Zahlungspruefung"
 Option Explicit
 
