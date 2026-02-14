@@ -973,7 +973,7 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     
     ' Einstellungen-Cache laden
-    Call mod_KategorieEngine_Evaluator.LadeEinstellungenCache
+    Call mod_KategorieEngine_Zeitraum.LadeEinstellungenCache
     
     For r = BK_START_ROW To lastRow
         datumWert = ws.Cells(r, BK_COL_DATUM).value
@@ -985,7 +985,7 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
             If kategorie <> "" Then
                 faelligkeit = HoleFaelligkeitFuerKategorie(wsDaten, kategorie)
                 
-                ergebnis = mod_KategorieEngine_Evaluator.ErmittleMonatPeriode( _
+                ergebnis = mod_KategorieEngine_Zeitraum.ErmittleMonatPeriode( _
                     kategorie, CDate(datumWert), faelligkeit, ws, r)
                 
                 If Left(ergebnis, 5) = "GELB|" Then
@@ -1017,7 +1017,7 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
     Next r
     
     ' Einstellungen-Cache wieder freigeben
-    Call mod_KategorieEngine_Evaluator.EntladeEinstellungenCache
+    Call mod_KategorieEngine_Zeitraum.EntladeEinstellungenCache
     
     ' v1.5 FIX: Events wieder einschalten
     Application.EnableEvents = eventsWaren
@@ -1036,15 +1036,15 @@ End Sub
 
 ' ===============================================================
 ' v2.1: DropDown-Listen auf Spalte I setzen
-' Enthält jetzt: Januar-Dezember + dynamische jährliche Einträge
-' aus der Kategorie-Tabelle (Fälligkeit "jährlich (jahr)" und
-' "jährlich (jahr/folgejahr)")
+' Enthï¿½lt jetzt: Januar-Dezember + dynamische jï¿½hrliche Eintrï¿½ge
+' aus der Kategorie-Tabelle (Fï¿½lligkeit "jï¿½hrlich (jahr)" und
+' "jï¿½hrlich (jahr/folgejahr)")
 ' ===============================================================
 Private Sub SetzeMonatDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
     
     If lastRow < BK_START_ROW Then Exit Sub
     
-    ' Abrechnungsjahr aus Startmenü!F1 lesen
+    ' Abrechnungsjahr aus Startmenï¿½!F1 lesen
     Dim abrJahr As Long
     On Error Resume Next
     abrJahr = CLng(ThisWorkbook.Worksheets("Startmen" & ChrW(252)).Range("F1").value)
@@ -1056,7 +1056,7 @@ Private Sub SetzeMonatDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
     monatsListe = "Januar,Februar,M" & ChrW(228) & "rz,April,Mai,Juni," & _
                   "Juli,August,September,Oktober,November,Dezember"
     
-    ' Dynamische Einträge aus Kategorie-Tabelle (Daten!J+O)
+    ' Dynamische Eintrï¿½ge aus Kategorie-Tabelle (Daten!J+O)
     Dim wsDaten As Worksheet
     On Error Resume Next
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
@@ -1066,7 +1066,7 @@ Private Sub SetzeMonatDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
         Dim lastRuleRow As Long
         lastRuleRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
         
-        ' Dictionary für Eindeutigkeit
+        ' Dictionary fï¿½r Eindeutigkeit
         Dim dictExtra As Object
         Set dictExtra = CreateObject("Scripting.Dictionary")
         
@@ -1083,12 +1083,12 @@ Private Sub SetzeMonatDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
             
             extraEintrag = ""
             
-            ' "jährlich (jahr/folgejahr)" -> "Kategoriename Jahr/Folgejahr"
+            ' "jï¿½hrlich (jahr/folgejahr)" -> "Kategoriename Jahr/Folgejahr"
             If katFaell Like "*hrlich (jahr/folgejahr)*" Or _
                katFaell = "j" & ChrW(228) & "hrlich (jahr/folgejahr)" Then
                 extraEintrag = katName & " " & abrJahr & "/" & (abrJahr + 1)
             
-            ' "jährlich (jahr)" -> "Kategoriename Jahr"
+            ' "jï¿½hrlich (jahr)" -> "Kategoriename Jahr"
             ElseIf katFaell Like "*hrlich (jahr)*" Or _
                    katFaell = "j" & ChrW(228) & "hrlich (jahr)" Then
                 extraEintrag = katName & " " & abrJahr
@@ -1102,16 +1102,16 @@ Private Sub SetzeMonatDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
 NextDDRow:
         Next r
         
-        ' Zusätzliche Einträge anhängen
+        ' Zusï¿½tzliche Eintrï¿½ge anhï¿½ngen
         Dim k As Variant
         For Each k In dictExtra.keys
             monatsListe = monatsListe & "," & CStr(k)
         Next k
         
-        ' "Sammelzahlung" als festen Eintrag hinzufügen
+        ' "Sammelzahlung" als festen Eintrag hinzufï¿½gen
         monatsListe = monatsListe & ",Sammelzahlung"
         
-        ' "jährlich" als Fallback-Eintrag hinzufügen
+        ' "jï¿½hrlich" als Fallback-Eintrag hinzufï¿½gen
         monatsListe = monatsListe & ",j" & ChrW(228) & "hrlich"
         
         Set dictExtra = Nothing
@@ -1167,8 +1167,8 @@ Private Sub EntsperreSpaltenFuerNutzer(ByVal ws As Worksheet, ByVal lastRow As L
 End Sub
 
 
-                ' v2.1: Zuerst Fälligkeitsspalte O auf Blatt "Daten" prüfen
-                '       (dort stehen die neuen Typen "jährlich (jahr)" etc.)
+                ' v2.1: Zuerst Fï¿½lligkeitsspalte O auf Blatt "Daten" prï¿½fen
+                '       (dort stehen die neuen Typen "jï¿½hrlich (jahr)" etc.)
                 Dim faellDaten As String
                 faellDaten = ""
                 
@@ -1189,7 +1189,7 @@ End Sub
                     Next rZP
                 End If
                 
-                ' Wenn in Spalte O ein spezieller Typ steht, diesen zurückgeben
+                ' Wenn in Spalte O ein spezieller Typ steht, diesen zurï¿½ckgeben
                 If faellDaten Like "*hrlich (jahr/folgejahr)*" Or _
                    faellDaten = "j" & ChrW(228) & "hrlich (jahr/folgejahr)" Then
                     HoleFaelligkeitFuerKategorie = "j" & ChrW(228) & "hrlich (jahr/folgejahr)"
@@ -1200,7 +1200,7 @@ End Sub
                     Exit Function
                 End If
                 
-                ' Fallback: Bisherige Logik über SollMonate
+                ' Fallback: Bisherige Logik ï¿½ber SollMonate
                 Dim SollMonate As String
                 SollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
                 If SollMonate = "" Then
