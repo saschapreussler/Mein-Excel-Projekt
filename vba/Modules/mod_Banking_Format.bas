@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Banking_Format
 ' Ausgelagert aus mod_Banking_Data
-' Enthält: Zebra-Formatierung, Rahmen, allgemeine Formatierung,
+' Enth?lt: Zebra-Formatierung, Rahmen, allgemeine Formatierung,
 '          Sortierung Bankkonto, Formel-Wiederherstellung
 ' ===============================================================
 
@@ -109,13 +109,13 @@ Public Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    ' Spalte B (Betrag): Währung + rechtsbündig
+    ' Spalte B (Betrag): W?hrung + rechtsb?ndig
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), ws.Cells(lastRow, BK_COL_BETRAG))
         .NumberFormat = euroFormat
         .HorizontalAlignment = xlRight
     End With
     
-    ' Spalten M-Z: Währung
+    ' Spalten M-Z: W?hrung
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
     
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), ws.Cells(lastRow, BK_COL_BEMERKUNG))
@@ -172,7 +172,7 @@ End Sub
 ' ===============================================================
 ' FORMEL-WIEDERHERSTELLUNG
 ' Stellt die Formeln auf dem Bankkonto-Blatt wieder her,
-' die durch ClearContents oder Import verloren gehen können.
+' die durch ClearContents oder Import verloren gehen k?nnen.
 ' Betrifft: C3, E8-E14, E16-E21, E23
 ' WICHTIG: Formeln werden 1:1 als FormulaLocal gesetzt!
 ' ===============================================================
@@ -235,5 +235,7 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+
 
 

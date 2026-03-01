@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Einstellungen (Orchestrator)
 ' VERSION: 3.0 - Modularisiert
-' ZWECK: Formatierung, Schutz/Entsperrung für
+' ZWECK: Formatierung, Schutz/Entsperrung f?r
 '        die Zahlungstermin-Tabelle auf Blatt Einstellungen
 '        (Spalten B-I, ab Zeile 4, Header Zeile 3)
 ' AUSGELAGERT:
@@ -13,7 +13,7 @@ Option Explicit
 '                              DebugSetzeDropDownsUndPruefe
 ' ===============================================================
 
-Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiß
+Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Wei?
 Private Const ZEBRA_COLOR_2 As Long = &HDEE5E3  ' Hellgrau
 
 
@@ -36,7 +36,7 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     
-    ' 1. Header einmalig prüfen (nur setzen wenn leer)
+    ' 1. Header einmalig pr?fen (nur setzen wenn leer)
     Call PruefeHeader(ws)
     
     ' 2. Leerzeilen entfernen (Daten verdichten)
@@ -54,7 +54,7 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     ' 6. Zellen sperren/entsperren
     Call SperreUndEntsperre(ws)
     
-    ' 7. Spaltenbreiten (AutoFit für alle Spalten)
+    ' 7. Spaltenbreiten (AutoFit f?r alle Spalten)
     Call SetzeSpaltenbreiten(ws)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -66,7 +66,7 @@ End Sub
 
 
 ' ===============================================================
-' 2. HEADER PRÜFEN (Zeile 3)
+' 2. HEADER PR?FEN (Zeile 3)
 ' ===============================================================
 Private Sub PruefeHeader(ByVal ws As Worksheet)
     
@@ -79,7 +79,7 @@ Private Sub PruefeHeader(ByVal ws As Worksheet)
     ws.Cells(ES_HEADER_ROW, ES_COL_STICHTAG_FIX).value = "Soll-Stichtag (Fix) TT.MM."
     ws.Cells(ES_HEADER_ROW, ES_COL_VORLAUF).value = "Vorlauf-Toleranz (Tage)"
     ws.Cells(ES_HEADER_ROW, ES_COL_NACHLAUF).value = "Nachlauf-Toleranz (Tage)"
-    ws.Cells(ES_HEADER_ROW, ES_COL_SAEUMNIS).value = "Säumnis-Gebühr"
+    ws.Cells(ES_HEADER_ROW, ES_COL_SAEUMNIS).value = "S?umnis-Geb?hr"
     
     Dim rngHeader As Range
     Set rngHeader = ws.Range(ws.Cells(ES_HEADER_ROW, ES_COL_START), _
@@ -140,7 +140,7 @@ End Sub
 
 ' ===============================================================
 ' 3b. ALPHABETISCH SORTIEREN (Spalte B, A-Z)
-'     Öffentlich aufrufbar aus Tabelle9.cls
+'     ?ffentlich aufrufbar aus Tabelle9.cls
 ' ===============================================================
 Public Sub SortiereAlphabetisch(ByVal ws As Worksheet)
     
@@ -391,7 +391,7 @@ End Function
 
 
 ' ===============================================================
-' 10. ZEILE LÖSCHEN
+' 10. ZEILE L?SCHEN
 ' ===============================================================
 Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long)
     
@@ -411,6 +411,8 @@ Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long
     Call FormatiereZahlungsterminTabelle(ws)
     
 End Sub
+
+
 
 
 

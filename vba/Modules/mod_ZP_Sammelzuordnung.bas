@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_ZP_Sammelzuordnung
 ' Ausgelagert aus mod_Zahlungspruefung
-' Enthält: Sammelüberweisungen erkennen + manuelle Monatszuordnung
+' Enth?lt: Sammel?berweisungen erkennen + manuelle Monatszuordnung
 ' ===============================================================
 
 
@@ -158,5 +158,7 @@ Public Function FrageNachManuellerMonatszuordnungZP(ByVal wsBK As Worksheet, _
     FrageNachManuellerMonatszuordnungZP = monat
     
 End Function
+
+
 
 

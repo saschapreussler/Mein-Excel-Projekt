@@ -18,7 +18,10 @@ Option Explicit
 Public Const WS_BANKKONTO As String = "Bankkonto"
 Public Const WS_DATEN As String = "Daten"
 Public Const WS_MITGLIEDER As String = "Mitgliederliste"
-Public Const WS_UEBERSICHT As String = "?bersicht"
+' ENCODING-SICHER: WS_UEBERSICHT als Function statt Const,
+' weil ChrW() in Const-Deklarationen nicht erlaubt ist.
+' Wird durch den Repo-Sync sonst zu "?bersicht" korrumpiert.
+' Siehe Function WS_UEBERSICHT() am Ende dieses Moduls.
 Public Const WS_MITGLIEDER_HISTORIE As String = "Mitgliederhistorie"
 Public Const WS_EINSTELLUNGEN As String = "Einstellungen"
 Public Const WS_VEREINSKASSE As String = "Vereinskasse"
@@ -298,6 +301,22 @@ Public Function GetErlaubteFunktionenFuerParzelle() As Variant
         FUNKTION_SCHRIFTFUEHRER _
     )
 End Function
+
+
+' ===============================================================
+' ENCODING-SICHERE WORKSHEET-NAMEN
+' ChrW() ist in Const-Deklarationen nicht erlaubt.
+' Diese Funktion ersetzt die Const-Deklaration und ist
+' encoding-sicher (kein Umlaut im Quellcode-Literal).
+' Aufruf identisch: Worksheets(WS_UEBERSICHT)
+' ===============================================================
+Public Function WS_UEBERSICHT() As String
+    Static val As String
+    If val = "" Then val = Chr$(220) & "bersicht"
+    WS_UEBERSICHT = val
+End Function
+
+
 
 
 

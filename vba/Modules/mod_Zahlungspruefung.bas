@@ -16,9 +16,9 @@ Option Explicit
 '   - mod_ZP_Sammelzuordnung: Sammelueberweisungen, manuelle
 '     Monatszuordnung
 ' FIX v3.1: PruefeZahlungen nutzt jetzt Spalte I (Monat/Periode)
-'           statt Month(Buchungsdatum) für Monats-Zuordnung
-' NEU v3.2: Frist-/Toleranzprüfung mit Vorlauf/Nachlauf aus
-'           Einstellungen (Spalte G/H). Säumnishinweis in Bemerkung.
+'           statt Month(Buchungsdatum) f?r Monats-Zuordnung
+' NEU v3.2: Frist-/Toleranzpr?fung mit Vorlauf/Nachlauf aus
+'           Einstellungen (Spalte G/H). S?umnishinweis in Bemerkung.
 ' ***************************************************************
 
 ' ===============================================================
@@ -68,9 +68,9 @@ Private Const AMPEL_ROT As Long = 9871103
 '
 ' v3.2: Frist-/Toleranzpruefung:
 '   - Vorlauf (Spalte G) und Nachlauf (Spalte H) aus Einstellungen
-'   - Fälligkeitsdatum wird berechnet (BerechneSollDatumZP)
-'   - Zahlung innerhalb [Fälligkeit - Vorlauf, Fälligkeit + Nachlauf] = pünktlich
-'   - Zahlung eingegangen aber NACH Fälligkeit + Nachlauf = GELB + Säumnis
+'   - F?lligkeitsdatum wird berechnet (BerechneSollDatumZP)
+'   - Zahlung innerhalb [F?lligkeit - Vorlauf, F?lligkeit + Nachlauf] = p?nktlich
+'   - Zahlung eingegangen aber NACH F?lligkeit + Nachlauf = GELB + S?umnis
 '   - Keine Zahlung = ROT
 ' ===============================================================
 Public Function PruefeZahlungen(ByVal entityKey As String, _
@@ -278,7 +278,7 @@ End Function
 
 
 ' ===============================================================
-' Holt Vorlauf/Nachlauf/Säumnis-Gebühr aus dem Einstellungen-Cache
+' Holt Vorlauf/Nachlauf/S?umnis-Geb?hr aus dem Einstellungen-Cache
 ' fuer eine bestimmte Kategorie
 ' ===============================================================
 Private Sub HoleToleranzZP(ByVal kategorie As String, _
@@ -805,6 +805,8 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
     
     HoleFaelligkeitFuerKategorie = "monatlich"
 End Function
+
+
 
 
 

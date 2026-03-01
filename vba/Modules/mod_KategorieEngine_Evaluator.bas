@@ -207,7 +207,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         category = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KATEGORIE).value))    ' J
         einAus = UCase(Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_EINAUS).value)))   ' K
         keyword = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KEYWORD).value))        ' L
-        prio = Val(wsData.Cells(dataRow, DATA_CAT_COL_PRIORITAET).value)               ' M
+        prio = val(wsData.Cells(dataRow, DATA_CAT_COL_PRIORITAET).value)               ' M
         faelligkeit = LCase(Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_FAELLIGKEIT).value))) ' O
         If prio = 0 Then prio = 5
 
@@ -421,6 +421,8 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         End Select
     End With
 End Sub
+
+
 
 
 

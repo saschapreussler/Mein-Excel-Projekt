@@ -87,7 +87,7 @@ End Sub
 ' ===============================================================
 ' HAUPTFUNKTION: Generiert komplettes ?bersichtsblatt
 ' v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
-' v3.0: stummModus für automatische Aufrufe (ohne MsgBox)
+' v3.0: stummModus f?r automatische Aufrufe (ohne MsgBox)
 ' ===============================================================
 Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                                 Optional ByVal stummModus As Boolean = False)
@@ -236,14 +236,14 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     Dim sollTeile() As String
                     sollTeile = Split(teile(1), ":")
                     If UBound(sollTeile) >= 1 Then
-                        soll = Val(sollTeile(1))
+                        soll = val(sollTeile(1))
                     End If
                     
                     ' Ist parsen: "Ist:50.00" -> "50.00"
                     Dim istTeile() As String
                     istTeile = Split(teile(2), ":")
                     If UBound(istTeile) >= 1 Then
-                        ist = Val(istTeile(1))
+                        ist = val(istTeile(1))
                     End If
                 ElseIf UBound(teile) >= 0 Then
                     status = teile(0)
@@ -567,9 +567,9 @@ Private Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         entityKey = Trim(CStr(wsDaten.Cells(r, EK_COL_ENTITYKEY).value))
         If entityKey = "" Then GoTo NextDatenRow
         
-        ' Role prüfen: nur aktive Mitglieder
+        ' Role pr?fen: nur aktive Mitglieder
         ' "MITGLIED MIT PACHT" und "MITGLIED OHNE PACHT" -> ja
-        ' "EHEMALIGES MITGLIED" -> nein (ausschließen)
+        ' "EHEMALIGES MITGLIED" -> nein (ausschlie?en)
         roleWert = UCase(Trim(CStr(wsDaten.Cells(r, EK_COL_ROLE).value)))
         If InStr(roleWert, "MITGLIED") = 0 Then GoTo NextDatenRow
         If InStr(roleWert, "EHEMALIGES") > 0 Then GoTo NextDatenRow
@@ -687,6 +687,8 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     rngTable.VerticalAlignment = xlCenter
     
 End Sub
+
+
 
 
 

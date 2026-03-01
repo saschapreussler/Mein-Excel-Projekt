@@ -15,6 +15,7 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 
 
+
 Option Explicit
 
 ' ==========================================================
@@ -122,7 +123,7 @@ Private Sub cmb_Parzelle_Change()
         Case Else
             If Left(Me.cmb_Parzelle.value, 8) = "Parzelle" Then
                 Dim idx As Long
-                idx = Val(Mid(Me.cmb_Parzelle.value, 10))
+                idx = val(Mid(Me.cmb_Parzelle.value, 10))
                 m_targetRow = IIf(m_Medium = "Strom", idx + 7, idx + 9)
             Else
                 Exit Sub

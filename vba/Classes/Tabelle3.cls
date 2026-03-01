@@ -764,7 +764,7 @@ NextKatRow:
         teilBetragStr = Replace(teilBetragStr, ",", ".")
         
         Dim teilBetrag As Double
-        teilBetrag = Val(teilBetragStr)
+        teilBetrag = val(teilBetragStr)
         teilBetrag = Round(teilBetrag, 2)
         
         If teilBetrag <= 0 Then
@@ -875,6 +875,8 @@ WeiterEingabe:
     End If
     
 End Sub
+
+
 
 
 

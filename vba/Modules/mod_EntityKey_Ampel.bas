@@ -156,3 +156,5 @@ Public Function BerechneAmpelStatus(ByVal entityKey As String, _
 End Function
 
 
+
+

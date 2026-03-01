@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_ZP_DropDowns
 ' Ausgelagert aus mod_Zahlungspruefung
-' Enthält: DropDown-Logik für Bankkonto-Blatt (Spalte H + I),
+' Enth?lt: DropDown-Logik f?r Bankkonto-Blatt (Spalte H + I),
 '          Hilfsspalten AF/AG, Spaltenentsperrung
 ' ===============================================================
 
@@ -302,5 +302,7 @@ Private Sub EntsperreSpaltenFuerNutzer(ByVal ws As Worksheet, ByVal lastRow As L
     On Error GoTo 0
     
 End Sub
+
+
 
 

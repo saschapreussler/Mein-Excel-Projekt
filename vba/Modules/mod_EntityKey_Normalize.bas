@@ -90,3 +90,4 @@ Public Function ExtrahiereAnzeigeName(ByVal kontoname As String) As String
     ExtrahiereAnzeigeName = erstesElement
 End Function
 
+
