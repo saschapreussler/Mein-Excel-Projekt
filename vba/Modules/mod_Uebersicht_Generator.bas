@@ -3,10 +3,9 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
-' VERSION: 3.0 - 01.03.2026
+' VERSION: 4.0 - 01.03.2026
 ' ZWECK: Generiert ?bersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
-'        - 12 Monate (Januar - Dezember)
 '        - Kategorien DYNAMISCH aus Einstellungen-Blatt (Spalte B)
 '        - Zeigt Soll/Ist/Status f?r jede Kombination
 '        - Behandelt SHARE-Keys (Gemeinschaftskonten) korrekt
@@ -28,6 +27,13 @@ Option Explicit
 '           - SHARE-Keys: Parzelle "2, 5" wird aufgeteilt
 '           - stummModus f?r automatische Aufrufe (keine MsgBox)
 '           - Trigger: Bankkonto H/I + Einstellungen -> auto-Update
+' NEU v4.0: Monatsweise Bef?llung der ?bersicht
+'           - Nur Monate mit importierten CSV-Daten werden angezeigt
+'           - ErmittleImportierteMonate() scannt Bankkonto Spalte A
+'           - Eintrag erscheint nur wenn:
+'             a) Zahlung vorhanden (Ist > 0) -> GR?N/GELB
+'             b) Frist abgelaufen + keine Zahlung -> ROT
+'           - Einheitliches Datumsformat: "Januar 2026"
 ' ***************************************************************
 
 ' ===============================================================
@@ -198,7 +204,35 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
         Exit Sub
     End If
     
-    ' Daten generieren
+    ' =============================================
+    ' v4.0: DATEN GENERIEREN - Nur relevante Eintraege!
+    '
+    ' Ein Eintrag erscheint NUR wenn:
+    '   a) Zahlung vorhanden (Ist > 0) -> GRUEN/GELB
+    '   b) Monat hat importierte CSV-Daten UND
+    '      Frist abgelaufen UND keine Zahlung -> ROT
+    '
+    ' KEIN Eintrag wenn:
+    '   - Monat hat keine CSV-Daten UND Frist nicht abgelaufen
+    ' =============================================
+    
+    ' 1. Ermittle welche Monate Bankkonto-Buchungen haben
+    Dim importierteMonate(1 To 12) As Boolean
+    Call ErmittleImportierteMonate(importierteMonate, jahr)
+    
+    ' Debug: Importierte Monate anzeigen
+    Dim dbgMonate As String
+    dbgMonate = ""
+    For monat = 1 To 12
+        If importierteMonate(monat) Then
+            If dbgMonate <> "" Then dbgMonate = dbgMonate & ", "
+            dbgMonate = dbgMonate & MonthName(monat, True)
+        End If
+    Next monat
+    Debug.Print "[" & ChrW(220) & "bersicht] Importierte Monate: " & _
+                IIf(dbgMonate = "", "(keine)", dbgMonate)
+    
+    ' 2. Daten generieren
     rowIdx = UEBERSICHT_START_ROW
     
     For Each mitglied In mitglieder
@@ -212,18 +246,17 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
             Dim k As Long
             For k = 0 To anzahlKat - 1
                 
-                ' Pr?fen ob diese Kategorie in diesem Monat f?llig ist
+                ' Pruefen ob diese Kategorie in diesem Monat faellig ist
                 If Not IstKategorieImMonatFaellig(kategorien(k), monat) Then
                     GoTo NextKat
                 End If
                 
                 kategorie = kategorien(k).Name
                 
-                ' Zahlung pr?fen (mod_Zahlungspruefung)
+                ' Zahlung pruefen (mod_Zahlungspruefung)
                 ergebnis = mod_Zahlungspruefung.PruefeZahlungen(entityKey, kategorie, monat, jahr)
                 
-                ' Ergebnis parsen: "GR?N|Soll:50.00|Ist:50.00"
-                ' WICHTIG: Dezimaltrenner ist IMMER Punkt (.)
+                ' Ergebnis parsen: "GRUEN|Soll:50.00|Ist:50.00"
                 soll = 0
                 ist = 0
                 status = "ROT"
@@ -232,14 +265,12 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 If UBound(teile) >= 2 Then
                     status = teile(0)
                     
-                    ' Soll parsen: "Soll:50.00" -> "50.00"
                     Dim sollTeile() As String
                     sollTeile = Split(teile(1), ":")
                     If UBound(sollTeile) >= 1 Then
                         soll = val(sollTeile(1))
                     End If
                     
-                    ' Ist parsen: "Ist:50.00" -> "50.00"
                     Dim istTeile() As String
                     istTeile = Split(teile(2), ":")
                     If UBound(istTeile) >= 1 Then
@@ -249,10 +280,43 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     status = teile(0)
                 End If
                 
+                ' =============================================
+                ' v4.0: FILTER - Nur relevante Eintraege anzeigen
+                ' =============================================
+                Dim zeigeEintrag As Boolean
+                zeigeEintrag = False
+                
+                If ist > 0 Then
+                    ' Fall a) Zahlung vorhanden -> IMMER anzeigen
+                    zeigeEintrag = True
+                Else
+                    ' Fall b) Keine Zahlung -> nur anzeigen wenn:
+                    '   - Monat hat CSV-Daten (importiert) UND
+                    '   - Frist (SollDatum + Nachlauf) ist abgelaufen
+                    If importierteMonate(monat) Then
+                        Dim sollDatumUeb As Date
+                        Dim vorlaufUeb As Long
+                        Dim nachlaufUeb As Long
+                        Dim saeumnisUeb As Double
+                        
+                        sollDatumUeb = mod_Zahlungspruefung.BerechneSollDatumZP(kategorie, monat, jahr)
+                        Call mod_Zahlungspruefung.HoleToleranzZP(kategorie, vorlaufUeb, nachlaufUeb, saeumnisUeb)
+                        
+                        ' Frist abgelaufen = Heute > SollDatum + Nachlauf
+                        If Date >= sollDatumUeb Then
+                            zeigeEintrag = True
+                        End If
+                    End If
+                End If
+                
+                ' Wenn nicht relevant -> naechste Kategorie
+                If Not zeigeEintrag Then GoTo NextKat
+                
                 ' Zeile schreiben
                 wsUeb.Cells(rowIdx, UEB_COL_PARZELLE).value = parzelleWert
                 wsUeb.Cells(rowIdx, UEB_COL_MITGLIED).value = mitgliedName
-                wsUeb.Cells(rowIdx, UEB_COL_MONAT).value = Format(DateSerial(jahr, monat, 1), "MMMM YYYY")
+                ' v4.0: Einheitliches Datumsformat "Januar 2026"
+                wsUeb.Cells(rowIdx, UEB_COL_MONAT).value = MonthName(monat) & " " & jahr
                 wsUeb.Cells(rowIdx, UEB_COL_KATEGORIE).value = kategorie
                 
                 ' =============================================
@@ -618,6 +682,57 @@ NextDatenRow:
     Set HoleAktiveMitglieder = col
     
 End Function
+
+
+' ===============================================================
+' v4.0: Ermittelt welche Monate im Bankkonto CSV-Daten haben
+' Scannt Spalte A (Datum) ab BK_START_ROW und setzt True
+' fuer jeden Monat der mindestens eine Buchung enthaelt
+' ===============================================================
+Private Sub ErmittleImportierteMonate(ByRef monate() As Boolean, _
+                                       ByVal jahr As Long)
+    
+    Dim wsBK As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim zellWert As Variant
+    Dim buchDatum As Date
+    
+    ' Array zuruecksetzen
+    Dim m As Long
+    For m = 1 To 12
+        monate(m) = False
+    Next m
+    
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    On Error GoTo 0
+    
+    If wsBK Is Nothing Then
+        Debug.Print "[" & ChrW(220) & "bersicht] WARNUNG: Blatt 'Bankkonto' nicht gefunden!"
+        Exit Sub
+    End If
+    
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    
+    If lastRow < BK_START_ROW Then
+        Debug.Print "[" & ChrW(220) & "bersicht] Keine Buchungen im Bankkonto gefunden."
+        Exit Sub
+    End If
+    
+    For r = BK_START_ROW To lastRow
+        zellWert = wsBK.Cells(r, BK_COL_DATUM).value
+        
+        If IsDate(zellWert) Then
+            buchDatum = CDate(zellWert)
+            
+            If Year(buchDatum) = jahr Then
+                monate(Month(buchDatum)) = True
+            End If
+        End If
+    Next r
+    
+End Sub
 
 
 ' ===============================================================

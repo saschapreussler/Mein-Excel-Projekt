@@ -281,7 +281,7 @@ End Function
 ' Holt Vorlauf/Nachlauf/S?umnis-Geb?hr aus dem Einstellungen-Cache
 ' fuer eine bestimmte Kategorie
 ' ===============================================================
-Private Sub HoleToleranzZP(ByVal kategorie As String, _
+Public Sub HoleToleranzZP(ByVal kategorie As String, _
                             ByRef vorlauf As Long, _
                             ByRef nachlauf As Long, _
                             ByRef saeumnisGebuehr As Double)
@@ -383,7 +383,7 @@ End Function
 ' ===============================================================
 ' Soll-Datum berechnen (mit Spalte D/E vs F Logik)
 ' ===============================================================
-Private Function BerechneSollDatumZP(ByVal kategorie As String, _
+Public Function BerechneSollDatumZP(ByVal kategorie As String, _
                                       ByVal monat As Long, _
                                       ByVal jahr As Long) As Date
     
