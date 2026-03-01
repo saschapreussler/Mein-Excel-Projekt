@@ -715,7 +715,7 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
                     bestehendeBemerkung = Trim(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value))
                     
                     Dim gelbHinweis As String
-                    gelbHinweis = "Ultimo-5: Bitte pr" & ChrW(252) & "fen ob Zahlung f" & ChrW(252) & "r " & _
+                    gelbHinweis = "Bitte pr" & ChrW(252) & "fen ob Zahlung f" & ChrW(252) & "r " & _
                                   monatName & " oder Folgemonat gilt"
                     
                     If bestehendeBemerkung = "" Then
@@ -723,8 +723,13 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
                     Else
                         ws.Cells(r, BK_COL_BEMERKUNG).value = bestehendeBemerkung & vbLf & gelbHinweis
                     End If
+                    
+                    ' Hell-gelber Hintergrund fuer die Bemerkung
+                    ws.Cells(r, BK_COL_BEMERKUNG).Interior.color = RGB(255, 255, 153)
                 Else
                     ws.Cells(r, BK_COL_MONAT_PERIODE).value = ergebnis
+                    ' Ampelfarbe Gruen = Monat eindeutig bestimmt
+                    ws.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206)
                 End If
             Else
                 ws.Cells(r, BK_COL_MONAT_PERIODE).value = MonthName(Month(datumWert))

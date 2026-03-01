@@ -281,11 +281,9 @@ ImportAbschluss:
     ' 7. Übersicht aktualisieren (nur wenn neue Datensätze importiert wurden)
     '    v4.0: NEU - Übersichtsblatt nach jedem erfolgreichen Import generieren
     '    v4.1: stummModus=True da Import bereits eigene Erfolgsmeldung zeigt
+    '    v4.2: On Error Resume Next ENTFERNT - GeneriereUebersicht hat eigenen ErrorHandler
      If rowsProcessed > 0 Then
-        On Error Resume Next
         Call mod_Uebersicht_Generator.GeneriereUebersicht(Year(Date), stummModus:=True)
-        Err.Clear
-        On Error GoTo 0
     End If
     
     ' Blattschutz wird von der Pipeline selbst verwaltet (Protect am Ende).

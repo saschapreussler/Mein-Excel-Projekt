@@ -173,6 +173,31 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' Aktive Mitglieder aus Daten-Blatt EntityKey-Tabelle laden
     Set mitglieder = HoleAktiveMitglieder(wsDaten)
     
+    ' Debug-Diagnose: Mitglieder und Kategorien protokollieren
+    Debug.Print "[" & ChrW(220) & "bersicht] Kategorien: " & anzahlKat & _
+                " | Mitglieder: " & mitglieder.count
+    
+    If mitglieder.count = 0 Then
+        Debug.Print "[" & ChrW(220) & "bersicht] WARNUNG: Keine aktiven Mitglieder gefunden!"
+        Debug.Print "[" & ChrW(220) & "bersicht] Pr" & ChrW(252) & "fe Daten-Blatt: " & _
+                    "EntityKey (R), Parzelle (V), Role (W)"
+        
+        ' Auch im stummModus eine Warnung ausgeben, da Mitglieder-Daten fehlen
+        Application.Calculation = xlCalculationAutomatic
+        Application.EnableEvents = True
+        Application.ScreenUpdating = True
+        
+        If Not stummModus Then
+            MsgBox "Keine aktiven Mitglieder im Daten-Blatt gefunden!" & vbLf & vbLf & _
+                   "Bitte sicherstellen dass:" & vbLf & _
+                   "- Spalte R (EntityKey) bef" & ChrW(252) & "llt ist" & vbLf & _
+                   "- Spalte V (Parzelle) eine Nummer 1-14 enth" & ChrW(228) & "lt" & vbLf & _
+                   "- Spalte W (Role) 'MITGLIED MIT PACHT' oder 'MITGLIED OHNE PACHT' enth" & ChrW(228) & "lt", _
+                   vbExclamation, ChrW(220) & "bersicht"
+        End If
+        Exit Sub
+    End If
+    
     ' Daten generieren
     rowIdx = UEBERSICHT_START_ROW
     
@@ -328,6 +353,10 @@ NextKat:
     endTime = Timer
     
     ' Erfolgsmeldung nur bei manuellem Aufruf (nicht im stummModus)
+    Debug.Print "[" & ChrW(220) & "bersicht] Erfolgreich: " & _
+                (rowIdx - UEBERSICHT_START_ROW) & " Zeilen in " & _
+                Format(endTime - startTime, "0.00") & "s"
+    
     If Not stummModus Then
         MsgBox ChrW(220) & "bersicht erfolgreich generiert!" & vbLf & vbLf & _
                "Zeilen: " & (rowIdx - UEBERSICHT_START_ROW) & vbLf & _
@@ -342,6 +371,10 @@ ErrorHandler:
     Application.Calculation = xlCalculationAutomatic
     Application.EnableEvents = True
     Application.ScreenUpdating = True
+    
+    ' IMMER Debug.Print bei Fehler (auch im stummModus)
+    Debug.Print "[" & ChrW(220) & "bersicht] FEHLER: " & Err.Number & " - " & Err.Description
+    
     If Not stummModus Then
         MsgBox "Fehler beim Generieren der " & ChrW(220) & "bersicht:" & vbLf & vbLf & _
                Err.Description, vbCritical, "Fehler"

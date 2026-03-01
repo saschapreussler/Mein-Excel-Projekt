@@ -379,7 +379,7 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
                 bestehend = Trim(CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value))
                 
                 Dim gelbHinweis As String
-                gelbHinweis = "Ultimo-5: Bitte pr" & ChrW(252) & "fen ob Zahlung f" & ChrW(252) & "r " & _
+                gelbHinweis = "Bitte pr" & ChrW(252) & "fen ob Zahlung f" & ChrW(252) & "r " & _
                               monatName & " oder Folgemonat gilt"
                 
                 If bestehend = "" Then
@@ -387,9 +387,14 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
                 Else
                     ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bestehend & vbLf & gelbHinweis
                 End If
+                
+                ' Hell-gelber Hintergrund fuer die Bemerkung
+                ws.Cells(rowBK, BK_COL_BEMERKUNG).Interior.color = RGB(255, 255, 153)
             Else
                 ' Normaler Fall: Monat direkt setzen (kein GELB)
                 ws.Cells(rowBK, BK_COL_MONAT_PERIODE).value = ergebnis
+                ' Ampelfarbe Gruen = Monat eindeutig bestimmt
+                ws.Cells(rowBK, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206)
             End If
             
             Call EntladeEinstellungenCache
@@ -519,12 +524,12 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
         End If
     End If
     
-    ' 3. Auch den evtl. vorhandenen GELB-Hinweis aus der Ultimo-5-Logik entfernen
-    '    (der ist jetzt nicht mehr relevant, da der Nutzer manuell best�tigt hat)
+    ' 3. Auch den evtl. vorhandenen GELB-Hinweis entfernen
+    '    (der ist jetzt nicht mehr relevant, da der Nutzer manuell bestaetigt hat)
     Dim aktBemerkung As String
     aktBemerkung = CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value)
     
-    If InStr(LCase(aktBemerkung), "ultimo-5: bitte pr") > 0 Then
+    If InStr(LCase(aktBemerkung), "bitte pr" & ChrW(252) & "fen ob zahlung") > 0 Then
         Dim zeilen2() As String
         zeilen2 = Split(aktBemerkung, vbLf)
         
@@ -533,7 +538,7 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
         
         Dim z2 As Long
         For z2 = LBound(zeilen2) To UBound(zeilen2)
-            If InStr(LCase(zeilen2(z2)), "ultimo-5: bitte pr") = 0 Then
+            If InStr(LCase(zeilen2(z2)), "bitte pr" & ChrW(252) & "fen ob zahlung") = 0 Then
                 If bereinigt = "" Then
                     bereinigt = zeilen2(z2)
                 Else
@@ -543,6 +548,8 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
         Next z2
         
         ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bereinigt
+        ' Hell-gelben Hintergrund der Bemerkung zuruecksetzen
+        ws.Cells(rowBK, BK_COL_BEMERKUNG).Interior.ColorIndex = xlNone
     End If
 
 MonatCleanup:
