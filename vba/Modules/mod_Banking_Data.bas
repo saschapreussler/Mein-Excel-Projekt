@@ -285,7 +285,7 @@ ImportAbschluss:
     '    v4.3: Bedingung rowsProcessed>0 ENTFERNT - ?bersicht zeigt ALLE Daten,
     '          nicht nur neu importierte. Auch bei 100% Duplikaten aktualisieren!
     Debug.Print "[Import] Starte " & ChrW(220) & "bersicht-Generierung..."
-    Call mod_Uebersicht_Generator.GeneriereUebersicht(Year(Date), stummModus:=True)
+    Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
     
     ' Blattschutz wird von der Pipeline selbst verwaltet (Protect am Ende).
     ' Hier nochmals sicherstellen falls Pipeline nicht lief:
@@ -572,6 +572,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 

@@ -121,7 +121,12 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     startTime = Timer
     
     ' Jahr-Parameter validieren
-    If jahr = 0 Then jahr = Year(Date)
+    ' v4.0: Wenn kein Jahr angegeben -> aus Bankkonto-Daten ermitteln
+    If jahr = 0 Then
+        jahr = ErmittleJahrAusBankkonto()
+        If jahr = 0 Then jahr = Year(Date)
+    End If
+    Debug.Print "[" & ChrW(220) & "bersicht] Verwende Jahr: " & jahr
     
     ' =============================================
     ' v2.0: Kategorien DYNAMISCH aus Einstellungen laden
@@ -685,6 +690,77 @@ End Function
 
 
 ' ===============================================================
+' v4.0: Ermittelt das haeufigste Jahr aus Bankkonto-Daten
+' Scannt Spalte A (Datum) und zaehlt welches Jahr am meisten
+' vorkommt. Gibt 0 zurueck wenn keine Daten vorhanden.
+' ===============================================================
+Private Function ErmittleJahrAusBankkonto() As Long
+    
+    Dim wsBK As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim zellWert As Variant
+    Dim buchDatum As Date
+    Dim jahrZaehler As Object
+    Dim jahrKey As String
+    
+    ErmittleJahrAusBankkonto = 0
+    
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    On Error GoTo 0
+    
+    If wsBK Is Nothing Then Exit Function
+    
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Function
+    
+    Set jahrZaehler = CreateObject("Scripting.Dictionary")
+    
+    For r = BK_START_ROW To lastRow
+        zellWert = wsBK.Cells(r, BK_COL_DATUM).value
+        
+        If IsDate(zellWert) Then
+            buchDatum = CDate(zellWert)
+            jahrKey = CStr(Year(buchDatum))
+            
+            If jahrZaehler.Exists(jahrKey) Then
+                jahrZaehler(jahrKey) = jahrZaehler(jahrKey) + 1
+            Else
+                jahrZaehler.Add jahrKey, 1
+            End If
+        End If
+    Next r
+    
+    ' Haeufigtes Jahr finden
+    If jahrZaehler.count = 0 Then
+        Set jahrZaehler = Nothing
+        Exit Function
+    End If
+    
+    Dim maxAnzahl As Long
+    Dim maxJahr As String
+    Dim key As Variant
+    maxAnzahl = 0
+    
+    For Each key In jahrZaehler.keys
+        If jahrZaehler(key) > maxAnzahl Then
+            maxAnzahl = jahrZaehler(key)
+            maxJahr = CStr(key)
+        End If
+    Next key
+    
+    ErmittleJahrAusBankkonto = CLng(maxJahr)
+    
+    Debug.Print "[" & ChrW(220) & "bersicht] Jahr aus Bankkonto erkannt: " & maxJahr & _
+                " (" & maxAnzahl & " Buchungen)"
+    
+    Set jahrZaehler = Nothing
+    
+End Function
+
+
+' ===============================================================
 ' v4.0: Ermittelt welche Monate im Bankkonto CSV-Daten haben
 ' Scannt Spalte A (Datum) ab BK_START_ROW und setzt True
 ' fuer jeden Monat der mindestens eine Buchung enthaelt
@@ -810,6 +886,8 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     rngTable.VerticalAlignment = xlCenter
     
 End Sub
+
+
 
 
 
