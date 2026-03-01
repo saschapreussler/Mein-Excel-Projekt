@@ -217,3 +217,4 @@ Public Function SammelKontonamen(ByRef dictNames As Object) As String
 End Function
 
 
+
