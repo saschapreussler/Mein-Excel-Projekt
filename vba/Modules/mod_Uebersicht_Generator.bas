@@ -4,29 +4,29 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
 ' VERSION: 3.0 - 01.03.2026
-' ZWECK: Generiert ï¿½bersichtsblatt (Variante 2: Lange Tabelle)
+' ZWECK: Generiert ?bersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - 12 Monate (Januar - Dezember)
 '        - Kategorien DYNAMISCH aus Einstellungen-Blatt (Spalte B)
-'        - Zeigt Soll/Ist/Status fï¿½r jede Kombination
+'        - Zeigt Soll/Ist/Status f?r jede Kombination
 '        - Behandelt SHARE-Keys (Gemeinschaftskonten) korrekt
 '        - Bei Kategorien OHNE festen Soll-Betrag:
 '          Soll-Zelle bleibt leer + hell-gelb + editierbar
-'          Nur Zahlungstermin-Prï¿½fung (pï¿½nktlich / Sï¿½umnis)
-'        - Sï¿½umnis-Gebï¿½hren werden in Bemerkung angezeigt
+'          Nur Zahlungstermin-Pr?fung (p?nktlich / S?umnis)
+'        - S?umnis-Geb?hren werden in Bemerkung angezeigt
 ' FIX v1.1: InitialisiereNachDezemberCache -> InitialisiereNachDezemberCacheZP
-' FIX v1.2: Val() statt CDbl() fï¿½r systemunabhï¿½ngiges Parsen
-' FIX v1.3: "Typen unvertrï¿½glich" behoben (Variant, StrComp, etc.)
+' FIX v1.2: Val() statt CDbl() f?r systemunabh?ngiges Parsen
+' FIX v1.3: "Typen unvertr?glich" behoben (Variant, StrComp, etc.)
 ' FIX v1.4: ChrW() in Const nicht erlaubt -> Private Variablen
 ' NEU v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
 '           - Keine hart kodierten Kategorienamen mehr
 '           - Soll-Betrag 0 -> Zelle leer + hell-gelb + editierbar
-'           - Zahlungstermin-Prï¿½fung auch ohne Soll-Betrag
-'           - Sï¿½umnis-Gebï¿½hren in Bemerkung
+'           - Zahlungstermin-Pr?fung auch ohne Soll-Betrag
+'           - S?umnis-Geb?hren in Bemerkung
 ' NEU v3.0: HoleAktiveMitglieder liest jetzt aus Daten-Blatt
 '           (EntityKey-Tabelle R-W) statt aus Mitgliederliste
 '           - SHARE-Keys: Parzelle "2, 5" wird aufgeteilt
-'           - stummModus fï¿½r automatische Aufrufe (keine MsgBox)
+'           - stummModus f?r automatische Aufrufe (keine MsgBox)
 '           - Trigger: Bankkonto H/I + Einstellungen -> auto-Update
 ' ***************************************************************
 
@@ -36,14 +36,14 @@ Option Explicit
 Private Const UEBERSICHT_START_ROW As Long = 4
 Private Const UEBERSICHT_HEADER_ROW As Long = 3
 
-' Spalten im ï¿½bersichtsblatt
+' Spalten im ?bersichtsblatt
 Private Const UEB_COL_PARZELLE As Long = 1      ' A - Parzelle
 Private Const UEB_COL_MITGLIED As Long = 2      ' B - Mitglied
 Private Const UEB_COL_MONAT As Long = 3         ' C - Monat
 Private Const UEB_COL_KATEGORIE As Long = 4     ' D - Kategorie
 Private Const UEB_COL_SOLL As Long = 5          ' E - Soll
 Private Const UEB_COL_IST As Long = 6           ' F - Ist
-Private Const UEB_COL_STATUS As Long = 7        ' G - Status (GRï¿½N/GELB/ROT)
+Private Const UEB_COL_STATUS As Long = 7        ' G - Status (GR?N/GELB/ROT)
 Private Const UEB_COL_BEMERKUNG As Long = 8     ' H - Bemerkung
 
 ' Ampelfarben
@@ -51,22 +51,22 @@ Private Const AMPEL_GRUEN As Long = 12968900    ' RGB(196, 225, 196)
 Private Const AMPEL_GELB As Long = 10086143     ' RGB(255, 235, 156)
 Private Const AMPEL_ROT As Long = 9871103       ' RGB(255, 199, 206)
 
-' Hell-gelb fï¿½r "bitte manuell befï¿½llen" (Soll-Betrag variabel)
+' Hell-gelb f?r "bitte manuell bef?llen" (Soll-Betrag variabel)
 Private Const FARBE_HELLGELB_MANUELL As Long = 10092543  ' RGB(255, 255, 153)
 
-' Status-String fï¿½r GRï¿½N (Encoding-sicher, wird in Init gesetzt)
+' Status-String f?r GR?N (Encoding-sicher, wird in Init gesetzt)
 Private m_STATUS_GRUEN As String
 Private m_StatusInitialisiert As Boolean
 
 
 ' ===============================================================
-' Type fï¿½r eine dynamische Kategorie aus Einstellungen
+' Type f?r eine dynamische Kategorie aus Einstellungen
 ' ===============================================================
 Private Type UebKategorie
     Name As String
     SollBetrag As Double
     HatFestenSoll As Boolean      ' True wenn Spalte C > 0
-    SaeumnisGebuehr As Double     ' Spalte I auf Einstellungen
+    saeumnisGebuehr As Double     ' Spalte I auf Einstellungen
     SollMonate As String          ' Spalte E: "03, 06, 09" oder leer = alle
 End Type
 
@@ -85,9 +85,9 @@ End Sub
 
 
 ' ===============================================================
-' HAUPTFUNKTION: Generiert komplettes ï¿½bersichtsblatt
+' HAUPTFUNKTION: Generiert komplettes ?bersichtsblatt
 ' v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
-' v3.0: stummModus fÃ¼r automatische Aufrufe (ohne MsgBox)
+' v3.0: stummModus für automatische Aufrufe (ohne MsgBox)
 ' ===============================================================
 Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                                 Optional ByVal stummModus As Boolean = False)
@@ -155,7 +155,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     wsUeb.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ErrorHandler
     
-    ' Alten Inhalt lï¿½schen (ab Zeile 4)
+    ' Alten Inhalt l?schen (ab Zeile 4)
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
                 wsUeb.Cells(wsUeb.Rows.count, UEB_COL_BEMERKUNG)).ClearContents
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
@@ -167,7 +167,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' Einstellungen-Cache laden (Performance)
     Call mod_Zahlungspruefung.LadeEinstellungenCacheZP
     
-    ' Dezember-Cache initialisieren (fï¿½r Vorauszahlungen)
+    ' Dezember-Cache initialisieren (f?r Vorauszahlungen)
     Call mod_Zahlungspruefung.InitialisiereNachDezemberCacheZP(jahr)
     
     ' Aktive Mitglieder aus Daten-Blatt EntityKey-Tabelle laden
@@ -212,17 +212,17 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
             Dim k As Long
             For k = 0 To anzahlKat - 1
                 
-                ' Prï¿½fen ob diese Kategorie in diesem Monat fï¿½llig ist
+                ' Pr?fen ob diese Kategorie in diesem Monat f?llig ist
                 If Not IstKategorieImMonatFaellig(kategorien(k), monat) Then
                     GoTo NextKat
                 End If
                 
                 kategorie = kategorien(k).Name
                 
-                ' Zahlung prï¿½fen (mod_Zahlungspruefung)
+                ' Zahlung pr?fen (mod_Zahlungspruefung)
                 ergebnis = mod_Zahlungspruefung.PruefeZahlungen(entityKey, kategorie, monat, jahr)
                 
-                ' Ergebnis parsen: "GRï¿½N|Soll:50.00|Ist:50.00"
+                ' Ergebnis parsen: "GR?N|Soll:50.00|Ist:50.00"
                 ' WICHTIG: Dezimaltrenner ist IMMER Punkt (.)
                 soll = 0
                 ist = 0
@@ -268,8 +268,8 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     wsUeb.Cells(rowIdx, UEB_COL_SOLL).Interior.color = FARBE_HELLGELB_MANUELL
                     wsUeb.Cells(rowIdx, UEB_COL_SOLL).Locked = False
                     
-                    ' Status bei variablem Betrag: nur Termin-Prï¿½fung
-                    ' Wenn Ist > 0 -> Zahlung eingegangen -> GRï¿½N
+                    ' Status bei variablem Betrag: nur Termin-Pr?fung
+                    ' Wenn Ist > 0 -> Zahlung eingegangen -> GR?N
                     ' Wenn Ist = 0 -> Keine Zahlung -> ROT oder GELB
                     If ist > 0 Then
                         status = m_STATUS_GRUEN
@@ -289,7 +289,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
                 
                 ' =============================================
-                ' v2.0: Bemerkung mit Sï¿½umnis-Info
+                ' v2.0: Bemerkung mit S?umnis-Info
                 ' =============================================
                 Dim bemerkung As String
                 bemerkung = ""
@@ -299,12 +299,12 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     bemerkung = teile(3)
                 End If
                 
-                ' Sï¿½umnis-Gebï¿½hr anhï¿½ngen wenn Status ROT und Gebï¿½hr definiert
+                ' S?umnis-Geb?hr anh?ngen wenn Status ROT und Geb?hr definiert
                 If StrComp(status, "ROT", vbTextCompare) = 0 Then
-                    If kategorien(k).SaeumnisGebuehr > 0 Then
+                    If kategorien(k).saeumnisGebuehr > 0 Then
                         Dim saeumnisText As String
                         saeumnisText = "S" & ChrW(228) & "umnis-Geb" & ChrW(252) & "hr: " & _
-                                       Format(kategorien(k).SaeumnisGebuehr, "#,##0.00") & _
+                                       Format(kategorien(k).saeumnisGebuehr, "#,##0.00") & _
                                        " " & ChrW(8364)
                         If bemerkung = "" Then
                             bemerkung = saeumnisText
@@ -340,7 +340,7 @@ NextKat:
     ' Einstellungen-Cache freigeben
     Call mod_Zahlungspruefung.EntladeEinstellungenCacheZP
     
-    ' Blatt schï¿½tzen (Soll-Zellen ohne festen Betrag bleiben editierbar)
+    ' Blatt sch?tzen (Soll-Zellen ohne festen Betrag bleiben editierbar)
     On Error Resume Next
     wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo ErrorHandler
@@ -384,10 +384,10 @@ End Sub
 
 
 ' ===============================================================
-' v2.0: Lï¿½dt Kategorien DYNAMISCH aus Einstellungen-Blatt
+' v2.0: L?dt Kategorien DYNAMISCH aus Einstellungen-Blatt
 ' Liest Spalte B (Kategorie), C (Soll-Betrag), E (Soll-Monate),
-' I (Sï¿½umnis-Gebï¿½hr)
-' Gibt eindeutige Kategorien zurï¿½ck (keine Duplikate)
+' I (S?umnis-Geb?hr)
+' Gibt eindeutige Kategorien zur?ck (keine Duplikate)
 ' ===============================================================
 Private Sub LadeKategorienAusEinstellungen(ByRef kategorien() As UebKategorie, _
                                             ByRef anzahl As Long)
@@ -409,15 +409,15 @@ Private Sub LadeKategorienAusEinstellungen(ByRef kategorien() As UebKategorie, _
     lastRow = wsEinst.Cells(wsEinst.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
     If lastRow < ES_START_ROW Then Exit Sub
     
-    ' Dictionary fï¿½r Eindeutigkeit
+    ' Dictionary f?r Eindeutigkeit
     Set dict = CreateObject("Scripting.Dictionary")
     
-    ' Zuerst zï¿½hlen fï¿½r ReDim
+    ' Zuerst z?hlen f?r ReDim
     For r = ES_START_ROW To lastRow
         katName = Trim(CStr(wsEinst.Cells(r, ES_COL_KATEGORIE).value))
         If katName <> "" Then
             If Not dict.Exists(katName) Then
-                dict.Add katName, r  ' Merke Zeilennummer fï¿½r spï¿½teres Lesen
+                dict.Add katName, r  ' Merke Zeilennummer f?r sp?teres Lesen
             End If
         End If
     Next r
@@ -447,13 +447,13 @@ Private Sub LadeKategorienAusEinstellungen(ByRef kategorien() As UebKategorie, _
             End If
             .HatFestenSoll = (.SollBetrag > 0)
             
-            ' Sï¿½umnis-Gebï¿½hr aus Spalte I
+            ' S?umnis-Geb?hr aus Spalte I
             Dim saeumnisWert As Variant
             saeumnisWert = wsEinst.Cells(r, ES_COL_SAEUMNIS).value
             If IsNumeric(saeumnisWert) Then
-                .SaeumnisGebuehr = CDbl(saeumnisWert)
+                .saeumnisGebuehr = CDbl(saeumnisWert)
             Else
-                .SaeumnisGebuehr = 0
+                .saeumnisGebuehr = 0
             End If
             
             ' Soll-Monate aus Spalte E (z.B. "03, 06, 09" oder leer = alle)
@@ -469,14 +469,14 @@ End Sub
 
 
 ' ===============================================================
-' v2.0: Prï¿½ft ob eine Kategorie in einem bestimmten Monat fï¿½llig ist
-' Wenn SollMonate leer -> gilt fï¿½r ALLE Monate
+' v2.0: Pr?ft ob eine Kategorie in einem bestimmten Monat f?llig ist
+' Wenn SollMonate leer -> gilt f?r ALLE Monate
 ' Wenn SollMonate = "03, 06, 09" -> nur in diesen Monaten
 ' ===============================================================
 Private Function IstKategorieImMonatFaellig(ByRef kat As UebKategorie, _
                                              ByVal monat As Long) As Boolean
     
-    ' Keine Monate definiert -> gilt fï¿½r ALLE Monate
+    ' Keine Monate definiert -> gilt f?r ALLE Monate
     If kat.SollMonate = "" Then
         IstKategorieImMonatFaellig = True
         Exit Function
@@ -502,7 +502,7 @@ End Function
 
 
 ' ===============================================================
-' Header im ï¿½bersichtsblatt setzen
+' Header im ?bersichtsblatt setzen
 ' ===============================================================
 Private Sub SetzeUebersichtHeader(ByVal wsUeb As Worksheet)
     
@@ -536,8 +536,8 @@ End Sub
 ' ===============================================================
 ' Holt alle aktiven Mitglieder aus Daten-Blatt (EntityKey-Tabelle)
 ' Spalten: R=EntityKey, S=IBAN, U=Zuordnung, V=Parzelle, W=Role
-' Bei SHARE-Keys kï¿½nnen mehrere Parzellen in V stehen (z.B. "2, 5")
-' Jede Parzelle erscheint nur einmal (ï¿½ber Dictionary geprï¿½ft)
+' Bei SHARE-Keys k?nnen mehrere Parzellen in V stehen (z.B. "2, 5")
+' Jede Parzelle erscheint nur einmal (?ber Dictionary gepr?ft)
 ' ===============================================================
 Private Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
     
@@ -552,7 +552,7 @@ Private Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         Exit Function
     End If
     
-    ' Dictionary fï¿½r bereits verarbeitete Parzellen (Duplikatvermeidung)
+    ' Dictionary f?r bereits verarbeitete Parzellen (Duplikatvermeidung)
     Dim verarbeiteteParzellen As Object
     Set verarbeiteteParzellen = CreateObject("Scripting.Dictionary")
     
@@ -567,9 +567,9 @@ Private Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         entityKey = Trim(CStr(wsDaten.Cells(r, EK_COL_ENTITYKEY).value))
         If entityKey = "" Then GoTo NextDatenRow
         
-        ' Role prÃ¼fen: nur aktive Mitglieder
+        ' Role prüfen: nur aktive Mitglieder
         ' "MITGLIED MIT PACHT" und "MITGLIED OHNE PACHT" -> ja
-        ' "EHEMALIGES MITGLIED" -> nein (ausschlieÃŸen)
+        ' "EHEMALIGES MITGLIED" -> nein (ausschließen)
         roleWert = UCase(Trim(CStr(wsDaten.Cells(r, EK_COL_ROLE).value)))
         If InStr(roleWert, "MITGLIED") = 0 Then GoTo NextDatenRow
         If InStr(roleWert, "EHEMALIGES") > 0 Then GoTo NextDatenRow
@@ -581,7 +581,7 @@ Private Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         ' Zuordnung (Mitgliedername) aus Spalte U
         zuordnung = Trim(CStr(wsDaten.Cells(r, EK_COL_ZUORDNUNG).value))
         
-        ' Parzelle(n) aufteilen (bei SHARE-Keys: "2, 5" -> 2 Eintrï¿½ge)
+        ' Parzelle(n) aufteilen (bei SHARE-Keys: "2, 5" -> 2 Eintr?ge)
         Dim parzellen() As String
         parzellen = Split(parzelleWert, ",")
         
@@ -596,7 +596,7 @@ Private Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                 
                 ' Nur Parzellen 1-14
                 If parzelleNr >= 1 And parzelleNr <= 14 Then
-                    ' Duplikat-Prï¿½fung: jede Parzelle nur einmal
+                    ' Duplikat-Pr?fung: jede Parzelle nur einmal
                     If Not verarbeiteteParzellen.Exists(parzelleNr) Then
                         verarbeiteteParzellen.Add parzelleNr, True
                         
@@ -621,7 +621,7 @@ End Function
 
 
 ' ===============================================================
-' Formatierung des ï¿½bersichtsblatts
+' Formatierung des ?bersichtsblatts
 ' ===============================================================
 Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                                    ByVal startRow As Long, _
@@ -636,13 +636,13 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                                 wsUeb.Cells(endRow, UEB_COL_BEMERKUNG))
     
     ' Zebramuster (jede 2. Zeile hellgrau)
-    ' ACHTUNG: Nicht ï¿½berschreiben wenn Zelle bereits hell-gelb ist (variabler Soll)
+    ' ACHTUNG: Nicht ?berschreiben wenn Zelle bereits hell-gelb ist (variabler Soll)
     For r = startRow To endRow
         If (r - startRow) Mod 2 = 0 Then
             Dim c As Long
             For c = UEB_COL_PARZELLE To UEB_COL_BEMERKUNG
-                ' Nur Zebra setzen wenn Zelle NICHT bereits speziell gefï¿½rbt ist
-                ' (hell-gelb fï¿½r variablen Soll, Ampelfarben fï¿½r Status)
+                ' Nur Zebra setzen wenn Zelle NICHT bereits speziell gef?rbt ist
+                ' (hell-gelb f?r variablen Soll, Ampelfarben f?r Status)
                 If c <> UEB_COL_SOLL And c <> UEB_COL_STATUS Then
                     wsUeb.Cells(r, c).Interior.color = RGB(242, 242, 242)
                 ElseIf c = UEB_COL_SOLL Then
@@ -651,7 +651,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                         wsUeb.Cells(r, c).Interior.color = RGB(242, 242, 242)
                     End If
                 End If
-                ' Status-Spalte (G) behï¿½lt immer ihre Ampelfarbe
+                ' Status-Spalte (G) beh?lt immer ihre Ampelfarbe
             Next c
         End If
     Next r
@@ -687,4 +687,6 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     rngTable.VerticalAlignment = xlCenter
     
 End Sub
+
+
 

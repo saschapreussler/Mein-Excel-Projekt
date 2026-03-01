@@ -30,7 +30,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Const ANREDE_KGA As String = "KGA"
 
     ' ------------------------------------------------------------
-    ' PRÜFUNG & INITIALISIERUNG
+    ' PR?FUNG & INITIALISIERUNG
     ' ------------------------------------------------------------
     If Intersect(Target, Me.Range(RELEVANT_COLUMNS)) Is Nothing Then Exit Sub
     If Target.Row < M_START_ROW Then Exit Sub
@@ -41,7 +41,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Me.Unprotect PASSWORD:=""
 
     ' ------------------------------------------------------------
-    ' 1. Automatische Logik (Parzelle geändert: B -> C / B -> D)
+    ' 1. Automatische Logik (Parzelle ge?ndert: B -> C / B -> D)
     ' ------------------------------------------------------------
     If Not Intersect(Target, Me.Columns(M_COL_PARZELLE)) Is Nothing Then
 
@@ -58,12 +58,12 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                 seite = ""
                 
                 ' NEUE LOGIK: Wenn Parzelle "Verein", setze Anrede auf "KGA" (Spalte D)
-                ' Verwendung von StrComp für robuste, fallunabhängige Prüfung
+                ' Verwendung von StrComp f?r robuste, fallunabh?ngige Pr?fung
                 If StrComp(parzelle, PARZELLE_VEREIN, vbTextCompare) = 0 Then
                     Me.Cells(rCell.Row, M_COL_ANREDE).value = ANREDE_KGA
                 End If
 
-                ' Logik zur Füllung Spalte C (Seite)
+                ' Logik zur F?llung Spalte C (Seite)
                 If IsNumeric(parzelle) Then
                     nr = CLng(parzelle)
 
@@ -73,7 +73,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                         seite = "links"
                     End If
 
-                ' Verwendung von StrComp für robuste, fallunabhängige Prüfung
+                ' Verwendung von StrComp f?r robuste, fallunabh?ngige Pr?fung
                 ElseIf StrComp(parzelle, PARZELLE_VEREIN, vbTextCompare) = 0 Then
                     seite = "zentral"
                 End If
@@ -84,7 +84,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     End If
     
     ' ------------------------------------------------------------
-    ' 2. Logik: Austrittsdatum setzen/löschen (Spalte P)
+    ' 2. Logik: Austrittsdatum setzen/l?schen (Spalte P)
     ' ------------------------------------------------------------
     If Not Intersect(Target, Me.Columns(M_COL_FUNKTION)) Is Nothing Then
         
@@ -115,8 +115,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     ' ------------------------------------------------------------
     ' 3. Sortierung (AKTIVIERT)
     ' ------------------------------------------------------------
-    ' Dies sollte nur ausgeführt werden, wenn sich die Parzelle geändert hat und
-    ' das Modul mod_Mitglieder_UI die Unprotect/Protect Logik enthält.
+    ' Dies sollte nur ausgef?hrt werden, wenn sich die Parzelle ge?ndert hat und
+    ' das Modul mod_Mitglieder_UI die Unprotect/Protect Logik enth?lt.
     If Not Intersect(Target, Me.Columns(M_COL_PARZELLE)) Is Nothing Then
         Call mod_Mitglieder_UI.Sortiere_Mitgliederliste_Nach_Parzelle
     End If
@@ -128,7 +128,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Call mod_Mitglieder_UI.AktualisiereDatenstand
 
     ' ------------------------------------------------------------
-    ' 5. Bestehende Logiken (DEAKTIVIERT - NUR FÜR STABILITÄT)
+    ' 5. Bestehende Logiken (DEAKTIVIERT - NUR F?R STABILIT?T)
     ' ------------------------------------------------------------
     ' Diese Aufrufe bleiben auskommentiert, bis die Sortierung funktioniert
     ' und die Laufzeitfehler 424/1004 dauerhaft behoben sind.
@@ -148,8 +148,10 @@ Fehlerbehandlung:
     Me.Protect PASSWORD:="", UserInterfaceOnly:=True
     Application.EnableEvents = True
 
-    MsgBox "Fehler bei Änderung der Mitgliederliste." & vbCrLf & _
+    MsgBox "Fehler bei ?nderung der Mitgliederliste." & vbCrLf & _
            "Fehler-Nr: " & Err.Number & vbCrLf & _
            "Beschreibung: " & Err.Description, vbCritical
 End Sub
+
+
 

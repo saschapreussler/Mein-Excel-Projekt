@@ -230,3 +230,5 @@ Public Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+

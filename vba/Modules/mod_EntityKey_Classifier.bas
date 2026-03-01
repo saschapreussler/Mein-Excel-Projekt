@@ -346,3 +346,5 @@ Public Function ErmittleEntityRoleVonFunktion(ByVal funktion As String) As Strin
         ErmittleEntityRoleVonFunktion = "MITGLIED MIT PACHT"
     End If
 End Function
+
+

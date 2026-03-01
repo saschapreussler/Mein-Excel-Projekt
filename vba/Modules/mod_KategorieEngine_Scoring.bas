@@ -4,14 +4,14 @@ Option Explicit
 ' =====================================================
 ' KATEGORIE-ENGINE - SCORING & FILTER
 ' Ausgelagert aus mod_KategorieEngine_Evaluator
-' Enth�lt: Keyword-Matching, Score-Boni, EntityRole-Filter
+' Enth?lt: Keyword-Matching, Score-Boni, EntityRole-Filter
 ' =====================================================
 
 
 ' =====================================================
 ' MULTI-WORD-MATCHING (v7.0)
-' Pr�ft ob ALLE W�rter des Keywords im Text vorkommen.
-' Reihenfolge ist egal. Zusammengeschriebene W�rter
+' Pr?ft ob ALLE W?rter des Keywords im Text vorkommen.
+' Reihenfolge ist egal. Zusammengeschriebene W?rter
 ' werden ebenfalls erkannt (Substring-Matching je Wort).
 ' =====================================================
 Public Function MatchKeyword(ByVal normText As String, _
@@ -41,7 +41,7 @@ End Function
 ' =====================================================
 ' ExactMatchBonus (v8.0)
 ' Gibt Bonuspunkte wenn das normalisierte Keyword als
-' zusammenh�ngender Substring im Text vorkommt.
+' zusammenh?ngender Substring im Text vorkommt.
 ' =====================================================
 Public Function ExactMatchBonus(ByVal normText As String, _
                                  ByVal normKeyword As String) As Long
@@ -54,16 +54,16 @@ End Function
 
 ' =====================================================
 ' WordCountBonus (v9.3 - ersetzt CoverageBonus)
-' Z�hlt die W�rter im normalisierten Keyword und
-' gibt pro Wort 5 Punkte Bonus. L�ngere/spezifischere
-' Keywords mit mehr W�rtern bekommen dadurch mehr Punkte.
+' Z?hlt die W?rter im normalisierten Keyword und
+' gibt pro Wort 5 Punkte Bonus. L?ngere/spezifischere
+' Keywords mit mehr W?rtern bekommen dadurch mehr Punkte.
 '
 ' Beispiel: normText = "max mustermann stvom wasser parz 9 gutschrift"
-'   Keyword "stvom wasser parz 9" -> 4 W�rter -> +20
-'   Keyword "wasser parz 9"       -> 3 W�rter -> +15
+'   Keyword "stvom wasser parz 9" -> 4 W?rter -> +20
+'   Keyword "wasser parz 9"       -> 3 W?rter -> +15
 '   Keyword "wasser"               -> 1 Wort   -> +5
 '
-' Zusammen mit dem erh�hten Prio-Bonus (10-prio)*8
+' Zusammen mit dem erh?hten Prio-Bonus (10-prio)*8
 ' ergibt sich bei Prio1 vs Prio3 eine Differenz von
 ' 16 (Prio) + 5 (WordCount) = 21 >= SCHWELLE 20
 ' =====================================================
@@ -147,7 +147,7 @@ Public Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
         If catLower Like "*kontof" & ChrW(252) & "hrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*kontofuehrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         
-        ' Mitglied bei Ausgabe = nur R�ckerstattung/Auszahlung/Guthaben
+        ' Mitglied bei Ausgabe = nur R?ckerstattung/Auszahlung/Guthaben
         If ctx("IsAusgabe") Then
             If Not (catLower Like "*r" & ChrW(252) & "ck*" Or catLower Like "*rueck*" Or _
                     catLower Like "*erstattung*" Or catLower Like "*gutschrift*" Or _
@@ -179,7 +179,7 @@ Public Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
             PasstEntityRoleZuKategorie = False: Exit Function
         End If
         
-        ' Ehemalige bei Ausgabe: Auszahlung/Guthaben/R�ckzahlung erlaubt
+        ' Ehemalige bei Ausgabe: Auszahlung/Guthaben/R?ckzahlung erlaubt
         If ctx("IsAusgabe") Then
             If Not (catLower Like "*r" & ChrW(252) & "ck*" Or catLower Like "*rueck*" Or _
                     catLower Like "*erstattung*" Or catLower Like "*gutschrift*" Or _
@@ -191,3 +191,5 @@ Public Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
     End If
     
 End Function
+
+

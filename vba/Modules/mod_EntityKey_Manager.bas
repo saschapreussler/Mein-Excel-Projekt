@@ -632,3 +632,5 @@ ErrorHandler:
     wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Debug.Print "FEHLER in AktualisiereEntityKeyBeiAustritt: " & Err.Description
 End Sub
+
+

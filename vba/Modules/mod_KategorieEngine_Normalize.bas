@@ -17,14 +17,14 @@ Public Function NormalizeText(ByVal inputText As String) As String
     txt = LCase(Trim(inputText))
     If txt = "" Then NormalizeText = "": Exit Function
 
-    ' Umlaute ersetzen (für Matching-Normalisierung)
-    txt = Replace(txt, ChrW(228), "ae")  ' ä
-    txt = Replace(txt, ChrW(246), "oe")  ' ö
-    txt = Replace(txt, ChrW(252), "ue")  ' ü
-    txt = Replace(txt, ChrW(223), "ss")  ' ß
-    txt = Replace(txt, ChrW(196), "ae")  ' Ä
-    txt = Replace(txt, ChrW(214), "oe")  ' Ö
-    txt = Replace(txt, ChrW(220), "ue")  ' Ü
+    ' Umlaute ersetzen (f?r Matching-Normalisierung)
+    txt = Replace(txt, ChrW(228), "ae")  ' ?
+    txt = Replace(txt, ChrW(246), "oe")  ' ?
+    txt = Replace(txt, ChrW(252), "ue")  ' ?
+    txt = Replace(txt, ChrW(223), "ss")  ' ?
+    txt = Replace(txt, ChrW(196), "ae")  ' ?
+    txt = Replace(txt, ChrW(214), "oe")  ' ?
+    txt = Replace(txt, ChrW(220), "ue")  ' ?
 
     ' Typische Tippfehler korrigieren
     txt = Replace(txt, "mitgliets", "mitglieds")
@@ -57,4 +57,6 @@ Public Function NormalizeText(ByVal inputText As String) As String
 
     NormalizeText = Trim(txt)
 End Function
+
+
 

@@ -218,3 +218,5 @@ Public Sub VerdichteSpalteOhneLuecken(ByRef ws As Worksheet, ByVal checkCol As L
     End If
     
 End Sub
+
+

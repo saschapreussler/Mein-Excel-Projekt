@@ -4,8 +4,8 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_BetragsZuordnung
 ' VERSION: 2.0 - 08.02.2026
-' FIX: GELB (Sammelzahlung) wird übersprungen - keine
-'      Betragszuordnung und kein Überschreiben auf ROT!
+' FIX: GELB (Sammelzahlung) wird ?bersprungen - keine
+'      Betragszuordnung und kein ?berschreiben auf ROT!
 '      Bessere Bemerkungen bei fehlender Zielspalte.
 ' ***************************************************************
 
@@ -24,10 +24,10 @@ Public Sub ApplyBetragsZuordnung(ByVal wsBK As Worksheet, _
     If wsBK.Cells(rowBK, BK_COL_KATEGORIE).Interior.color = RGB(255, 199, 206) Then Exit Sub
     
     ' GELB = Sammelzahlung/Mehrdeutigkeit ? NICHT anfassen!
-    ' Der Nutzer muss die Beträge manuell aufteilen.
+    ' Der Nutzer muss die Betr?ge manuell aufteilen.
     If wsBK.Cells(rowBK, BK_COL_KATEGORIE).Interior.color = RGB(255, 235, 156) Then Exit Sub
 
-    ' Zielüberschrift aus Kategorietabelle
+    ' Ziel?berschrift aus Kategorietabelle
     Dim targetHeader As String
     targetHeader = GetTargetHeaderByCategory(category)
 
@@ -42,7 +42,7 @@ Public Sub ApplyBetragsZuordnung(ByVal wsBK As Worksheet, _
         Exit Sub
     End If
 
-    ' Zielspalte abhängig vom Vorzeichen suchen
+    ' Zielspalte abh?ngig vom Vorzeichen suchen
     Dim targetCol As Long
     If betrag >= 0 Then
         targetCol = FindBankkontoColumnByHeader(wsBK, targetHeader, 13, 19)
@@ -87,7 +87,7 @@ Private Function GetTargetHeaderByCategory(ByVal category As String) As String
 End Function
 
 ' ---------------------------------------------------------------
-' Zielspalte anhand Überschrift UND Bereich finden
+' Zielspalte anhand ?berschrift UND Bereich finden
 ' ---------------------------------------------------------------
 Private Function FindBankkontoColumnByHeader(ByVal wsBK As Worksheet, _
                                              ByVal headerText As String, _
@@ -103,4 +103,6 @@ Private Function FindBankkontoColumnByHeader(ByVal wsBK As Worksheet, _
 
     FindBankkontoColumnByHeader = 0
 End Function
+
+
 

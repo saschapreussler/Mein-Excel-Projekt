@@ -13,16 +13,16 @@ Option Explicit
 ' EVENTS
 ' ==========================================================
 
-' Wird bei jedem Wechsel auf das Blatt ausgeführt
+' Wird bei jedem Wechsel auf das Blatt ausgef?hrt
 Private Sub Worksheet_Activate()
     ' Zwangsberechnung beim Aktivieren des Blattes
     Call UpdateWasserblatt
 End Sub
 
-' Wird bei jeder Änderung einer Zelle auf dem Blatt ausgeführt
+' Wird bei jeder ?nderung einer Zelle auf dem Blatt ausgef?hrt
 Private Sub Worksheet_Change(ByVal Target As Range)
-    ' Relevant: Stand Anfang (B) und Stand Ende (C) für Parzellen (Z. 10-23) und Hauptzähler (Z. 29)
-    ' Wir prüfen den gesamten relevanten Bereich für Wasser: B10:C29
+    ' Relevant: Stand Anfang (B) und Stand Ende (C) f?r Parzellen (Z. 10-23) und Hauptz?hler (Z. 29)
+    ' Wir pr?fen den gesamten relevanten Bereich f?r Wasser: B10:C29
     If Not Intersect(Target, Me.Range("B10:C29")) Is Nothing Then
         Application.EnableEvents = False
         Call UpdateWasserblatt
@@ -31,7 +31,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 End Sub
 
 ' ==========================================================
-' ZÄHLERWECHSEL STARTEN (KORRIGIERT: Direkter Aufruf der UserForm)
+' Z?HLERWECHSEL STARTEN (KORRIGIERT: Direkter Aufruf der UserForm)
 ' ==========================================================
 Private Sub btn_neuerZaehler_Wasser_Click()
     On Error GoTo ErrHandler
@@ -46,7 +46,7 @@ Private Sub btn_neuerZaehler_Wasser_Click()
     Exit Sub
     
 ErrHandler:
-    MsgBox "Fehler beim Öffnen des Zählerwechsel-Formulars: " & Err.Description & vbLf & _
+    MsgBox "Fehler beim ?ffnen des Z?hlerwechsel-Formulars: " & Err.Description & vbLf & _
            "Stellen Sie sicher, dass das UserForm den Code-Namen 'frm_Zaehlerwechsel' hat.", vbExclamation
 End Sub
 
@@ -58,7 +58,7 @@ Public Sub UpdateWasserblatt()
     
     Application.ScreenUpdating = False
     
-    ' Führt Berechnung und Formatierung durch (in mod_Zaehler_Berechnung)
+    ' F?hrt Berechnung und Formatierung durch (in mod_Zaehler_Berechnung)
     Call mod_Zaehler_Berechnung.CalculateAllZaehlerVerbrauch(Me)
     
     Application.ScreenUpdating = True
@@ -75,6 +75,8 @@ End Sub
 Public Sub KorrigiereHistorieFarben()
     Call mod_Zaehler_Historie.FarbeHistorieEintraege
 End Sub
+
+
 
 
 

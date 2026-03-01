@@ -4,8 +4,8 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_KategorieZiel
 ' ZWECK:
-'   Dynamisches DropDown für Zielspalte (Daten!Spalte N)
-'   abhängig von Einnahme / Ausgabe (Spalte K)
+'   Dynamisches DropDown f?r Zielspalte (Daten!Spalte N)
+'   abh?ngig von Einnahme / Ausgabe (Spalte K)
 ' ===============================================================
 
 Private Const RULE_START_ROW As Long = 4
@@ -15,7 +15,7 @@ Private Const COL_EIN_AUS As Long = 11    ' Spalte K
 Private Const COL_ZIELSPALTE As Long = 14 ' Spalte N
 
 ' ---------------------------------------------------------------
-' Initialisierung für kompletten Bereich (manuell aufrufbar)
+' Initialisierung f?r kompletten Bereich (manuell aufrufbar)
 ' ---------------------------------------------------------------
 Public Sub Init_ZielspaltenDropdowns()
 
@@ -40,7 +40,7 @@ Public Sub ApplyZielspaltenDropdown(ByVal ws As Worksheet, ByVal rowNr As Long)
     Dim targetCell As Range
     Set targetCell = ws.Cells(rowNr, COL_ZIELSPALTE)
 
-    ' Immer zuerst löschen
+    ' Immer zuerst l?schen
     targetCell.Validation.Delete
 
     If ea = "" Then Exit Sub
@@ -60,7 +60,7 @@ Public Sub ApplyZielspaltenDropdown(ByVal ws As Worksheet, ByVal rowNr As Long)
 End Sub
 
 ' ---------------------------------------------------------------
-' Ermittelt passende Überschriftenliste
+' Ermittelt passende ?berschriftenliste
 ' ---------------------------------------------------------------
 Private Function GetZielspaltenListe(ByVal einAus As String) As String
 
@@ -85,6 +85,8 @@ Private Function GetZielspaltenListe(ByVal einAus As String) As String
     End Select
 
 End Function
+
+
 
 
 

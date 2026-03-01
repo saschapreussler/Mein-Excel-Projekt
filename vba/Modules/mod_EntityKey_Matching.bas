@@ -246,3 +246,5 @@ Public Function HoleAlleParzellen(ByVal memberID As String, _
     
     HoleAlleParzellen = result
 End Function
+
+

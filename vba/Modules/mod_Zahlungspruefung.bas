@@ -16,9 +16,9 @@ Option Explicit
 '   - mod_ZP_Sammelzuordnung: Sammelueberweisungen, manuelle
 '     Monatszuordnung
 ' FIX v3.1: PruefeZahlungen nutzt jetzt Spalte I (Monat/Periode)
-'           statt Month(Buchungsdatum) fÃ¼r Monats-Zuordnung
-' NEU v3.2: Frist-/ToleranzprÃ¼fung mit Vorlauf/Nachlauf aus
-'           Einstellungen (Spalte G/H). SÃ¤umnishinweis in Bemerkung.
+'           statt Month(Buchungsdatum) für Monats-Zuordnung
+' NEU v3.2: Frist-/Toleranzprüfung mit Vorlauf/Nachlauf aus
+'           Einstellungen (Spalte G/H). Säumnishinweis in Bemerkung.
 ' ***************************************************************
 
 ' ===============================================================
@@ -32,7 +32,7 @@ Private Type EinstellungsRegelZP
     StichtagFix As String          ' z.B. "15.03"
     VorlaufTage As Long
     NachlaufTage As Long
-    SaeumnisGebuehr As Double
+    saeumnisGebuehr As Double
 End Type
 
 Private m_EinstellungenCacheZP() As EinstellungsRegelZP
@@ -68,9 +68,9 @@ Private Const AMPEL_ROT As Long = 9871103
 '
 ' v3.2: Frist-/Toleranzpruefung:
 '   - Vorlauf (Spalte G) und Nachlauf (Spalte H) aus Einstellungen
-'   - FÃ¤lligkeitsdatum wird berechnet (BerechneSollDatumZP)
-'   - Zahlung innerhalb [FÃ¤lligkeit - Vorlauf, FÃ¤lligkeit + Nachlauf] = pÃ¼nktlich
-'   - Zahlung eingegangen aber NACH FÃ¤lligkeit + Nachlauf = GELB + SÃ¤umnis
+'   - Fälligkeitsdatum wird berechnet (BerechneSollDatumZP)
+'   - Zahlung innerhalb [Fälligkeit - Vorlauf, Fälligkeit + Nachlauf] = pünktlich
+'   - Zahlung eingegangen aber NACH Fälligkeit + Nachlauf = GELB + Säumnis
 '   - Keine Zahlung = ROT
 ' ===============================================================
 Public Function PruefeZahlungen(ByVal entityKey As String, _
@@ -278,7 +278,7 @@ End Function
 
 
 ' ===============================================================
-' Holt Vorlauf/Nachlauf/SÃ¤umnis-GebÃ¼hr aus dem Einstellungen-Cache
+' Holt Vorlauf/Nachlauf/Säumnis-Gebühr aus dem Einstellungen-Cache
 ' fuer eine bestimmte Kategorie
 ' ===============================================================
 Private Sub HoleToleranzZP(ByVal kategorie As String, _
@@ -298,7 +298,7 @@ Private Sub HoleToleranzZP(ByVal kategorie As String, _
         If StrComp(m_EinstellungenCacheZP(i).kategorie, kategorie, vbTextCompare) = 0 Then
             vorlauf = m_EinstellungenCacheZP(i).VorlaufTage
             nachlauf = m_EinstellungenCacheZP(i).NachlaufTage
-            saeumnisGebuehr = m_EinstellungenCacheZP(i).SaeumnisGebuehr
+            saeumnisGebuehr = m_EinstellungenCacheZP(i).saeumnisGebuehr
             Exit Sub
         End If
     Next i
@@ -522,9 +522,9 @@ Public Sub LadeEinstellungenCacheZP()
             End If
             
             If IsNumeric(wsEinst.Cells(r, ES_COL_SAEUMNIS).value) Then
-                .SaeumnisGebuehr = CDbl(wsEinst.Cells(r, ES_COL_SAEUMNIS).value)
+                .saeumnisGebuehr = CDbl(wsEinst.Cells(r, ES_COL_SAEUMNIS).value)
             Else
-                .SaeumnisGebuehr = 0
+                .saeumnisGebuehr = 0
             End If
         End With
         
@@ -724,8 +724,8 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
                         ws.Cells(r, BK_COL_BEMERKUNG).value = bestehendeBemerkung & vbLf & gelbHinweis
                     End If
                     
-                    ' Hell-gelber Hintergrund fuer die Bemerkung
-                    ws.Cells(r, BK_COL_BEMERKUNG).Interior.color = RGB(255, 255, 153)
+                    ' Hell-gelber Hintergrund fuer die Bemerkung (gleiche Farbe wie Spalte I)
+                    ws.Cells(r, BK_COL_BEMERKUNG).Interior.color = RGB(255, 235, 156)
                 Else
                     ws.Cells(r, BK_COL_MONAT_PERIODE).value = ergebnis
                     ' Ampelfarbe Gruen = Monat eindeutig bestimmt
@@ -805,4 +805,6 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
     
     HoleFaelligkeitFuerKategorie = "monatlich"
 End Function
+
+
 

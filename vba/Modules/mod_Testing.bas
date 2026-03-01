@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Testing
-' ZWECK: Umfangreiche Test-Prozedur für Mitgliederliste
+' ZWECK: Umfangreiche Test-Prozedur f?r Mitgliederliste
 ' ***************************************************************
 
 Public Sub TesteMitgliederliste_Komplett()
@@ -11,23 +11,23 @@ Public Sub TesteMitgliederliste_Komplett()
     Debug.Print "=== MITGLIEDERLISTE TEST-PROTOKOLL ==="
     Debug.Print ""
     
-    ' TEST 1: Blattstruktur prüfen
+    ' TEST 1: Blattstruktur pr?fen
     Call Test_1_BlattStruktur
     Debug.Print ""
     
-    ' TEST 2: DropDown-Listen prüfen
+    ' TEST 2: DropDown-Listen pr?fen
     Call Test_2_DropdownListen
     Debug.Print ""
     
-    ' TEST 3: Zebra-Formatierung prüfen
+    ' TEST 3: Zebra-Formatierung pr?fen
     Call Test_3_ZebraFormatierung
     Debug.Print ""
     
-    ' TEST 4: Verein-Parzelle prüfen
+    ' TEST 4: Verein-Parzelle pr?fen
     Call Test_4_VereinsParzelleIntakt
     Debug.Print ""
     
-    ' TEST 5: Blattschutz prüfen
+    ' TEST 5: Blattschutz pr?fen
     Call Test_5_BlattSchutz
     Debug.Print ""
     
@@ -56,7 +56,7 @@ Public Sub TesteMitgliederliste_Komplett()
 End Sub
 
 ' ***************************************************************
-' TEST 1: Blattstruktur prüfen
+' TEST 1: Blattstruktur pr?fen
 ' ***************************************************************
 Private Sub Test_1_BlattStruktur()
     
@@ -72,7 +72,7 @@ Private Sub Test_1_BlattStruktur()
         Exit Sub
     End If
     
-    ' Prüfe Header
+    ' Pr?fe Header
     If wsM.Cells(M_HEADER_ROW, M_COL_MEMBER_ID).value = "Member ID" Then
         Debug.Print "? Spalte A (Member ID) Header OK"
     Else
@@ -91,7 +91,7 @@ Private Sub Test_1_BlattStruktur()
         Debug.Print "? Spalte O Header falsch oder leer"
     End If
     
-    ' Prüfe Startzeile
+    ' Pr?fe Startzeile
     Dim lastRow As Long
     lastRow = wsM.Cells(wsM.Rows.count, M_COL_NACHNAME).End(xlUp).Row
     
@@ -103,7 +103,7 @@ Private Sub Test_1_BlattStruktur()
 End Sub
 
 ' ***************************************************************
-' TEST 2: DropDown-Listen prüfen
+' TEST 2: DropDown-Listen pr?fen
 ' ***************************************************************
 Private Sub Test_2_DropdownListen()
     
@@ -114,28 +114,28 @@ Private Sub Test_2_DropdownListen()
     Dim wsM As Worksheet
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     
-    ' Prüfe Spalte B (Parzelle)
+    ' Pr?fe Spalte B (Parzelle)
     If wsM.Range("B6").Validation.Type = xlValidateList Then
         Debug.Print "? Spalte B (Parzelle) hat Validierung"
     Else
         Debug.Print "? Spalte B (Parzelle) hat KEINE Validierung"
     End If
     
-    ' Prüfe Spalte C (Seite)
+    ' Pr?fe Spalte C (Seite)
     If wsM.Range("C6").Validation.Type = xlValidateList Then
         Debug.Print "? Spalte C (Seite) hat Validierung"
     Else
         Debug.Print "? Spalte C (Seite) hat KEINE Validierung"
     End If
     
-    ' Prüfe Spalte D (Anrede)
+    ' Pr?fe Spalte D (Anrede)
     If wsM.Range("D6").Validation.Type = xlValidateList Then
         Debug.Print "? Spalte D (Anrede) hat Validierung"
     Else
         Debug.Print "? Spalte D (Anrede) hat KEINE Validierung"
     End If
     
-    ' Prüfe Spalte O (Funktion)
+    ' Pr?fe Spalte O (Funktion)
     If wsM.Range("O6").Validation.Type = xlValidateList Then
         Debug.Print "? Spalte O (Funktion) hat Validierung"
     Else
@@ -147,7 +147,7 @@ Private Sub Test_2_DropdownListen()
 End Sub
 
 ' ***************************************************************
-' TEST 3: Zebra-Formatierung prüfen
+' TEST 3: Zebra-Formatierung pr?fen
 ' ***************************************************************
 Private Sub Test_3_ZebraFormatierung()
     
@@ -161,7 +161,7 @@ Private Sub Test_3_ZebraFormatierung()
     Dim lastRow As Long
     lastRow = wsM.Cells(wsM.Rows.count, M_COL_NACHNAME).End(xlUp).Row
     
-    ' Prüfe auf bedingte Formatierung
+    ' Pr?fe auf bedingte Formatierung
     Dim hasZebra As Boolean
     hasZebra = False
     
@@ -175,7 +175,7 @@ Private Sub Test_3_ZebraFormatierung()
         Debug.Print "? Keine bedingte Formatierung vorhanden"
     End If
     
-    ' Prüfe auf Farben in Zeilen
+    ' Pr?fe auf Farben in Zeilen
     Dim row6Color As Long
     Dim row7Color As Long
     
@@ -193,7 +193,7 @@ Private Sub Test_3_ZebraFormatierung()
 End Sub
 
 ' ***************************************************************
-' TEST 4: Verein-Parzelle intakt prüfen (nicht überschrieben)
+' TEST 4: Verein-Parzelle intakt pr?fen (nicht ?berschrieben)
 ' ***************************************************************
 Private Sub Test_4_VereinsParzelleIntakt()
     
@@ -217,14 +217,14 @@ Private Sub Test_4_VereinsParzelleIntakt()
             vereinFound = True
             vereinRow = lRow
             
-            ' Prüfe dass Parzelle nicht überschrieben wurde
+            ' Pr?fe dass Parzelle nicht ?berschrieben wurde
             Dim vereinName As String
             vereinName = Trim(wsM.Cells(lRow, M_COL_NACHNAME).value)
             
             If vereinName <> "" Then
                 Debug.Print "? Verein-Parzelle existiert mit Daten (Zeile " & lRow & ")"
                 Debug.Print "  Name: " & vereinName
-                Debug.Print "? Verein-Parzelle ist NICHT überschrieben"
+                Debug.Print "? Verein-Parzelle ist NICHT ?berschrieben"
             Else
                 Debug.Print "? Verein-Parzelle existiert aber ist leer (Zeile " & lRow & ")"
             End If
@@ -240,7 +240,7 @@ Private Sub Test_4_VereinsParzelleIntakt()
     
 End Sub
 ' ***************************************************************
-' TEST 5: Blattschutz prüfen
+' TEST 5: Blattschutz pr?fen
 ' ***************************************************************
 Private Sub Test_5_BlattSchutz()
     
@@ -252,9 +252,9 @@ Private Sub Test_5_BlattSchutz()
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     
     If wsM.ProtectContents Then
-        Debug.Print "? Blatt ist geschützt"
+        Debug.Print "? Blatt ist gesch?tzt"
         
-        ' Prüfe Schutzoptionen
+        ' Pr?fe Schutzoptionen
         Dim protection As protection
         Set protection = wsM.protection
         
@@ -266,7 +266,7 @@ Private Sub Test_5_BlattSchutz()
             End If
         End If
     Else
-        Debug.Print "? Blatt ist NICHT geschützt"
+        Debug.Print "? Blatt ist NICHT gesch?tzt"
     End If
     
     On Error GoTo 0
@@ -281,10 +281,10 @@ Private Sub Test_6_NeuesMitgliedAnlegen()
     Debug.Print "TEST 6: NEUES MITGLIED ANLEGEN (VALIDIERUNG)"
     Debug.Print "? MANUELLER TEST ERFORDERLICH:"
     Debug.Print "1. Klicke 'Neues Mitglied' in frm_Mitgliederverwaltung"
-    Debug.Print "2. Wähle Funktion 'Mitglied mit Pacht'"
+    Debug.Print "2. W?hle Funktion 'Mitglied mit Pacht'"
     Debug.Print "3. Gib Name + Parzelle ein"
     Debug.Print "4. Label sollten 'Pachtbeginn' anzeigen"
-    Debug.Print "5. Pachtbeginn mit aktuellem Datum vorbefüllt?"
+    Debug.Print "5. Pachtbeginn mit aktuellem Datum vorbef?llt?"
     Debug.Print "6. Klick 'Anlegen'"
     Debug.Print ""
     Debug.Print "NACH TEST: Berichte ob Fehler auftraten"
@@ -300,10 +300,10 @@ Private Sub Test_7_MitgliedBearbeiten()
     Debug.Print "? MANUELLER TEST ERFORDERLICH:"
     Debug.Print "1. Doppelklick auf Mitglied in der Liste"
     Debug.Print "2. Klick 'Bearbeiten'"
-    Debug.Print "3. Ändere einen Eintrag (z.B. Telefon)"
-    Debug.Print "4. Klick 'Übernehmen'"
+    Debug.Print "3. ?ndere einen Eintrag (z.B. Telefon)"
+    Debug.Print "4. Klick '?bernehmen'"
     Debug.Print ""
-    Debug.Print "NACH TEST: Berichte ob Änderung gespeichert wurde"
+    Debug.Print "NACH TEST: Berichte ob ?nderung gespeichert wurde"
     
 End Sub
 
@@ -314,10 +314,10 @@ Private Sub Test_8_MitgliedAustritt()
     
     Debug.Print "TEST 8: MITGLIED AUSTRITT (VALIDIERUNG)"
     Debug.Print "? MANUELLER TEST ERFORDERLICH:"
-    Debug.Print "1. Öffne bestehendes Mitglied"
+    Debug.Print "1. ?ffne bestehendes Mitglied"
     Debug.Print "2. Klick 'Entfernen'"
-    Debug.Print "3. Wähle 'Austritt'"
-    Debug.Print "4. Bestätige Austrittsdatum"
+    Debug.Print "3. W?hle 'Austritt'"
+    Debug.Print "4. Best?tige Austrittsdatum"
     Debug.Print ""
     Debug.Print "NACH TEST:"
     Debug.Print "- Ist Mitglied aus Mitgliederliste verschwunden?"
@@ -347,13 +347,13 @@ Private Sub Test_9_MitgliederhistorieIntakt()
     lastRow = wsH.Cells(wsH.Rows.count, H_COL_NACHNAME).End(xlUp).Row
     
     If lastRow >= H_START_ROW Then
-        Debug.Print "? Mitgliederhistorie hat " & (lastRow - H_START_ROW + 1) & " Einträge"
-        Debug.Print "? Blatt existiert und ist befüllt"
+        Debug.Print "? Mitgliederhistorie hat " & (lastRow - H_START_ROW + 1) & " Eintr?ge"
+        Debug.Print "? Blatt existiert und ist bef?llt"
     Else
         Debug.Print "? Mitgliederhistorie ist leer"
     End If
     
-    ' Prüfe Zebra-Formatierung
+    ' Pr?fe Zebra-Formatierung
     If wsH.Range("A" & H_START_ROW).FormatConditions.count > 0 Then
         Debug.Print "? Zebra-Formatierung vorhanden"
     Else
@@ -370,7 +370,7 @@ End Sub
 Private Sub Test_10_ValidierungsLogik()
     
     Debug.Print "TEST 10: VALIDIERUNGSLOGIK (MANUELL)"
-    Debug.Print "? FOLGENDE SZENARIEN PRÜFEN:"
+    Debug.Print "? FOLGENDE SZENARIEN PR?FEN:"
     Debug.Print ""
     Debug.Print "1. MITGLIED OHNE PACHT, KEINE PARZELLE:"
     Debug.Print "   ? Sollte erlaubt sein"
@@ -398,7 +398,7 @@ Public Sub TestClearFormats()
     Debug.Print "Vor ClearFormats..."
     ws.Range("A6:Q27").ClearFormats
     ws.Range("A6:Q27").Interior.ColorIndex = xlNone
-    Debug.Print "Nach ClearFormats - schau in Excel ob A6 weiß ist"
+    Debug.Print "Nach ClearFormats - schau in Excel ob A6 wei? ist"
     
 End Sub
 
@@ -411,16 +411,16 @@ Public Sub TestZebraDebug()
     
     Debug.Print "=== ZEBRA DEBUG TEST ==="
     
-    ' Zeile 7 gelb färben
+    ' Zeile 7 gelb f?rben
     ws.Range("A7:Q7").Interior.color = &HFFFF
-    Debug.Print "Zeile 7 gefärbt mit &H00FFFF (Gelb)"
+    Debug.Print "Zeile 7 gef?rbt mit &H00FFFF (Gelb)"
     
     ' Farbe auslesen
     Dim color As Long
     color = ws.Range("A7").Interior.color
     Debug.Print "Farbe in A7: " & Hex(color)
     
-    ' Alle Zeilen durchgehen und Farben prüfen
+    ' Alle Zeilen durchgehen und Farben pr?fen
     Debug.Print ""
     Debug.Print "Alle Zeilen nach Formatiere_Alle_Tabellen_Neu:"
     For lRow = 6 To 15
@@ -447,7 +447,7 @@ Public Sub DebugZebraFormatierung()
     Debug.Print "   ProtectContents: " & ws.ProtectContents
     Debug.Print ""
     
-    ' 2. Bedingte Formatierungen prüfen
+    ' 2. Bedingte Formatierungen pr?fen
     Debug.Print "2. BEDINGTE FORMATIERUNGEN im Bereich A6:Q27:"
     Dim rngCheck As Range
     Set rngCheck = ws.Range("A6:Q27")
@@ -468,8 +468,8 @@ Public Sub DebugZebraFormatierung()
     End If
     Debug.Print ""
     
-    ' 3. Zellfärbungen prüfen (direkte Farben)
-    Debug.Print "3. DIREKTE ZELLFÄRBUNGEN (A6:Q15):"
+    ' 3. Zellf?rbungen pr?fen (direkte Farben)
+    Debug.Print "3. DIREKTE ZELLF?RBUNGEN (A6:Q15):"
     For lRow = 6 To 15
         Dim cellColor As Long
         cellColor = ws.Range("A" & lRow).Interior.color
@@ -477,15 +477,15 @@ Public Sub DebugZebraFormatierung()
     Next lRow
     Debug.Print ""
     
-    ' 4. Test: Manuelle bedingte Formatierung hinzufügen
-    Debug.Print "4. TEST: Füge manuelle BF hinzu..."
+    ' 4. Test: Manuelle bedingte Formatierung hinzuf?gen
+    Debug.Print "4. TEST: F?ge manuelle BF hinzu..."
     On Error Resume Next
     ws.Range("B6:B8").FormatConditions.Delete
     On Error GoTo 0
     
     ws.Range("B6:B8").FormatConditions.Add Type:=xlExpression, Formula1:="=MOD(ZEILE();2)=0"
     ws.Range("B6:B8").FormatConditions(1).Interior.color = &HFF0000  ' ROT
-    Debug.Print "   ? ROT FormatCondition hinzugefügt (Zeilen 6-8, Spalte B)"
+    Debug.Print "   ? ROT FormatCondition hinzugef?gt (Zeilen 6-8, Spalte B)"
     Debug.Print "   Schau in Excel - sollten Zeilen 6 und 8 rot sein"
     Debug.Print ""
     
@@ -494,8 +494,9 @@ Public Sub DebugZebraFormatierung()
     Dim testFormula As String
     testFormula = "=UND(NICHT(ISTLEER($E$6)); MOD(ZEILE()-6;2)=1)"
     Debug.Print "   Test-Formel: " & testFormula
-    Debug.Print "   Für Zeile 6: MOD(6-6;2)=1 -> MOD(0;2)=1 -> FALSE"
-    Debug.Print "   Für Zeile 7: MOD(7-6;2)=1 -> MOD(1;2)=1 -> TRUE ? (sollte gefärbt sein)"
-    Debug.Print "   Für Zeile 8: MOD(8-6;2)=1 -> MOD(2;2)=1 -> FALSE"
+    Debug.Print "   F?r Zeile 6: MOD(6-6;2)=1 -> MOD(0;2)=1 -> FALSE"
+    Debug.Print "   F?r Zeile 7: MOD(7-6;2)=1 -> MOD(1;2)=1 -> TRUE ? (sollte gef?rbt sein)"
+    Debug.Print "   F?r Zeile 8: MOD(8-6;2)=1 -> MOD(2;2)=1 -> FALSE"
     
 End Sub
+

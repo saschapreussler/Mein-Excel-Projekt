@@ -18,7 +18,7 @@ Private Sub Workbook_Open()
     Call mod_Hilfsfunktionen.BereinigeTempWorksheets
     On Error GoTo 0
     
-    ' Stelle sicher dass alle Blätter vertikal zentriert sind
+    ' Stelle sicher dass alle Bl?tter vertikal zentriert sind
     Call mod_Formatierung.ZentriereAlleZellenVertikal
     
     ' NEU v5.3: Hilfsspalten auf Daten-Blatt ausblenden
@@ -32,4 +32,5 @@ Private Sub Workbook_NewSheet(ByVal Sh As Object)
     Call mod_Formatierung.FormatiereNeuesBlatt(Sh)
     On Error GoTo 0
 End Sub
+
 

@@ -4,13 +4,13 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Einstellungen_Debug
 ' Ausgelagert aus mod_Einstellungen
-' EnthÃ¤lt: Diagnose-Prozeduren fÃ¼r DropDown-Logik
-' Aufruf: Im VBA-Editor Ã¼ber F5 oder Direktfenster
+' Enthält: Diagnose-Prozeduren für DropDown-Logik
+' Aufruf: Im VBA-Editor über F5 oder Direktfenster
 ' ===============================================================
 
 
 ' ===============================================================
-' DEBUG: DropDown-Logik Schritt fÃ¼r Schritt prÃ¼fen
+' DEBUG: DropDown-Logik Schritt für Schritt prüfen
 ' Aufruf: Call DebugDropDownLogik
 ' ===============================================================
 Public Sub DebugDropDownLogik()
@@ -113,7 +113,7 @@ Public Sub DebugDropDownLogik()
         End If
     Next k
     
-    msg = msg & vbLf & "--- VERFÃœGBARE Kategorien (fÃ¼r leere Zeilen) ---" & vbLf
+    msg = msg & vbLf & "--- VERFÜGBARE Kategorien (für leere Zeilen) ---" & vbLf
     msg = msg & "Anzahl: " & verfuegbar.count & vbLf
     
     Dim basisListe As String
@@ -129,7 +129,7 @@ Public Sub DebugDropDownLogik()
         msg = msg & "  (keine - alle Kategorien sind bereits verwendet)" & vbLf
     End If
     
-    msg = msg & vbLf & "basisListe LÃ¤nge: " & Len(basisListe) & " Zeichen"
+    msg = msg & vbLf & "basisListe Länge: " & Len(basisListe) & " Zeichen"
     If Len(basisListe) > 255 Then
         msg = msg & " >>> ACHTUNG: >255 Zeichen! Fallback auf Daten!BA!" & vbLf
     Else
@@ -145,7 +145,7 @@ Public Sub DebugDropDownLogik()
         Err.Clear
     Else
         msg = msg & "  Formula1 = """ & valFormula & """" & vbLf
-        msg = msg & "  LÃ¤nge = " & Len(valFormula) & vbLf
+        msg = msg & "  Länge = " & Len(valFormula) & vbLf
     End If
     On Error GoTo 0
     
@@ -153,7 +153,7 @@ Public Sub DebugDropDownLogik()
     nextRow = lastRow + 1
     If nextRow < ES_START_ROW Then nextRow = ES_START_ROW
     
-    msg = msg & vbLf & "--- NÃ„CHSTE FREIE ZEILE: " & nextRow & " ---" & vbLf
+    msg = msg & vbLf & "--- NÄCHSTE FREIE ZEILE: " & nextRow & " ---" & vbLf
     On Error Resume Next
     valFormula = ws.Cells(nextRow, ES_COL_KATEGORIE).Validation.Formula1
     If Err.Number <> 0 Then
@@ -161,7 +161,7 @@ Public Sub DebugDropDownLogik()
         Err.Clear
     Else
         msg = msg & "  Formula1 = """ & valFormula & """" & vbLf
-        msg = msg & "  LÃ¤nge = " & Len(valFormula) & vbLf
+        msg = msg & "  Länge = " & Len(valFormula) & vbLf
     End If
     On Error GoTo 0
     
@@ -183,7 +183,7 @@ End Sub
 
 
 ' ===============================================================
-' DEBUG: Validation einer bestimmten Zeile prÃ¼fen
+' DEBUG: Validation einer bestimmten Zeile prüfen
 ' Aufruf: Call DebugValidationZeile(4)
 ' ===============================================================
 Public Sub DebugValidationZeile(ByVal zeile As Long)
@@ -216,7 +216,7 @@ End Sub
 
 
 ' ===============================================================
-' DEBUG: SetzeDropDowns isoliert aufrufen und Ergebnis prÃ¼fen
+' DEBUG: SetzeDropDowns isoliert aufrufen und Ergebnis prüfen
 ' Aufruf: Call DebugSetzeDropDownsUndPruefe
 ' ===============================================================
 Public Sub DebugSetzeDropDownsUndPruefe()
@@ -287,3 +287,5 @@ Public Sub DebugSetzeDropDownsUndPruefe()
     MsgBox msg, vbInformation, "Debug SetzeDropDowns Ergebnis"
     
 End Sub
+
+

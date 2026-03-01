@@ -4,8 +4,8 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Einstellungen_DropDowns
 ' Ausgelagert aus mod_Einstellungen
-' EnthÃ¤lt: SetzeDropDowns, HoleAlleKategorien
-' FIX v2.1: Hilfsspalte fÃ¼r Fallback-DropDown = Daten!BA
+' Enthält: SetzeDropDowns, HoleAlleKategorien
+' FIX v2.1: Hilfsspalte für Fallback-DropDown = Daten!BA
 ' ===============================================================
 
 
@@ -51,7 +51,7 @@ Public Sub SetzeDropDowns(ByVal ws As Worksheet)
         End If
     Next r
     
-    ' 3. VerfÃ¼gbare Kategorien = Alle aus Daten!J MINUS bereits in Einstellungen!B verwendete
+    ' 3. Verfügbare Kategorien = Alle aus Daten!J MINUS bereits in Einstellungen!B verwendete
     Dim verfuegbar As Object
     Set verfuegbar = CreateObject("Scripting.Dictionary")
     verfuegbar.CompareMode = vbTextCompare
@@ -63,7 +63,7 @@ Public Sub SetzeDropDowns(ByVal ws As Worksheet)
         End If
     Next k
     
-    ' 4. Basisliste als String (fÃ¼r leere Zeilen / nÃ¤chste freie Zeile)
+    ' 4. Basisliste als String (für leere Zeilen / nächste freie Zeile)
     Dim basisListe As String
     basisListe = ""
     If verfuegbar.count > 0 Then
@@ -311,3 +311,5 @@ Private Function LetzteZeile(ByVal ws As Worksheet) As Long
     If lr < ES_START_ROW Then lr = ES_START_ROW - 1
     LetzteZeile = lr
 End Function
+
+

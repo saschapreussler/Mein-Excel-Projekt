@@ -154,3 +154,5 @@ Public Function BerechneAmpelStatus(ByVal entityKey As String, _
     ' Default: Gelb
     BerechneAmpelStatus = 2
 End Function
+
+
