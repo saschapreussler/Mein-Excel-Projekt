@@ -217,8 +217,8 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' =============================================
     
     ' 1. Ermittle welche Monate Bankkonto-Buchungen haben
-    Dim importierteMonate(1 To 12) As Boolean
-    Call ErmittleImportierteMonate(importierteMonate, jahr)
+    Dim importierteMonate() As Boolean
+    importierteMonate = ErmittleImportierteMonate(jahr)
     
     ' Debug: Importierte Monate anzeigen
     Dim dbgMonate As String
@@ -302,8 +302,8 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                         sollDatumUeb = mod_Zahlungspruefung.BerechneSollDatumZP(kategorie, monat, jahr)
                         Call mod_Zahlungspruefung.HoleToleranzZP(kategorie, vorlaufUeb, nachlaufUeb, saeumnisUeb)
                         
-                        ' Frist abgelaufen = Heute > SollDatum + Nachlauf
-                        If Date >= sollDatumUeb Then
+                        ' Frist abgelaufen = Heute >= SollDatum + Nachlauf
+                        If Date >= DateAdd("d", nachlaufUeb, sollDatumUeb) Then
                             zeigeEintrag = True
                         End If
                     End If
@@ -688,20 +688,22 @@ End Function
 ' v4.0: Ermittelt welche Monate im Bankkonto CSV-Daten haben
 ' Scannt Spalte A (Datum) ab BK_START_ROW und setzt True
 ' fuer jeden Monat der mindestens eine Buchung enthaelt
+' Gibt Boolean-Array(1 To 12) zurueck
 ' ===============================================================
-Private Sub ErmittleImportierteMonate(ByRef monate() As Boolean, _
-                                       ByVal jahr As Long)
+Private Function ErmittleImportierteMonate(ByVal jahr As Long) As Boolean()
     
+    Dim result() As Boolean
+    ReDim result(1 To 12)
     Dim wsBK As Worksheet
     Dim lastRow As Long
     Dim r As Long
     Dim zellWert As Variant
     Dim buchDatum As Date
-    
-    ' Array zuruecksetzen
     Dim m As Long
+    
+    ' Array initialisieren (alles False - ReDim setzt bereits auf False)
     For m = 1 To 12
-        monate(m) = False
+        result(m) = False
     Next m
     
     On Error Resume Next
@@ -710,14 +712,18 @@ Private Sub ErmittleImportierteMonate(ByRef monate() As Boolean, _
     
     If wsBK Is Nothing Then
         Debug.Print "[" & ChrW(220) & "bersicht] WARNUNG: Blatt 'Bankkonto' nicht gefunden!"
-        Exit Sub
+        ErmittleImportierteMonate = result
+        Exit Function
     End If
     
     lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    Debug.Print "[" & ChrW(220) & "bersicht] Bankkonto lastRow=" & lastRow & _
+                " (BK_START_ROW=" & BK_START_ROW & ")"
     
     If lastRow < BK_START_ROW Then
         Debug.Print "[" & ChrW(220) & "bersicht] Keine Buchungen im Bankkonto gefunden."
-        Exit Sub
+        ErmittleImportierteMonate = result
+        Exit Function
     End If
     
     For r = BK_START_ROW To lastRow
@@ -727,12 +733,14 @@ Private Sub ErmittleImportierteMonate(ByRef monate() As Boolean, _
             buchDatum = CDate(zellWert)
             
             If Year(buchDatum) = jahr Then
-                monate(Month(buchDatum)) = True
+                result(Month(buchDatum)) = True
             End If
         End If
     Next r
     
-End Sub
+    ErmittleImportierteMonate = result
+    
+End Function
 
 
 ' ===============================================================
@@ -802,6 +810,8 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     rngTable.VerticalAlignment = xlCenter
     
 End Sub
+
+
 
 
 
