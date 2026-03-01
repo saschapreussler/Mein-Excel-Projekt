@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Zahlungspruefung (Orchestrator)
-' VERSION: 3.1 - 01.03.2026
+' VERSION: 3.2 - 01.03.2026
 ' ZWECK: Zahlungspruefung fuer Mitgliederliste + Einstellungen
 '        - Prueft Zahlungseingaenge gegen Soll-Werte
 '        - Behandelt Dezember-Vorauszahlungen
@@ -16,7 +16,9 @@ Option Explicit
 '   - mod_ZP_Sammelzuordnung: Sammelueberweisungen, manuelle
 '     Monatszuordnung
 ' FIX v3.1: PruefeZahlungen nutzt jetzt Spalte I (Monat/Periode)
-'           statt Month(Buchungsdatum) f�r Monats-Zuordnung
+'           statt Month(Buchungsdatum) für Monats-Zuordnung
+' NEU v3.2: Frist-/Toleranzprüfung mit Vorlauf/Nachlauf aus
+'           Einstellungen (Spalte G/H). Säumnishinweis in Bemerkung.
 ' ***************************************************************
 
 ' ===============================================================
@@ -60,8 +62,16 @@ Private Const AMPEL_ROT As Long = 9871103
 ' HAUPTFUNKTION: Prueft ALLE Zahlungen eines Mitglieds/einer Kategorie
 ' Wird von mod_Uebersicht_Generator aufgerufen
 '
-' Rueckgabe: "STATUS|Soll:XX.XX|Ist:XX.XX"
+' Rueckgabe: "STATUS|Soll:XX.XX|Ist:XX.XX" oder
+'            "STATUS|Soll:XX.XX|Ist:XX.XX|Bemerkungstext"
 '           Dezimaltrenner im Rueckgabewert ist IMMER Punkt (.)
+'
+' v3.2: Frist-/Toleranzpruefung:
+'   - Vorlauf (Spalte G) und Nachlauf (Spalte H) aus Einstellungen
+'   - Fälligkeitsdatum wird berechnet (BerechneSollDatumZP)
+'   - Zahlung innerhalb [Fälligkeit - Vorlauf, Fälligkeit + Nachlauf] = pünktlich
+'   - Zahlung eingegangen aber NACH Fälligkeit + Nachlauf = GELB + Säumnis
+'   - Keine Zahlung = ROT
 ' ===============================================================
 Public Function PruefeZahlungen(ByVal entityKey As String, _
                                  ByVal kategorie As String, _
@@ -81,6 +91,7 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     Dim zahlKat As String
     Dim ibanZeile As String
     Dim entityIBAN As String
+    Dim bemerkung As String
     
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
     
@@ -120,6 +131,11 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     Dim erwarteterMonat As String
     erwarteterMonat = MonthName(monat)
     
+    ' v3.2: Fruehestes Zahlungsdatum merken (fuer Fristpruefung)
+    Dim fruehestesZahlDatum As Date
+    Dim hatZahlung As Boolean
+    hatZahlung = False
+    
     For r = BK_START_ROW To lastRow
         ' Datum pruefen (muss vorhanden sein fuer Jahr-Check)
         If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo NextZahlRow
@@ -152,30 +168,96 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
         zahlBetrag = wsBK.Cells(r, BK_COL_BETRAG).value
         ist = ist + Abs(zahlBetrag)
         
+        ' v3.2: Fruehestes Zahlungsdatum merken
+        If Not hatZahlung Then
+            fruehestesZahlDatum = zahlDatum
+            hatZahlung = True
+        ElseIf zahlDatum < fruehestesZahlDatum Then
+            fruehestesZahlDatum = zahlDatum
+        End If
+        
 NextZahlRow:
     Next r
     
     ' 4. Status ermitteln (GRUEN/GELB/ROT)
+    '    v3.2: Mit Frist-/Toleranzpruefung
+    bemerkung = ""
+    
+    ' Faelligkeitsdatum und Toleranzen aus Einstellungen holen
+    Dim sollDatum As Date
+    Dim vorlauf As Long
+    Dim nachlauf As Long
+    Dim saeumnisGebuehr As Double
+    sollDatum = BerechneSollDatumZP(kategorie, monat, jahr)
+    Call HoleToleranzZP(kategorie, vorlauf, nachlauf, saeumnisGebuehr)
+    
     If soll > 0 Then
-        ' Fester Soll-Betrag vorhanden: Betrags-Vergleich
+        ' Fester Soll-Betrag vorhanden: Betrags-Vergleich + Fristpruefung
         If ist >= soll Then
-            status = "GR" & ChrW(220) & "N"
+            ' Betrag ausreichend -> Fristpruefung
+            If hatZahlung And (vorlauf > 0 Or nachlauf > 0) Then
+                Dim fristEnde As Date
+                fristEnde = sollDatum + nachlauf
+                
+                If fruehestesZahlDatum > fristEnde Then
+                    ' Zahlung NACH Frist -> GELB + Saeumnis
+                    status = "GELB"
+                    bemerkung = "Versp" & ChrW(228) & "tet (" & Format(fruehestesZahlDatum, "dd.mm.yyyy") & _
+                                ", Frist: " & Format(fristEnde, "dd.mm.yyyy") & ")"
+                    If saeumnisGebuehr > 0 Then
+                        bemerkung = bemerkung & " | S" & ChrW(228) & "umnis: " & _
+                                    Format(saeumnisGebuehr, "#,##0.00") & " " & ChrW(8364)
+                    End If
+                Else
+                    ' Zahlung fristgerecht
+                    status = "GR" & ChrW(220) & "N"
+                End If
+            Else
+                ' Keine Toleranz definiert oder keine Zahlung mit Datum
+                status = "GR" & ChrW(220) & "N"
+            End If
         ElseIf ist > 0 Then
             status = "GELB"
+            bemerkung = "Teilzahlung (Soll: " & Format(soll, "#,##0.00") & _
+                        ", Ist: " & Format(ist, "#,##0.00") & ")"
         Else
-            status = "ROT"
+            ' Keine Zahlung -> ROT, aber nur wenn Faelligkeit schon erreicht
+            If Date >= sollDatum Then
+                status = "ROT"
+                If nachlauf > 0 And Date <= sollDatum + nachlauf Then
+                    status = "GELB"
+                    bemerkung = "Noch offen (Frist bis " & Format(sollDatum + nachlauf, "dd.mm.yyyy") & ")"
+                Else
+                    If saeumnisGebuehr > 0 And Date > sollDatum + nachlauf Then
+                        bemerkung = "S" & ChrW(228) & "umnis: " & _
+                                    Format(saeumnisGebuehr, "#,##0.00") & " " & ChrW(8364)
+                    End If
+                End If
+            Else
+                ' Faelligkeit noch nicht erreicht -> GELB (ausstehend)
+                status = "GELB"
+                bemerkung = "F" & ChrW(228) & "llig am " & Format(sollDatum, "dd.mm.yyyy")
+            End If
         End If
     Else
         ' Kein fester Soll-Betrag (variabel): nur Eingangs-Pruefung
         If ist > 0 Then
             status = "GR" & ChrW(220) & "N"
         Else
-            status = "ROT"
+            If Date >= sollDatum Then
+                status = "ROT"
+            Else
+                status = "GELB"
+                bemerkung = "F" & ChrW(228) & "llig am " & Format(sollDatum, "dd.mm.yyyy")
+            End If
         End If
     End If
     
     ' 5. Ergebnis formatieren (IMMER Punkt als Dezimaltrenner!)
     PruefeZahlungen = status & "|Soll:" & FormatDezimalPunkt(soll) & "|Ist:" & FormatDezimalPunkt(ist)
+    If bemerkung <> "" Then
+        PruefeZahlungen = PruefeZahlungen & "|" & bemerkung
+    End If
     Exit Function
     
 ErrorHandler:
@@ -193,6 +275,36 @@ Private Function FormatDezimalPunkt(ByVal wert As Double) As String
     s = Replace(s, ",", ".")
     FormatDezimalPunkt = s
 End Function
+
+
+' ===============================================================
+' Holt Vorlauf/Nachlauf/Säumnis-Gebühr aus dem Einstellungen-Cache
+' fuer eine bestimmte Kategorie
+' ===============================================================
+Private Sub HoleToleranzZP(ByVal kategorie As String, _
+                            ByRef vorlauf As Long, _
+                            ByRef nachlauf As Long, _
+                            ByRef saeumnisGebuehr As Double)
+    
+    Dim i As Long
+    vorlauf = 0
+    nachlauf = 0
+    saeumnisGebuehr = 0
+    
+    If Not m_EinstellungenGeladenZP Then Exit Sub
+    
+    On Error Resume Next
+    For i = LBound(m_EinstellungenCacheZP) To UBound(m_EinstellungenCacheZP)
+        If StrComp(m_EinstellungenCacheZP(i).kategorie, kategorie, vbTextCompare) = 0 Then
+            vorlauf = m_EinstellungenCacheZP(i).VorlaufTage
+            nachlauf = m_EinstellungenCacheZP(i).NachlaufTage
+            saeumnisGebuehr = m_EinstellungenCacheZP(i).SaeumnisGebuehr
+            Exit Sub
+        End If
+    Next i
+    On Error GoTo 0
+    
+End Sub
 
 
 ' ===============================================================

@@ -534,9 +534,12 @@ Private Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         entityKey = Trim(CStr(wsDaten.Cells(r, EK_COL_ENTITYKEY).value))
         If entityKey = "" Then GoTo NextDatenRow
         
-        ' Role pr�fen: nur Mitglieder (Role enth�lt "MITGLIED")
+        ' Role prüfen: nur aktive Mitglieder
+        ' "MITGLIED MIT PACHT" und "MITGLIED OHNE PACHT" -> ja
+        ' "EHEMALIGES MITGLIED" -> nein (ausschließen)
         roleWert = UCase(Trim(CStr(wsDaten.Cells(r, EK_COL_ROLE).value)))
         If InStr(roleWert, "MITGLIED") = 0 Then GoTo NextDatenRow
+        If InStr(roleWert, "EHEMALIGES") > 0 Then GoTo NextDatenRow
         
         ' Parzelle(n) lesen (kann "2" oder "2, 5" sein bei SHARE-Keys)
         parzelleWert = Trim(CStr(wsDaten.Cells(r, EK_COL_PARZELLE).value))
