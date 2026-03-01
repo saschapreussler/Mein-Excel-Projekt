@@ -10,21 +10,6 @@ Attribute VB_Exposed = True
 Option Explicit
 
 ' ===============================================================
-' WORKSHEET: Tabelle3 (Bankkonto)
-' VERSION: 10.0 - 13.02.2026
-' ZWECK: Event-Handler für Blatt "Bankkonto"
-' ÄNDERUNGEN v10.0:
-'   - Punkt 2: GELB-Bestätigung bei gleichem Wert ermöglichen
-'   - Punkt 3: Sammelzahlung Spalte I "Sammelzahlung" + GELB?GRÜN
-'   - Punkt 4: Neue Fälligkeitstypen "jährlich (Jahr)" und
-'              "jährlich (Jahr/Folgejahr)" für Spalte I
-'   - Punkt 5: Bei Sammelzahlung steht "Sammelzahlung" in Spalte I
-'   - Punkt 6: "Ultimo-5:" entfernt, nur noch
-'              "Bitte prüfen ob Zahlung für ... oder Folgemonat gilt"
-'   - Punkt 7: Versicherung dynamisch [Jahr/Folgejahr]
-' ===============================================================
-
-' ===============================================================
 ' Modulweite Variablen für den Vergleich (alter Wert)
 ' Werden in Worksheet_SelectionChange gespeichert und in
 ' Worksheet_Change ausgewertet, um unnötige Verarbeitung
@@ -32,9 +17,6 @@ Option Explicit
 ' ===============================================================
 Private m_AlterWertH As String
 Private m_AlterWertI As String
-' NEU v10.0: Merke auch ob die Zelle GELB war (für Bestätigung bei gleichem Wert)
-Private m_AlterHintergrundH As Long
-Private m_AlterHintergrundI As Long
 
 Private Sub btn_CSVimport_Click()
     ' Ruft die Hauptprozedur im Standardmodul mod_Datenpflege auf
@@ -195,11 +177,11 @@ SafeExit:
 End Sub
 
 ' ===============================================================
-' NEU v10.0: Worksheet_SelectionChange
-' Speichert den aktuellen Wert UND die Hintergrundfarbe der
-' ausgewählten Zelle, damit Worksheet_Change prüfen kann ob
-' sich der Wert tatsächlich geändert hat UND ob die Zelle
-' GELB war (= Bestätigung durch gleichen Wert möglich).
+' NEU v9.7: Worksheet_SelectionChange
+' Speichert den aktuellen Wert der ausgewählten Zelle in
+' m_AlterWertH (Spalte H) bzw. m_AlterWertI (Spalte I),
+' damit Worksheet_Change prüfen kann ob sich der Wert
+' tatsächlich geändert hat.
 ' ===============================================================
 Private Sub Worksheet_SelectionChange(ByVal Target As Range)
     ' Nur einzelne Zelle merken
@@ -209,22 +191,37 @@ Private Sub Worksheet_SelectionChange(ByVal Target As Range)
     Select Case Target.Column
         Case BK_COL_KATEGORIE
             m_AlterWertH = Trim(CStr(Target.value))
-            m_AlterHintergrundH = Target.Interior.color
         Case BK_COL_MONAT_PERIODE
             m_AlterWertI = Trim(CStr(Target.value))
-            m_AlterHintergrundI = Target.Interior.color
     End Select
 End Sub
 
 ' ===============================================================
 ' Worksheet_Change: Manuelle Auswahl in Spalte H oder Spalte I
 ' ---------------------------------------------------------------
-' v10.0: Bei GELB hinterlegten Zellen wird die Verarbeitung
-'        IMMER ausgelöst (auch bei gleichem Wert), damit der
-'        Nutzer den automatisch zugeordneten Wert bestätigen kann.
-'        Bei nicht-GELBEN Zellen bleibt die bisherige Logik
-'        "gleicher Wert = nichts tun" bestehen, aber der Nutzer
-'        kann trotzdem via DropDown den Wert ändern.
+' v9.7: Reagiert auf ZWEI Spalten:
+'   Spalte H (BK_COL_KATEGORIE = 8): Kategorie-Auswahl
+'   Spalte I (BK_COL_MONAT_PERIODE = 9): Monat-Auswahl (DropDown)
+'
+' NEU v9.7: Prüft ob sich der Wert tatsächlich geändert hat.
+'   Verhindert unnötige Verarbeitung bei Doppelklick+Enter
+'   ohne echte Wertänderung. Alter Wert wird in
+'   Worksheet_SelectionChange gespeichert.
+'
+' Spalte H - Kategorie:
+'   - Sammelzahlung: Prüft ob bereits zugeordnet (GRÜN), fragt
+'     per MsgBox ob neu zugeordnet werden soll.
+'   - Normale Kategorie: Spalten M-Z leeren, GRÜN setzen,
+'     "manuell zugeordnet" als Bemerkung, ApplyBetragsZuordnung
+'   - ErmittleMonatPeriode mit 5 Parametern (inkl. Lern-Check)
+'   - "GELB|Monatsname" Rückgabe wird erkannt und verarbeitet
+'
+' Spalte I - Monat/Periode:
+'   - v9.6 FIX: Lern-Vermerk NUR wenn Zelle vorher GELB war
+'     (= Automatik war unsicher). Programmatische Änderungen
+'     durch SetzeMonatPeriode triggern KEINEN Vermerk mehr.
+'   - Spalte I: hell-grüner Hintergrund (manuell bestätigt)
+'   - Spalte L: Lern-Vermerk anhängen (mit vbLf)
 ' ===============================================================
 Private Sub Worksheet_Change(ByVal Target As Range)
     
@@ -239,32 +236,25 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
         Case BK_COL_KATEGORIE
             ' --- Spalte H: Kategorie-Auswahl ---
+            ' v9.7: Prüfen ob sich der Wert tatsächlich geändert hat
             Dim neuerWertH As String
             neuerWertH = Trim(CStr(Target.value))
             
-            ' v10.0: Bei GELB hinterlegter Zelle IMMER verarbeiten
-            ' (auch bei gleichem Wert = Bestätigung)
-            Dim warGelbH As Boolean
-            warGelbH = (m_AlterHintergrundH = RGB(255, 235, 156))
-            
-            If neuerWertH = m_AlterWertH And Not warGelbH Then
-                ' Keine Änderung und nicht GELB -> nichts tun
+            If neuerWertH = m_AlterWertH Then
+                ' Keine Änderung -> nichts tun
                 Exit Sub
             End If
             
-            Call VerarbeiteKategorieAenderung(Target, warGelbH)
+            Call VerarbeiteKategorieAenderung(Target)
         
         Case BK_COL_MONAT_PERIODE
             ' --- Spalte I: Monat/Periode manuell gewählt ---
+            ' v9.7: Prüfen ob sich der Wert tatsächlich geändert hat
             Dim neuerWertI As String
             neuerWertI = Trim(CStr(Target.value))
             
-            ' v10.0: Bei GELB hinterlegter Zelle IMMER verarbeiten
-            Dim warGelbI As Boolean
-            warGelbI = (m_AlterHintergrundI = RGB(255, 235, 156))
-            
-            If neuerWertI = m_AlterWertI And Not warGelbI Then
-                ' Keine Änderung und nicht GELB -> nichts tun
+            If neuerWertI = m_AlterWertI Then
+                ' Keine Änderung -> nichts tun
                 Exit Sub
             End If
             
@@ -281,10 +271,10 @@ End Sub
 
 ' ===============================================================
 ' Spalte H: Kategorie-Änderung verarbeiten
-' v10.0: Parameter warGelb hinzugefügt für Bestätigungslogik
-'        Neue Fälligkeitstypen + Sammelzahlung Spalte I
+' (Bisherige Logik aus Worksheet_Change, jetzt ausgelagert)
+' v9.5: ErmittleMonatPeriode mit 5 Parametern + GELB-Parsing
 ' ===============================================================
-Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range, ByVal warGelb As Boolean)
+Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
     
     Dim kategorie As String
     kategorie = Trim(Target.value)
@@ -324,37 +314,7 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range, ByVal warGelb As
             ' Nutzer will NEU zuordnen -> weiter zu VerarbeiteSammelzahlung
         End If
         
-        ' v10.0 Punkt 5: "Sammelzahlung" in Spalte I setzen (GELB)
-        ws.Cells(rowBK, BK_COL_MONAT_PERIODE).value = "Sammelzahlung"
-        ws.Cells(rowBK, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 235, 156)
-        
         Call VerarbeiteSammelzahlung(ws, rowBK)
-        GoTo ChangeCleanup
-    End If
-    
-    ' =============================================
-    ' v10.0: Bei GELB-Bestätigung (gleicher Wert wie zuvor)
-    ' -> GRÜN setzen, Bemerkung "manuell bestätigt"
-    ' =============================================
-    If warGelb Then
-        ' GELB -> GRÜN (Bestätigung)
-        ApplyKategorie ws.Cells(rowBK, BK_COL_KATEGORIE), kategorie, "GRUEN"
-        
-        ' Bemerkung aktualisieren
-        Dim bestBemerkung As String
-        bestBemerkung = Trim(CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value))
-        
-        Dim bestaetigungsVermerk As String
-        bestaetigungsVermerk = "Kategorie manuell best" & ChrW(228) & "tigt: " & kategorie
-        
-        If bestBemerkung = "" Then
-            ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bestaetigungsVermerk
-        Else
-            ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bestBemerkung & vbLf & bestaetigungsVermerk
-        End If
-        
-        ' Betragszuordnung trotzdem ausführen (falls noch nicht geschehen)
-        ApplyBetragsZuordnung ws, rowBK
         GoTo ChangeCleanup
     End If
     
@@ -392,18 +352,13 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range, ByVal warGelb As
             
             Call LadeEinstellungenCache
             
-            ' v10.0 Punkt 4: ErmittleMonatPeriode mit neuen Fälligkeitstypen
+            ' v9.5: ErmittleMonatPeriode mit 5 Parametern
+            ' (inkl. wsBK + aktuelleZeile für Lern-Mechanismus)
             Dim ergebnis As String
             ergebnis = ErmittleMonatPeriode(kategorie, CDate(ws.Cells(rowBK, BK_COL_DATUM).value), _
                                             faelligkeit, ws, rowBK)
             
-            ' v10.0 Punkt 4: Neue Fälligkeitstypen verarbeiten
-            ' Ergebnis kann sein:
-            '   "GELB|Monatsname" -> Ultimo-Prüfung
-            '   "JAEHRLICH_JAHR|Kategoriename" -> z.B. "Endabrechnung 2025"
-            '   "JAEHRLICH_JAHRFJ|Kategoriename" -> z.B. "Versicherung 2025/2026"
-            '   Normaler Monatsname
-            
+            ' v9.5: "GELB|Monatsname" Rückgabe verarbeiten
             If Left(ergebnis, 5) = "GELB|" Then
                 ' GELB-Fall: Monat extrahieren und setzen
                 Dim monatName As String
@@ -414,12 +369,12 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range, ByVal warGelb As
                 ' GELB-Hintergrund setzen (= Nutzer soll prüfen)
                 ws.Cells(rowBK, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 235, 156)
                 
-                ' v10.0 Punkt 6: Bemerkung OHNE "Ultimo-5:"
+                ' Bemerkung: Hinweis anhängen
                 Dim bestehend As String
                 bestehend = Trim(CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value))
                 
                 Dim gelbHinweis As String
-                gelbHinweis = "Bitte pr" & ChrW(252) & "fen ob Zahlung f" & ChrW(252) & "r " & _
+                gelbHinweis = "Ultimo-5: Bitte pr" & ChrW(252) & "fen ob Zahlung f" & ChrW(252) & "r " & _
                               monatName & " oder Folgemonat gilt"
                 
                 If bestehend = "" Then
@@ -428,7 +383,7 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range, ByVal warGelb As
                     ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bestehend & vbLf & gelbHinweis
                 End If
             Else
-                ' Normaler Fall: Monat/Periode direkt setzen (kein GELB)
+                ' Normaler Fall: Monat direkt setzen (kein GELB)
                 ws.Cells(rowBK, BK_COL_MONAT_PERIODE).value = ergebnis
             End If
             
@@ -460,9 +415,18 @@ End Sub
 
 ' ===============================================================
 ' Spalte I: Monat/Periode manuell geändert (DropDown)
-' v10.0: Auch bei gleichem Wert verarbeiten wenn Zelle GELB war
-'        (= Bestätigung der automatischen Zuordnung).
-'        Bereinigung der Bemerkung ohne "Ultimo-5:" Prefix.
+' v9.6: FIX - Lern-Vermerk NUR wenn Zelle vorher GELB war
+' ---------------------------------------------------------------
+' WICHTIG: Der Lern-Vermerk wird NUR geschrieben wenn der
+' Hintergrund der Zelle vorher GELB war (RGB 255,235,156).
+' Das bedeutet: Die Automatik (ErmittleMonatPeriode) war
+' unsicher und hat die Zelle GELB markiert. Wenn der Nutzer
+' dann manuell einen Monat wählt, ist DAS eine echte
+' manuelle Bestätigung die dokumentiert werden muss.
+'
+' Wenn die Zelle NICHT gelb war (z.B. programmatisch gesetzt
+' durch SetzeMonatPeriode oder bereits grün), wird KEIN
+' Lern-Vermerk geschrieben.
 ' ===============================================================
 Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     
@@ -471,12 +435,14 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     If monatWert = "" Then Exit Sub
     
     ' =============================================
-    ' v10.0: Prüfe ob die Zelle vorher GELB war
-    ' Bei GELB = echte manuelle Bestätigung oder Änderung
-    ' Bei nicht-GELB = normale DropDown-Änderung
+    ' v9.6 FIX: Prüfe ob die Zelle vorher GELB war
+    ' Nur bei GELB handelt es sich um eine echte manuelle
+    ' Bestätigung durch den Nutzer. Bei allen anderen
+    ' Hintergrundfarben (kein Hintergrund, grün, etc.)
+    ' wurde der Wert programmatisch gesetzt -> kein Vermerk.
     ' =============================================
     Dim vorherigeFarbe As Long
-    vorherigeFarbe = m_AlterHintergrundI
+    vorherigeFarbe = Target.Interior.color
     
     ' GELB = RGB(255, 235, 156) = Automatik war unsicher
     Dim istVorherGelb As Boolean
@@ -502,6 +468,9 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     ws.Cells(rowBK, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206)
     
     ' 2. Lern-Vermerk in Spalte L anhängen
+    '    Der Vermerk enthält "Folgemonat" als Marker für den Lern-Check
+    '    in ErmittleMonatPeriode. Zusätzlich wird der gewählte Monat
+    '    dokumentiert, damit nachvollziehbar ist was der Nutzer gewählt hat.
     Dim bestehendeBemerkung As String
     bestehendeBemerkung = Trim(CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value))
     
@@ -517,6 +486,7 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
             ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bestehendeBemerkung & vbLf & lernVermerk
         Else
             ' Lern-Vermerk bereits vorhanden -> aktualisieren
+            ' (alten Vermerk durch neuen ersetzen)
             Dim zeilen() As String
             zeilen = Split(bestehendeBemerkung, vbLf)
             
@@ -526,6 +496,7 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
             Dim z As Long
             For z = LBound(zeilen) To UBound(zeilen)
                 If InStr(LCase(zeilen(z)), "folgemonat manuell best") = 0 Then
+                    ' Zeile behalten (kein alter Lern-Vermerk)
                     If neueBemerkung = "" Then
                         neueBemerkung = zeilen(z)
                     Else
@@ -534,6 +505,7 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
                 End If
             Next z
             
+            ' Neuen Lern-Vermerk anhängen
             If neueBemerkung = "" Then
                 ws.Cells(rowBK, BK_COL_BEMERKUNG).value = lernVermerk
             Else
@@ -542,13 +514,12 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
         End If
     End If
     
-    ' 3. v10.0 Punkt 6: GELB-Hinweis bereinigen (OHNE "Ultimo-5:" Prefix)
-    '    Suche nach "bitte pr" statt "ultimo-5: bitte pr"
+    ' 3. Auch den evtl. vorhandenen GELB-Hinweis aus der Ultimo-5-Logik entfernen
+    '    (der ist jetzt nicht mehr relevant, da der Nutzer manuell bestätigt hat)
     Dim aktBemerkung As String
     aktBemerkung = CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value)
     
-    ' Alte "Ultimo-5:" Einträge UND neue "Bitte prüfen ob..." entfernen
-    If InStr(LCase(aktBemerkung), "bitte pr") > 0 Then
+    If InStr(LCase(aktBemerkung), "ultimo-5: bitte pr") > 0 Then
         Dim zeilen2() As String
         zeilen2 = Split(aktBemerkung, vbLf)
         
@@ -557,9 +528,7 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
         
         Dim z2 As Long
         For z2 = LBound(zeilen2) To UBound(zeilen2)
-            ' Entferne sowohl alte "Ultimo-5:" als auch neue "Bitte prüfen" Zeilen
-            If InStr(LCase(zeilen2(z2)), "ultimo-5: bitte pr") = 0 And _
-               InStr(LCase(zeilen2(z2)), "bitte pr" & ChrW(252) & "fen ob zahlung f") = 0 Then
+            If InStr(LCase(zeilen2(z2)), "ultimo-5: bitte pr") = 0 Then
                 If bereinigt = "" Then
                     bereinigt = zeilen2(z2)
                 Else
@@ -591,11 +560,21 @@ End Sub
 
 
 ' ===============================================================
-' Sammelzahlung verarbeiten (v10.0)
+' Sammelzahlung verarbeiten (v9.5)
 ' ---------------------------------------------------------------
-' v10.0: Spalte I wird auf "Sammelzahlung" gesetzt (GELB).
-'        Nach vollständiger Zuordnung wechselt Spalte I auf GRÜN.
-'        Dokumentation der Aufschlüsselung in Spalte L.
+' Komfortable InputBox mit:
+' - Name des Zahlers und Verwendungszweck als Kontext
+' - Buchstaben-Kürzel (A, B, C...) für KATEGORIEN (nicht Spalten!)
+'   Die Kategorien werden dynamisch aus der Kategorie-Tabelle
+'   (Spalte J auf Daten!) gelesen, nach E/A getrennt, nicht redundant.
+' - Eingabe: Kürzel;Betrag (z.B. "A;25,00")
+'   Semikolon trennt Kürzel vom Betrag, Komma = Dezimalzeichen
+' - Jede Kategorie hat über Spalte N (Zielspalte) eine Zuordnung
+'   wohin der Betrag auf dem Bankkonto gebucht wird.
+' - Bei mehrfacher Buchung in die gleiche Spalte werden Beträge addiert.
+' - GRÜN nur wenn ALLES zugeordnet, GELB bei teilweise/nichts.
+' - Die Schleife endet sofort wenn der Betrag vollständig zugeordnet
+'   ist - es erscheint KEINE weitere InputBox mit "0,00 offen".
 ' ===============================================================
 Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
     
@@ -728,6 +707,7 @@ NextKatRow:
         
         If restBetrag <= 0.01 Then
             ' Betrag ist vollständig zugeordnet -> Schleife sofort beenden
+            ' KEINE weitere InputBox anzeigen!
             Exit Do
         End If
         
@@ -752,6 +732,7 @@ NextKatRow:
         eingabe = Replace(eingabe, " ", "")
         
         ' Eingabe parsen: "Kürzel;Betrag" - Semikolon ist IMMER der Trenner
+        ' Komma ist Dezimalzeichen (Euro,Cent)
         Dim trennPos As Long
         trennPos = InStr(eingabe, ";")
         
@@ -868,11 +849,6 @@ WeiterEingabe:
         ' ALLES zugeordnet -> GRÜN (sicher)
         ApplyKategorie ws.Cells(rowBK, BK_COL_KATEGORIE), _
                        ws.Cells(rowBK, BK_COL_KATEGORIE).value, "GRUEN"
-        
-        ' v10.0 Punkt 5: Auch Spalte I auf GRÜN setzen
-        ws.Cells(rowBK, BK_COL_MONAT_PERIODE).value = "Sammelzahlung"
-        ws.Cells(rowBK, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206)
-        
         ws.Cells(rowBK, BK_COL_BEMERKUNG).value = _
             "manuell zugeordnet (Sammelzahlung vollst" & ChrW(228) & "ndig aufgeteilt)" & _
             IIf(sammelDoku <> "", vbLf & "Aufschl" & ChrW(252) & "sselung:" & vbLf & sammelDoku, "")
