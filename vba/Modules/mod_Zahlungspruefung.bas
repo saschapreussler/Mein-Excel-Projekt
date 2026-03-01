@@ -131,6 +131,23 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     Dim erwarteterMonat As String
     erwarteterMonat = MonthName(monat)
     
+    ' v4.0: Faelligkeit der Kategorie ermitteln (fuer nicht-monatliche Perioden)
+    Dim wsDaten As Worksheet
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo ErrorHandler
+    
+    Dim katFaelligkeit As String
+    katFaelligkeit = ""
+    If Not wsDaten Is Nothing Then
+        katFaelligkeit = HoleFaelligkeitFuerKategorie(wsDaten, kategorie)
+    End If
+    
+    ' v4.0: Fuer nicht-monatliche Kategorien den Perioden-String bestimmen
+    ' der in Spalte I stehen koennte (z.B. "Endabrechnung 2025", "Q1 2025")
+    Dim istMonatlich As Boolean
+    istMonatlich = (katFaelligkeit = "" Or katFaelligkeit = "monatlich")
+    
     ' v3.2: Fruehestes Zahlungsdatum merken (fuer Fristpruefung)
     Dim fruehestesZahlDatum As Date
     Dim hatZahlung As Boolean
@@ -154,7 +171,33 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
         ' Monat pruefen ueber Spalte I (Monat/Periode)
         Dim monatPeriode As String
         monatPeriode = Trim(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
-        If StrComp(monatPeriode, erwarteterMonat, vbTextCompare) <> 0 Then GoTo NextZahlRow
+        
+        ' v4.0: Flexibler Perioden-Vergleich
+        Dim monatPasstZP As Boolean
+        monatPasstZP = False
+        
+        If istMonatlich Then
+            ' Monatlich: exakter Vergleich mit MonthName
+            monatPasstZP = (StrComp(monatPeriode, erwarteterMonat, vbTextCompare) = 0)
+        Else
+            ' Nicht-monatlich: Spalte I kann verschiedene Formate haben:
+            ' "Endabrechnung 2025", "Q1 2025", "H1 2025",
+            ' "jaehrlich", "Kategoriename Jahr" etc.
+            ' -> Pruefen ob Monat/Periode den Kategorienamen enthaelt
+            '    UND ob das Buchungsdatum im richtigen Zeitfenster liegt
+            If monatPeriode = erwarteterMonat Then
+                ' Direkt-Match (unwahrscheinlich bei nicht-monatlich, aber sicher)
+                monatPasstZP = True
+            ElseIf InStr(1, monatPeriode, kategorie, vbTextCompare) > 0 Then
+                ' Spalte I enthaelt den Kategorienamen (z.B. "Endabrechnung 2025")
+                monatPasstZP = True
+            ElseIf monatPeriode = "" Then
+                ' Spalte I leer -> Fallback auf Buchungsmonat
+                If Month(zahlDatum) = monat Then monatPasstZP = True
+            End If
+        End If
+        
+        If Not monatPasstZP Then GoTo NextZahlRow
         
         ' IBAN pruefen (Spalte D = BK_COL_IBAN)
         ibanZeile = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
@@ -805,6 +848,8 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
     
     HoleFaelligkeitFuerKategorie = "monatlich"
 End Function
+
+
 
 
 

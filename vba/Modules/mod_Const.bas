@@ -198,6 +198,21 @@ Public Const DATA_COL_DD_PARZELLE As Long = 6
 Public Const DATA_COL_ES_HILF As Long = 53      ' Spalte BA
 
 ' ===============================================================
+' H2. DATEN - VORJAHR-SPEICHER (Spalten CA-CF = 79-84)
+' Cached Bankkonto-Buchungen aus Okt-Dez des Vorjahres
+' Wird beim CSV-Import automatisch bef?llt
+' Soll sp?testens im August des Folgejahres gel?scht werden
+' ===============================================================
+Public Const VJ_COL_DATUM As Long = 79          ' CA - Buchungsdatum
+Public Const VJ_COL_BETRAG As Long = 80         ' CB - Betrag
+Public Const VJ_COL_IBAN As Long = 81           ' CC - IBAN
+Public Const VJ_COL_KATEGORIE As Long = 82      ' CD - Kategorie
+Public Const VJ_COL_MONAT_PERIODE As Long = 83  ' CE - Monat/Periode
+Public Const VJ_COL_ENTITYKEY As Long = 84      ' CF - EntityKey
+Public Const VJ_START_ROW As Long = 4
+Public Const VJ_HEADER_ROW As Long = 3
+
+' ===============================================================
 ' I. CSV-IMPORT (SPARKASSE)
 ' ===============================================================
 Public Const CSV_COL_BUCHUNGSDATUM As Long = 2
@@ -315,6 +330,8 @@ Public Function WS_UEBERSICHT() As String
     If val = "" Then val = Chr$(220) & "bersicht"
     WS_UEBERSICHT = val
 End Function
+
+
 
 
 

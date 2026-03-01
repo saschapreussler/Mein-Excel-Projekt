@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
-' VERSION: 4.0 - 01.03.2026
+' VERSION: 4.1 - 01.06.2026
 ' ZWECK: Generiert ?bersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - Kategorien DYNAMISCH aus Einstellungen-Blatt (Spalte B)
@@ -34,6 +34,14 @@ Option Explicit
 '             a) Zahlung vorhanden (Ist > 0) -> GR?N/GELB
 '             b) Frist abgelaufen + keine Zahlung -> ROT
 '           - Einheitliches Datumsformat: "Januar 2026"
+' NEU v4.1: F?lligkeit-basierte Kategoriefilterung
+'           - Kategorien erscheinen nur im F?lligkeitsmonat
+'             (nicht mehr in allen 12 Monaten)
+'           - F?lligkeit aus Daten Spalte O (Kategorie-Tabelle)
+'           - Vorjahr-Speicher (Daten Spalten CA-CF):
+'             Okt-Dez Zahlungen des Vorjahres f?r Jan-M?rz Zuordnung
+'           - Spalte C linksb?ndig, Format "M?rz 2025"
+'           - PruefeZahlungen: flexibler Perioden-Vergleich
 ' ***************************************************************
 
 ' ===============================================================
@@ -77,6 +85,7 @@ Private Type UebKategorie
     HatFestenSoll As Boolean      ' True wenn Spalte C > 0
     saeumnisGebuehr As Double     ' Spalte I auf Einstellungen
     SollMonate As String          ' Spalte E: "03, 06, 09" oder leer = alle
+    faelligkeit As String         ' Spalte O auf Daten: "monatlich", "jaehrlich" etc.
 End Type
 
 
@@ -183,6 +192,12 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     
     ' Dezember-Cache initialisieren (f?r Vorauszahlungen)
     Call mod_Zahlungspruefung.InitialisiereNachDezemberCacheZP(jahr)
+    
+    ' v4.0: Vorjahr-Speicher bef?llen (Okt-Dez Vorjahr)
+    Call BefuelleVorjahrSpeicher(jahr - 1)
+    
+    ' v4.0: Vorjahr-Speicher automatisch loeschen (ab August)
+    Call PruefeVorjahrSpeicherAblauf
     
     ' Aktive Mitglieder aus Daten-Blatt EntityKey-Tabelle laden
     Set mitglieder = HoleAktiveMitglieder(wsDaten)
@@ -297,6 +312,22 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 ElseIf UBound(teile) >= 0 Then
                     status = teile(0)
+                End If
+                
+                ' v4.0: Vorjahr-Zahlungen pruefen (Jan-Maerz)
+                ' Dezember-Zahlung des Vorjahres die fuer diesen Monat gilt
+                If monat <= 3 And ist = 0 Then
+                    Dim vjBetrag As Double
+                    vjBetrag = HoleVorjahrZahlung(entityKey, kategorie, monat)
+                    If vjBetrag > 0 Then
+                        ist = ist + vjBetrag
+                        ' Status aktualisieren
+                        If soll > 0 And ist >= soll Then
+                            status = m_STATUS_GRUEN
+                        ElseIf ist > 0 Then
+                            status = m_STATUS_GRUEN
+                        End If
+                    End If
                 End If
                 
                 ' =============================================
@@ -541,10 +572,37 @@ Private Sub LadeKategorienAusEinstellungen(ByRef kategorien() As UebKategorie, _
             
             ' Soll-Monate aus Spalte E (z.B. "03, 06, 09" oder leer = alle)
             .SollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
+            
+            ' Faelligkeit aus Daten-Blatt Spalte O (Kategorie-Tabelle)
+            .faelligkeit = ""
         End With
         
         idx = idx + 1
     Next key
+    
+    ' Faelligkeit aus Daten-Blatt nachladen (Spalte O)
+    Dim wsDatenKat As Worksheet
+    On Error Resume Next
+    Set wsDatenKat = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    
+    If Not wsDatenKat Is Nothing Then
+        Dim lastRowDaten As Long
+        lastRowDaten = wsDatenKat.Cells(wsDatenKat.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+        
+        Dim ki As Long
+        For ki = 0 To anzahl - 1
+            Dim rD As Long
+            For rD = DATA_START_ROW To lastRowDaten
+                If StrComp(Trim(CStr(wsDatenKat.Cells(rD, DATA_CAT_COL_KATEGORIE).value)), _
+                           kategorien(ki).Name, vbTextCompare) = 0 Then
+                    kategorien(ki).faelligkeit = LCase(Trim(CStr( _
+                        wsDatenKat.Cells(rD, DATA_CAT_COL_FAELLIGKEIT).value)))
+                    Exit For
+                End If
+            Next rD
+        Next ki
+    End If
     
     Set dict = Nothing
     
@@ -552,33 +610,43 @@ End Sub
 
 
 ' ===============================================================
-' v2.0: Pr?ft ob eine Kategorie in einem bestimmten Monat f?llig ist
-' Wenn SollMonate leer -> gilt f?r ALLE Monate
-' Wenn SollMonate = "03, 06, 09" -> nur in diesen Monaten
+' v4.0: Pr?ft ob eine Kategorie in einem bestimmten Monat f?llig ist
+' Kombiniert SollMonate (Einstellungen Spalte E) mit Faelligkeit
+' (Daten Spalte O).
+' - monatlich: SollMonate oder alle Monate
+' - jaehrlich: nur SollMonate (1 Monat)
+' - halbjaehrlich: nur SollMonate (2 Monate)
+' - quartalsweise/vierteljaehrlich: nur SollMonate (3-4 Monate)
+' - benutzerdefiniert: nur SollMonate
+' Wenn SollMonate leer UND Faelligkeit nicht monatlich ->
+'   Kategorie ist NICHT in allen Monaten faellig!
+'   Dann Fallback: Kategorie nie anzeigen (muss in Einstellungen
+'   Spalte E konfiguriert werden)
 ' ===============================================================
 Private Function IstKategorieImMonatFaellig(ByRef kat As UebKategorie, _
                                              ByVal monat As Long) As Boolean
     
-    ' Keine Monate definiert -> gilt f?r ALLE Monate
-    If kat.SollMonate = "" Then
+    ' Wenn SollMonate definiert -> nur diese pruefen
+    If kat.SollMonate <> "" Then
+        IstKategorieImMonatFaellig = mod_KategorieEngine_Zeitraum.IstMonatInListe(monat, kat.SollMonate)
+        Exit Function
+    End If
+    
+    ' SollMonate leer -> Faelligkeit entscheidet
+    Dim fl As String
+    fl = kat.faelligkeit
+    
+    ' Monatlich oder leer -> in ALLEN Monaten faellig
+    If fl = "" Or fl = "monatlich" Then
         IstKategorieImMonatFaellig = True
         Exit Function
     End If
     
-    ' Monate parsen: "03, 06, 09"
-    Dim monate() As String
-    monate = Split(kat.SollMonate, ",")
-    
-    Dim m As Long
-    For m = LBound(monate) To UBound(monate)
-        If IsNumeric(Trim(monate(m))) Then
-            If CLng(Trim(monate(m))) = monat Then
-                IstKategorieImMonatFaellig = True
-                Exit Function
-            End If
-        End If
-    Next m
-    
+    ' Nicht-monatlich OHNE SollMonate -> NICHT anzeigen
+    ' (Kategorie muss in Einstellungen Spalte E konfiguriert werden)
+    Debug.Print "[" & ChrW(220) & "bersicht] WARNUNG: Kategorie '" & kat.Name & _
+                "' ist '" & fl & "' aber Spalte E (Soll-Monate) ist leer! " & _
+                "Bitte in Einstellungen die Soll-Monate eintragen."
     IstKategorieImMonatFaellig = False
     
 End Function
@@ -920,6 +988,9 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     ' Ausrichtung
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_PARZELLE), _
                 wsUeb.Cells(endRow, UEB_COL_PARZELLE)).HorizontalAlignment = xlCenter
+    ' Spalte C (Monat) linksbuendig
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_MONAT), _
+                wsUeb.Cells(endRow, UEB_COL_MONAT)).HorizontalAlignment = xlLeft
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), _
                 wsUeb.Cells(endRow, UEB_COL_STATUS)).HorizontalAlignment = xlCenter
     
@@ -927,6 +998,216 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     rngTable.VerticalAlignment = xlCenter
     
 End Sub
+
+
+' ===============================================================
+' v4.0: VORJAHR-SPEICHER - Okt-Dez des Vorjahres cachen
+' Kopiert relevante Bankkonto-Buchungen (Okt-Dez Vorjahr) in den
+' Hilfsspeicher auf Blatt Daten ab Spalte CA.
+' Zweck: Dezember-Zahlungen die fuer Januar gelten erkennen
+' ===============================================================
+Public Sub BefuelleVorjahrSpeicher(ByVal vorjahr As Long)
+    
+    Dim wsBK As Worksheet
+    Dim wsDaten As Worksheet
+    Dim lastRowBK As Long
+    Dim r As Long
+    Dim vjRow As Long
+    Dim zahlDatum As Date
+    
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    
+    If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
+    
+    ' Zuerst alten Speicher loeschen
+    Call LoescheVorjahrSpeicher
+    
+    ' Header setzen
+    wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_DATUM).value = "VJ Datum"
+    wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_BETRAG).value = "VJ Betrag"
+    wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_IBAN).value = "VJ IBAN"
+    wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_KATEGORIE).value = "VJ Kategorie"
+    wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_MONAT_PERIODE).value = "VJ Monat/Periode"
+    wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_ENTITYKEY).value = "VJ EntityKey"
+    
+    ' Header formatieren
+    Dim rngVJHeader As Range
+    Set rngVJHeader = wsDaten.Range(wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_DATUM), _
+                                     wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_ENTITYKEY))
+    rngVJHeader.Font.Bold = True
+    rngVJHeader.Interior.color = RGB(217, 217, 217)
+    
+    lastRowBK = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    vjRow = VJ_START_ROW
+    
+    For r = BK_START_ROW To lastRowBK
+        If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo NextVJRow
+        zahlDatum = CDate(wsBK.Cells(r, BK_COL_DATUM).value)
+        
+        ' Nur Okt-Dez des Vorjahres
+        If Year(zahlDatum) <> vorjahr Then GoTo NextVJRow
+        If Month(zahlDatum) < 10 Then GoTo NextVJRow
+        
+        ' Nur wenn Kategorie und IBAN vorhanden
+        Dim vjKat As String
+        vjKat = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
+        If vjKat = "" Then GoTo NextVJRow
+        
+        Dim vjIBAN As String
+        vjIBAN = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
+        If vjIBAN = "" Then GoTo NextVJRow
+        
+        ' In Speicher schreiben
+        wsDaten.Cells(vjRow, VJ_COL_DATUM).value = zahlDatum
+        wsDaten.Cells(vjRow, VJ_COL_DATUM).NumberFormat = "DD.MM.YYYY"
+        wsDaten.Cells(vjRow, VJ_COL_BETRAG).value = wsBK.Cells(r, BK_COL_BETRAG).value
+        wsDaten.Cells(vjRow, VJ_COL_IBAN).value = vjIBAN
+        wsDaten.Cells(vjRow, VJ_COL_KATEGORIE).value = vjKat
+        wsDaten.Cells(vjRow, VJ_COL_MONAT_PERIODE).value = _
+            Trim(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
+        
+        ' EntityKey via IBAN aufloesen (ueber EntityKey-Tabelle)
+        Dim vjEK As String
+        vjEK = ""
+        Dim ek As Long
+        Dim ekLastRow As Long
+        ekLastRow = wsDaten.Cells(wsDaten.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
+        For ek = EK_START_ROW To ekLastRow
+            Dim ekIBAN As String
+            ekIBAN = Replace(Trim(CStr(wsDaten.Cells(ek, EK_COL_IBAN).value)), " ", "")
+            If StrComp(ekIBAN, vjIBAN, vbTextCompare) = 0 Then
+                vjEK = Trim(CStr(wsDaten.Cells(ek, EK_COL_ENTITYKEY).value))
+                Exit For
+            End If
+        Next ek
+        wsDaten.Cells(vjRow, VJ_COL_ENTITYKEY).value = vjEK
+        
+        vjRow = vjRow + 1
+        
+NextVJRow:
+    Next r
+    
+    Debug.Print "[" & ChrW(220) & "bersicht] Vorjahr-Speicher: " & _
+                (vjRow - VJ_START_ROW) & " Buchungen aus Okt-Dez " & vorjahr & " gecached"
+    
+End Sub
+
+
+' ===============================================================
+' v4.0: Loescht den Vorjahr-Speicher auf Blatt Daten (ab CA)
+' ===============================================================
+Public Sub LoescheVorjahrSpeicher()
+    
+    Dim wsDaten As Worksheet
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    
+    If wsDaten Is Nothing Then Exit Sub
+    
+    Dim lastRow As Long
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, VJ_COL_DATUM).End(xlUp).Row
+    
+    If lastRow >= VJ_HEADER_ROW Then
+        wsDaten.Range(wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_DATUM), _
+                       wsDaten.Cells(lastRow, VJ_COL_ENTITYKEY)).ClearContents
+        wsDaten.Range(wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_DATUM), _
+                       wsDaten.Cells(lastRow, VJ_COL_ENTITYKEY)).Interior.ColorIndex = xlNone
+    End If
+    
+    Debug.Print "[" & ChrW(220) & "bersicht] Vorjahr-Speicher gel" & ChrW(246) & "scht"
+    
+End Sub
+
+
+' ===============================================================
+' v4.0: Prueft automatisch ob Vorjahr-Speicher geloescht werden soll
+' Ab August des Folgejahres wird der Speicher automatisch geleert
+' ===============================================================
+Public Sub PruefeVorjahrSpeicherAblauf()
+    
+    If Month(Date) >= 8 Then
+        Dim wsDaten As Worksheet
+        On Error Resume Next
+        Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+        On Error GoTo 0
+        
+        If wsDaten Is Nothing Then Exit Sub
+        
+        ' Pruefen ob noch Daten im Speicher sind
+        Dim ersteDatum As Variant
+        ersteDatum = wsDaten.Cells(VJ_START_ROW, VJ_COL_DATUM).value
+        
+        If IsDate(ersteDatum) Then
+            If Year(CDate(ersteDatum)) < Year(Date) - 1 Then
+                ' Daten sind aelter als Vorjahr -> loeschen
+                Call LoescheVorjahrSpeicher
+            ElseIf Year(CDate(ersteDatum)) = Year(Date) - 1 Then
+                ' Vorjahr-Daten und wir sind >= August -> loeschen
+                Call LoescheVorjahrSpeicher
+            End If
+        End If
+    End If
+    
+End Sub
+
+
+' ===============================================================
+' v4.0: Holt Vorjahr-Zahlungsbetrag aus dem Speicher
+' Prueft ob fuer den EntityKey + Kategorie eine Dezember-Zahlung
+' vorliegt, die fuer Januar des Folgejahres gelten koennte
+' (basierend auf Monat/Periode in Spalte CE)
+' ===============================================================
+Public Function HoleVorjahrZahlung(ByVal entityKey As String, _
+                                    ByVal kategorie As String, _
+                                    ByVal monat As Long) As Double
+    HoleVorjahrZahlung = 0
+    
+    ' Nur fuer fruehe Monate relevant (Jan-Maerz)
+    If monat > 3 Then Exit Function
+    
+    Dim wsDaten As Worksheet
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    
+    If wsDaten Is Nothing Then Exit Function
+    
+    Dim lastRow As Long
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, VJ_COL_DATUM).End(xlUp).Row
+    If lastRow < VJ_START_ROW Then Exit Function
+    
+    Dim r As Long
+    Dim vjMonatPeriode As String
+    Dim erwarteterMonat As String
+    erwarteterMonat = MonthName(monat)
+    
+    For r = VJ_START_ROW To lastRow
+        ' EntityKey pruefen
+        If StrComp(Trim(CStr(wsDaten.Cells(r, VJ_COL_ENTITYKEY).value)), _
+                   entityKey, vbTextCompare) <> 0 Then GoTo NextVJPruefRow
+        
+        ' Kategorie pruefen
+        If StrComp(Trim(CStr(wsDaten.Cells(r, VJ_COL_KATEGORIE).value)), _
+                   kategorie, vbTextCompare) <> 0 Then GoTo NextVJPruefRow
+        
+        ' Monat/Periode pruefen
+        vjMonatPeriode = Trim(CStr(wsDaten.Cells(r, VJ_COL_MONAT_PERIODE).value))
+        
+        If StrComp(vjMonatPeriode, erwarteterMonat, vbTextCompare) = 0 Then
+            ' Direkt-Match: Monat/Periode = "Januar"
+            HoleVorjahrZahlung = HoleVorjahrZahlung + Abs(wsDaten.Cells(r, VJ_COL_BETRAG).value)
+        End If
+        
+NextVJPruefRow:
+    Next r
+    
+End Function
+
+
 
 
 
