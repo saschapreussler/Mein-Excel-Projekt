@@ -60,6 +60,9 @@ Private Const AMPEL_ROT As Long = 9871103       ' RGB(255, 199, 206)
 ' Hell-gelb f?r "bitte manuell bef?llen" (Soll-Betrag variabel)
 Private Const FARBE_HELLGELB_MANUELL As Long = 10092543  ' RGB(255, 255, 153)
 
+' Zebra-Farbe (identisch mit Bankkonto / EntityKey-Tabelle)
+Private Const ZEBRA_COLOR As Long = &HDEE5E3
+
 ' Status-String f?r GR?N (Encoding-sicher, wird in Init gesetzt)
 Private m_STATUS_GRUEN As String
 Private m_StatusInitialisiert As Boolean
@@ -246,6 +249,8 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
         entityKey = mitglied("EntityKey")
         Dim mitgliedName As String
         mitgliedName = mitglied("Name")
+        Dim mitgliedRole As String
+        mitgliedRole = mitglied("Role")
         
         For monat = 1 To 12
             Dim k As Long
@@ -257,6 +262,15 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
                 
                 kategorie = kategorien(k).Name
+                
+                ' v4.0: MITGLIED OHNE PACHT zahlt NUR Mitgliedsbeitrag
+                ' Alle anderen Kategorien (Pacht, Betriebskosten, Fixkosten,
+                ' Abschlagszahlungen Strom/Wasser etc.) ueberspringen
+                If InStr(UCase(mitgliedRole), "OHNE PACHT") > 0 Then
+                    If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) <> 0 Then
+                        GoTo NextKat
+                    End If
+                End If
                 
                 ' Zahlung pruefen (mod_Zahlungspruefung)
                 ergebnis = mod_Zahlungspruefung.PruefeZahlungen(entityKey, kategorie, monat, jahr)
@@ -604,9 +618,11 @@ End Sub
 
 ' ===============================================================
 ' Holt alle aktiven Mitglieder aus Daten-Blatt (EntityKey-Tabelle)
-' Spalten: R=EntityKey, S=IBAN, U=Zuordnung, V=Parzelle, W=Role
+' Spalten: R=EntityKey, S=IBAN, T=Kontoname, U=Zuordnung, V=Parzelle, W=Role
 ' Bei SHARE-Keys k?nnen mehrere Parzellen in V stehen (z.B. "2, 5")
-' Jede Parzelle erscheint nur einmal (?ber Dictionary gepr?ft)
+' v4.0: Mehrere Mitglieder pro Parzelle erlaubt (z.B. MIT + OHNE PACHT)
+'       Dedup ueber EntityKey+Parzelle (nicht nur Parzelle)
+'       Name aus Spalte T (Kontoname), Fallback auf Spalte U (Zuordnung)
 ' ===============================================================
 Private Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
     
@@ -621,9 +637,9 @@ Private Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         Exit Function
     End If
     
-    ' Dictionary f?r bereits verarbeitete Parzellen (Duplikatvermeidung)
-    Dim verarbeiteteParzellen As Object
-    Set verarbeiteteParzellen = CreateObject("Scripting.Dictionary")
+    ' Dictionary f?r bereits verarbeitete EntityKey+Parzelle-Kombinationen
+    Dim verarbeiteteKombis As Object
+    Set verarbeiteteKombis = CreateObject("Scripting.Dictionary")
     
     Dim r As Long
     Dim entityKey As String
@@ -647,8 +663,12 @@ Private Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         parzelleWert = Trim(CStr(wsDaten.Cells(r, EK_COL_PARZELLE).value))
         If parzelleWert = "" Then GoTo NextDatenRow
         
-        ' Zuordnung (Mitgliedername) aus Spalte U
-        zuordnung = Trim(CStr(wsDaten.Cells(r, EK_COL_ZUORDNUNG).value))
+        ' Zuordnung (Kontoname) aus Spalte T - der echte Kontoinhaber
+        zuordnung = Trim(CStr(wsDaten.Cells(r, EK_COL_KONTONAME).value))
+        ' Falls Kontoname leer -> Fallback auf Zuordnung (Spalte U)
+        If zuordnung = "" Then
+            zuordnung = Trim(CStr(wsDaten.Cells(r, EK_COL_ZUORDNUNG).value))
+        End If
         
         ' Parzelle(n) aufteilen (bei SHARE-Keys: "2, 5" -> 2 Eintr?ge)
         Dim parzellen() As String
@@ -665,14 +685,18 @@ Private Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                 
                 ' Nur Parzellen 1-14
                 If parzelleNr >= 1 And parzelleNr <= 14 Then
-                    ' Duplikat-Pr?fung: jede Parzelle nur einmal
-                    If Not verarbeiteteParzellen.Exists(parzelleNr) Then
-                        verarbeiteteParzellen.Add parzelleNr, True
+                    ' Duplikat-Pr?fung: EntityKey+Parzelle nur einmal
+                    Dim kombiKey As String
+                    kombiKey = entityKey & "_" & parzelleNr
+                    
+                    If Not verarbeiteteKombis.Exists(kombiKey) Then
+                        verarbeiteteKombis.Add kombiKey, True
                         
                         Set dict = CreateObject("Scripting.Dictionary")
                         dict.Add "Parzelle", parzelleNr
                         dict.Add "EntityKey", entityKey
                         dict.Add "Name", zuordnung
+                        dict.Add "Role", roleWert
                         
                         col.Add dict
                     End If
@@ -683,7 +707,7 @@ Private Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
 NextDatenRow:
     Next r
     
-    Set verarbeiteteParzellen = Nothing
+    Set verarbeiteteKombis = Nothing
     Set HoleAktiveMitglieder = col
     
 End Function
@@ -834,23 +858,38 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     Set rngTable = wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_PARZELLE), _
                                 wsUeb.Cells(endRow, UEB_COL_BEMERKUNG))
     
-    ' Zebramuster (jede 2. Zeile hellgrau)
-    ' ACHTUNG: Nicht ?berschreiben wenn Zelle bereits hell-gelb ist (variabler Soll)
+    ' Zebramuster (identisch mit Bankkonto/EntityKey-Tabelle)
+    ' Ungerade Zeilen (1., 3., 5. Datenzeile) = weiss
+    ' Gerade Zeilen (2., 4., 6. Datenzeile) = ZEBRA_COLOR
+    ' ACHTUNG: Nicht ueberschreiben bei Soll-Spalte (hell-gelb) und Status-Spalte (Ampel)
     For r = startRow To endRow
-        If (r - startRow) Mod 2 = 0 Then
-            Dim c As Long
+        Dim c As Long
+        If (r - startRow) Mod 2 = 1 Then
+            ' Gerade Datenzeile -> Zebra-Farbe
             For c = UEB_COL_PARZELLE To UEB_COL_BEMERKUNG
-                ' Nur Zebra setzen wenn Zelle NICHT bereits speziell gef?rbt ist
-                ' (hell-gelb f?r variablen Soll, Ampelfarben f?r Status)
-                If c <> UEB_COL_SOLL And c <> UEB_COL_STATUS Then
-                    wsUeb.Cells(r, c).Interior.color = RGB(242, 242, 242)
+                If c = UEB_COL_STATUS Then
+                    ' Status-Spalte (G) behaelt IMMER ihre Ampelfarbe
                 ElseIf c = UEB_COL_SOLL Then
-                    ' Nur Zebra wenn NICHT hell-gelb (variabel)
+                    ' Soll-Spalte: Nur Zebra wenn NICHT hell-gelb (variabel)
                     If wsUeb.Cells(r, c).Interior.color <> FARBE_HELLGELB_MANUELL Then
-                        wsUeb.Cells(r, c).Interior.color = RGB(242, 242, 242)
+                        wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                     End If
+                Else
+                    wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                 End If
-                ' Status-Spalte (G) beh?lt immer ihre Ampelfarbe
+            Next c
+        Else
+            ' Ungerade Datenzeile -> weiss (aber Soll/Status auslassen)
+            For c = UEB_COL_PARZELLE To UEB_COL_BEMERKUNG
+                If c = UEB_COL_STATUS Then
+                    ' Status-Spalte behaelt Ampelfarbe
+                ElseIf c = UEB_COL_SOLL Then
+                    If wsUeb.Cells(r, c).Interior.color <> FARBE_HELLGELB_MANUELL Then
+                        wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
+                    End If
+                Else
+                    wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
+                End If
             Next c
         End If
     Next r
@@ -872,9 +911,11 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     wsUeb.Columns(UEB_COL_STATUS).ColumnWidth = 10
     wsUeb.Columns(UEB_COL_BEMERKUNG).ColumnWidth = 45
     
-    ' Deutsches Zahlenformat mit Euro-Zeichen
+    ' Deutsches Zahlenformat mit Euro-Zeichen (Spalte E + F)
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_SOLL), _
-                wsUeb.Cells(endRow, UEB_COL_IST)).NumberFormat = "#.##0,00 " & ChrW(8364)
+                wsUeb.Cells(endRow, UEB_COL_SOLL)).NumberFormat = "#,##0.00 " & ChrW(8364)
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_IST), _
+                wsUeb.Cells(endRow, UEB_COL_IST)).NumberFormat = "#,##0.00 " & ChrW(8364)
     
     ' Ausrichtung
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_PARZELLE), _
@@ -886,6 +927,8 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     rngTable.VerticalAlignment = xlCenter
     
 End Sub
+
+
 
 
 
