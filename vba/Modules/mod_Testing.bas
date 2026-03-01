@@ -93,7 +93,7 @@ Private Sub Test_1_BlattStruktur()
     
     ' Prüfe Startzeile
     Dim lastRow As Long
-    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = wsM.Cells(wsM.Rows.count, M_COL_NACHNAME).End(xlUp).Row
     
     Debug.Print "? Datenbereich: Zeile " & M_START_ROW & " bis " & lastRow
     Debug.Print "? Anzahl Mitglieder: " & (lastRow - M_START_ROW + 1)
@@ -159,7 +159,7 @@ Private Sub Test_3_ZebraFormatierung()
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     
     Dim lastRow As Long
-    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_NACHNAME).End(xlUp).Row
+    lastRow = wsM.Cells(wsM.Rows.count, M_COL_NACHNAME).End(xlUp).Row
     
     ' Prüfe auf bedingte Formatierung
     Dim hasZebra As Boolean
@@ -168,9 +168,9 @@ Private Sub Test_3_ZebraFormatierung()
     Dim cell As Range
     Set cell = wsM.Range("A6")
     
-    If cell.FormatConditions.Count > 0 Then
+    If cell.FormatConditions.count > 0 Then
         hasZebra = True
-        Debug.Print "? Bedingte Formatierung vorhanden (" & cell.FormatConditions.Count & " Regeln)"
+        Debug.Print "? Bedingte Formatierung vorhanden (" & cell.FormatConditions.count & " Regeln)"
     Else
         Debug.Print "? Keine bedingte Formatierung vorhanden"
     End If
@@ -206,7 +206,7 @@ Private Sub Test_4_VereinsParzelleIntakt()
     
     Dim lRow As Long
     Dim lastRow As Long
-    lastRow = wsM.Cells(wsM.Rows.Count, M_COL_PARZELLE).End(xlUp).Row
+    lastRow = wsM.Cells(wsM.Rows.count, M_COL_PARZELLE).End(xlUp).Row
     
     Dim vereinFound As Boolean
     vereinFound = False
@@ -259,7 +259,7 @@ Private Sub Test_5_BlattSchutz()
         Set protection = wsM.protection
         
         If Not protection Is Nothing Then
-            If protection.AllowEditRanges.Count > 0 Then
+            If protection.AllowEditRanges.count > 0 Then
                 Debug.Print "? Bearbeitbare Bereiche definiert"
             Else
                 Debug.Print "? Keine speziellen Bearbeitungsbereiche"
@@ -344,7 +344,7 @@ Private Sub Test_9_MitgliederhistorieIntakt()
     End If
     
     Dim lastRow As Long
-    lastRow = wsH.Cells(wsH.Rows.Count, H_COL_NACHNAME).End(xlUp).Row
+    lastRow = wsH.Cells(wsH.Rows.count, H_COL_NACHNAME).End(xlUp).Row
     
     If lastRow >= H_START_ROW Then
         Debug.Print "? Mitgliederhistorie hat " & (lastRow - H_START_ROW + 1) & " Einträge"
@@ -354,7 +354,7 @@ Private Sub Test_9_MitgliederhistorieIntakt()
     End If
     
     ' Prüfe Zebra-Formatierung
-    If wsH.Range("A" & H_START_ROW).FormatConditions.Count > 0 Then
+    If wsH.Range("A" & H_START_ROW).FormatConditions.count > 0 Then
         Debug.Print "? Zebra-Formatierung vorhanden"
     Else
         Debug.Print "? Zebra-Formatierung fehlt"
@@ -451,10 +451,10 @@ Public Sub DebugZebraFormatierung()
     Debug.Print "2. BEDINGTE FORMATIERUNGEN im Bereich A6:Q27:"
     Dim rngCheck As Range
     Set rngCheck = ws.Range("A6:Q27")
-    Debug.Print "   Anzahl FormatConditions: " & rngCheck.FormatConditions.Count
+    Debug.Print "   Anzahl FormatConditions: " & rngCheck.FormatConditions.count
     
-    If rngCheck.FormatConditions.Count > 0 Then
-        For i = 1 To rngCheck.FormatConditions.Count
+    If rngCheck.FormatConditions.count > 0 Then
+        For i = 1 To rngCheck.FormatConditions.count
             Set fc = rngCheck.FormatConditions(i)
             Debug.Print "   FC " & i & ":"
             Debug.Print "      Typ: " & fc.Type

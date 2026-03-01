@@ -7,9 +7,6 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
-' ==========================================================
-' TABELLENBLATT-MODUL: Strom (Tabelle5) - MIT NETTO/BRUTTO-TOGGLE
-' ==========================================================
 Option Explicit
 
 ' ==========================================================
@@ -200,7 +197,7 @@ End Sub
 Private Sub SetModus(modus As String)
     Dim r As Long
     
-    Debug.Print "SetModus(" & UCase(modus) & ") gestartet. Blatt geschützt? " & Me.ProtectContents
+    Debug.Print "SetModus(" & UCase(modus) & ") gestartet. Blatt geschätzt? " & Me.ProtectContents
     
     For r = 2 To 3 ' Nur für die Zeilen 2 und 3
         If UCase(modus) = "NETTO" Then
@@ -312,8 +309,8 @@ Public Sub UpdateStromblatt()
     
     Application.ScreenUpdating = False
     
-    ' Führt Berechnung und Formatierung durch (in mod_ZaehlerLogik)
-    Call mod_ZaehlerLogik.CalculateAllZaehlerVerbrauch(Me)
+    ' Führt Berechnung und Formatierung durch (in mod_Zaehler_Berechnung)
+    Call mod_Zaehler_Berechnung.CalculateAllZaehlerVerbrauch(Me)
     
     Application.ScreenUpdating = True
     Exit Sub
@@ -327,5 +324,6 @@ End Sub
 ' OPTIONALE ROUTINEN (Historie-Farben)
 ' ==========================================================
 Public Sub KorrigiereHistorieFarben()
-    Call mod_ZaehlerLogik.FarbeHistorieEintraege
+    Call mod_Zaehler_Historie.FarbeHistorieEintraege
 End Sub
+

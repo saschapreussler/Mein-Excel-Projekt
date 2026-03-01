@@ -36,22 +36,22 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     ' === EINZELSPALTEN B, D, F, H ===
     If changedCol = 2 Then
-        Call mod_Formatierung.FormatSingleColumnComplete(Me, 2)
+        Call mod_Format_Spalten.FormatSingleColumnComplete(Me, 2)
         GoTo CleanUp
     End If
     
     If changedCol = 4 Then
-        Call mod_Formatierung.FormatSingleColumnComplete(Me, 4)
+        Call mod_Format_Spalten.FormatSingleColumnComplete(Me, 4)
         GoTo CleanUp
     End If
     
     If changedCol = 6 Then
-        Call mod_Formatierung.FormatSingleColumnComplete(Me, 6)
+        Call mod_Format_Spalten.FormatSingleColumnComplete(Me, 6)
         GoTo CleanUp
     End If
     
     If changedCol = 8 Then
-        Call mod_Formatierung.FormatSingleColumnComplete(Me, 8)
+        Call mod_Format_Spalten.FormatSingleColumnComplete(Me, 8)
         GoTo CleanUp
     End If
     
@@ -129,7 +129,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         Call mod_Formatierung.FormatEntityKeyTableComplete(Me)
         If changedCol = 23 Then
             ' EntityRole wurde geaendert
-            Call mod_EntityKey_Manager.VerarbeiteManuelleRoleAenderung(Target)
+            Call mod_EntityKey_UI.VerarbeiteManuelleRoleAenderung(Target)
             
             ' NEU: Bankkonto-Kategorien fuer diese IBAN neu evaluieren
             ' Nur wenn eine Role tatsaechlich gesetzt wurde (nicht geloescht)
@@ -148,7 +148,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     ' === HELPER-SPALTEN Z bis AH (26-34) ===
     If changedCol >= 26 And changedCol <= 34 Then
-        Call mod_Formatierung.FormatSingleColumnComplete(Me, changedCol)
+        Call mod_Format_Spalten.FormatSingleColumnComplete(Me, changedCol)
         GoTo CleanUp
     End If
 
@@ -187,4 +187,6 @@ Private Function FindeKategorieZeile(ByVal suchKategorie As String, _
         End If
     Next r
 End Function
+
+
 

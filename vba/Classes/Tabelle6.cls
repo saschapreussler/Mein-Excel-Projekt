@@ -7,9 +7,6 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
-' ==========================================================
-' TABELLENBLATT-MODUL: Wasser (Tabelle6) - BEREINIGT
-' ==========================================================
 Option Explicit
 
 ' ==========================================================
@@ -61,8 +58,8 @@ Public Sub UpdateWasserblatt()
     
     Application.ScreenUpdating = False
     
-    ' Führt Berechnung und Formatierung durch (in mod_ZaehlerLogik)
-    Call mod_ZaehlerLogik.CalculateAllZaehlerVerbrauch(Me)
+    ' Führt Berechnung und Formatierung durch (in mod_Zaehler_Berechnung)
+    Call mod_Zaehler_Berechnung.CalculateAllZaehlerVerbrauch(Me)
     
     Application.ScreenUpdating = True
     Exit Sub
@@ -76,6 +73,8 @@ End Sub
 ' OPTIONALE ROUTINEN (Historie-Farben)
 ' ==========================================================
 Public Sub KorrigiereHistorieFarben()
-    Call mod_ZaehlerLogik.FarbeHistorieEintraege
+    Call mod_Zaehler_Historie.FarbeHistorieEintraege
 End Sub
+
+
 

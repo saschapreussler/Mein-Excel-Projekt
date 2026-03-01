@@ -11,18 +11,18 @@ Option Explicit
 
 Private Sub Workbook_Open()
 
-    Call Initialize_ImportReport_ListBox
+    Call mod_Banking_Report.Initialize_ImportReport_ListBox
     
     ' Bereinige eventuell verwaiste TEMP Worksheets
     On Error Resume Next
     Call mod_Hilfsfunktionen.BereinigeTempWorksheets
     On Error GoTo 0
     
-    ' Stelle sicher dass alle Blaetter vertikal zentriert sind
+    ' Stelle sicher dass alle Blätter vertikal zentriert sind
     Call mod_Formatierung.ZentriereAlleZellenVertikal
     
     ' NEU v5.3: Hilfsspalten auf Daten-Blatt ausblenden
-    Call mod_Formatierung.BlendeDatenSpaltenAus
+    Call mod_Format_Protection.BlendeDatenSpaltenAus
 
 End Sub
 
@@ -32,3 +32,4 @@ Private Sub Workbook_NewSheet(ByVal Sh As Object)
     Call mod_Formatierung.FormatiereNeuesBlatt(Sh)
     On Error GoTo 0
 End Sub
+

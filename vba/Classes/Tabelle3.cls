@@ -10,10 +10,10 @@ Attribute VB_Exposed = True
 Option Explicit
 
 ' ===============================================================
-' Modulweite Variablen für den Vergleich (alter Wert)
+' Modulweite Variablen f?r den Vergleich (alter Wert)
 ' Werden in Worksheet_SelectionChange gespeichert und in
-' Worksheet_Change ausgewertet, um unnötige Verarbeitung
-' bei "Doppelklick + Enter ohne Änderung" zu verhindern.
+' Worksheet_Change ausgewertet, um unnütige Verarbeitung
+' bei "Doppelklick + Enter ohne ?nderung" zu verhindern.
 ' ===============================================================
 Private m_AlterWertH As String
 Private m_AlterWertI As String
@@ -58,7 +58,7 @@ Private Sub Worksheet_Activate()
 
     Application.EnableEvents = True
 
-    Call Initialize_ImportReport_ListBox
+    Call mod_Banking_Report.Initialize_ImportReport_ListBox
 End Sub
 
 Private Sub cbo_RechnungsMonat_Change()
@@ -320,7 +320,7 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
     
     ' --- NORMALE KATEGORIE (auch bei Änderung von GRÜN) ---
     
-    ' 1. Alte Beträge in Spalten M-Z löschen
+    ' 1. Alte Beträge in Spalten M-Z löschen?
     Dim c As Long
     For c = BK_COL_EINNAHMEN_START To BK_COL_AUSGABEN_ENDE
         ws.Cells(rowBK, c).ClearContents
@@ -863,4 +863,6 @@ WeiterEingabe:
     End If
     
 End Sub
+
+
 
