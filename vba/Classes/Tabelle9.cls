@@ -11,9 +11,9 @@ Option Explicit
 
 ' ===============================================================
 ' TABELLENBLATT-MODUL: Einstellungen (v4.4)
-' Formatiert die Zahlungstermin-Tabelle bei Änderungen.
-' NEU v4.4: "Ultimo" entfernt – stattdessen 31 (= "31. Tag").
-'           Duplikat-Prüfung für Spalte B.
+' Formatiert die Zahlungstermin-Tabelle bei ï¿½nderungen.
+' NEU v4.4: "Ultimo" entfernt ï¿½ stattdessen 31 (= "31. Tag").
+'           Duplikat-Prï¿½fung fï¿½r Spalte B.
 '           D/E vs F Sperre ohne Ultimo-Sonderbehandlung.
 ' ===============================================================
 
@@ -23,7 +23,7 @@ End Sub
 
 Private Sub Worksheet_Change(ByVal Target As Range)
     
-    ' Nur reagieren auf Änderungen in Spalten B-I, ab Zeile 4
+    ' Nur reagieren auf ï¿½nderungen in Spalten B-I, ab Zeile 4
     If Intersect(Target, Me.Range(Me.Cells(ES_START_ROW, ES_COL_START), _
                                    Me.Cells(Me.Rows.count, ES_COL_END))) Is Nothing Then
         Exit Sub
@@ -58,16 +58,16 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                 Target.value = NormalisiereMonate(eingabe)
             End If
             
-            ' D/E vs F Sperre: Wenn E gefüllt, darf F NICHT gefüllt sein
+            ' D/E vs F Sperre: Wenn E gefï¿½llt, darf F NICHT gefï¿½llt sein
             If Trim(CStr(Me.Cells(rowES, ES_COL_STICHTAG_FIX).value)) <> "" Then
-                MsgBox "Spalte F (Soll-Stichtag Fix) ist bereits gefüllt!" & vbLf & _
+                MsgBox "Spalte F (Soll-Stichtag Fix) ist bereits gefï¿½llt!" & vbLf & _
                        "Entweder Spalte D/E ODER Spalte F verwenden." & vbLf & vbLf & _
-                       "Die Eingabe in Spalte E wird zurückgesetzt.", vbExclamation, "Konflikt"
+                       "Die Eingabe in Spalte E wird zurï¿½ckgesetzt.", vbExclamation, "Konflikt"
                 Target.ClearContents
                 GoTo WeiterFormatieren
             End If
             
-            ' Nur Spalte E gefüllt (kein Tag in D) -> automatisch 31 setzen
+            ' Nur Spalte E gefï¿½llt (kein Tag in D) -> automatisch 31 setzen
             Dim aktuellerTag As String
             aktuellerTag = Trim(CStr(Me.Cells(rowES, ES_COL_SOLL_TAG).value))
             If aktuellerTag = "" Then
@@ -81,18 +81,18 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     End If
     
     ' ---------------------------------------------------------------
-    ' SPALTE D: Soll-Tag - D/E vs F Sperre prüfen
+    ' SPALTE D: Soll-Tag - D/E vs F Sperre prï¿½fen
     ' ---------------------------------------------------------------
     If Target.Column = ES_COL_SOLL_TAG Then
         Dim tagWert As String
         tagWert = Trim(CStr(Target.value))
         
         If tagWert <> "" Then
-            ' D/E vs F Sperre: Wenn D gefüllt, darf F NICHT gefüllt sein
+            ' D/E vs F Sperre: Wenn D gefï¿½llt, darf F NICHT gefï¿½llt sein
             If Trim(CStr(Me.Cells(rowES, ES_COL_STICHTAG_FIX).value)) <> "" Then
-                MsgBox "Spalte F (Soll-Stichtag Fix) ist bereits gefüllt!" & vbLf & _
+                MsgBox "Spalte F (Soll-Stichtag Fix) ist bereits gefï¿½llt!" & vbLf & _
                        "Entweder Spalte D/E ODER Spalte F verwenden." & vbLf & vbLf & _
-                       "Die Eingabe in Spalte D wird zurückgesetzt.", vbExclamation, "Konflikt"
+                       "Die Eingabe in Spalte D wird zurï¿½ckgesetzt.", vbExclamation, "Konflikt"
                 Target.ClearContents
                 GoTo WeiterFormatieren
             End If
@@ -100,23 +100,23 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     End If
     
     ' ---------------------------------------------------------------
-    ' SPALTE F: Soll-Stichtag (Fix) - D/E vs F Sperre prüfen
+    ' SPALTE F: Soll-Stichtag (Fix) - D/E vs F Sperre prï¿½fen
     ' ---------------------------------------------------------------
     If Target.Column = ES_COL_STICHTAG_FIX Then
         Dim stichtagWert As String
         stichtagWert = Trim(CStr(Target.value))
         
         If stichtagWert <> "" Then
-            ' F vs D/E Sperre: Wenn F gefüllt, dürfen D und E NICHT gefüllt sein
+            ' F vs D/E Sperre: Wenn F gefï¿½llt, dï¿½rfen D und E NICHT gefï¿½llt sein
             Dim dWert As String
             Dim eWert As String
             dWert = Trim(CStr(Me.Cells(rowES, ES_COL_SOLL_TAG).value))
             eWert = Trim(CStr(Me.Cells(rowES, ES_COL_SOLL_MONATE).value))
             
             If dWert <> "" Or eWert <> "" Then
-                MsgBox "Spalte D (Soll-Tag) oder E (Soll-Monate) ist bereits gefüllt!" & vbLf & _
+                MsgBox "Spalte D (Soll-Tag) oder E (Soll-Monate) ist bereits gefï¿½llt!" & vbLf & _
                        "Entweder Spalte D/E ODER Spalte F verwenden." & vbLf & vbLf & _
-                       "Die Eingabe in Spalte F wird zurückgesetzt.", vbExclamation, "Konflikt"
+                       "Die Eingabe in Spalte F wird zurï¿½ckgesetzt.", vbExclamation, "Konflikt"
                 Target.ClearContents
                 GoTo WeiterFormatieren
             End If
@@ -124,14 +124,14 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     End If
     
     ' ---------------------------------------------------------------
-    ' SPALTE B: Kategorie - Duplikat prüfen, sortieren, Cursor setzen
+    ' SPALTE B: Kategorie - Duplikat prï¿½fen, sortieren, Cursor setzen
     ' ---------------------------------------------------------------
     If Target.Column = ES_COL_KATEGORIE Then
         Dim katWert As String
         katWert = Trim(CStr(Target.value))
         
         If katWert <> "" Then
-            ' Duplikat-Prüfung: Kommt diese Kategorie bereits in einer anderen Zeile vor?
+            ' Duplikat-Prï¿½fung: Kommt diese Kategorie bereits in einer anderen Zeile vor?
             Dim pruefZeile As Long
             Dim LetzteZeile As Long
             LetzteZeile = Me.Cells(Me.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
@@ -159,7 +159,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             
             For suchZeile = ES_START_ROW To letzte
                 If StrComp(Trim(CStr(Me.Cells(suchZeile, ES_COL_KATEGORIE).value)), katWert, vbTextCompare) = 0 Then
-                    ' Cursor in die nächste Spalte (C = Soll-Betrag) setzen
+                    ' Cursor in die nï¿½chste Spalte (C = Soll-Betrag) setzen
                     Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
                     Application.EnableEvents = True
                     Me.Cells(suchZeile, ES_COL_SOLL_BETRAG).Select
@@ -169,8 +169,14 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                     Call mod_Einstellungen.FormatiereZahlungsterminTabelle(Me)
                     Application.EnableEvents = True
                     
-                    ' Re-Evaluierung auslösen
+                    ' Re-Evaluierung auslï¿½sen
                     Call mod_KategorieEngine_Pipeline.ReEvaluiereAlleNichtManuellen
+                    
+                    ' v3.0: ï¿½bersicht nach Kategorie-ï¿½nderung aktualisieren
+                    On Error Resume Next
+                    Call mod_Uebersicht_Generator.GeneriereUebersicht(Year(Date), stummModus:=True)
+                    On Error GoTo 0
+                    
                     Exit Sub
                 End If
             Next suchZeile
@@ -187,6 +193,11 @@ NurFormatieren:
     ' Bankkonto-Kategorien neu evaluieren
     Call mod_KategorieEngine_Pipeline.ReEvaluiereAlleNichtManuellen
     
+    ' v3.0: ï¿½bersicht nach Einstellungs-ï¿½nderung automatisch aktualisieren
+    On Error Resume Next
+    Call mod_Uebersicht_Generator.GeneriereUebersicht(Year(Date), stummModus:=True)
+    On Error GoTo 0
+    
 SafeExit:
     Application.EnableEvents = True
     If Err.Number <> 0 Then Err.Clear
@@ -198,9 +209,9 @@ End Sub
 ' Hilfsfunktion: Monatseingabe normalisieren
 ' "3,6,9" -> "03, 06, 09"
 ' "1, 3, 12" -> "01, 03, 12"
-' Jeder Monat wird auf 2 Stellen aufgefüllt,
+' Jeder Monat wird auf 2 Stellen aufgefï¿½llt,
 ' nach dem Komma folgt ein Leerzeichen.
-' Ungültige Monate (>12 oder <1) werden ignoriert.
+' Ungï¿½ltige Monate (>12 oder <1) werden ignoriert.
 ' ===============================================================
 Private Function NormalisiereMonate(ByVal eingabe As String) As String
     Dim teile() As String
@@ -223,7 +234,7 @@ Private Function NormalisiereMonate(ByVal eingabe As String) As String
         End If
     Next i
     
-    If result = "" Then result = eingabe  ' Fallback: Original zurückgeben
+    If result = "" Then result = eingabe  ' Fallback: Original zurï¿½ckgeben
     NormalisiereMonate = result
 End Function
 

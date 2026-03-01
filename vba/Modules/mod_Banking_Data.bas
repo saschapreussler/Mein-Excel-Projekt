@@ -280,9 +280,10 @@ ImportAbschluss:
     
     ' 7. Übersicht aktualisieren (nur wenn neue Datensätze importiert wurden)
     '    v4.0: NEU - Übersichtsblatt nach jedem erfolgreichen Import generieren
+    '    v4.1: stummModus=True da Import bereits eigene Erfolgsmeldung zeigt
      If rowsProcessed > 0 Then
         On Error Resume Next
-        Call mod_Uebersicht_Generator.GeneriereUebersicht(Year(Date))
+        Call mod_Uebersicht_Generator.GeneriereUebersicht(Year(Date), stummModus:=True)
         Err.Clear
         On Error GoTo 0
     End If

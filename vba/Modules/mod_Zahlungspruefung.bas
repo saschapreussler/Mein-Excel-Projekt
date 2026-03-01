@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Zahlungspruefung (Orchestrator)
-' VERSION: 3.0 - Modularisiert
+' VERSION: 3.1 - 01.03.2026
 ' ZWECK: Zahlungspruefung fuer Mitgliederliste + Einstellungen
 '        - Prueft Zahlungseingaenge gegen Soll-Werte
 '        - Behandelt Dezember-Vorauszahlungen
@@ -15,6 +15,8 @@ Option Explicit
 '     DropDowns, Hilfsspalten AF/AG, Spaltenentsperrung
 '   - mod_ZP_Sammelzuordnung: Sammelueberweisungen, manuelle
 '     Monatszuordnung
+' FIX v3.1: PruefeZahlungen nutzt jetzt Spalte I (Monat/Periode)
+'           statt Month(Buchungsdatum) f�r Monats-Zuordnung
 ' ***************************************************************
 
 ' ===============================================================
@@ -108,15 +110,22 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     ' Bei variablem Betrag (soll=0) wird trotzdem geprueft ob Zahlung da ist.
     
     ' 3. Ist-Wert aus Bankkonto ermitteln
+    '    v3.1: Monat-Matching jetzt ueber Spalte I (Monat/Periode)
+    '          statt ueber Month(Buchungsdatum), da Spalte I bereits
+    '          die korrekte Monats-Zuordnung enthaelt (inkl. Vorlauf/Nachlauf)
     ist = 0
     lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     
+    ' Erwarteter Monatname (z.B. "Januar", "Februar", ...)
+    Dim erwarteterMonat As String
+    erwarteterMonat = MonthName(monat)
+    
     For r = BK_START_ROW To lastRow
-        ' Datum pruefen
+        ' Datum pruefen (muss vorhanden sein fuer Jahr-Check)
         If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo NextZahlRow
         zahlDatum = wsBK.Cells(r, BK_COL_DATUM).value
         
-        ' Jahr pruefen
+        ' Jahr pruefen ueber Buchungsdatum
         If Year(zahlDatum) <> jahr Then
             ' Dezember-Sonderfall: Vorauszahlung Dezember Vorjahr fuer Januar
             If monat = 1 And Month(zahlDatum) = 12 And Year(zahlDatum) = jahr - 1 Then
@@ -126,10 +135,10 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
             End If
         End If
         
-        ' Monat pruefen (nur wenn Jahr passt)
-        If Year(zahlDatum) = jahr Then
-            If Month(zahlDatum) <> monat Then GoTo NextZahlRow
-        End If
+        ' Monat pruefen ueber Spalte I (Monat/Periode)
+        Dim monatPeriode As String
+        monatPeriode = Trim(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
+        If StrComp(monatPeriode, erwarteterMonat, vbTextCompare) <> 0 Then GoTo NextZahlRow
         
         ' IBAN pruefen (Spalte D = BK_COL_IBAN)
         ibanZeile = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
