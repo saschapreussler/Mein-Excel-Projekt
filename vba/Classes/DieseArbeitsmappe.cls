@@ -28,9 +28,9 @@ Private Sub Workbook_Open()
     ' NEU v5.3: Hilfsspalten auf Daten-Blatt ausblenden
     Call mod_Format_Protection.BlendeDatenSpaltenAus
 
-End Sub
-
-Private Sub Workbook_NewSheet(ByVal Sh As Object)
+    ' Mitgliederliste: DropDowns + Spaltenschutz aktualisieren
+    Call mod_Mitglieder_UI.ApplyMitgliederDropdowns
+    
     ' Neues Blatt automatisch vertikal zentrieren
     On Error Resume Next
     Call mod_Formatierung.FormatiereNeuesBlatt(Sh)
@@ -59,6 +59,7 @@ Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
     End If
     
 End Sub
+
 
 
 

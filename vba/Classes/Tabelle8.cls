@@ -38,6 +38,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     ' === EINZELSPALTEN B, D, F, H ===
     If changedCol = 2 Then
         Call mod_Format_Spalten.FormatSingleColumnComplete(Me, 2)
+        ' Spalte B = Vereinsfunktionen: DropDown auf Mitgliederliste aktualisieren
+        Call mod_Mitglieder_UI.ApplyMitgliederDropdowns
         GoTo CleanUp
     End If
     
@@ -189,6 +191,8 @@ Private Function FindeKategorieZeile(ByVal suchKategorie As String, _
         End If
     Next r
 End Function
+
+
 
 
 

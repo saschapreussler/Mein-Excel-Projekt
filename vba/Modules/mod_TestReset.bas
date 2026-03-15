@@ -145,3 +145,5 @@ ErrorHandler:
     MsgBox "Fehler beim Test-Reset:" & vbCrLf & _
            "Nr. " & Err.Number & ": " & Err.Description, vbCritical
 End Sub
+
+
