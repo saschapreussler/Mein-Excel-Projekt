@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
-' VERSION: 4.3 - 01.06.2026
+' VERSION: 4.4 - 15.03.2026
 ' ZWECK: Generiert ?bersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - Kategorien DYNAMISCH aus Einstellungen-Blatt (Spalte B)
@@ -50,9 +50,13 @@ Option Explicit
 '           - Variabler Soll: Folgemonat-Uebernahme aus Vormonat
 '             HoleManuellSollAusVormonat() nutzt gesicherte Werte
 '             Gelb->Gruen wenn Ist = manueller Soll
-'           - Gruppenblock: Parzelle/Name nur in 1. Zeile,
-'             dicke Trennlinie zwischen Bloecken
 '           - Zebra basiert auf sichtbaren Zeilen (nach Filter)
+' NEU v4.4: - Ehrenmitglied: kein Mitgliedsbeitrag noetig
+'           - Partner-Mitgliedsbeitrag: Doppelzahlung erkennen
+'             (15 EUR statt 7.50 EUR -> deckt beide Parzellen-Mitgl.)
+'           - Zahlungsdatum in Bemerkung (Spalte H)
+'           - AutoFilter-Dropdowns immer auf Zeile 3
+'           - Gruppenblock entfernt (Filter-kompatibel)
 ' ***************************************************************
 
 ' ===============================================================
@@ -302,6 +306,13 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
+                ' v4.4: Ehrenmitglied zahlt keinen Mitgliedsbeitrag
+                If InStr(UCase(mitgliedRole), "EHREN") > 0 Then
+                    If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                        GoTo NextKat
+                    End If
+                End If
+                
                 ' Zahlung pruefen (mod_Zahlungspruefung)
                 ergebnis = mod_Zahlungspruefung.PruefeZahlungen(entityKey, kategorie, monat, jahr)
                 
@@ -342,6 +353,20 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                         ElseIf ist > 0 Then
                             status = m_STATUS_GRUEN
                         End If
+                    End If
+                End If
+                
+                ' v4.4: Partner-Zahlung pruefen bei Mitgliedsbeitrag
+                ' Wenn ein Mitglied auf der gleichen Parzelle >= 2x Soll
+                ' bezahlt hat, gilt der Beitrag als mitbezahlt
+                Dim partnerInfo As String
+                partnerInfo = ""
+                If ist = 0 And soll > 0 And StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                    partnerInfo = PruefePartnerMitgliedsbeitrag( _
+                        mitglieder, CLng(parzelleWert), entityKey, monat, jahr, soll)
+                    If partnerInfo <> "" Then
+                        ist = soll
+                        status = m_STATUS_GRUEN
                     End If
                 End If
                 
@@ -482,6 +507,15 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
+                ' v4.4: Partner-Info anhaengen wenn Mitgliedsbeitrag mitbezahlt
+                If partnerInfo <> "" Then
+                    If bemerkung = "" Then
+                        bemerkung = partnerInfo
+                    Else
+                        bemerkung = bemerkung & " | " & partnerInfo
+                    End If
+                End If
+                
                 wsUeb.Cells(rowIdx, UEB_COL_BEMERKUNG).value = bemerkung
                 
                 rowIdx = rowIdx + 1
@@ -493,6 +527,11 @@ NextKat:
     
     ' Formatierung anwenden
     Call FormatiereUebersicht(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
+    
+    ' v4.4: AutoFilter auf Header-Zeile aktivieren (Dropdown-Pfeile immer sichtbar)
+    If wsUeb.AutoFilterMode Then wsUeb.AutoFilterMode = False
+    wsUeb.Range(wsUeb.Cells(UEBERSICHT_HEADER_ROW, UEB_COL_PARZELLE), _
+                wsUeb.Cells(rowIdx - 1, UEB_COL_BEMERKUNG)).AutoFilter
     
     ' Monats-Register (Shape-Tabs) erstellen/aktualisieren
     Call mod_Uebersicht_Filter.ErstelleMonatsRegister
@@ -706,11 +745,6 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     ' Vertikale Zentrierung
     rngTable.VerticalAlignment = xlCenter
     
-    ' v4.3: Gruppenblock-Darstellung
-    ' Parzelle + Mitglied nur in der ersten Zeile eines Blocks anzeigen,
-    ' danach leer lassen. Trennlinie zwischen Bloecken.
-    Call FormatiereGruppenBloecke(wsUeb, startRow, endRow)
-    
 End Sub
 
 
@@ -737,19 +771,12 @@ Private Function SammleManuelleSollWerte(ByVal wsUeb As Worksheet) As Object
     End If
     
     Dim r As Long
-    Dim letzteParzelle As String
-    letzteParzelle = ""
-    
     For r = UEBERSICHT_START_ROW To lastRow
         Dim parzelle As String
         parzelle = CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)
         
-        ' Bei Gruppenblock: leere Parzelle -> letzte bekannte verwenden
-        If parzelle <> "" Then
-            letzteParzelle = parzelle
-        Else
-            parzelle = letzteParzelle
-        End If
+        ' v4.4: Keine Gruppenblock-Logik mehr noetig, jede Zeile hat Parzelle
+        If parzelle = "" Then GoTo NextSollRow
         
         ' Nur variable Soll-Zellen (hell-gelb oder gruen) beruecksichtigen
         Dim sollFarbe As Long
@@ -769,6 +796,7 @@ Private Function SammleManuelleSollWerte(ByVal wsUeb As Worksheet) As Object
                 dict(dictKey) = sollWert
             End If
         End If
+NextSollRow:
     Next r
     
     Set SammleManuelleSollWerte = dict
@@ -800,52 +828,53 @@ End Function
 
 
 ' ===============================================================
-' v4.3: Gruppenblock-Darstellung
-' Parzelle und Mitglied werden nur in der ersten Zeile jedes
-' Blocks angezeigt. Nachfolgende Zeilen mit gleicher Parzelle
-' + Mitglied zeigen leere Zellen.
-' Zwischen den Bloecken wird eine dickere Trennlinie gesetzt.
-' HINWEIS: Merged Cells werden NICHT verwendet, da diese sich
-'          nicht mit AutoFilter vertragen.
+' v4.4: Pruefen ob ein Partner auf der gleichen Parzelle den
+' Mitgliedsbeitrag fuer beide bezahlt hat (z.B. 15 EUR statt 7.50).
+' Gibt Partner-Info-String zurueck wenn mitbezahlt, sonst "".
 ' ===============================================================
-Private Sub FormatiereGruppenBloecke(ByVal wsUeb As Worksheet, _
-                                     ByVal startRow As Long, _
-                                     ByVal endRow As Long)
+Private Function PruefePartnerMitgliedsbeitrag( _
+                    ByVal mitglieder As Collection, _
+                    ByVal parzelle As Long, _
+                    ByVal meineEntityKey As String, _
+                    ByVal monat As Long, _
+                    ByVal jahr As Long, _
+                    ByVal sollProPerson As Double) As String
     
-    If endRow < startRow Then Exit Sub
+    PruefePartnerMitgliedsbeitrag = ""
     
-    Dim r As Long
-    Dim letzteParzelle As String
-    Dim letzterMitglied As String
-    
-    letzteParzelle = ""
-    letzterMitglied = ""
-    
-    For r = startRow To endRow
-        Dim aktParzelle As String
-        aktParzelle = CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)
-        Dim aktMitglied As String
-        aktMitglied = CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)
-        
-        If r = startRow Then
-            ' Erste Zeile: Werte behalten
-            letzteParzelle = aktParzelle
-            letzterMitglied = aktMitglied
-        ElseIf aktParzelle = letzteParzelle And aktMitglied = letzterMitglied Then
-            ' Gleicher Block -> Parzelle + Mitglied ausblenden
-            wsUeb.Cells(r, UEB_COL_PARZELLE).value = ""
-            wsUeb.Cells(r, UEB_COL_MITGLIED).value = ""
-        Else
-            ' Neuer Block -> Trennlinie oberhalb (= dicke untere Borderlinie der vorigen Zeile)
-            wsUeb.Range(wsUeb.Cells(r - 1, UEB_COL_PARZELLE), _
-                        wsUeb.Cells(r - 1, UEB_COL_BEMERKUNG)).Borders(xlEdgeBottom).Weight = xlMedium
-            
-            letzteParzelle = aktParzelle
-            letzterMitglied = aktMitglied
+    Dim partner As Object
+    For Each partner In mitglieder
+        ' Gleiche Parzelle, anderer EntityKey?
+        If CLng(partner("Parzelle")) = parzelle Then
+            If StrComp(CStr(partner("EntityKey")), meineEntityKey, vbTextCompare) <> 0 Then
+                ' Partner gefunden - Zahlung pruefen
+                Dim partnerErgebnis As String
+                partnerErgebnis = mod_Zahlungspruefung.PruefeZahlungen( _
+                    CStr(partner("EntityKey")), "Mitgliedsbeitrag", monat, jahr)
+                
+                ' IST aus Ergebnis parsen
+                Dim partnerTeile() As String
+                partnerTeile = Split(partnerErgebnis, "|")
+                
+                Dim partnerIst As Double
+                partnerIst = 0
+                If UBound(partnerTeile) >= 2 Then
+                    Dim pIT() As String
+                    pIT = Split(partnerTeile(2), ":")
+                    If UBound(pIT) >= 1 Then partnerIst = val(pIT(1))
+                End If
+                
+                ' Partner hat >= 2x Soll bezahlt -> deckt beide ab
+                If partnerIst >= sollProPerson * 2 - 0.01 Then
+                    PruefePartnerMitgliedsbeitrag = _
+                        "Mitbezahlt durch " & CStr(partner("Name"))
+                    Exit Function
+                End If
+            End If
         End If
-    Next r
+    Next partner
     
-End Sub
+End Function
 
 
 

@@ -158,8 +158,8 @@ Public Sub FilterUebersichtNachMonat(ByVal monatIndex As Long)
     If lastRow < 4 Then lastRow = 4
 
     If monatIndex = 0 Then
-        ' "Alle" -> kein Filter
-        ' Nichts weiter tun
+        ' "Alle" -> Filter-Kriterien entfernen, AutoFilter-Dropdowns behalten
+        wsUeb.Range("A3:H" & lastRow).AutoFilter
     Else
         ' Filter auf Spalte C (Monat) anwenden
         ' Filterkriterium: "*MonatName*" (enthaelt den Monatsnamen)

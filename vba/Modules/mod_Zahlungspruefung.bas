@@ -295,6 +295,17 @@ NextZahlRow:
         End If
     End If
     
+    ' v4.4: Zahlungsdatum immer in Bemerkung aufnehmen
+    If hatZahlung Then
+        Dim zahlDatumText As String
+        zahlDatumText = "Zahlung am " & Format(fruehestesZahlDatum, "dd.mm.yyyy")
+        If bemerkung = "" Then
+            bemerkung = zahlDatumText
+        Else
+            bemerkung = zahlDatumText & " | " & bemerkung
+        End If
+    End If
+    
     ' 5. Ergebnis formatieren (IMMER Punkt als Dezimaltrenner!)
     PruefeZahlungen = status & "|Soll:" & FormatDezimalPunkt(soll) & "|Ist:" & FormatDezimalPunkt(ist)
     If bemerkung <> "" Then
