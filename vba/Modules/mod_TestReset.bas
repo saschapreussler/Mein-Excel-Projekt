@@ -51,10 +51,7 @@ Public Sub TestReset_VorCSVImport()
     lastRow = wsBank.Cells(wsBank.Rows.count, BK_COL_DATUM).End(xlUp).Row
     
     If lastRow >= BK_START_ROW Then
-        wsBank.Range(wsBank.Cells(BK_START_ROW, 1), _
-                     wsBank.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).ClearContents
-        wsBank.Range(wsBank.Cells(BK_START_ROW, 1), _
-                     wsBank.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).Interior.ColorIndex = xlNone
+        wsBank.Rows(BK_START_ROW & ":" & lastRow).Clear
     End If
     
     ' Formeln wiederherstellen (Spalte G, Zusammenfassungen)
@@ -78,10 +75,7 @@ Public Sub TestReset_VorCSVImport()
     lastRow = wsUeb.Cells(wsUeb.Rows.count, 1).End(xlUp).Row
     
     If lastRow >= 4 Then
-        wsUeb.Range(wsUeb.Cells(4, 1), _
-                     wsUeb.Cells(lastRow, 8)).ClearContents
-        wsUeb.Range(wsUeb.Cells(4, 1), _
-                     wsUeb.Cells(lastRow, 8)).Interior.ColorIndex = xlNone
+        wsUeb.Rows("4:" & lastRow).Clear
     End If
     
     wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -107,7 +101,7 @@ Public Sub TestReset_VorCSVImport()
     
     If lastRow >= VJ_START_ROW Then
         wsDaten.Range(wsDaten.Cells(VJ_START_ROW, VJ_COL_DATUM), _
-                      wsDaten.Cells(lastRow, VJ_COL_ENTITYKEY)).ClearContents
+                      wsDaten.Cells(lastRow, VJ_COL_ENTITYKEY)).Clear
         Debug.Print "[TestReset] Vorjahr-Speicher: " & _
             (lastRow - VJ_START_ROW + 1) & " Zeilen gel" & ChrW(246) & "scht."
     Else
@@ -145,5 +139,7 @@ ErrorHandler:
     MsgBox "Fehler beim Test-Reset:" & vbCrLf & _
            "Nr. " & Err.Number & ": " & Err.Description, vbCritical
 End Sub
+
+
 
 

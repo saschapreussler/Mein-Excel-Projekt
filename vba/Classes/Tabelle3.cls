@@ -185,7 +185,7 @@ End Sub
 ' ===============================================================
 Private Sub Worksheet_SelectionChange(ByVal Target As Range)
     ' Nur einzelne Zelle merken
-    If Target.Cells.count <> 1 Then Exit Sub
+    If Target.Cells.CountLarge <> 1 Then Exit Sub
     If Target.Row < BK_START_ROW Then Exit Sub
     
     Select Case Target.Column
@@ -226,7 +226,7 @@ End Sub
 Private Sub Worksheet_Change(ByVal Target As Range)
     
     ' Nur einzelne Zelle, ab Datenzeile 28
-    If Target.Cells.count <> 1 Then Exit Sub
+    If Target.Cells.CountLarge <> 1 Then Exit Sub
     If Target.Row < BK_START_ROW Then Exit Sub
     
     ' =============================================
@@ -875,6 +875,8 @@ WeiterEingabe:
     End If
     
 End Sub
+
+
 
 
 
