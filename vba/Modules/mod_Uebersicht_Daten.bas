@@ -558,3 +558,23 @@ NextVJPruefRow:
     Next r
     
 End Function
+
+
+' ===============================================================
+' v4.6: Prueft ob Vorjahr-Daten im Speicher vorhanden sind
+' Gibt True zurueck wenn mindestens eine Zeile in CA-CF existiert
+' ===============================================================
+Public Function HatVorjahrDaten() As Boolean
+    HatVorjahrDaten = False
+    
+    Dim wsDaten As Worksheet
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    
+    If wsDaten Is Nothing Then Exit Function
+    
+    Dim lastRow As Long
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, VJ_COL_DATUM).End(xlUp).Row
+    HatVorjahrDaten = (lastRow >= VJ_START_ROW)
+End Function

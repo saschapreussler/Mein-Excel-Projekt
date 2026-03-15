@@ -342,6 +342,8 @@ Public Function ErmittleEntityRoleVonFunktion(ByVal funktion As String) As Strin
         ErmittleEntityRoleVonFunktion = "MITGLIED OHNE PACHT"
     ElseIf InStr(funktionUpper, "EHEMALIG") > 0 Then
         ErmittleEntityRoleVonFunktion = "EHEMALIGES MITGLIED"
+    ElseIf InStr(funktionUpper, "EHREN") > 0 Then
+        ErmittleEntityRoleVonFunktion = "EHRENMITGLIED"
     Else
         ErmittleEntityRoleVonFunktion = "MITGLIED MIT PACHT"
     End If

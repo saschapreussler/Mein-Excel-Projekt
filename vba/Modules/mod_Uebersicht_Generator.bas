@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
-' VERSION: 4.5 - 15.03.2026
+' VERSION: 4.6 - 15.03.2026
 ' ZWECK: Generiert ?bersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - Kategorien DYNAMISCH aus Einstellungen-Blatt (Spalte B)
@@ -63,6 +63,14 @@ Option Explicit
 '           - Nur Mitgliedsbeitrag wird pro Mitglied angezeigt
 '           - Worksheet_Change Event: Gelb->Gruen bei manueller
 '             Soll-Eingabe + MsgBox fuer Folgemonat-Uebernahme
+' FIX v4.5b: - Reentrancy-Schutz (m_IsGenerating)
+'            - AutoFilter VOR ClearContents entfernen
+'            - Robustere Fehlerbehandlung (Blattschutz im ErrorHandler)
+' NEU v4.6: - Ehrenmitglied-Rolle: ErmittleEntityRoleVonFunktion
+'             erkennt jetzt "Ehrenmitglied" aus Mitgliederliste Spalte O
+'           - Januar-Schutz: Wenn keine Vorjahr-Daten vorhanden,
+'             wird ROT auf GELB herabgestuft statt falsche Saeumnis
+'             (Dezember-Zahlung des Vorjahres koennte fehlen)
 ' ***************************************************************
 
 ' ===============================================================
@@ -411,6 +419,15 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
+                ' v4.6: Januar-Schutz: Wenn keine Vorjahr-Daten vorhanden sind,
+                ' koennte eine Dezember-Zahlung des Vorjahres fuer Januar gelten.
+                ' In diesem Fall ROT -> GELB herabstufen mit Hinweis.
+                If monat = 1 And ist = 0 And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
+                    If StrComp(status, "ROT", vbTextCompare) = 0 Then
+                        status = "GELB"
+                    End If
+                End If
+                
                 ' v4.4: Partner-Zahlung pruefen bei Mitgliedsbeitrag
                 ' Wenn ein Mitglied auf der gleichen Parzelle >= 2x Soll
                 ' bezahlt hat, gilt der Beitrag als mitbezahlt
@@ -568,6 +585,17 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                         bemerkung = partnerInfo
                     Else
                         bemerkung = bemerkung & " | " & partnerInfo
+                    End If
+                End If
+                
+                ' v4.6: Hinweis wenn Januar ohne Vorjahr-Daten auf GELB herabgestuft wurde
+                If monat = 1 And ist = 0 And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
+                    Dim vjHinweis As String
+                    vjHinweis = "Keine Vorjahr-Daten: Zahlung evtl. im Dezember erfolgt"
+                    If bemerkung = "" Then
+                        bemerkung = vjHinweis
+                    Else
+                        bemerkung = bemerkung & " | " & vjHinweis
                     End If
                 End If
                 
