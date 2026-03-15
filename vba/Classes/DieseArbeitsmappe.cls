@@ -31,6 +31,9 @@ Private Sub Workbook_Open()
     ' Mitgliederliste: DropDowns + Spaltenschutz aktualisieren
     Call mod_Mitglieder_UI.ApplyMitgliederDropdowns
     
+End Sub
+
+Private Sub Workbook_NewSheet(ByVal Sh As Object)
     ' Neues Blatt automatisch vertikal zentrieren
     On Error Resume Next
     Call mod_Formatierung.FormatiereNeuesBlatt(Sh)
