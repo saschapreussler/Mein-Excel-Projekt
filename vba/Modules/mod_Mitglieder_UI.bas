@@ -104,9 +104,12 @@ Public Sub ApplyMitgliederDropdowns()
     Dim funktionFormel As String
     
     On Error GoTo ErrorHandler
-    Set ws = Worksheets(WS_MITGLIEDER)
-    Set wsDaten = Worksheets(WS_DATEN)
+    Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    
+    On Error Resume Next
     ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo ErrorHandler
     
     ' --- Alle Datenspalten (B bis Q) entsperren ---
     ws.Range(ws.Cells(M_START_ROW, M_COL_PARZELLE), ws.Cells(1000, M_COL_PACHTENDE)).Locked = False
@@ -121,17 +124,27 @@ Public Sub ApplyMitgliederDropdowns()
     lastRowB = wsDaten.Cells(wsDaten.Rows.count, 2).End(xlUp).Row
     If lastRowB < DATA_START_ROW Then lastRowB = DATA_START_ROW
     funktionFormel = "=Daten!$B$" & DATA_START_ROW & ":$B$" & lastRowB
+    
+    Debug.Print "[ApplyMitgliederDropdowns] Funktion-Formel: " & funktionFormel
 
     Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_PARZELLE), ws.Cells(1000, M_COL_PARZELLE)), "=Daten!$F$4:$F$18", True)
     Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_SEITE), ws.Cells(1000, M_COL_SEITE)), "=Daten!$H$4:$H$6", True)
     Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_ANREDE), ws.Cells(1000, M_COL_ANREDE)), "=Daten!$D$4:$D$9", True)
     Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_FUNKTION), ws.Cells(1000, M_COL_FUNKTION)), funktionFormel, True)
+    
+    Debug.Print "[ApplyMitgliederDropdowns] Alle DropDowns gesetzt."
 
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+    Debug.Print "[ApplyMitgliederDropdowns] Fertig."
     Exit Sub
 ErrorHandler:
-    If Not ws Is Nothing Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    MsgBox "Fehler beim Setzen der Dropdown-Listen: " & Err.Description, vbCritical
+    Debug.Print "[ApplyMitgliederDropdowns] FEHLER: " & Err.Number & " - " & Err.Description
+    If Not ws Is Nothing Then
+        On Error Resume Next
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        On Error GoTo 0
+    End If
 End Sub
 
 Public Sub Reapply_Data_Validation()
@@ -141,7 +154,7 @@ End Sub
 Private Sub ApplyDropdown(ByVal targetRange As Range, ByVal sourceFormula As String, ByVal allowBlanks As Boolean)
     With targetRange.Validation
         .Delete
-        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:=sourceFormula
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertWarning, Operator:=xlBetween, Formula1:=sourceFormula
         .IgnoreBlank = allowBlanks
         .InCellDropdown = True
         .ErrorTitle = "Ung?ltiger Wert"
@@ -415,6 +428,8 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False
     
 End Function
+
+
 
 
 
