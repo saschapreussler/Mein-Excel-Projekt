@@ -454,6 +454,9 @@ NextKat:
     ' Formatierung anwenden
     Call FormatiereUebersicht(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
     
+    ' Monats-Register (Shape-Tabs) erstellen/aktualisieren
+    Call mod_Uebersicht_Filter.ErstelleMonatsRegister
+    
     ' Einstellungen-Cache freigeben
     Call mod_Zahlungspruefung.EntladeEinstellungenCacheZP
     
@@ -633,15 +636,17 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
         .ColorIndex = xlAutomatic
     End With
     
-    ' Spaltenbreiten
-    wsUeb.Columns(UEB_COL_PARZELLE).ColumnWidth = 10
-    wsUeb.Columns(UEB_COL_MITGLIED).ColumnWidth = 25
-    wsUeb.Columns(UEB_COL_MONAT).ColumnWidth = 18
-    wsUeb.Columns(UEB_COL_KATEGORIE).ColumnWidth = 22
-    wsUeb.Columns(UEB_COL_SOLL).ColumnWidth = 14
-    wsUeb.Columns(UEB_COL_IST).ColumnWidth = 14
-    wsUeb.Columns(UEB_COL_STATUS).ColumnWidth = 10
-    wsUeb.Columns(UEB_COL_BEMERKUNG).ColumnWidth = 45
+    ' Spaltenbreiten: AutoFit basierend auf Inhalt
+    Dim colAutoFit As Long
+    For colAutoFit = UEB_COL_PARZELLE To UEB_COL_BEMERKUNG
+        wsUeb.Columns(colAutoFit).AutoFit
+        ' Mindestbreite sicherstellen (Header nicht abschneiden)
+        If wsUeb.Columns(colAutoFit).ColumnWidth < 10 Then
+            wsUeb.Columns(colAutoFit).ColumnWidth = 10
+        End If
+        ' Etwas Puffer fuer bessere Lesbarkeit
+        wsUeb.Columns(colAutoFit).ColumnWidth = wsUeb.Columns(colAutoFit).ColumnWidth + 2
+    Next colAutoFit
     
     ' Deutsches Zahlenformat mit Euro-Zeichen (Spalte E + F)
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_SOLL), _

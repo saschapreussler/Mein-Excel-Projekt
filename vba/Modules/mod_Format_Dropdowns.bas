@@ -69,6 +69,7 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
         nextRowA = nextRowA + 1
     Next key
     
+    ws.Cells(3, DATA_COL_MONAT_PERIODE).value = "Monat/Periode"
     ws.Cells(4, DATA_COL_MONAT_PERIODE).value = "Januar"
     ws.Cells(5, DATA_COL_MONAT_PERIODE).value = "Februar"
     ws.Cells(6, DATA_COL_MONAT_PERIODE).value = "M" & ChrW(228) & "rz"
