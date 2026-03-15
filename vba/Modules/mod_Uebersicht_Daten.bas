@@ -3,13 +3,15 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Daten
-' VERSION: 1.0 - 15.03.2026
+' VERSION: 1.1 - 15.03.2026
 ' ZWECK: Datenquellen und Hilfsfunktionen fuer die Uebersicht
 '        - Kategorien aus Einstellungen laden (inkl. Faelligkeit)
 '        - Aktive Mitglieder aus Daten-Blatt holen
 '        - Jahr und importierte Monate aus Bankkonto ermitteln
 '        - Vorjahr-Speicher (Okt-Dez Puffer auf Daten CA-CF)
 ' QUELLE: Extrahiert aus mod_Uebersicht_Generator v4.1
+' NEU v1.1: HoleAktiveMitglieder gleicht Role live mit
+'           Mitgliederliste Spalte O ab (Ehrenmitglied-Fix)
 ' ***************************************************************
 
 
@@ -132,6 +134,8 @@ End Sub
 ' Mehrere Mitglieder pro Parzelle erlaubt (z.B. MIT + OHNE PACHT)
 ' Dedup ueber EntityKey+Parzelle (nicht nur Parzelle)
 ' Name aus Spalte T (Kontoname), Fallback auf Spalte U (Zuordnung)
+' v4.7: Role wird live aus Mitgliederliste Spalte O abgeglichen,
+'       damit Ehren-/Funktions-Aenderungen sofort wirken
 ' ===============================================================
 Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
     
@@ -150,6 +154,39 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
     Dim verarbeiteteKombis As Object
     Set verarbeiteteKombis = CreateObject("Scripting.Dictionary")
     
+    ' v4.7: Funktions-Cache aus Mitgliederliste aufbauen
+    ' Schluessel: EntityKey -> Funktion (Spalte O)
+    ' Damit wird die Role live aktualisiert, z.B. bei "Ehrenmitglied"
+    Dim funktionsCache As Object
+    Set funktionsCache = CreateObject("Scripting.Dictionary")
+    funktionsCache.CompareMode = vbTextCompare
+    
+    Dim wsML As Worksheet
+    On Error Resume Next
+    Set wsML = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    On Error GoTo 0
+    
+    If Not wsML Is Nothing Then
+        Dim lastRowML As Long
+        lastRowML = wsML.Cells(wsML.Rows.count, M_COL_MEMBER_ID).End(xlUp).Row
+        
+        Dim rML As Long
+        For rML = M_START_ROW To lastRowML
+            Dim mlEntityKey As String
+            mlEntityKey = Trim(CStr(wsML.Cells(rML, M_COL_ENTITY_KEY).value))
+            If mlEntityKey <> "" Then
+                Dim mlFunktion As String
+                mlFunktion = Trim(CStr(wsML.Cells(rML, M_COL_FUNKTION).value))
+                If mlFunktion <> "" Then
+                    ' Nur den ersten Eintrag pro EntityKey verwenden
+                    If Not funktionsCache.Exists(mlEntityKey) Then
+                        funktionsCache.Add mlEntityKey, mlFunktion
+                    End If
+                End If
+            End If
+        Next rML
+    End If
+    
     Dim r As Long
     Dim entityKey As String
     Dim zuordnung As String
@@ -165,6 +202,22 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         ' "MITGLIED MIT PACHT" und "MITGLIED OHNE PACHT" -> ja
         ' "EHEMALIGES MITGLIED" -> nein (ausschliessen)
         roleWert = UCase(Trim(CStr(wsDaten.Cells(r, EK_COL_ROLE).value)))
+        
+        ' v4.7: Role live aus Mitgliederliste aktualisieren
+        ' Falls in Mitgliederliste Spalte O eine Aenderung erfolgte
+        ' (z.B. "Ehrenmitglied"), wird die Role hier korrekt abgeleitet,
+        ' auch wenn Spalte W auf dem Daten-Blatt noch den alten Wert hat.
+        If funktionsCache.Exists(entityKey) Then
+            Dim liveRole As String
+            liveRole = UCase(mod_EntityKey_Classifier.ErmittleEntityRoleVonFunktion( _
+                       funktionsCache(entityKey)))
+            If liveRole <> roleWert Then
+                Debug.Print "[" & ChrW(220) & "bersicht] Role-Update: " & entityKey & _
+                            " W=" & roleWert & " -> ML=" & liveRole
+                roleWert = liveRole
+            End If
+        End If
+        
         If InStr(roleWert, "MITGLIED") = 0 Then GoTo NextDatenRow
         If InStr(roleWert, "EHEMALIGES") > 0 Then GoTo NextDatenRow
         
