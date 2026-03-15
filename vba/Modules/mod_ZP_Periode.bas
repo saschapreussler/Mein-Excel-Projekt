@@ -162,3 +162,5 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
 End Function
 
 
+
+

@@ -250,3 +250,5 @@ Private Function EntferneTeilBemerkung(ByVal bemerkung As String, _
 End Function
 
 
+
+
