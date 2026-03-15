@@ -100,7 +100,7 @@ Private Const FARBE_HELLGELB_MANUELL As Long = 10092543  ' RGB(255, 255, 153)
 ' Zebra-Farbe (identisch mit Bankkonto / EntityKey-Tabelle)
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
 
-' Status-String fÃ¼r GRÃœN (Encoding-sicher, wird in Init gesetzt)
+' Status-String für GRÜN (Encoding-sicher, wird in Init gesetzt)
 Private m_STATUS_GRUEN As String
 Private m_StatusInitialisiert As Boolean
 
@@ -145,7 +145,7 @@ End Function
 
 
 ' ===============================================================
-' HAUPTFUNKTION: Generiert komplettes Ãœbersichtsblatt
+' HAUPTFUNKTION: Generiert komplettes Übersichtsblatt
 ' v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
 ' v3.0: stummModus f?r automatische Aufrufe (ohne MsgBox)
 ' ===============================================================
@@ -237,7 +237,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' v4.5b: AutoFilter VORHER entfernen (verhindert Probleme mit gefilterten Zeilen)
     If wsUeb.AutoFilterMode Then wsUeb.AutoFilterMode = False
     
-    ' Alten Inhalt lÃ¶schen (ab Zeile 4)
+    ' Alten Inhalt löschen (ab Zeile 4)
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
                 wsUeb.Cells(wsUeb.Rows.count, UEB_COL_BEMERKUNG)).ClearContents
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
@@ -976,6 +976,8 @@ Private Function PruefePartnerMitgliedsbeitrag( _
     Next partner
     
 End Function
+
+
 
 
 

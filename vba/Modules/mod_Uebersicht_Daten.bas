@@ -92,7 +92,7 @@ Public Sub LadeKategorienAusEinstellungen(ByRef kategorien() As UebKategorie, _
             .SollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
             
             ' Faelligkeit aus Daten-Blatt Spalte O (Kategorie-Tabelle)
-            .Faelligkeit = ""
+            .faelligkeit = ""
         End With
         
         idx = idx + 1
@@ -114,7 +114,7 @@ Public Sub LadeKategorienAusEinstellungen(ByRef kategorien() As UebKategorie, _
             For rD = DATA_START_ROW To lastRowDaten
                 If StrComp(Trim(CStr(wsDatenKat.Cells(rD, DATA_CAT_COL_KATEGORIE).value)), _
                            kategorien(ki).Name, vbTextCompare) = 0 Then
-                    kategorien(ki).Faelligkeit = LCase(Trim(CStr( _
+                    kategorien(ki).faelligkeit = LCase(Trim(CStr( _
                         wsDatenKat.Cells(rD, DATA_CAT_COL_FAELLIGKEIT).value)))
                     Exit For
                 End If
@@ -631,3 +631,5 @@ Public Function HatVorjahrDaten() As Boolean
     lastRow = wsDaten.Cells(wsDaten.Rows.count, VJ_COL_DATUM).End(xlUp).Row
     HatVorjahrDaten = (lastRow >= VJ_START_ROW)
 End Function
+
+

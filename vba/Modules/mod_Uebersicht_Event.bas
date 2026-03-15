@@ -248,3 +248,5 @@ Private Function EntferneTeilBemerkung(ByVal bemerkung As String, _
     EntferneTeilBemerkung = ergebnis
     
 End Function
+
+

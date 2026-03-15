@@ -50,7 +50,7 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
         datumWert = ws.Cells(r, BK_COL_DATUM).value
         monatWert = ws.Cells(r, BK_COL_MONAT_PERIODE).value
         
-        If IsDate(datumWert) And (IsEmpty(monatWert) Or CStr(monatWert) = "") Then
+        If IsDate(datumWert) And (isEmpty(monatWert) Or CStr(monatWert) = "") Then
             kategorie = Trim(CStr(ws.Cells(r, BK_COL_KATEGORIE).value))
             
             If kategorie <> "" Then
@@ -160,3 +160,5 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
     
     HoleFaelligkeitFuerKategorie = "monatlich"
 End Function
+
+

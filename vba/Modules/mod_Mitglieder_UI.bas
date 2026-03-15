@@ -118,7 +118,7 @@ Public Sub ApplyMitgliederDropdowns()
     ws.Range(ws.Cells(M_START_ROW, M_COL_ENTITY_KEY), ws.Cells(1000, M_COL_ENTITY_KEY)).Locked = True
     
     ' --- Dynamische Quelle fuer Spalte O (Funktion) ---
-    lastRowB = wsDaten.Cells(wsDaten.Rows.Count, 2).End(xlUp).Row
+    lastRowB = wsDaten.Cells(wsDaten.Rows.count, 2).End(xlUp).Row
     If lastRowB < DATA_START_ROW Then lastRowB = DATA_START_ROW
     funktionFormel = "=Daten!$B$" & DATA_START_ROW & ":$B$" & lastRowB
 
@@ -415,6 +415,8 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False
     
 End Function
+
+
 
 
 

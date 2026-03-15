@@ -93,7 +93,7 @@ Public Sub ErstelleMonatsRegister()
 
         ' Aussehen
         With newShp
-            .TextFrame2.TextRange.Text = labels(m)
+            .TextFrame2.TextRange.text = labels(m)
             .TextFrame2.TextRange.Font.Size = 9
             .TextFrame2.TextRange.Font.Bold = msoTrue
             .TextFrame2.TextRange.ParagraphFormat.Alignment = msoAlignCenter
@@ -297,3 +297,5 @@ Public Sub EntferneMonatsRegister()
     On Error GoTo 0
 
 End Sub
+
+
