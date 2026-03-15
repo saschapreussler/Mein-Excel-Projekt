@@ -37,7 +37,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     On Error GoTo ErrorHandler
     
     ' Nur einzelne Zelle
-    If Target.Cells.count <> 1 Then Exit Sub
+    If Target.Cells.CountLarge <> 1 Then Exit Sub
     
     ' Nur Spalte E (Soll)
     If Target.Column <> UEB_COL_SOLL Then Exit Sub
@@ -248,6 +248,8 @@ Private Function EntferneTeilBemerkung(ByVal bemerkung As String, _
     EntferneTeilBemerkung = ergebnis
     
 End Function
+
+
 
 
 

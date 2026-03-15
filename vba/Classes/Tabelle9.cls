@@ -30,7 +30,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     End If
     
     If Target.Row < ES_START_ROW Then Exit Sub
-    If Target.Cells.count > 1 Then GoTo NurFormatieren
+    If Target.Cells.CountLarge > 1 Then GoTo NurFormatieren
     
     On Error GoTo SafeExit
     Application.EnableEvents = False
@@ -241,6 +241,8 @@ Private Function NormalisiereMonate(ByVal eingabe As String) As String
     If result = "" Then result = eingabe  ' Fallback: Original zur?ckgeben
     NormalisiereMonate = result
 End Function
+
+
 
 
 
