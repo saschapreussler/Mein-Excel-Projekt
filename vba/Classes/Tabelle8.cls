@@ -12,9 +12,10 @@ Option Explicit
 ' ***************************************************************
 ' WORKSHEET: Tabelle8 (Daten)
 ' ZWECK: Automatische Formatierung bei Datenaenderungen
-' VERSION: 4.0 - 08.02.2026
+' VERSION: 4.7 - 15.03.2026
 ' FIX: OnDatenChange entfernt (war redundant mit FormatKategorieTableComplete)
 ' FIX: ShrinkToFit=False + Font.Color=vbBlack fuer Spalte L
+' FIX v4.7: Sicherheits-Reset EnableEvents, robuste Fehlerbehandlung
 ' NEU: FindeKategorieZeile - Cursor bleibt nach Sort auf editierter Zeile
 ' NEU: Bei Spalte W (EntityRole) Aenderung -> Bankkonto neu evaluieren
 ' ***************************************************************
@@ -26,8 +27,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     On Error GoTo ErrorHandler
     
     ' Nur Einzelzellen-Aenderungen verarbeiten
-    If Target.Cells.CountLarge > 100 Then GoTo ErrorHandler
-    If Target.Row < 4 Then GoTo ErrorHandler
+    If Target.Cells.CountLarge > 100 Then GoTo CleanUp
+    If Target.Row < 4 Then GoTo CleanUp
     
     Application.EnableEvents = False
     Application.ScreenUpdating = False
@@ -158,6 +159,7 @@ CleanUp:
     Exit Sub
 
 ErrorHandler:
+    Debug.Print "Tabelle8.Worksheet_Change FEHLER: " & Err.Number & " - " & Err.Description
     Application.EnableEvents = True
     Application.ScreenUpdating = True
 End Sub

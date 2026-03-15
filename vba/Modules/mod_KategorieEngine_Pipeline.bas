@@ -54,6 +54,10 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
     wsBK.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
 
+    ' Zustand sichern (Aufrufer koennte Events bereits deaktiviert haben)
+    Dim eventsWarenPipe As Boolean
+    eventsWarenPipe = Application.EnableEvents
+
     Application.ScreenUpdating = False
     Application.EnableEvents = False
 
@@ -107,7 +111,7 @@ nextRow:
     wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
 
-    Application.EnableEvents = True
+    Application.EnableEvents = eventsWarenPipe
     Application.ScreenUpdating = True
 
 End Sub
@@ -380,6 +384,10 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
     ' Einstellungen-Cache laden
     LadeEinstellungenCache
     
+    ' Zustand sichern (Aufrufer koennte Events bereits deaktiviert haben)
+    Dim eventsWarenRole As Boolean
+    eventsWarenRole = Application.EnableEvents
+    
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     
@@ -441,7 +449,7 @@ NextRowReEval:
     wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
     
-    Application.EnableEvents = True
+    Application.EnableEvents = eventsWarenRole
     Application.ScreenUpdating = True
     
     If anzahlNeu > 0 Then

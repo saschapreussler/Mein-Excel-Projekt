@@ -11,6 +11,10 @@ Option Explicit
 
 Private Sub Workbook_Open()
 
+    ' Sicherheits-Reset: EnableEvents koennte durch Absturz
+    ' einer vorherigen Makro-Ausfuehrung auf False stehen
+    Application.EnableEvents = True
+
     Call mod_Banking_Report.Initialize_ImportReport_ListBox
     
     ' Bereinige eventuell verwaiste TEMP Worksheets

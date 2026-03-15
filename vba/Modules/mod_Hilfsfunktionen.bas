@@ -168,6 +168,20 @@ Public Sub BereinigeTempWorksheets()
     Application.DisplayAlerts = True
 End Sub
 
+' **********************************************************
+' Sicherheits-Reset: Stellt EnableEvents und ScreenUpdating
+' wieder her, falls ein Makro abgestuerzt ist.
+' Kann ueber Alt+F8 manuell aufgerufen werden.
+' **********************************************************
+Public Sub ResetApplication()
+    Application.EnableEvents = True
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
+    Application.Cursor = xlDefault
+    Application.StatusBar = False
+    Debug.Print "ResetApplication: Alle Application-Flags zurueckgesetzt."
+End Sub
+
 ' ***************************************************************
 ' HILFSFUNKTION: Pr?fen, ob eine UserForm geladen ist (KORRIGIERT F?R EXCEL)
 ' ***************************************************************

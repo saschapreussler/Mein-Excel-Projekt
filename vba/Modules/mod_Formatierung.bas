@@ -227,15 +227,42 @@ Public Sub FormatKategorieTableComplete(ByRef ws As Worksheet)
     
     On Error Resume Next
     ws.Unprotect PASSWORD:=PASSWORD
-    On Error GoTo 0
+    If Err.Number <> 0 Then
+        Debug.Print "FormatKatComplete: Unprotect fehlgeschlagen: " & Err.Description
+        Err.Clear
+    End If
     
+    ' Jeder Schritt einzeln abgesichert - Fehler in einem Schritt
+    ' duerfen die folgenden Schritte NICHT blockieren
     Call mod_Format_Spalten.VerdichteSpalteOhneLuecken(ws, DATA_CAT_COL_KATEGORIE, DATA_CAT_COL_START, DATA_CAT_COL_END)
-    Call mod_Format_Kategorie.FormatiereKategorieTabelle(ws)
-    Call mod_Format_Kategorie.SortiereKategorieTabelle(ws)
-    Call mod_Format_Protection.EntspeerreEditierbareSpalten(ws)
+    If Err.Number <> 0 Then
+        Debug.Print "FormatKatComplete: Verdichte fehlgeschlagen: " & Err.Description
+        Err.Clear
+    End If
     
-    On Error Resume Next
+    Call mod_Format_Kategorie.FormatiereKategorieTabelle(ws)
+    If Err.Number <> 0 Then
+        Debug.Print "FormatKatComplete: Formatiere fehlgeschlagen: " & Err.Description
+        Err.Clear
+    End If
+    
+    Call mod_Format_Kategorie.SortiereKategorieTabelle(ws)
+    If Err.Number <> 0 Then
+        Debug.Print "FormatKatComplete: Sortiere fehlgeschlagen: " & Err.Description
+        Err.Clear
+    End If
+    
+    Call mod_Format_Protection.EntspeerreEditierbareSpalten(ws)
+    If Err.Number <> 0 Then
+        Debug.Print "FormatKatComplete: Entsperre fehlgeschlagen: " & Err.Description
+        Err.Clear
+    End If
+    
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    If Err.Number <> 0 Then
+        Debug.Print "FormatKatComplete: Protect fehlgeschlagen: " & Err.Description
+        Err.Clear
+    End If
     On Error GoTo 0
     
 End Sub
@@ -247,15 +274,40 @@ Public Sub FormatEntityKeyTableComplete(ByRef ws As Worksheet)
     
     On Error Resume Next
     ws.Unprotect PASSWORD:=PASSWORD
-    On Error GoTo 0
+    If Err.Number <> 0 Then
+        Debug.Print "FormatEKComplete: Unprotect fehlgeschlagen: " & Err.Description
+        Err.Clear
+    End If
     
     Call mod_Format_Spalten.VerdichteSpalteOhneLuecken(ws, EK_COL_IBAN, EK_COL_ENTITYKEY, EK_COL_DEBUG)
-    Call mod_Format_EntityKey.FormatiereEntityKeyTabelleKomplett(ws)
-    Call mod_Format_EntityKey.SortiereEntityKeyTabelle(ws)
-    Call mod_Format_Protection.EntspeerreEditierbareSpalten(ws)
+    If Err.Number <> 0 Then
+        Debug.Print "FormatEKComplete: Verdichte fehlgeschlagen: " & Err.Description
+        Err.Clear
+    End If
     
-    On Error Resume Next
+    Call mod_Format_EntityKey.FormatiereEntityKeyTabelleKomplett(ws)
+    If Err.Number <> 0 Then
+        Debug.Print "FormatEKComplete: Formatiere fehlgeschlagen: " & Err.Description
+        Err.Clear
+    End If
+    
+    Call mod_Format_EntityKey.SortiereEntityKeyTabelle(ws)
+    If Err.Number <> 0 Then
+        Debug.Print "FormatEKComplete: Sortiere fehlgeschlagen: " & Err.Description
+        Err.Clear
+    End If
+    
+    Call mod_Format_Protection.EntspeerreEditierbareSpalten(ws)
+    If Err.Number <> 0 Then
+        Debug.Print "FormatEKComplete: Entsperre fehlgeschlagen: " & Err.Description
+        Err.Clear
+    End If
+    
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    If Err.Number <> 0 Then
+        Debug.Print "FormatEKComplete: Protect fehlgeschlagen: " & Err.Description
+        Err.Clear
+    End If
     On Error GoTo 0
     
 End Sub
