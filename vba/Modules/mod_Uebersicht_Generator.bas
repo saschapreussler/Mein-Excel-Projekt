@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
-' VERSION: 4.4 - 15.03.2026
+' VERSION: 4.5 - 15.03.2026
 ' ZWECK: Generiert ?bersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - Kategorien DYNAMISCH aus Einstellungen-Blatt (Spalte B)
@@ -57,6 +57,12 @@ Option Explicit
 '           - Zahlungsdatum in Bemerkung (Spalte H)
 '           - AutoFilter-Dropdowns immer auf Zeile 3
 '           - Gruppenblock entfernt (Filter-kompatibel)
+' NEU v4.5: - Parzelle-basierte Kategorien: Pacht, Fixkosten,
+'             Abschlagszahlungen, Endabrechnung, Betriebskosten
+'             erscheinen nur 1x pro Parzelle (nicht pro Mitglied)
+'           - Nur Mitgliedsbeitrag wird pro Mitglied angezeigt
+'           - Worksheet_Change Event: Gelb->Gruen bei manueller
+'             Soll-Eingabe + MsgBox fuer Folgemonat-Uebernahme
 ' ***************************************************************
 
 ' ===============================================================
@@ -274,6 +280,12 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     Debug.Print "[" & ChrW(220) & "bersicht] Importierte Monate: " & _
                 IIf(dbgMonate = "", "(keine)", dbgMonate)
     
+    ' v4.5: Dictionary um zu tracken welche Parzelle+Monat+Kategorie-Kombinationen
+    ' bereits geschrieben wurden (fuer Parzelle-basierte Kategorien)
+    Dim geschriebeneParzKat As Object
+    Set geschriebeneParzKat = CreateObject("Scripting.Dictionary")
+    geschriebeneParzKat.CompareMode = vbTextCompare
+    
     ' 2. Daten generieren
     rowIdx = UEBERSICHT_START_ROW
     
@@ -309,6 +321,18 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 ' v4.4: Ehrenmitglied zahlt keinen Mitgliedsbeitrag
                 If InStr(UCase(mitgliedRole), "EHREN") > 0 Then
                     If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                        GoTo NextKat
+                    End If
+                End If
+                
+                ' v4.5: Parzelle-basierte Kategorien nur 1x pro Parzelle anzeigen
+                ' Nur Mitgliedsbeitrag wird pro Mitglied angezeigt,
+                ' alle anderen Kategorien (Pacht, Fixkosten, Abschlagszahlungen,
+                ' Endabrechnung, Betriebskosten) nur 1x pro Parzelle.
+                If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) <> 0 Then
+                    Dim parzKatKey As String
+                    parzKatKey = CStr(parzelleWert) & "|" & monat & "|" & kategorie
+                    If geschriebeneParzKat.Exists(parzKatKey) Then
                         GoTo NextKat
                     End If
                 End If
@@ -518,6 +542,11 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 
                 wsUeb.Cells(rowIdx, UEB_COL_BEMERKUNG).value = bemerkung
                 
+                ' v4.5: Parzelle-basierte Kategorie als geschrieben markieren
+                If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) <> 0 Then
+                    geschriebeneParzKat(CStr(parzelleWert) & "|" & monat & "|" & kategorie) = entityKey
+                End If
+                
                 rowIdx = rowIdx + 1
                 
 NextKat:
@@ -684,8 +713,9 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                 If c = UEB_COL_STATUS Then
                     ' Status-Spalte (G) behaelt IMMER ihre Ampelfarbe
                 ElseIf c = UEB_COL_SOLL Then
-                    ' Soll-Spalte: Nur Zebra wenn NICHT hell-gelb (variabel)
-                    If wsUeb.Cells(r, c).Interior.color <> FARBE_HELLGELB_MANUELL Then
+                    ' Soll-Spalte: Nur Zebra wenn NICHT hell-gelb (variabel) und NICHT gruen (manuell gesetzt)
+                    If wsUeb.Cells(r, c).Interior.color <> FARBE_HELLGELB_MANUELL And _
+                       wsUeb.Cells(r, c).Interior.color <> AMPEL_GRUEN Then
                         wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                     End If
                 Else
@@ -698,7 +728,8 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                 If c = UEB_COL_STATUS Then
                     ' Status-Spalte behaelt Ampelfarbe
                 ElseIf c = UEB_COL_SOLL Then
-                    If wsUeb.Cells(r, c).Interior.color <> FARBE_HELLGELB_MANUELL Then
+                    If wsUeb.Cells(r, c).Interior.color <> FARBE_HELLGELB_MANUELL And _
+                       wsUeb.Cells(r, c).Interior.color <> AMPEL_GRUEN Then
                         wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                     End If
                 Else

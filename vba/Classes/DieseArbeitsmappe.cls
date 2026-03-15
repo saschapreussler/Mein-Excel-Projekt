@@ -34,6 +34,25 @@ Private Sub Workbook_NewSheet(ByVal Sh As Object)
 End Sub
 
 
+' ===============================================================
+' v4.5: Aenderungen auf dem Uebersicht-Blatt abfangen
+' Wird ausgeloest wenn Nutzer einen Soll-Betrag manuell eintraegt
+' ===============================================================
+Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
+    
+    ' Nur auf dem Uebersicht-Blatt reagieren
+    On Error Resume Next
+    Dim wsName As String
+    wsName = Sh.Name
+    On Error GoTo 0
+    
+    If StrComp(wsName, WS_UEBERSICHT(), vbTextCompare) = 0 Then
+        Call mod_Uebersicht_Event.VerarbeiteUebersichtAenderung(Target)
+    End If
+    
+End Sub
+
+
 
 
 
