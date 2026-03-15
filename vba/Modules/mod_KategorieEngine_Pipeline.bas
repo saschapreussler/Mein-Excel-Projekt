@@ -144,6 +144,10 @@ Public Sub ReEvaluiereAlleNichtManuellen()
     ' Einstellungen-Cache laden
     LadeEinstellungenCache
 
+    ' Zustand sichern (Aufrufer koennte Events bereits deaktiviert haben)
+    Dim eventsWaren As Boolean
+    eventsWaren = Application.EnableEvents
+    
     Application.ScreenUpdating = False
     Application.EnableEvents = False
 
@@ -203,7 +207,7 @@ NextRowReEvalAll:
     wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
 
-    Application.EnableEvents = True
+    Application.EnableEvents = eventsWaren
     Application.ScreenUpdating = True
 
     If anzahlNeu > 0 Then

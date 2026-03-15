@@ -187,6 +187,10 @@ WeiterFormatieren:
     Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
 
 NurFormatieren:
+    ' v4.5b: Error-Handler und Events auch bei Multi-Zell-Aenderungen sicherstellen
+    On Error GoTo SafeExit
+    Application.EnableEvents = False
+    
     ' Formatierung aktualisieren
     Call mod_Einstellungen.FormatiereZahlungsterminTabelle(Me)
     

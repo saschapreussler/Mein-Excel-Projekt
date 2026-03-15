@@ -33,6 +33,10 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
+    ' Zustand sichern und wiederherstellen (nicht bedingungslos True setzen!)
+    Dim eventsWaren As Boolean
+    eventsWaren = Application.EnableEvents
+    
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     
@@ -59,7 +63,7 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
-    Application.EnableEvents = True
+    Application.EnableEvents = eventsWaren
     Application.ScreenUpdating = True
     
 End Sub

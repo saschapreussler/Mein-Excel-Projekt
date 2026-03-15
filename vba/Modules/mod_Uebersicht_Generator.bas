@@ -92,9 +92,12 @@ Private Const FARBE_HELLGELB_MANUELL As Long = 10092543  ' RGB(255, 255, 153)
 ' Zebra-Farbe (identisch mit Bankkonto / EntityKey-Tabelle)
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
 
-' Status-String f?r GR?N (Encoding-sicher, wird in Init gesetzt)
+' Status-String für GRÜN (Encoding-sicher, wird in Init gesetzt)
 Private m_STATUS_GRUEN As String
 Private m_StatusInitialisiert As Boolean
+
+' v4.5b: Reentrancy-Schutz (verhindert doppelten Aufruf)
+Private m_IsGenerating As Boolean
 
 
 ' ===============================================================
@@ -124,7 +127,17 @@ End Sub
 
 
 ' ===============================================================
-' HAUPTFUNKTION: Generiert komplettes ?bersichtsblatt
+' v4.5b: Gibt zurueck ob GeneriereUebersicht gerade laeuft.
+' Wird von Workbook_SheetChange geprueft um Events waehrend
+' der Generierung zu ignorieren.
+' ===============================================================
+Public Function IsGenerating() As Boolean
+    IsGenerating = m_IsGenerating
+End Function
+
+
+' ===============================================================
+' HAUPTFUNKTION: Generiert komplettes Übersichtsblatt
 ' v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
 ' v3.0: stummModus f?r automatische Aufrufe (ohne MsgBox)
 ' ===============================================================
@@ -132,6 +145,14 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                                 Optional ByVal stummModus As Boolean = False)
     
     On Error GoTo ErrorHandler
+    
+    ' v4.5b: Reentrancy-Schutz - Doppelten Aufruf verhindern
+    If m_IsGenerating Then
+        Debug.Print "[" & ChrW(220) & "bersicht] WARNUNG: GeneriereUebersicht bereits aktiv - " & _
+                    "Aufruf ignoriert (Reentrancy-Schutz)"
+        Exit Sub
+    End If
+    m_IsGenerating = True
     
     ' Status initialisieren (Encoding-sicher)
     Call InitStatus
@@ -174,6 +195,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                    "Bitte mindestens eine Kategorie mit Zahlungstermin anlegen.", _
                    vbCritical, "Fehler"
         End If
+        m_IsGenerating = False
         Exit Sub
     End If
     
@@ -187,6 +209,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
         If Not stummModus Then
             MsgBox "Blatt '" & ChrW(220) & "bersicht' oder 'Daten' nicht gefunden!", vbCritical
         End If
+        m_IsGenerating = False
         Exit Sub
     End If
     
@@ -203,7 +226,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     Dim gespeicherteSoll As Object
     Set gespeicherteSoll = SammleManuelleSollWerte(wsUeb)
     
-    ' Alten Inhalt l?schen (ab Zeile 4)
+    ' v4.5b: AutoFilter VORHER entfernen (verhindert Probleme mit gefilterten Zeilen)
+    If wsUeb.AutoFilterMode Then wsUeb.AutoFilterMode = False
+    
+    ' Alten Inhalt löschen (ab Zeile 4)
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
                 wsUeb.Cells(wsUeb.Rows.count, UEB_COL_BEMERKUNG)).ClearContents
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
@@ -236,7 +262,12 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
         Debug.Print "[" & ChrW(220) & "bersicht] Pr" & ChrW(252) & "fe Daten-Blatt: " & _
                     "EntityKey (R), Parzelle (V), Role (W)"
         
-        ' Auch im stummModus eine Warnung ausgeben, da Mitglieder-Daten fehlen
+        ' v4.5b: Blatt trotzdem schuetzen und aufraumen
+        On Error Resume Next
+        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        On Error GoTo 0
+        
+        m_IsGenerating = False
         Application.Calculation = xlCalculationAutomatic
         Application.EnableEvents = True
         Application.ScreenUpdating = True
@@ -593,12 +624,21 @@ NextKat:
                vbInformation, "Fertig"
     End If
     
+    m_IsGenerating = False
     Exit Sub
     
 ErrorHandler:
+    m_IsGenerating = False
     Application.Calculation = xlCalculationAutomatic
     Application.EnableEvents = True
     Application.ScreenUpdating = True
+    
+    ' v4.5b: Blatt im Fehlerfall trotzdem schuetzen
+    On Error Resume Next
+    If Not wsUeb Is Nothing Then
+        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    End If
+    On Error GoTo 0
     
     ' IMMER Debug.Print bei Fehler (auch im stummModus)
     Debug.Print "[" & ChrW(220) & "bersicht] FEHLER: " & Err.Number & " - " & Err.Description

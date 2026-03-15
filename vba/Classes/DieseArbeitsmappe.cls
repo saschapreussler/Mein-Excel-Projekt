@@ -37,8 +37,12 @@ End Sub
 ' ===============================================================
 ' v4.5: Aenderungen auf dem Uebersicht-Blatt abfangen
 ' Wird ausgeloest wenn Nutzer einen Soll-Betrag manuell eintraegt
+' v4.5b: Guard gegen Ausfuehrung waehrend GeneriereUebersicht
 ' ===============================================================
 Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
+    
+    ' Nicht waehrend GeneriereUebersicht ausfuehren (Reentrancy-Schutz)
+    If mod_Uebersicht_Generator.IsGenerating Then Exit Sub
     
     ' Nur auf dem Uebersicht-Blatt reagieren
     On Error Resume Next
