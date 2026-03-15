@@ -274,7 +274,7 @@ ImportAbschluss:
     
     ' 6. Monat/Periode setzen (v3.9: verschoben nach mod_Zahlungspruefung)
     On Error Resume Next
-    Call mod_Zahlungspruefung.SetzeMonatPeriode(wsZiel)
+    Call mod_ZP_Periode.SetzeMonatPeriode(wsZiel)
     Err.Clear
     On Error GoTo 0
     
