@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
-' VERSION: 4.1 - 01.06.2026
+' VERSION: 4.3 - 01.06.2026
 ' ZWECK: Generiert ?bersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - Kategorien DYNAMISCH aus Einstellungen-Blatt (Spalte B)
@@ -45,6 +45,14 @@ Option Explicit
 ' SPLIT v4.2: Datenquellen + Vorjahr-Speicher ausgelagert nach
 '             mod_Uebersicht_Daten (LadeKategorienAusEinstellungen,
 '             HoleAktiveMitglieder, Ermittle*, Vorjahr-Speicher)
+' NEU v4.3: - Spalte C NumberFormat "@" (Text) verhindert
+'             Excel-Datumserkennung ("Jan 25" -> "Januar 2025")
+'           - Variabler Soll: Folgemonat-Uebernahme aus Vormonat
+'             HoleManuellSollAusVormonat() nutzt gesicherte Werte
+'             Gelb->Gruen wenn Ist = manueller Soll
+'           - Gruppenblock: Parzelle/Name nur in 1. Zeile,
+'             dicke Trennlinie zwischen Bloecken
+'           - Zebra basiert auf sichtbaren Zeilen (nach Filter)
 ' ***************************************************************
 
 ' ===============================================================
@@ -180,6 +188,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     On Error Resume Next
     wsUeb.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ErrorHandler
+    
+    ' v4.3: Manuell eingetragene Soll-Werte SICHERN bevor Inhalt geloescht wird
+    Dim gespeicherteSoll As Object
+    Set gespeicherteSoll = SammleManuelleSollWerte(wsUeb)
     
     ' Alten Inhalt l?schen (ab Zeile 4)
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
@@ -368,7 +380,8 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 ' Zeile schreiben
                 wsUeb.Cells(rowIdx, UEB_COL_PARZELLE).value = parzelleWert
                 wsUeb.Cells(rowIdx, UEB_COL_MITGLIED).value = mitgliedName
-                ' v4.0: Einheitliches Datumsformat "Januar 2026"
+                ' v4.3: Monat als Text schreiben (verhindert Excel-Datumserkennung)
+                wsUeb.Cells(rowIdx, UEB_COL_MONAT).NumberFormat = "@"
                 wsUeb.Cells(rowIdx, UEB_COL_MONAT).value = MonthName(monat) & " " & jahr
                 wsUeb.Cells(rowIdx, UEB_COL_KATEGORIE).value = kategorie
                 
@@ -379,15 +392,36 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     ' Fester Soll-Betrag aus Einstellungen
                     wsUeb.Cells(rowIdx, UEB_COL_SOLL).value = soll
                 Else
-                    ' KEIN fester Soll-Betrag -> Zelle leer + hell-gelb
-                    ' Nutzer kann hier pro Parzelle den individuellen Betrag eintragen
-                    wsUeb.Cells(rowIdx, UEB_COL_SOLL).value = ""
-                    wsUeb.Cells(rowIdx, UEB_COL_SOLL).Interior.color = FARBE_HELLGELB_MANUELL
-                    wsUeb.Cells(rowIdx, UEB_COL_SOLL).Locked = False
+                    ' KEIN fester Soll-Betrag -> Zelle hell-gelb (editierbar)
+                    ' v4.3: Zuerst pruefen ob Nutzer bereits einen Betrag fuer
+                    ' diese Kategorie+Parzelle in einem frueheren Monat gesetzt hat
+                    Dim manuellSoll As Double
+                    manuellSoll = HoleManuellSollAusVormonat(gespeicherteSoll, CStr(parzelleWert), kategorie)
                     
-                    ' Status bei variablem Betrag: nur Termin-Pr?fung
-                    ' Wenn Ist > 0 -> Zahlung eingegangen -> GR?N
-                    ' Wenn Ist = 0 -> Keine Zahlung -> ROT oder GELB
+                    If manuellSoll > 0 Then
+                        ' Folgemonat: Betrag aus Vormonat uebernehmen
+                        wsUeb.Cells(rowIdx, UEB_COL_SOLL).value = manuellSoll
+                        soll = manuellSoll
+                        wsUeb.Cells(rowIdx, UEB_COL_SOLL).Locked = False
+                        
+                        ' Pruefen ob Ist den manuellen Soll erreicht
+                        If ist > 0 And Abs(ist - manuellSoll) < 0.01 Then
+                            status = m_STATUS_GRUEN
+                            wsUeb.Cells(rowIdx, UEB_COL_SOLL).Interior.color = AMPEL_GRUEN
+                        ElseIf ist > 0 Then
+                            status = m_STATUS_GRUEN
+                            wsUeb.Cells(rowIdx, UEB_COL_SOLL).Interior.color = FARBE_HELLGELB_MANUELL
+                        Else
+                            wsUeb.Cells(rowIdx, UEB_COL_SOLL).Interior.color = FARBE_HELLGELB_MANUELL
+                        End If
+                    Else
+                        ' Erster Monat ohne Vorgabe -> leer + hell-gelb
+                        wsUeb.Cells(rowIdx, UEB_COL_SOLL).value = ""
+                        wsUeb.Cells(rowIdx, UEB_COL_SOLL).Interior.color = FARBE_HELLGELB_MANUELL
+                        wsUeb.Cells(rowIdx, UEB_COL_SOLL).Locked = False
+                    End If
+                    
+                    ' Status bei variablem Betrag: Termin-Pruefung
                     If ist > 0 Then
                         status = m_STATUS_GRUEN
                     End If
@@ -434,7 +468,13 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 ' Kein fester Soll -> Hinweis
                 If Not kategorien(k).HatFestenSoll Then
                     Dim variabelHinweis As String
-                    variabelHinweis = "Soll-Betrag variabel (bitte manuell eintragen)"
+                    ' v4.3: Unterschiedliche Bemerkung je nach Quelle
+                    If manuellSoll > 0 Then
+                        variabelHinweis = "Soll aus Vormonat " & ChrW(252) & "bernommen (" & _
+                                          Format(manuellSoll, "#,##0.00") & " " & ChrW(8364) & ")"
+                    Else
+                        variabelHinweis = "Soll-Betrag variabel (bitte manuell eintragen)"
+                    End If
                     If bemerkung = "" Then
                         bemerkung = variabelHinweis
                     Else
@@ -665,6 +705,145 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     
     ' Vertikale Zentrierung
     rngTable.VerticalAlignment = xlCenter
+    
+    ' v4.3: Gruppenblock-Darstellung
+    ' Parzelle + Mitglied nur in der ersten Zeile eines Blocks anzeigen,
+    ' danach leer lassen. Trennlinie zwischen Bloecken.
+    Call FormatiereGruppenBloecke(wsUeb, startRow, endRow)
+    
+End Sub
+
+
+' ===============================================================
+' v4.3: Sammelt manuell eingetragene Soll-Werte aus der
+' bestehenden Uebersicht BEVOR diese geloescht wird.
+' Gibt ein Dictionary zurueck: Key = "Parzelle|Kategorie"
+'                               Value = Soll-Betrag (Double)
+' Nur Zeilen mit hell-gelber oder gruener Soll-Zelle werden
+' beruecksichtigt (= variable Soll-Betraege).
+' ===============================================================
+Private Function SammleManuelleSollWerte(ByVal wsUeb As Worksheet) As Object
+    
+    Dim dict As Object
+    Set dict = CreateObject("Scripting.Dictionary")
+    dict.CompareMode = vbTextCompare
+    
+    Dim lastRow As Long
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
+    
+    If lastRow < UEBERSICHT_START_ROW Then
+        Set SammleManuelleSollWerte = dict
+        Exit Function
+    End If
+    
+    Dim r As Long
+    Dim letzteParzelle As String
+    letzteParzelle = ""
+    
+    For r = UEBERSICHT_START_ROW To lastRow
+        Dim parzelle As String
+        parzelle = CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)
+        
+        ' Bei Gruppenblock: leere Parzelle -> letzte bekannte verwenden
+        If parzelle <> "" Then
+            letzteParzelle = parzelle
+        Else
+            parzelle = letzteParzelle
+        End If
+        
+        ' Nur variable Soll-Zellen (hell-gelb oder gruen) beruecksichtigen
+        Dim sollFarbe As Long
+        sollFarbe = wsUeb.Cells(r, UEB_COL_SOLL).Interior.color
+        
+        If sollFarbe = FARBE_HELLGELB_MANUELL Or sollFarbe = AMPEL_GRUEN Then
+            Dim sollWert As Double
+            sollWert = val(CStr(wsUeb.Cells(r, UEB_COL_SOLL).value))
+            
+            If sollWert > 0 Then
+                Dim kat As String
+                kat = CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)
+                Dim dictKey As String
+                dictKey = parzelle & "|" & kat
+                
+                ' Letzten Wert speichern (neuester Monat gewinnt)
+                dict(dictKey) = sollWert
+            End If
+        End If
+    Next r
+    
+    Set SammleManuelleSollWerte = dict
+    
+End Function
+
+
+' ===============================================================
+' v4.3: Sucht im gesicherten Dictionary nach einem manuell
+' eingetragenen Soll-Betrag fuer die gleiche Parzelle+Kategorie.
+' Gibt den Betrag zurueck (0 wenn nicht gefunden).
+' ===============================================================
+Private Function HoleManuellSollAusVormonat(ByVal gespeicherteSoll As Object, _
+                                             ByVal parzelle As String, _
+                                             ByVal kategorie As String) As Double
+    
+    HoleManuellSollAusVormonat = 0
+    
+    If gespeicherteSoll Is Nothing Then Exit Function
+    
+    Dim dictKey As String
+    dictKey = parzelle & "|" & kategorie
+    
+    If gespeicherteSoll.Exists(dictKey) Then
+        HoleManuellSollAusVormonat = gespeicherteSoll(dictKey)
+    End If
+    
+End Function
+
+
+' ===============================================================
+' v4.3: Gruppenblock-Darstellung
+' Parzelle und Mitglied werden nur in der ersten Zeile jedes
+' Blocks angezeigt. Nachfolgende Zeilen mit gleicher Parzelle
+' + Mitglied zeigen leere Zellen.
+' Zwischen den Bloecken wird eine dickere Trennlinie gesetzt.
+' HINWEIS: Merged Cells werden NICHT verwendet, da diese sich
+'          nicht mit AutoFilter vertragen.
+' ===============================================================
+Private Sub FormatiereGruppenBloecke(ByVal wsUeb As Worksheet, _
+                                     ByVal startRow As Long, _
+                                     ByVal endRow As Long)
+    
+    If endRow < startRow Then Exit Sub
+    
+    Dim r As Long
+    Dim letzteParzelle As String
+    Dim letzterMitglied As String
+    
+    letzteParzelle = ""
+    letzterMitglied = ""
+    
+    For r = startRow To endRow
+        Dim aktParzelle As String
+        aktParzelle = CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)
+        Dim aktMitglied As String
+        aktMitglied = CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)
+        
+        If r = startRow Then
+            ' Erste Zeile: Werte behalten
+            letzteParzelle = aktParzelle
+            letzterMitglied = aktMitglied
+        ElseIf aktParzelle = letzteParzelle And aktMitglied = letzterMitglied Then
+            ' Gleicher Block -> Parzelle + Mitglied ausblenden
+            wsUeb.Cells(r, UEB_COL_PARZELLE).value = ""
+            wsUeb.Cells(r, UEB_COL_MITGLIED).value = ""
+        Else
+            ' Neuer Block -> Trennlinie oberhalb (= dicke untere Borderlinie der vorigen Zeile)
+            wsUeb.Range(wsUeb.Cells(r - 1, UEB_COL_PARZELLE), _
+                        wsUeb.Cells(r - 1, UEB_COL_BEMERKUNG)).Borders(xlEdgeBottom).Weight = xlMedium
+            
+            letzteParzelle = aktParzelle
+            letzterMitglied = aktMitglied
+        End If
+    Next r
     
 End Sub
 

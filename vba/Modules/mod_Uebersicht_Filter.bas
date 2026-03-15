@@ -3,10 +3,11 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Filter
-' VERSION: 1.0 - 15.03.2026
+' VERSION: 1.1 - 15.03.2026
 ' ZWECK: Monats-Register (Shapes) auf dem Blatt "Uebersicht"
 '        Erstellt 13 Registerreiter-Shapes ("Alle" + 12 Monate)
 '        Klick auf Shape -> AutoFilter auf Spalte C (Monat)
+'        v1.1: Zebra auf sichtbare Zeilen nach Filter anwenden
 '
 ' FUNKTIONEN:
 '   - ErstelleMonatsRegister: Shapes erzeugen/aktualisieren
@@ -27,6 +28,15 @@ Private Const REG_HEIGHT As Double = 22
 Private Const REG_WIDTH As Double = 72
 Private Const REG_SPACING As Double = 2
 Private Const REG_LEFT_START As Double = 5
+
+' v1.1: Konstanten fuer Zebra-Reapply (identisch mit mod_Uebersicht_Generator)
+Private Const ZEBRA_COLOR As Long = &HDEE5E3
+Private Const FARBE_HELLGELB_MANUELL As Long = 10092543
+Private Const UEB_COL_PARZELLE As Long = 1
+Private Const UEB_COL_SOLL As Long = 5
+Private Const UEB_COL_STATUS As Long = 7
+Private Const UEB_COL_BEMERKUNG As Long = 8
+Private Const UEBERSICHT_START_ROW As Long = 4
 
 
 ' ===============================================================
@@ -181,6 +191,9 @@ Public Sub FilterUebersichtNachMonat(ByVal monatIndex As Long)
         End If
     Next shp
 
+    ' v1.1: Zebra auf sichtbare Zeilen neu anwenden
+    Call WendeZebraAufSichtbareZeilenAn(wsUeb, UEBERSICHT_START_ROW, lastRow)
+
     ' Blattschutz wieder aktivieren
     On Error Resume Next
     wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -188,6 +201,63 @@ Public Sub FilterUebersichtNachMonat(ByVal monatIndex As Long)
 
     Application.ScreenUpdating = True
 
+End Sub
+
+
+' ===============================================================
+' v1.1: Zebra-Muster basierend auf SICHTBAREN Zeilen anwenden
+' Zaehlt nur sichtbare Zeilen fuer das Mod-2-Muster.
+' Ueberspringt Status-Spalte (Ampel) und gelbe Soll-Zellen.
+' ===============================================================
+Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
+                                            ByVal startRow As Long, _
+                                            ByVal endRow As Long)
+    
+    If endRow < startRow Then Exit Sub
+    
+    Dim r As Long
+    Dim visibleIdx As Long
+    Dim c As Long
+    
+    visibleIdx = 0
+    
+    For r = startRow To endRow
+        ' Nur sichtbare Zeilen beruecksichtigen
+        If wsUeb.Rows(r).Hidden = False Then
+            If visibleIdx Mod 2 = 1 Then
+                ' Gerade sichtbare Zeile -> Zebra-Farbe
+                For c = UEB_COL_PARZELLE To UEB_COL_BEMERKUNG
+                    If c = UEB_COL_STATUS Then
+                        ' Status-Spalte behaelt Ampelfarbe
+                    ElseIf c = UEB_COL_SOLL Then
+                        If wsUeb.Cells(r, c).Interior.color <> FARBE_HELLGELB_MANUELL And _
+                           wsUeb.Cells(r, c).Interior.color <> RGB(196, 225, 196) Then
+                            wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
+                        End If
+                    Else
+                        wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
+                    End If
+                Next c
+            Else
+                ' Ungerade sichtbare Zeile -> weiss
+                For c = UEB_COL_PARZELLE To UEB_COL_BEMERKUNG
+                    If c = UEB_COL_STATUS Then
+                        ' Status-Spalte behaelt Ampelfarbe
+                    ElseIf c = UEB_COL_SOLL Then
+                        If wsUeb.Cells(r, c).Interior.color <> FARBE_HELLGELB_MANUELL And _
+                           wsUeb.Cells(r, c).Interior.color <> RGB(196, 225, 196) Then
+                            wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
+                        End If
+                    Else
+                        wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
+                    End If
+                Next c
+            End If
+            
+            visibleIdx = visibleIdx + 1
+        End If
+    Next r
+    
 End Sub
 
 
