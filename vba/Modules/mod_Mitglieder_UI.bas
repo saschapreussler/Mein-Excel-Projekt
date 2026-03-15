@@ -99,18 +99,33 @@ End Function
 ' ***************************************************************
 Public Sub ApplyMitgliederDropdowns()
     Dim ws As Worksheet
+    Dim wsDaten As Worksheet
+    Dim lastRowB As Long
+    Dim funktionFormel As String
+    
     On Error GoTo ErrorHandler
     Set ws = Worksheets(WS_MITGLIEDER)
+    Set wsDaten = Worksheets(WS_DATEN)
     ws.Unprotect PASSWORD:=PASSWORD
     
-    ws.Range(ws.Cells(M_START_ROW, M_COL_PARZELLE), ws.Cells(1000, M_COL_PARZELLE)).Locked = False
-    ws.Range(ws.Cells(M_START_ROW, M_COL_ANREDE), ws.Cells(1000, M_COL_ANREDE)).Locked = False
-    ws.Range(ws.Cells(M_START_ROW, M_COL_FUNKTION), ws.Cells(1000, M_COL_FUNKTION)).Locked = False
+    ' --- Alle Datenspalten (B bis Q) entsperren ---
+    ws.Range(ws.Cells(M_START_ROW, M_COL_PARZELLE), ws.Cells(1000, M_COL_PACHTENDE)).Locked = False
+    
+    ' --- Spalte A (Member ID) gesperrt halten ---
+    ws.Range(ws.Cells(M_START_ROW, M_COL_MEMBER_ID), ws.Cells(1000, M_COL_MEMBER_ID)).Locked = True
+    
+    ' --- Spalte R (EntityKey) gesperrt halten ---
+    ws.Range(ws.Cells(M_START_ROW, M_COL_ENTITY_KEY), ws.Cells(1000, M_COL_ENTITY_KEY)).Locked = True
+    
+    ' --- Dynamische Quelle fuer Spalte O (Funktion) ---
+    lastRowB = wsDaten.Cells(wsDaten.Rows.Count, 2).End(xlUp).Row
+    If lastRowB < DATA_START_ROW Then lastRowB = DATA_START_ROW
+    funktionFormel = "=Daten!$B$" & DATA_START_ROW & ":$B$" & lastRowB
 
     Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_PARZELLE), ws.Cells(1000, M_COL_PARZELLE)), "=Daten!$F$4:$F$18", True)
     Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_SEITE), ws.Cells(1000, M_COL_SEITE)), "=Daten!$H$4:$H$6", True)
     Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_ANREDE), ws.Cells(1000, M_COL_ANREDE)), "=Daten!$D$4:$D$9", True)
-    Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_FUNKTION), ws.Cells(1000, M_COL_FUNKTION)), "=Daten!$B$4:$B$12", True)
+    Call ApplyDropdown(ws.Range(ws.Cells(M_START_ROW, M_COL_FUNKTION), ws.Cells(1000, M_COL_FUNKTION)), funktionFormel, True)
 
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Exit Sub

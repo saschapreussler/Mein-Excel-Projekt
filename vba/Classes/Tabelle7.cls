@@ -37,8 +37,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 
     Application.EnableEvents = False
     
-    ' Blattschutz aufheben (mit leerem Passwort)
-    Me.Unprotect PASSWORD:=""
+    ' Blattschutz aufheben
+    Me.Unprotect PASSWORD:=PASSWORD
 
     ' ------------------------------------------------------------
     ' 1. Automatische Logik (Parzelle ge?ndert: B -> C / B -> D)
@@ -139,13 +139,13 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     ' Call mod_ZaehlerLogik.AktualisiereZaehlerTabellenSpalteA
 
 Fertig:
-    Me.Protect PASSWORD:="", UserInterfaceOnly:=True
+    Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Application.EnableEvents = True
     Exit Sub
 
 Fehlerbehandlung:
     ' Sicherstellen, dass der Blattschutz wiederhergestellt und Events aktiviert werden
-    Me.Protect PASSWORD:="", UserInterfaceOnly:=True
+    Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Application.EnableEvents = True
 
     MsgBox "Fehler bei ?nderung der Mitgliederliste." & vbCrLf & _
