@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
-' VERSION: 4.7 - 15.03.2026
+' VERSION: 4.6 - 15.03.2026
 ' ZWECK: Generiert ?bersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - Kategorien DYNAMISCH aus Einstellungen-Blatt (Spalte B)
@@ -71,11 +71,6 @@ Option Explicit
 '           - Januar-Schutz: Wenn keine Vorjahr-Daten vorhanden,
 '             wird ROT auf GELB herabgestuft statt falsche Saeumnis
 '             (Dezember-Zahlung des Vorjahres koennte fehlen)
-' FIX v4.7: - Fehlende Zahlungen werden jetzt auch OHNE importierte
-'             CSV-Daten als ROT angezeigt wenn Frist abgelaufen ist.
-'             Alte Logik: ROT nur sichtbar wenn importierteMonate()=True
-'             Neue Logik: ROT immer sichtbar wenn Date >= SollDatum+Nachlauf
-'             Damit erscheinen ausstehende Zahlungen auch bei leerem Bankkonto
 ' ***************************************************************
 
 ' ===============================================================
@@ -448,10 +443,9 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
                 
                 ' =============================================
-                ' v4.7: FILTER - Nur relevante Eintraege anzeigen
-                ' FIX: ROT-Eintraege erscheinen jetzt auch OHNE
-                '      importierte CSV-Daten (leeres Bankkonto).
-                '      Entscheidend ist nur: Frist abgelaufen?
+                ' v4.0: FILTER - Nur relevante Eintraege anzeigen
+                ' ROT-Eintraege erscheinen NUR fuer Monate mit
+                ' importierten Kontoauszuegen auf dem Bankkonto-Blatt.
                 ' =============================================
                 Dim zeigeEintrag As Boolean
                 zeigeEintrag = False
@@ -460,19 +454,22 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     ' Fall a) Zahlung vorhanden -> IMMER anzeigen
                     zeigeEintrag = True
                 Else
-                    ' Fall b) Keine Zahlung -> anzeigen wenn
-                    '   Frist (SollDatum + Nachlauf) abgelaufen ist
-                    Dim sollDatumUeb As Date
-                    Dim vorlaufUeb As Long
-                    Dim nachlaufUeb As Long
-                    Dim saeumnisUeb As Double
-                    
-                    sollDatumUeb = mod_Zahlungspruefung.BerechneSollDatumZP(kategorie, monat, jahr)
-                    Call mod_Zahlungspruefung.HoleToleranzZP(kategorie, vorlaufUeb, nachlaufUeb, saeumnisUeb)
-                    
-                    ' Frist abgelaufen = Heute >= SollDatum + Nachlauf
-                    If Date >= DateAdd("d", nachlaufUeb, sollDatumUeb) Then
-                        zeigeEintrag = True
+                    ' Fall b) Keine Zahlung -> nur anzeigen wenn:
+                    '   - Monat hat CSV-Daten (importiert) UND
+                    '   - Frist (SollDatum + Nachlauf) ist abgelaufen
+                    If importierteMonate(monat) Then
+                        Dim sollDatumUeb As Date
+                        Dim vorlaufUeb As Long
+                        Dim nachlaufUeb As Long
+                        Dim saeumnisUeb As Double
+                        
+                        sollDatumUeb = mod_Zahlungspruefung.BerechneSollDatumZP(kategorie, monat, jahr)
+                        Call mod_Zahlungspruefung.HoleToleranzZP(kategorie, vorlaufUeb, nachlaufUeb, saeumnisUeb)
+                        
+                        ' Frist abgelaufen = Heute >= SollDatum + Nachlauf
+                        If Date >= DateAdd("d", nachlaufUeb, sollDatumUeb) Then
+                            zeigeEintrag = True
+                        End If
                     End If
                 End If
                 
