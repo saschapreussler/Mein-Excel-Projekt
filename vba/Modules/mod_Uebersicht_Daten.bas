@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Daten
-' VERSION: 1.1 - 15.03.2026
+' VERSION: 1.2 - 16.03.2026
 ' ZWECK: Datenquellen und Hilfsfunktionen fuer die Uebersicht
 '        - Kategorien aus Einstellungen laden (inkl. Faelligkeit)
 '        - Aktive Mitglieder aus Daten-Blatt holen
@@ -12,6 +12,7 @@ Option Explicit
 ' QUELLE: Extrahiert aus mod_Uebersicht_Generator v4.1
 ' NEU v1.1: HoleAktiveMitglieder gleicht Role live mit
 '           Mitgliederliste Spalte O ab (Ehrenmitglied-Fix)
+' NEU v1.2: Spalte B = Zuordnung (Spalte U) statt Kontoname (Spalte T)
 ' ***************************************************************
 
 
@@ -225,11 +226,11 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         parzelleWert = Trim(CStr(wsDaten.Cells(r, EK_COL_PARZELLE).value))
         If parzelleWert = "" Then GoTo NextDatenRow
         
-        ' Zuordnung (Kontoname) aus Spalte T - der echte Kontoinhaber
-        zuordnung = Trim(CStr(wsDaten.Cells(r, EK_COL_KONTONAME).value))
-        ' Falls Kontoname leer -> Fallback auf Zuordnung (Spalte U)
+        ' Zuordnung aus Spalte U - der zugeordnete Name
+        zuordnung = Trim(CStr(wsDaten.Cells(r, EK_COL_ZUORDNUNG).value))
+        ' Falls Zuordnung leer -> Fallback auf Kontoname (Spalte T)
         If zuordnung = "" Then
-            zuordnung = Trim(CStr(wsDaten.Cells(r, EK_COL_ZUORDNUNG).value))
+            zuordnung = Trim(CStr(wsDaten.Cells(r, EK_COL_KONTONAME).value))
         End If
         
         ' Parzelle(n) aufteilen (bei SHARE-Keys: "2, 5" -> 2 Eintraege)
@@ -631,6 +632,8 @@ Public Function HatVorjahrDaten() As Boolean
     lastRow = wsDaten.Cells(wsDaten.Rows.count, VJ_COL_DATUM).End(xlUp).Row
     HatVorjahrDaten = (lastRow >= VJ_START_ROW)
 End Function
+
+
 
 
 

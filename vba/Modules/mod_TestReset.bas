@@ -76,6 +76,8 @@ Public Sub TestReset_VorCSVImport()
     
     If lastRow >= 4 Then
         wsUeb.Rows("4:" & lastRow).Clear
+        ' Auch Spalte I (Summe Ist) leeren, falls Zeilen weiter reichen
+        wsUeb.Range(wsUeb.Cells(4, 9), wsUeb.Cells(lastRow, 9)).Clear
     End If
     
     wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -139,6 +141,8 @@ ErrorHandler:
     MsgBox "Fehler beim Test-Reset:" & vbCrLf & _
            "Nr. " & Err.Number & ": " & Err.Description, vbCritical
 End Sub
+
+
 
 
 

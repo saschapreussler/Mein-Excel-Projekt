@@ -36,6 +36,9 @@ Private Const UEB_COL_PARZELLE As Long = 1
 Private Const UEB_COL_SOLL As Long = 5
 Private Const UEB_COL_STATUS As Long = 7
 Private Const UEB_COL_BEMERKUNG As Long = 8
+Private Const UEB_COL_SUMME_IST As Long = 9
+Private Const FARBE_SUMME As Long = 16247773
+Private Const FARBE_SUMME_ZEBRA As Long = 15790320
 Private Const UEBERSICHT_START_ROW As Long = 4
 
 
@@ -226,7 +229,7 @@ Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
         If wsUeb.Rows(r).Hidden = False Then
             If visibleIdx Mod 2 = 1 Then
                 ' Gerade sichtbare Zeile -> Zebra-Farbe
-                For c = UEB_COL_PARZELLE To UEB_COL_BEMERKUNG
+                For c = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
                     If c = UEB_COL_STATUS Then
                         ' Status-Spalte behaelt Ampelfarbe
                     ElseIf c = UEB_COL_SOLL Then
@@ -234,13 +237,15 @@ Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
                            wsUeb.Cells(r, c).Interior.color <> RGB(196, 225, 196) Then
                             wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                         End If
+                    ElseIf c = UEB_COL_SUMME_IST Then
+                        wsUeb.Cells(r, c).Interior.color = FARBE_SUMME_ZEBRA
                     Else
                         wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                     End If
                 Next c
             Else
                 ' Ungerade sichtbare Zeile -> weiss
-                For c = UEB_COL_PARZELLE To UEB_COL_BEMERKUNG
+                For c = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
                     If c = UEB_COL_STATUS Then
                         ' Status-Spalte behaelt Ampelfarbe
                     ElseIf c = UEB_COL_SOLL Then
@@ -248,6 +253,8 @@ Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
                            wsUeb.Cells(r, c).Interior.color <> RGB(196, 225, 196) Then
                             wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                         End If
+                    ElseIf c = UEB_COL_SUMME_IST Then
+                        wsUeb.Cells(r, c).Interior.color = FARBE_SUMME
                     Else
                         wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                     End If
@@ -297,6 +304,8 @@ Public Sub EntferneMonatsRegister()
     On Error GoTo 0
 
 End Sub
+
+
 
 
 

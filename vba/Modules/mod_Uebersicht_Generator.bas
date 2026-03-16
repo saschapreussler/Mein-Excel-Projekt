@@ -88,6 +88,11 @@ Private Const UEB_COL_SOLL As Long = 5          ' E - Soll
 Private Const UEB_COL_IST As Long = 6           ' F - Ist
 Private Const UEB_COL_STATUS As Long = 7        ' G - Status (GR?N/GELB/ROT)
 Private Const UEB_COL_BEMERKUNG As Long = 8     ' H - Bemerkung
+Private Const UEB_COL_SUMME_IST As Long = 9     ' I - Summe Ist (kumuliert)
+
+' Farbe fuer Summen-Spalte (dezentes Hellblau)
+Private Const FARBE_SUMME As Long = 16247773    ' RGB(189, 215, 248)
+Private Const FARBE_SUMME_ZEBRA As Long = 15790320 ' RGB(208, 228, 241)
 
 ' Ampelfarben
 Private Const AMPEL_GRUEN As Long = 12968900    ' RGB(196, 225, 196)
@@ -237,11 +242,11 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' v4.5b: AutoFilter VORHER entfernen (verhindert Probleme mit gefilterten Zeilen)
     If wsUeb.AutoFilterMode Then wsUeb.AutoFilterMode = False
     
-    ' Alten Inhalt l?schen (ab Zeile 4)
+    ' Alten Inhalt l?schen (ab Zeile 4, inkl. Spalte I)
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
-                wsUeb.Cells(wsUeb.Rows.count, UEB_COL_BEMERKUNG)).ClearContents
+                wsUeb.Cells(wsUeb.Rows.count, UEB_COL_SUMME_IST)).ClearContents
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
-                wsUeb.Cells(wsUeb.Rows.count, UEB_COL_BEMERKUNG)).Interior.ColorIndex = xlNone
+                wsUeb.Cells(wsUeb.Rows.count, UEB_COL_SUMME_IST)).Interior.ColorIndex = xlNone
     
     ' Header setzen
     Call SetzeUebersichtHeader(wsUeb)
@@ -324,6 +329,18 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     Dim geschriebeneParzKat As Object
     Set geschriebeneParzKat = CreateObject("Scripting.Dictionary")
     geschriebeneParzKat.CompareMode = vbTextCompare
+    
+    ' v5.0: Dictionary fuer kumulierte Ist-Summen pro Parzelle+Kategorie
+    ' Key = "Parzelle|Kategorie", Value = kumulierter Ist-Betrag
+    Dim summeIstDict As Object
+    Set summeIstDict = CreateObject("Scripting.Dictionary")
+    summeIstDict.CompareMode = vbTextCompare
+    
+    ' Sammelt Zeilennummern pro Parzelle+Kategorie fuer nachtraegliches Befuellen
+    ' Key = "Parzelle|Kategorie", Value = Collection von Zeilennummern
+    Dim summeIstZeilen As Object
+    Set summeIstZeilen = CreateObject("Scripting.Dictionary")
+    summeIstZeilen.CompareMode = vbTextCompare
     
     ' 2. Daten generieren
     rowIdx = UEBERSICHT_START_ROW
@@ -608,6 +625,20 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     geschriebeneParzKat(CStr(parzelleWert) & "|" & monat & "|" & kategorie) = entityKey
                 End If
                 
+                ' v5.0: Kumulierten Ist-Betrag tracken
+                Dim sumKey As String
+                sumKey = CStr(parzelleWert) & "|" & kategorie
+                If summeIstDict.Exists(sumKey) Then
+                    summeIstDict(sumKey) = summeIstDict(sumKey) + ist
+                Else
+                    summeIstDict(sumKey) = ist
+                End If
+                ' Zeilennummer merken
+                If Not summeIstZeilen.Exists(sumKey) Then
+                    Set summeIstZeilen(sumKey) = New Collection
+                End If
+                summeIstZeilen(sumKey).Add rowIdx
+                
                 rowIdx = rowIdx + 1
                 
 NextKat:
@@ -615,13 +646,26 @@ NextKat:
         Next monat
     Next mitglied
     
+    ' v5.0: Kumulierte Ist-Summen in Spalte I schreiben
+    Dim sk As Variant
+    For Each sk In summeIstZeilen.keys
+        Dim zeilen As Collection
+        Set zeilen = summeIstZeilen(sk)
+        Dim sumWert As Double
+        sumWert = summeIstDict(sk)
+        Dim zi As Long
+        For zi = 1 To zeilen.count
+            wsUeb.Cells(zeilen(zi), UEB_COL_SUMME_IST).value = sumWert
+        Next zi
+    Next sk
+    
     ' Formatierung anwenden
     Call FormatiereUebersicht(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
     
     ' v4.4: AutoFilter auf Header-Zeile aktivieren (Dropdown-Pfeile immer sichtbar)
     If wsUeb.AutoFilterMode Then wsUeb.AutoFilterMode = False
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_HEADER_ROW, UEB_COL_PARZELLE), _
-                wsUeb.Cells(rowIdx - 1, UEB_COL_BEMERKUNG)).AutoFilter
+                wsUeb.Cells(rowIdx - 1, UEB_COL_SUMME_IST)).AutoFilter
     
     ' Monats-Register (Shape-Tabs) erstellen/aktualisieren
     Call mod_Uebersicht_Filter.ErstelleMonatsRegister
@@ -630,8 +674,9 @@ NextKat:
     Call mod_Zahlungspruefung.EntladeEinstellungenCacheZP
     
     ' Blatt sch?tzen (Soll-Zellen ohne festen Betrag bleiben editierbar)
+    ' AllowFiltering: Nutzer kann AutoFilter ohne Blattschutz-Aufhebung verwenden
     On Error Resume Next
-    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo ErrorHandler
     
     Application.Calculation = xlCalculationAutomatic
@@ -666,7 +711,7 @@ ErrorHandler:
     ' v4.5b: Blatt im Fehlerfall trotzdem schuetzen
     On Error Resume Next
     If Not wsUeb Is Nothing Then
-        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     End If
     On Error GoTo 0
     
@@ -738,11 +783,12 @@ Private Sub SetzeUebersichtHeader(ByVal wsUeb As Worksheet)
         .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_IST).value = "Ist"
         .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_STATUS).value = "Status"
         .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_BEMERKUNG).value = "Bemerkung"
+        .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_SUMME_IST).value = ChrW(931) & " Ist"
         
         ' Header formatieren
         Dim rngHeader As Range
         Set rngHeader = .Range(.Cells(UEBERSICHT_HEADER_ROW, UEB_COL_PARZELLE), _
-                                .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_BEMERKUNG))
+                                .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_SUMME_IST))
         
         With rngHeader
             .Font.Bold = True
@@ -769,7 +815,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     If endRow < startRow Then Exit Sub
     
     Set rngTable = wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_PARZELLE), _
-                                wsUeb.Cells(endRow, UEB_COL_BEMERKUNG))
+                                wsUeb.Cells(endRow, UEB_COL_SUMME_IST))
     
     ' Zebramuster (identisch mit Bankkonto/EntityKey-Tabelle)
     ' Ungerade Zeilen (1., 3., 5. Datenzeile) = weiss
@@ -779,22 +825,24 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
         Dim c As Long
         If (r - startRow) Mod 2 = 1 Then
             ' Gerade Datenzeile -> Zebra-Farbe
-            For c = UEB_COL_PARZELLE To UEB_COL_BEMERKUNG
+            For c = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
                 If c = UEB_COL_STATUS Then
                     ' Status-Spalte (G) behaelt IMMER ihre Ampelfarbe
                 ElseIf c = UEB_COL_SOLL Then
-                    ' Soll-Spalte: Nur Zebra wenn NICHT hell-gelb (variabel) und NICHT gruen (manuell gesetzt)
                     If wsUeb.Cells(r, c).Interior.color <> FARBE_HELLGELB_MANUELL And _
                        wsUeb.Cells(r, c).Interior.color <> AMPEL_GRUEN Then
                         wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                     End If
+                ElseIf c = UEB_COL_SUMME_IST Then
+                    ' Summen-Spalte: eigene Zebra-Farbe (hellblau)
+                    wsUeb.Cells(r, c).Interior.color = FARBE_SUMME_ZEBRA
                 Else
                     wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                 End If
             Next c
         Else
-            ' Ungerade Datenzeile -> weiss (aber Soll/Status auslassen)
-            For c = UEB_COL_PARZELLE To UEB_COL_BEMERKUNG
+            ' Ungerade Datenzeile -> weiss (aber Soll/Status/Summe auslassen)
+            For c = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
                 If c = UEB_COL_STATUS Then
                     ' Status-Spalte behaelt Ampelfarbe
                 ElseIf c = UEB_COL_SOLL Then
@@ -802,6 +850,9 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                        wsUeb.Cells(r, c).Interior.color <> AMPEL_GRUEN Then
                         wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                     End If
+                ElseIf c = UEB_COL_SUMME_IST Then
+                    ' Summen-Spalte: dezentes Hellblau
+                    wsUeb.Cells(r, c).Interior.color = FARBE_SUMME
                 Else
                     wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                 End If
@@ -816,9 +867,13 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
         .ColorIndex = xlAutomatic
     End With
     
+    ' Trennlinie links von Summen-Spalte
+    wsUeb.Range(wsUeb.Cells(UEBERSICHT_HEADER_ROW, UEB_COL_SUMME_IST), _
+                wsUeb.Cells(endRow, UEB_COL_SUMME_IST)).Borders(xlEdgeLeft).Weight = xlMedium
+    
     ' Spaltenbreiten: AutoFit basierend auf Inhalt
     Dim colAutoFit As Long
-    For colAutoFit = UEB_COL_PARZELLE To UEB_COL_BEMERKUNG
+    For colAutoFit = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
         wsUeb.Columns(colAutoFit).AutoFit
         ' Mindestbreite sicherstellen (Header nicht abschneiden)
         If wsUeb.Columns(colAutoFit).ColumnWidth < 10 Then
@@ -833,6 +888,8 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                 wsUeb.Cells(endRow, UEB_COL_SOLL)).NumberFormat = "#,##0.00 " & ChrW(8364)
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_IST), _
                 wsUeb.Cells(endRow, UEB_COL_IST)).NumberFormat = "#,##0.00 " & ChrW(8364)
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_SUMME_IST), _
+                wsUeb.Cells(endRow, UEB_COL_SUMME_IST)).NumberFormat = "#,##0.00 " & ChrW(8364)
     
     ' Ausrichtung
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_PARZELLE), _
@@ -976,6 +1033,8 @@ Private Function PruefePartnerMitgliedsbeitrag( _
     Next partner
     
 End Function
+
+
 
 
 
