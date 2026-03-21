@@ -241,8 +241,10 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             neuerWertH = Trim(CStr(Target.value))
             
             If neuerWertH = m_AlterWertH Then
-                ' Keine ?nderung -> nichts tun
-                Exit Sub
+                ' Sammelzahlung: Trotzdem verarbeiten (InputBox muss erscheinen)
+                If Not (LCase(neuerWertH) Like "*sammelzahlung*") Then
+                    Exit Sub
+                End If
             End If
             
             Call VerarbeiteKategorieAenderung(Target)
@@ -875,6 +877,8 @@ WeiterEingabe:
     End If
     
 End Sub
+
+
 
 
 
