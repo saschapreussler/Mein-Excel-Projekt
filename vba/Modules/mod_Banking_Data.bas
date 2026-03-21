@@ -163,6 +163,104 @@ Public Sub Importiere_Kontoauszug()
     Err.Clear
     On Error GoTo 0
     
+    ' ============================================================
+    ' v5.1: Jahrespr?fung - CSV-Daten mit Startmen?!F1 abgleichen
+    ' VOR dem Eintragen ins Bankkonto pr?fen ob die Jahre ?bereinstimmen
+    ' ============================================================
+    Dim wsStartImport As Worksheet
+    On Error Resume Next
+    Set wsStartImport = ThisWorkbook.Worksheets("Startmen" & ChrW(252))
+    On Error GoTo 0
+    
+    Dim jahrF1Import As Long
+    jahrF1Import = 0
+    If Not wsStartImport Is Nothing Then
+        If IsNumeric(wsStartImport.Range("F1").value) Then
+            jahrF1Import = CLng(wsStartImport.Range("F1").value)
+        End If
+    End If
+    
+    ' H?ufigstes Jahr in CSV ermitteln
+    Dim jahrCSV As Long
+    Dim jahrDict As Object
+    Set jahrDict = CreateObject("Scripting.Dictionary")
+    
+    Dim lRowScan As Long
+    For lRowScan = 2 To lastRowTemp
+        If IsDate(wsTemp.Cells(lRowScan, CSV_COL_BUCHUNGSDATUM).value) Then
+            Dim scanJahr As String
+            scanJahr = CStr(Year(CDate(wsTemp.Cells(lRowScan, CSV_COL_BUCHUNGSDATUM).value)))
+            If jahrDict.Exists(scanJahr) Then
+                jahrDict(scanJahr) = jahrDict(scanJahr) + 1
+            Else
+                jahrDict.Add scanJahr, 1
+            End If
+        End If
+    Next lRowScan
+    
+    jahrCSV = 0
+    If jahrDict.count > 0 Then
+        Dim maxCSVAnzahl As Long
+        Dim keyCSV As Variant
+        maxCSVAnzahl = 0
+        For Each keyCSV In jahrDict.keys
+            If jahrDict(keyCSV) > maxCSVAnzahl Then
+                maxCSVAnzahl = jahrDict(keyCSV)
+                jahrCSV = CLng(keyCSV)
+            End If
+        Next keyCSV
+    End If
+    Set jahrDict = Nothing
+    
+    ' Vergleich und Nutzer-Abfrage bei Abweichung
+    If jahrF1Import > 0 And jahrCSV > 0 And jahrF1Import <> jahrCSV Then
+        ' Events kurz aktivieren damit MsgBox angezeigt wird
+        Application.ScreenUpdating = True
+        Application.DisplayAlerts = True
+        
+        Dim jahrAntwort As VbMsgBoxResult
+        jahrAntwort = MsgBox( _
+            "Das Abrechnungsjahr in Startmen" & ChrW(252) & "!F1 ist " & jahrF1Import & "," & vbLf & _
+            "aber die CSV-Kontoausz" & ChrW(252) & "ge stammen " & ChrW(252) & "berwiegend aus " & jahrCSV & "." & vbLf & vbLf & _
+            "Was ist korrekt?" & vbLf & vbLf & _
+            "  Ja = Abrechnungsjahr auf " & jahrCSV & " anpassen und importieren" & vbLf & _
+            "  Nein = Import abbrechen (Daten werden NICHT eingetragen)", _
+            vbExclamation + vbYesNo, "Abrechnungsjahr - Widerspruch erkannt")
+        
+        Application.ScreenUpdating = False
+        Application.DisplayAlerts = False
+        
+        If jahrAntwort = vbYes Then
+            ' Nutzer will Jahr anpassen -> Startmen?!F1 aktualisieren
+            On Error Resume Next
+            wsStartImport.Unprotect PASSWORD:=PASSWORD
+            On Error GoTo 0
+            wsStartImport.Range("F1").value = jahrCSV
+            On Error Resume Next
+            wsStartImport.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+            On Error GoTo 0
+            Debug.Print "[Import] Abrechnungsjahr angepasst: " & jahrF1Import & " -> " & jahrCSV
+        Else
+            ' Nutzer will NICHT importieren -> Abbruch
+            On Error Resume Next
+            Application.DisplayAlerts = False
+            If Not wsTemp Is Nothing Then wsTemp.Delete
+            Application.DisplayAlerts = True
+            Set wsTemp = Nothing
+            On Error GoTo 0
+            
+            Application.ScreenUpdating = True
+            Application.DisplayAlerts = True
+            Application.EnableEvents = True
+            wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+            
+            MsgBox "Import abgebrochen." & vbLf & _
+                   "Die CSV-Daten wurden NICHT in das Bankkonto eingetragen.", _
+                   vbInformation, "Import abgebrochen"
+            Exit Sub
+        End If
+    End If
+    
     For lRowTemp = 2 To lastRowTemp
         
         betragString = CStr(wsTemp.Cells(lRowTemp, CSV_COL_BETRAG).value)
@@ -572,6 +670,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 

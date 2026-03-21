@@ -438,18 +438,11 @@ End Sub
 
 ' ===============================================================
 ' Spalte I: Monat/Periode manuell ge?ndert (DropDown)
-' v9.6: FIX - Lern-Vermerk NUR wenn Zelle vorher GELB war
+' v9.8: JEDE manuelle ?nderung wird in Spalte L notiert.
 ' ---------------------------------------------------------------
-' WICHTIG: Der Lern-Vermerk wird NUR geschrieben wenn der
-' Hintergrund der Zelle vorher GELB war (RGB 255,235,156).
-' Das bedeutet: Die Automatik (ErmittleMonatPeriode) war
-' unsicher und hat die Zelle GELB markiert. Wenn der Nutzer
-' dann manuell einen Monat w?hlt, ist DAS eine echte
-' manuelle Best?tigung die dokumentiert werden muss.
-'
-' Wenn die Zelle NICHT gelb war (z.B. programmatisch gesetzt
-' durch SetzeMonatPeriode oder bereits gr?n), wird KEIN
-' Lern-Vermerk geschrieben.
+' - Bei GELBER Zelle: Folgemonat-Lernvermerk (Marker f?r Lern-Check)
+' - Bei GR?NER Zelle mit bestehendem Folgemonat-Vermerk: Aktualisierung
+' - Bei ALLEN anderen F?llen: Allgemeiner Vermerk "manuell ge?ndert"
 ' ===============================================================
 Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     
@@ -457,40 +450,12 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     monatWert = Trim(Target.value)
     If monatWert = "" Then Exit Sub
     
-    ' =============================================
-    ' v9.6 FIX: Pr?fe ob die Zelle vorher GELB war
-    ' Nur bei GELB handelt es sich um eine echte manuelle
-    ' Best?tigung durch den Nutzer. Bei allen anderen
-    ' Hintergrundfarben (kein Hintergrund, gr?n, etc.)
-    ' wurde der Wert programmatisch gesetzt -> kein Vermerk.
-    ' =============================================
     Dim vorherigeFarbe As Long
     vorherigeFarbe = Target.Interior.color
     
     ' GELB = RGB(255, 235, 156) = Automatik war unsicher
     Dim istVorherGelb As Boolean
     istVorherGelb = (vorherigeFarbe = RGB(255, 235, 156))
-    
-    ' GR?N = RGB(198, 239, 206) = bereits best?tigt, pr?fe ob Korrektur
-    Dim istVorherGruen As Boolean
-    istVorherGruen = (vorherigeFarbe = RGB(198, 239, 206))
-    
-    ' Korrektur: Wenn GR?N UND bereits ein Folgemonat-Vermerk vorhanden,
-    ' darf der Nutzer den Monat nochmals ?ndern (Bemerkung wird aktualisiert)
-    Dim istKorrektur As Boolean
-    istKorrektur = False
-    If istVorherGruen Then
-        Dim ws0 As Worksheet
-        Set ws0 = Me
-        Dim bemerkungPruf As String
-        bemerkungPruf = CStr(ws0.Cells(Target.Row, BK_COL_BEMERKUNG).value)
-        If InStr(LCase(bemerkungPruf), "folgemonat manuell best") > 0 Then
-            istKorrektur = True
-        End If
-    End If
-    
-    ' Wenn weder GELB noch Korrektur -> nichts tun
-    If Not istVorherGelb And Not istKorrektur Then Exit Sub
     
     On Error GoTo MonatError
     Application.EnableEvents = False
@@ -508,49 +473,61 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     ' 1. Hell-gr?nen Hintergrund setzen (= manuell best?tigt)
     ws.Cells(rowBK, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206)
     
-    ' 2. Lern-Vermerk in Spalte L anh?ngen
-    '    Der Vermerk enth?lt "Folgemonat" als Marker f?r den Lern-Check
-    '    in ErmittleMonatPeriode. Zus?tzlich wird der gew?hlte Monat
-    '    dokumentiert, damit nachvollziehbar ist was der Nutzer gew?hlt hat.
+    ' 2. Bemerkung in Spalte L aktualisieren
     Dim bestehendeBemerkung As String
     bestehendeBemerkung = Trim(CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value))
     
-    Dim lernVermerk As String
-    lernVermerk = "Folgemonat manuell best" & ChrW(228) & "tigt: " & monatWert
-    
-    If bestehendeBemerkung = "" Then
-        ws.Cells(rowBK, BK_COL_BEMERKUNG).value = lernVermerk
-    Else
-        ' Pr?fen ob der Lern-Vermerk schon vorhanden ist (Vermeidung von Duplikaten)
-        If InStr(LCase(bestehendeBemerkung), "folgemonat manuell best") = 0 Then
-            ' Noch kein Lern-Vermerk -> anh?ngen
-            ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bestehendeBemerkung & vbLf & lernVermerk
+    If istVorherGelb Then
+        ' =============================================
+        ' GELB-Fall: Folgemonat-Lernvermerk schreiben
+        ' Dieser Marker wird vom Lern-Check in
+        ' ErmittleMonatPeriode ausgewertet.
+        ' =============================================
+        Dim lernVermerk As String
+        lernVermerk = "Folgemonat manuell best" & ChrW(228) & "tigt: " & monatWert
+        
+        ' Alten Folgemonat-Vermerk ersetzen (falls vorhanden)
+        bestehendeBemerkung = EntferneBemerkungsZeile(bestehendeBemerkung, "folgemonat manuell best")
+        ' Alten "manuell ge?ndert"-Vermerk ersetzen (falls vorhanden)
+        bestehendeBemerkung = EntferneBemerkungsZeile(bestehendeBemerkung, "monat/periode manuell ge")
+        
+        If bestehendeBemerkung = "" Then
+            ws.Cells(rowBK, BK_COL_BEMERKUNG).value = lernVermerk
         Else
-            ' Lern-Vermerk bereits vorhanden -> aktualisieren
-            ' (alten Vermerk durch neuen ersetzen)
-            Dim zeilen() As String
-            zeilen = Split(bestehendeBemerkung, vbLf)
+            ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bestehendeBemerkung & vbLf & lernVermerk
+        End If
+    Else
+        ' =============================================
+        ' Alle anderen F?lle: Allgemeiner Vermerk
+        ' Folgemonat-Vermerk NUR aktualisieren wenn vorhanden
+        ' =============================================
+        Dim hatFolgemonatVermerk As Boolean
+        hatFolgemonatVermerk = (InStr(LCase(bestehendeBemerkung), "folgemonat manuell best") > 0)
+        
+        If hatFolgemonatVermerk Then
+            ' Bestehenden Folgemonat-Vermerk aktualisieren
+            Dim neuerLern As String
+            neuerLern = "Folgemonat manuell best" & ChrW(228) & "tigt: " & monatWert
+            bestehendeBemerkung = EntferneBemerkungsZeile(bestehendeBemerkung, "folgemonat manuell best")
+            bestehendeBemerkung = EntferneBemerkungsZeile(bestehendeBemerkung, "monat/periode manuell ge")
             
-            Dim neueBemerkung As String
-            neueBemerkung = ""
-            
-            Dim z As Long
-            For z = LBound(zeilen) To UBound(zeilen)
-                If InStr(LCase(zeilen(z)), "folgemonat manuell best") = 0 Then
-                    ' Zeile behalten (kein alter Lern-Vermerk)
-                    If neueBemerkung = "" Then
-                        neueBemerkung = zeilen(z)
-                    Else
-                        neueBemerkung = neueBemerkung & vbLf & zeilen(z)
-                    End If
-                End If
-            Next z
-            
-            ' Neuen Lern-Vermerk anh?ngen
-            If neueBemerkung = "" Then
-                ws.Cells(rowBK, BK_COL_BEMERKUNG).value = lernVermerk
+            If bestehendeBemerkung = "" Then
+                ws.Cells(rowBK, BK_COL_BEMERKUNG).value = neuerLern
             Else
-                ws.Cells(rowBK, BK_COL_BEMERKUNG).value = neueBemerkung & vbLf & lernVermerk
+                ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bestehendeBemerkung & vbLf & neuerLern
+            End If
+        Else
+            ' Allgemeinen Vermerk schreiben
+            Dim manuellVermerk As String
+            manuellVermerk = "Monat/Periode manuell ge" & ChrW(228) & "ndert auf: " & monatWert
+            
+            ' Alten "manuell ge?ndert"-Vermerk ersetzen
+            bestehendeBemerkung = EntferneBemerkungsZeile(bestehendeBemerkung, "monat/periode manuell ge")
+            
+            If bestehendeBemerkung = "" Then
+                ws.Cells(rowBK, BK_COL_BEMERKUNG).value = manuellVermerk
+            Else
+                ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bestehendeBemerkung & vbLf & manuellVermerk
             End If
         End If
     End If
@@ -561,24 +538,8 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     aktBemerkung = CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value)
     
     If InStr(LCase(aktBemerkung), "bitte pr" & ChrW(252) & "fen ob zahlung") > 0 Then
-        Dim zeilen2() As String
-        zeilen2 = Split(aktBemerkung, vbLf)
-        
-        Dim bereinigt As String
-        bereinigt = ""
-        
-        Dim z2 As Long
-        For z2 = LBound(zeilen2) To UBound(zeilen2)
-            If InStr(LCase(zeilen2(z2)), "bitte pr" & ChrW(252) & "fen ob zahlung") = 0 Then
-                If bereinigt = "" Then
-                    bereinigt = zeilen2(z2)
-                Else
-                    bereinigt = bereinigt & vbLf & zeilen2(z2)
-                End If
-            End If
-        Next z2
-        
-        ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bereinigt
+        ws.Cells(rowBK, BK_COL_BEMERKUNG).value = _
+            EntferneBemerkungsZeile(aktBemerkung, "bitte pr" & ChrW(252) & "fen ob zahlung")
         ' Hell-gelben Hintergrund der Bemerkung zuruecksetzen
         ws.Cells(rowBK, BK_COL_BEMERKUNG).Interior.ColorIndex = xlNone
     End If
@@ -906,6 +867,46 @@ WeiterEingabe:
     End If
     
 End Sub
+
+
+' ===============================================================
+' Hilfsfunktion: Entfernt alle Zeilen aus einer vbLf-getrennten
+' Bemerkung, die den Suchtext (lowercase) enthalten.
+' Gibt den bereinigten Text zur?ck.
+' ===============================================================
+Private Function EntferneBemerkungsZeile(ByVal bemerkung As String, _
+                                          ByVal suchTextLower As String) As String
+    If bemerkung = "" Then
+        EntferneBemerkungsZeile = ""
+        Exit Function
+    End If
+    
+    If InStr(LCase(bemerkung), suchTextLower) = 0 Then
+        EntferneBemerkungsZeile = bemerkung
+        Exit Function
+    End If
+    
+    Dim zeilen() As String
+    zeilen = Split(bemerkung, vbLf)
+    
+    Dim ergebnis As String
+    ergebnis = ""
+    
+    Dim zz As Long
+    For zz = LBound(zeilen) To UBound(zeilen)
+        If InStr(LCase(zeilen(zz)), suchTextLower) = 0 Then
+            If ergebnis = "" Then
+                ergebnis = zeilen(zz)
+            Else
+                ergebnis = ergebnis & vbLf & zeilen(zz)
+            End If
+        End If
+    Next zz
+    
+    EntferneBemerkungsZeile = ergebnis
+End Function
+
+
 
 
 
