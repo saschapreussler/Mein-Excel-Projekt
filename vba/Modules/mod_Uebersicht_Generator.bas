@@ -188,10 +188,63 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     startTime = Timer
     
     ' Jahr-Parameter validieren
-    ' v4.0: Wenn kein Jahr angegeben -> aus Bankkonto-Daten ermitteln
+    ' v5.1: Prim?r aus Startmen?!F1 lesen, Abgleich mit Bankkonto-Daten
     If jahr = 0 Then
-        jahr = mod_Uebersicht_Daten.ErmittleJahrAusBankkonto()
-        If jahr = 0 Then jahr = Year(Date)
+        ' 1. Abrechnungsjahr aus Startmen?!F1 lesen
+        Dim wsStart As Worksheet
+        On Error Resume Next
+        Set wsStart = ThisWorkbook.Worksheets("Startmen" & ChrW(252))
+        On Error GoTo ErrorHandler
+        
+        Dim jahrF1 As Long
+        jahrF1 = 0
+        If Not wsStart Is Nothing Then
+            If IsNumeric(wsStart.Range("F1").value) Then
+                jahrF1 = CLng(wsStart.Range("F1").value)
+            End If
+        End If
+        
+        ' 2. Jahr aus Bankkonto-Daten ermitteln (h?ufigstes Jahr)
+        Dim jahrBK As Long
+        jahrBK = mod_Uebersicht_Daten.ErmittleJahrAusBankkonto()
+        
+        ' 3. Entscheidungslogik
+        If jahrF1 > 0 And jahrBK > 0 Then
+            If jahrF1 = jahrBK Then
+                ' Gleich -> verwenden
+                jahr = jahrF1
+            Else
+                If Not stummModus Then
+                    ' Abweichung -> Nutzer fragen
+                    Dim antwortJahr As VbMsgBoxResult
+                    antwortJahr = MsgBox("Das Abrechnungsjahr in Startmen" & ChrW(252) & "!F1 ist " & _
+                                         jahrF1 & "," & vbLf & _
+                                         "aber die meisten Kontoausz" & ChrW(252) & "ge stammen aus " & _
+                                         jahrBK & "." & vbLf & vbLf & _
+                                         "Soll die " & ChrW(220) & "bersicht f" & ChrW(252) & "r " & _
+                                         jahrF1 & " (Startmen" & ChrW(252) & ") erstellt werden?" & vbLf & _
+                                         "  Ja = " & jahrF1 & " (Startmen" & ChrW(252) & "!F1)" & vbLf & _
+                                         "  Nein = " & jahrBK & " (Kontoausz" & ChrW(252) & "ge)", _
+                                         vbQuestion + vbYesNo, "Abrechnungsjahr")
+                    If antwortJahr = vbYes Then
+                        jahr = jahrF1
+                    Else
+                        jahr = jahrBK
+                    End If
+                Else
+                    ' stummModus: Startmen?!F1 hat Vorrang
+                    jahr = jahrF1
+                    Debug.Print "[" & ChrW(220) & "bersicht] HINWEIS: F1=" & jahrF1 & _
+                                " vs Bankkonto=" & jahrBK & " -> verwende F1"
+                End If
+            End If
+        ElseIf jahrF1 > 0 Then
+            jahr = jahrF1
+        ElseIf jahrBK > 0 Then
+            jahr = jahrBK
+        Else
+            jahr = Year(Date)
+        End If
     End If
     Debug.Print "[" & ChrW(220) & "bersicht] Verwende Jahr: " & jahr
     
@@ -1033,6 +1086,8 @@ Private Function PruefePartnerMitgliedsbeitrag( _
     Next partner
     
 End Function
+
+
 
 
 

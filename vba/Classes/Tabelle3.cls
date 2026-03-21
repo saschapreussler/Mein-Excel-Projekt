@@ -86,9 +86,14 @@ Private Sub cbo_RechnungsMonat_Change()
 
     With wsBank
     
+        ' Blattschutz aufheben (AutoFilter erfordert ungesch?tztes Blatt)
+        On Error Resume Next
+        .Unprotect PASSWORD:=PASSWORD
+        On Error GoTo SafeExit
+    
         ' Vorherige Filter immer aufheben
         On Error Resume Next
-        .ShowAllData
+        If .AutoFilterMode Then .AutoFilterMode = False
         On Error GoTo SafeExit
         
         If Me.cbo_RechnungsMonat.ListIndex = -1 Then GoTo SafeExit
@@ -168,6 +173,11 @@ Private Sub cbo_RechnungsMonat_Change()
     End With
 
 SafeExit:
+    ' Blattschutz wiederherstellen
+    On Error Resume Next
+    wsBank.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
     Application.EnableEvents = True
     If Err.Number <> 0 Then
         MsgBox "Fehler in cbo_RechnungsMonat_Change: " & Err.Description, vbCritical
@@ -269,8 +279,9 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     End Select
     
     ' v3.0: ?bersicht nach manueller ?nderung in H/I automatisch aktualisieren
+    ' v5.1: Kein hardcoded Year(Date) mehr - Jahr wird aus Startmen?!F1 / Bankkonto ermittelt
     On Error Resume Next
-    Call mod_Uebersicht_Generator.GeneriereUebersicht(Year(Date), stummModus:=True)
+    Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
     On Error GoTo 0
     
 End Sub
@@ -460,8 +471,26 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     Dim istVorherGelb As Boolean
     istVorherGelb = (vorherigeFarbe = RGB(255, 235, 156))
     
-    ' Wenn NICHT gelb -> keine manuelle Best?tigung, nichts tun
-    If Not istVorherGelb Then Exit Sub
+    ' GR?N = RGB(198, 239, 206) = bereits best?tigt, pr?fe ob Korrektur
+    Dim istVorherGruen As Boolean
+    istVorherGruen = (vorherigeFarbe = RGB(198, 239, 206))
+    
+    ' Korrektur: Wenn GR?N UND bereits ein Folgemonat-Vermerk vorhanden,
+    ' darf der Nutzer den Monat nochmals ?ndern (Bemerkung wird aktualisiert)
+    Dim istKorrektur As Boolean
+    istKorrektur = False
+    If istVorherGruen Then
+        Dim ws0 As Worksheet
+        Set ws0 = Me
+        Dim bemerkungPruf As String
+        bemerkungPruf = CStr(ws0.Cells(Target.Row, BK_COL_BEMERKUNG).value)
+        If InStr(LCase(bemerkungPruf), "folgemonat manuell best") > 0 Then
+            istKorrektur = True
+        End If
+    End If
+    
+    ' Wenn weder GELB noch Korrektur -> nichts tun
+    If Not istVorherGelb And Not istKorrektur Then Exit Sub
     
     On Error GoTo MonatError
     Application.EnableEvents = False
@@ -877,6 +906,8 @@ WeiterEingabe:
     End If
     
 End Sub
+
+
 
 
 
