@@ -58,6 +58,11 @@ Public Sub Initialize_ImportReport_ListBox()
     On Error GoTo 0
     If oleObj Is Nothing Then Exit Sub
     
+    ' Blattschutz aufheben (OLE-Zugriff erfordert ungesch?tztes Blatt)
+    On Error Resume Next
+    wsBK.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
     savLeft = oleObj.Left
     savTop = oleObj.Top
     savWidth = oleObj.Width
@@ -72,7 +77,10 @@ Public Sub Initialize_ImportReport_ListBox()
     On Error Resume Next
     Set lb = oleObj.Object
     On Error GoTo 0
-    If lb Is Nothing Then Exit Sub
+    If lb Is Nothing Then
+        wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        Exit Sub
+    End If
     
     ' ListBox leeren
     lb.Clear
@@ -105,6 +113,11 @@ Public Sub Initialize_ImportReport_ListBox()
     oleObj.Top = savTop
     oleObj.Width = savWidth
     oleObj.Height = savHeight
+    On Error GoTo 0
+    
+    ' Blattschutz wiederherstellen
+    On Error Resume Next
+    wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
     
 End Sub
@@ -142,6 +155,11 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     Set oleObj = wsBK.OLEObjects(FORM_LISTBOX_NAME)
     On Error GoTo 0
     If oleObj Is Nothing Then Exit Sub
+    
+    ' Blattschutz aufheben (OLE-Zugriff erfordert ungesch?tztes Blatt)
+    On Error Resume Next
+    wsBK.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
     
     savLeft = oleObj.Left
     savTop = oleObj.Top
@@ -228,6 +246,11 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     oleObj.Height = savHeight
     On Error GoTo 0
     
+    ' Blattschutz wiederherstellen
+    On Error Resume Next
+    wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
 End Sub
 
 ' ---------------------------------------------------------------
@@ -304,6 +327,8 @@ Public Function ExtrahiereZahl(ByVal text As String) As Long
     End If
     
 End Function
+
+
 
 
 
