@@ -332,7 +332,7 @@ End Function
 ' ============================================================
 '  PARZELLEN GRUPPIEREN (1 Zeile pro Parzelle im Dashboard)
 ' ============================================================
-Private Sub GruppiereParzellen(ByVal mitglieder As Collection, _
+Public Sub GruppiereParzellen(ByVal mitglieder As Collection, _
                                 ByRef parzellen() As ParzelleInfo, _
                                 ByRef anzParz As Long)
     
@@ -581,7 +581,7 @@ End Sub
 '  MATRIX MIT DATEN SCHREIBEN
 '  Sammelt gleichzeitig KPI-Werte und Verzug-Eintraege
 ' ============================================================
-Private Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
+Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                                     ByVal jahr As Long, _
                                     ByRef kategorien() As UebKategorie, _
                                     ByVal anzKat As Long, _
@@ -1083,7 +1083,7 @@ End Sub
 ' ============================================================
 '  FAELLIGKEIT PRUEFEN (Kopie der Private-Logik aus Generator)
 ' ============================================================
-Private Function IstKatImMonatFaellig(ByRef kat As UebKategorie, _
+Public Function IstKatImMonatFaellig(ByRef kat As UebKategorie, _
                                        ByVal monat As Long) As Boolean
     
     ' SollMonate definiert -> nur diese Monate
@@ -1111,7 +1111,7 @@ End Function
 ' ============================================================
 '  VERZUG SORTIEREN (Bubble Sort nach TageVerzug absteigend)
 ' ============================================================
-Private Sub SortiereVerzug(ByRef liste() As VerzugEintrag, ByVal anzahl As Long)
+Public Sub SortiereVerzug(ByRef liste() As VerzugEintrag, ByVal anzahl As Long)
     
     Dim i As Long, j As Long
     Dim temp As VerzugEintrag
@@ -1132,7 +1132,7 @@ End Sub
 ' ============================================================
 '  VERZUGSDETAIL SCHREIBEN
 ' ============================================================
-Private Sub SchreibeVerzugsdetail(ByVal ws As Worksheet, _
+Public Sub SchreibeVerzugsdetail(ByVal ws As Worksheet, _
                                     ByVal startRow As Long, _
                                     ByRef liste() As VerzugEintrag, _
                                     ByVal anzahl As Long, _
@@ -1324,6 +1324,8 @@ Private Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     End If
     
 End Sub
+
+
 
 
 
