@@ -383,7 +383,9 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
     End If
     
     ' --- Quartal ---
-    If faelligkeitLC = "quartalsweise" Or faelligkeitLC = "quartal" Then
+    If faelligkeitLC = "quartalsweise" Or faelligkeitLC = "quartal" Or _
+       faelligkeitLC = "viertelj" & ChrW(228) & "hrlich" Or _
+       faelligkeitLC = "vierteljaehrlich" Then
         Dim quartal As Long
         quartal = Int((monatBuchung - 1) / 3) + 1
         ErmittleMonatPeriode = "Q" & quartal & " " & jahrBuchung
@@ -549,6 +551,8 @@ NaechsteLernZeile:
 FallbackMonat:
     ErmittleMonatPeriode = MonthName(monatBuchung)
 End Function
+
+
 
 
 

@@ -132,14 +132,15 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
                 Dim SollMonate As String
                 SollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
                 If SollMonate = "" Then
-                    HoleFaelligkeitFuerKategorie = "monatlich"
+                    ' SollMonate leer -> Daten-Blatt Spalte O als Fallback pruefen
+                    GoTo PruefeDatenBlatt
                 Else
                     Dim anzMonate As Long
                     anzMonate = UBound(Split(SollMonate, ",")) + 1
                     Select Case anzMonate
                         Case 1: HoleFaelligkeitFuerKategorie = "j" & ChrW(228) & "hrlich"
                         Case 2: HoleFaelligkeitFuerKategorie = "halbj" & ChrW(228) & "hrlich"
-                        Case 4: HoleFaelligkeitFuerKategorie = "viertelj" & ChrW(228) & "hrlich"
+                        Case 4: HoleFaelligkeitFuerKategorie = "quartalsweise"
                         Case Else: HoleFaelligkeitFuerKategorie = "monatlich"
                     End Select
                 End If
@@ -148,6 +149,7 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
         Next r
     End If
     
+PruefeDatenBlatt:
     ' PRIO 2: Fallback auf Daten-Blatt (Spalte O = Faelligkeit)
     lastRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     
@@ -160,6 +162,8 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
     
     HoleFaelligkeitFuerKategorie = "monatlich"
 End Function
+
+
 
 
 
