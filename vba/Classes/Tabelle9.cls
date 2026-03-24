@@ -175,7 +175,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                     ' v3.0: ?bersicht nach Kategorie-?nderung aktualisieren
                     On Error Resume Next
                     Call mod_Uebersicht_Generator.GeneriereUebersicht(Year(Date), stummModus:=True)
-                    Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu stummModus:=True
+                    Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
                     On Error GoTo 0
                     
                     Exit Sub
@@ -201,7 +201,7 @@ NurFormatieren:
     ' v3.0: ?bersicht nach Einstellungs-?nderung automatisch aktualisieren
     On Error Resume Next
     Call mod_Uebersicht_Generator.GeneriereUebersicht(Year(Date), stummModus:=True)
-    Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu stummModus:=True
+    Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
     On Error GoTo 0
     
 SafeExit:
@@ -243,6 +243,8 @@ Private Function NormalisiereMonate(ByVal eingabe As String) As String
     If result = "" Then result = eingabe  ' Fallback: Original zur?ckgeben
     NormalisiereMonate = result
 End Function
+
+
 
 
 

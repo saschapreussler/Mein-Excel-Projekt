@@ -282,7 +282,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     ' v5.1: Kein hardcoded Year(Date) mehr - Jahr wird aus Startmen?!F1 / Bankkonto ermittelt
     On Error Resume Next
     Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
-    Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu stummModus:=True
+    Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
     On Error GoTo 0
     
 End Sub
@@ -906,6 +906,8 @@ Private Function EntferneBemerkungsZeile(ByVal bemerkung As String, _
     
     EntferneBemerkungsZeile = ergebnis
 End Function
+
+
 
 
 

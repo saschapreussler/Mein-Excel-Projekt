@@ -387,7 +387,7 @@ ImportAbschluss:
     
     ' Dashboard (neues Blatt) aktualisieren
     On Error Resume Next
-    Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu stummModus:=True
+    Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
     On Error GoTo 0
     
     ' Blattschutz wird von der Pipeline selbst verwaltet (Protect am Ende).
@@ -675,6 +675,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 
