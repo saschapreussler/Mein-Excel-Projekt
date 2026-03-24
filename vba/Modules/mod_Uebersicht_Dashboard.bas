@@ -85,7 +85,7 @@ End Type
 ' ============================================================
 '  HAUPTFUNKTION
 ' ============================================================
-Public Sub GeneriereUebersichtNeu()
+Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
     
     On Error GoTo ErrorHandler
     
@@ -97,7 +97,7 @@ Public Sub GeneriereUebersichtNeu()
     
     ' --- 1. Jahr ermitteln ---
     Dim jahr As Long
-    jahr = ErmittleDashboardJahr()
+    jahr = ErmittleDashboardJahr(stummModus)
     If jahr = 0 Then Exit Sub
     
     ' --- 2. Kategorien und Mitglieder laden ---
@@ -106,7 +106,9 @@ Public Sub GeneriereUebersichtNeu()
     Call mod_Uebersicht_Daten.LadeKategorienAusEinstellungen(kategorien, anzKat)
     
     If anzKat = 0 Then
-        MsgBox "Keine Kategorien im Einstellungen-Blatt gefunden!", vbCritical, "Dashboard"
+        If Not stummModus Then
+            MsgBox "Keine Kategorien im Einstellungen-Blatt gefunden!", vbCritical, "Dashboard"
+        End If
         Exit Sub
     End If
     
@@ -115,7 +117,9 @@ Public Sub GeneriereUebersichtNeu()
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     On Error GoTo ErrorHandler
     If wsDaten Is Nothing Then
-        MsgBox "Blatt 'Daten' nicht gefunden!", vbCritical, "Dashboard"
+        If Not stummModus Then
+            MsgBox "Blatt 'Daten' nicht gefunden!", vbCritical, "Dashboard"
+        End If
         Exit Sub
     End If
     
@@ -128,7 +132,9 @@ Public Sub GeneriereUebersichtNeu()
     Call GruppiereParzellen(mitglieder, parzellen, anzParz)
     
     If anzParz = 0 Then
-        MsgBox "Keine aktiven Mitglieder gefunden!", vbExclamation, "Dashboard"
+        If Not stummModus Then
+            MsgBox "Keine aktiven Mitglieder gefunden!", vbExclamation, "Dashboard"
+        End If
         Exit Sub
     End If
     
@@ -205,18 +211,25 @@ Public Sub GeneriereUebersichtNeu()
     Application.EnableEvents = True
     Application.ScreenUpdating = True
     
-    wsDash.Activate
-    wsDash.Range("A1").Select
+    If Not stummModus Then
+        wsDash.Activate
+        wsDash.Range("A1").Select
+    End If
     
     Dim endTime As Double
     endTime = Timer
     
-    MsgBox "Dashboard erfolgreich generiert!" & vbLf & vbLf & _
-           "Parzellen: " & anzParz & vbLf & _
-           "Kategorien: " & anzKat & vbLf & _
-           IIf(anzVerzug > 0, "Offene Posten: " & anzVerzug & vbLf, "") & _
-           "Dauer: " & Format(endTime - startTime, "0.00") & " Sekunden", _
-           vbInformation, "Dashboard"
+    Debug.Print "[Dashboard] Erfolgreich: " & anzParz & " Parzellen, " & _
+                anzKat & " Kategorien in " & Format(endTime - startTime, "0.00") & "s"
+    
+    If Not stummModus Then
+        MsgBox "Dashboard erfolgreich generiert!" & vbLf & vbLf & _
+               "Parzellen: " & anzParz & vbLf & _
+               "Kategorien: " & anzKat & vbLf & _
+               IIf(anzVerzug > 0, "Offene Posten: " & anzVerzug & vbLf, "") & _
+               "Dauer: " & Format(endTime - startTime, "0.00") & " Sekunden", _
+               vbInformation, "Dashboard"
+    End If
     
     Exit Sub
     
@@ -234,6 +247,7 @@ ErrorHandler:
     
     MsgBox "Fehler beim Erstellen des Dashboards:" & vbLf & vbLf & _
            Err.Description, vbCritical, "Dashboard-Fehler"
+    Debug.Print "[Dashboard] FEHLER: " & Err.Number & " - " & Err.Description
     
 End Sub
 
@@ -241,7 +255,7 @@ End Sub
 ' ============================================================
 '  JAHR ERMITTELN (gleiche Logik wie GeneriereUebersicht)
 ' ============================================================
-Private Function ErmittleDashboardJahr() As Long
+Private Function ErmittleDashboardJahr(Optional ByVal stummModus As Boolean = False) As Long
     
     Dim jahrF1 As Long
     jahrF1 = 0
@@ -264,16 +278,21 @@ Private Function ErmittleDashboardJahr() As Long
         If jahrF1 = jahrBK Then
             ErmittleDashboardJahr = jahrF1
         Else
-            Dim antwort As VbMsgBoxResult
-            antwort = MsgBox("Startmen" & ChrW(252) & "!F1 = " & jahrF1 & _
-                             ", Bankkonto = " & jahrBK & "." & vbLf & vbLf & _
-                             "Dashboard f" & ChrW(252) & "r " & jahrF1 & _
-                             " (Startmen" & ChrW(252) & ") erstellen?", _
-                             vbQuestion + vbYesNo, "Abrechnungsjahr")
-            If antwort = vbYes Then
-                ErmittleDashboardJahr = jahrF1
+            If Not stummModus Then
+                Dim antwort As VbMsgBoxResult
+                antwort = MsgBox("Startmen" & ChrW(252) & "!F1 = " & jahrF1 & _
+                                 ", Bankkonto = " & jahrBK & "." & vbLf & vbLf & _
+                                 "Dashboard f" & ChrW(252) & "r " & jahrF1 & _
+                                 " (Startmen" & ChrW(252) & ") erstellen?", _
+                                 vbQuestion + vbYesNo, "Abrechnungsjahr")
+                If antwort = vbYes Then
+                    ErmittleDashboardJahr = jahrF1
+                Else
+                    ErmittleDashboardJahr = jahrBK
+                End If
             Else
-                ErmittleDashboardJahr = jahrBK
+                ' stummModus: F1 hat Vorrang
+                ErmittleDashboardJahr = jahrF1
             End If
         End If
     ElseIf jahrF1 > 0 Then
@@ -1305,3 +1324,5 @@ Private Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     End If
     
 End Sub
+
+

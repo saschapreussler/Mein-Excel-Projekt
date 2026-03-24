@@ -385,6 +385,11 @@ ImportAbschluss:
     Debug.Print "[Import] Starte " & ChrW(220) & "bersicht-Generierung..."
     Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
     
+    ' Dashboard (neues Blatt) aktualisieren
+    On Error Resume Next
+    Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu stummModus:=True
+    On Error GoTo 0
+    
     ' Blattschutz wird von der Pipeline selbst verwaltet (Protect am Ende).
     ' Hier nochmals sicherstellen falls Pipeline nicht lief:
     On Error Resume Next
@@ -670,6 +675,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 
