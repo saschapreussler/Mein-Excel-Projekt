@@ -60,14 +60,14 @@ Private Const MATRIX_START_ROW As Long = 11
 ' ============================================================
 '  TYPES
 ' ============================================================
-Private Type ParzelleInfo
+Public Type ParzelleInfo
     parzNr As Long
     mitgliedName As String
     entityKeys As String      ' komma-getrennt falls mehrere
     roles As String
 End Type
 
-Private Type VerzugEintrag
+Public Type VerzugEintrag
     parzNr As Long
     mitglied As String
     kategorie As String
@@ -1324,6 +1324,8 @@ Private Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     End If
     
 End Sub
+
+
 
 
 
