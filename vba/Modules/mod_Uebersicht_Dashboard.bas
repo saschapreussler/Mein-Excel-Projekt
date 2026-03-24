@@ -30,24 +30,6 @@ Private m_CLR_TEXT_GRUEN As Long
 Private m_CLR_TEXT_DUNKELROT As Long
 Private m_FarbenInit As Boolean
 
-Private Sub InitFarben()
-    If m_FarbenInit Then Exit Sub
-    m_CLR_NAVY = RGB(23, 37, 84)
-    m_CLR_HEADER_BG = RGB(68, 84, 106)
-    m_CLR_WEISS = RGB(255, 255, 255)
-    m_CLR_KPI_BLAU = RGB(41, 128, 185)
-    m_CLR_KPI_GRUEN = RGB(39, 174, 96)
-    m_CLR_KPI_ROT = RGB(231, 76, 60)
-    m_CLR_KPI_ORANGE = RGB(243, 156, 18)
-    m_CLR_ZELLE_GRUEN = RGB(198, 239, 206)
-    m_CLR_ZELLE_GELB = RGB(255, 230, 153)
-    m_CLR_ZELLE_ROT = RGB(255, 199, 206)
-    m_CLR_ZELLE_GRAU = RGB(242, 242, 242)
-    m_CLR_TEXT_GRUEN = RGB(0, 128, 80)
-    m_CLR_TEXT_DUNKELROT = RGB(192, 0, 0)
-    m_FarbenInit = True
-End Sub
-
 ' Layout
 Private Const TITEL_ROW As Long = 2
 Private Const KPI_LABEL_ROW As Long = 5
@@ -58,7 +40,7 @@ Private Const MATRIX_START_ROW As Long = 11
 
 
 ' ============================================================
-'  TYPES
+'  TYPES (muessen VOR allen Sub/Function stehen!)
 ' ============================================================
 Public Type ParzelleInfo
     parzNr As Long
@@ -83,7 +65,25 @@ End Type
 
 
 ' ============================================================
-'  HAUPTFUNKTION
+'  FARB-INITIALISIERUNG
+' ============================================================
+Private Sub InitFarben()
+    If m_FarbenInit Then Exit Sub
+    m_CLR_NAVY = RGB(23, 37, 84)
+    m_CLR_HEADER_BG = RGB(68, 84, 106)
+    m_CLR_WEISS = RGB(255, 255, 255)
+    m_CLR_KPI_BLAU = RGB(41, 128, 185)
+    m_CLR_KPI_GRUEN = RGB(39, 174, 96)
+    m_CLR_KPI_ROT = RGB(231, 76, 60)
+    m_CLR_KPI_ORANGE = RGB(243, 156, 18)
+    m_CLR_ZELLE_GRUEN = RGB(198, 239, 206)
+    m_CLR_ZELLE_GELB = RGB(255, 230, 153)
+    m_CLR_ZELLE_ROT = RGB(255, 199, 206)
+    m_CLR_ZELLE_GRAU = RGB(242, 242, 242)
+    m_CLR_TEXT_GRUEN = RGB(0, 128, 80)
+    m_CLR_TEXT_DUNKELROT = RGB(192, 0, 0)
+    m_FarbenInit = True
+End Sub
 ' ============================================================
 Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
     
@@ -336,8 +336,15 @@ Public Sub GruppiereParzellen(ByVal mitglieder As Collection, _
                                 ByRef parzellen() As ParzelleInfo, _
                                 ByRef anzParz As Long)
     
+    ' Dictionary speichert nur den Index ins tempArr (UDTs
+    ' koennen in Standardmodulen nicht als Variant abgelegt werden)
     Dim dict As Object
     Set dict = CreateObject("Scripting.Dictionary")
+    
+    Dim tempArr() As ParzelleInfo
+    Dim tempCount As Long
+    tempCount = 0
+    ReDim tempArr(1 To mitglieder.count)
     
     Dim m As Object
     For Each m In mitglieder
@@ -348,27 +355,29 @@ Public Sub GruppiereParzellen(ByVal mitglieder As Collection, _
         pKey = CStr(pNr)
         
         If Not dict.Exists(pKey) Then
-            Dim pi As ParzelleInfo
-            pi.parzNr = pNr
-            pi.mitgliedName = m("Name")
-            pi.entityKeys = m("EntityKey")
-            pi.roles = m("Role")
-            dict.Add pKey, pi
+            tempCount = tempCount + 1
+            tempArr(tempCount).parzNr = pNr
+            tempArr(tempCount).mitgliedName = m("Name")
+            tempArr(tempCount).entityKeys = m("EntityKey")
+            tempArr(tempCount).roles = m("Role")
+            dict.Add pKey, tempCount   ' merke Index
         Else
             ' Weitere Mitglieder auf gleicher Parzelle
-            Dim existing As ParzelleInfo
-            existing = dict(pKey)
-            If InStr(existing.entityKeys, m("EntityKey")) = 0 Then
-                existing.entityKeys = existing.entityKeys & "," & m("EntityKey")
-                existing.mitgliedName = existing.mitgliedName & " / " & m("Name")
-                existing.roles = existing.roles & "," & m("Role")
+            Dim ix As Long
+            ix = dict(pKey)
+            If InStr(tempArr(ix).entityKeys, m("EntityKey")) = 0 Then
+                tempArr(ix).entityKeys = tempArr(ix).entityKeys & "," & m("EntityKey")
+                tempArr(ix).mitgliedName = tempArr(ix).mitgliedName & " / " & m("Name")
+                tempArr(ix).roles = tempArr(ix).roles & "," & m("Role")
             End If
-            dict(pKey) = existing
         End If
     Next m
     
-    anzParz = dict.count
-    If anzParz = 0 Then Exit Sub
+    anzParz = tempCount
+    If anzParz = 0 Then
+        Set dict = Nothing
+        Exit Sub
+    End If
     
     ReDim parzellen(1 To anzParz)
     
@@ -378,7 +387,7 @@ Public Sub GruppiereParzellen(ByVal mitglieder As Collection, _
     Dim p As Long
     For p = 1 To 14
         If dict.Exists(CStr(p)) Then
-            parzellen(idx) = dict(CStr(p))
+            parzellen(idx) = tempArr(dict(CStr(p)))
             idx = idx + 1
         End If
     Next p
@@ -388,7 +397,7 @@ Public Sub GruppiereParzellen(ByVal mitglieder As Collection, _
     For Each key In dict.keys
         If CLng(key) > 14 Then
             If idx <= anzParz Then
-                parzellen(idx) = dict(key)
+                parzellen(idx) = tempArr(dict(key))
                 idx = idx + 1
             End If
         End If
@@ -1324,6 +1333,8 @@ Private Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     End If
     
 End Sub
+
+
 
 
 
