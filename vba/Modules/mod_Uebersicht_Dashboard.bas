@@ -469,7 +469,7 @@ Public Function LadeSollAusUebersicht() As Object
         
         If sollWert > 0 Then
             Dim dictKey As String
-            dictKey = parz & "|" ;& kat
+            dictKey = parz & "|" & kat
             dict(dictKey) = sollWert
         End If
         
@@ -494,7 +494,7 @@ Private Sub SchreibeTitel(ByVal ws As Worksheet, ByVal jahr As Long, _
     
     With ws.Range(ws.Cells(DASH_TITEL_ROW, 1), ws.Cells(DASH_TITEL_ROW, letzteSpalte))
         .Merge
-        .value = "ZAHLUNGS-DASHBOARD " ;& jahr
+        .value = "ZAHLUNGS-DASHBOARD " & jahr
         .Font.Name = "Calibri"
         .Font.Size = 22
         .Font.Bold = True
@@ -507,8 +507,8 @@ Private Sub SchreibeTitel(ByVal ws As Worksheet, ByVal jahr As Long, _
     
     With ws.Range(ws.Cells(3, 1), ws.Cells(3, letzteSpalte))
         .Merge
-        .value = "Erstellt am " ;& Format(Now, "dd.mm.yyyy") ;& _
-                 " um " ;& Format(Now, "hh:mm") ;& " Uhr"
+        .value = "Erstellt am " & Format(Now, "dd.mm.yyyy") & _
+                 " um " & Format(Now, "hh:mm") & " Uhr"
         .Font.Name = "Calibri"
         .Font.Size = 9
         .Font.color = RGB(128, 128, 128)
@@ -654,6 +654,8 @@ Private Sub SchreibeKPIKarte(ByVal ws As Worksheet, _
     End With
     
 End Sub
+
+
 
 
 
