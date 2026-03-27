@@ -235,7 +235,7 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
                "Parzellen: " & anzParz & vbLf & _
                "Mitglieder: " & anzMitglieder & vbLf & _
                "Kategorien: " & anzKat & vbLf & _
-               IIf(anzVerzug > 0, "Offene Posten: " ;& anzVerzug ;& vbLf, "") & _
+               IIf(anzVerzug > 0, "Offene Posten: " & anzVerzug & vbLf, "") & _
                "Dauer: " & Format(endTime - startTime, "0.00") & " Sekunden", _
                vbInformation, "Dashboard"
     End If
@@ -654,5 +654,7 @@ Private Sub SchreibeKPIKarte(ByVal ws As Worksheet, _
     End With
     
 End Sub
+
+
 
 

@@ -793,3 +793,5 @@ Public Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     On Error GoTo 0
     
 End Sub
+
+
