@@ -40,7 +40,7 @@ Public Sub ZentriereAlleZellenVertikal()
     For Each ws In ThisWorkbook.Worksheets
         ws.Unprotect PASSWORD:=PASSWORD
         ws.Cells.VerticalAlignment = xlCenter
-        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     Next ws
     
     On Error GoTo 0
@@ -49,6 +49,73 @@ Public Sub ZentriereAlleZellenVertikal()
     Application.ScreenUpdating = True
     
 End Sub
+
+
+' ===============================================================
+' v5.1: Stellt sicher, dass AutoFilter-Dropdowns auf allen
+' relevanten Blaettern vorhanden und nutzbar sind.
+' Wird von Workbook_Open aufgerufen.
+' ===============================================================
+Public Sub StelleAutoFilterBereit()
+    
+    Dim cfg As Variant
+    ' Array: Blattname, Header-Zeile
+    cfg = Array( _
+        Array(WS_BANKKONTO, 27), _
+        Array(WS_VEREINSKASSE, 26), _
+        Array("Strom", 7), _
+        Array("Wasser", 9), _
+        Array(WS_MITGLIEDER, 5), _
+        Array(WS_MITGLIEDER_HISTORIE, 3), _
+        Array(WS_EINSTELLUNGEN, 3), _
+        Array(WS_DATEN, 3))
+    
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    On Error Resume Next
+    
+    Dim i As Long
+    For i = LBound(cfg) To UBound(cfg)
+        Dim shName As String
+        shName = cfg(i)(0)
+        Dim hRow As Long
+        hRow = cfg(i)(1)
+        
+        Dim ws As Worksheet
+        Set ws = Nothing
+        Set ws = ThisWorkbook.Worksheets(shName)
+        If ws Is Nothing Then GoTo NextSheet
+        
+        ws.Unprotect PASSWORD:=PASSWORD
+        
+        ' Letzte Spalte mit Daten in Header-Zeile ermitteln
+        Dim lastCol As Long
+        lastCol = ws.Cells(hRow, ws.Columns.count).End(xlToLeft).Column
+        If lastCol < 1 Then lastCol = 1
+        
+        ' Letzte Zeile mit Daten ermitteln
+        Dim lastRow As Long
+        lastRow = ws.Cells(ws.Rows.count, 1).End(xlUp).Row
+        If lastRow <= hRow Then lastRow = hRow + 1
+        
+        ' Bestehenden AutoFilter entfernen
+        If ws.AutoFilterMode Then ws.AutoFilterMode = False
+        
+        ' AutoFilter auf Header-Bereich aktivieren
+        ws.Range(ws.Cells(hRow, 1), ws.Cells(lastRow, lastCol)).AutoFilter
+        
+        ' Blatt mit AllowFiltering schuetzen
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+        
+NextSheet:
+    Next i
+    
+    On Error GoTo 0
+    Application.EnableEvents = True
+    Application.ScreenUpdating = True
+    
+End Sub
+
 
 ' ===============================================================
 ' Wird aufgerufen wenn ein neues Blatt erstellt wird
@@ -443,6 +510,8 @@ ErrorHandler:
     End If
     
 End Sub
+
+
 
 
 

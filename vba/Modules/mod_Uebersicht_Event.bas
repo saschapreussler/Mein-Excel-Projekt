@@ -145,7 +145,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     
     ' Blattschutz wieder aktivieren
     On Error Resume Next
-    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
     
     Application.EnableEvents = True
@@ -154,7 +154,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
 ErrorHandler:
     Application.EnableEvents = True
     On Error Resume Next
-    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
     Debug.Print "[" & ChrW(220) & "bersicht Event] FEHLER: " & Err.Description
     
@@ -248,6 +248,8 @@ Private Function EntferneTeilBemerkung(ByVal bemerkung As String, _
     EntferneTeilBemerkung = ergebnis
     
 End Function
+
+
 
 
 

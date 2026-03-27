@@ -382,10 +382,16 @@ Public Sub GruppiereParzellen(ByVal mitglieder As Collection, _
             Dim ix As Long
             ix = dict(pKey)
             If InStr(tempArr(ix).entityKeys, m("EntityKey")) = 0 Then
+                ' Neuer EntityKey fuer diese Parzelle -> hinzufuegen
                 tempArr(ix).entityKeys = tempArr(ix).entityKeys & "," & m("EntityKey")
-                tempArr(ix).mitgliedNamen = tempArr(ix).mitgliedNamen & vbLf & m("Name")
                 tempArr(ix).roles = tempArr(ix).roles & "," & m("Role")
-                tempArr(ix).anzMitglieder = tempArr(ix).anzMitglieder + 1
+                
+                ' v5.1: Name nur hinzufuegen wenn Person noch nicht aufgefuehrt
+                '        (verhindert Duplikate bei Mitgliedern mit Gemeinschafts- UND Einzelkonto)
+                If InStr(1, tempArr(ix).mitgliedNamen, m("Name"), vbTextCompare) = 0 Then
+                    tempArr(ix).mitgliedNamen = tempArr(ix).mitgliedNamen & vbLf & m("Name")
+                    tempArr(ix).anzMitglieder = tempArr(ix).anzMitglieder + 1
+                End If
             End If
         End If
     Next m
@@ -654,6 +660,8 @@ Private Sub SchreibeKPIKarte(ByVal ws As Worksheet, _
     End With
     
 End Sub
+
+
 
 
 

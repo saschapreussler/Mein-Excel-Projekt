@@ -395,6 +395,24 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     Set summeIstZeilen = CreateObject("Scripting.Dictionary")
     summeIstZeilen.CompareMode = vbTextCompare
     
+    ' v5.1: Dictionary fuer MB-SOLL-Multiplikator bei Gemeinschaftskonten
+    ' Zaehlt wie viele eindeutige Mitglieder denselben EntityKey auf einer Parzelle nutzen.
+    ' Key = "Parzelle|EntityKey", Value = Anzahl Personen
+    Dim mbMultiplier As Object
+    Set mbMultiplier = CreateObject("Scripting.Dictionary")
+    mbMultiplier.CompareMode = vbTextCompare
+    
+    Dim tmpM As Object
+    For Each tmpM In mitglieder
+        Dim mbKey As String
+        mbKey = CStr(tmpM("Parzelle")) & "|" & tmpM("EntityKey")
+        If Not mbMultiplier.Exists(mbKey) Then
+            mbMultiplier(mbKey) = 1
+        Else
+            mbMultiplier(mbKey) = mbMultiplier(mbKey) + 1
+        End If
+    Next tmpM
+    
     ' 2. Daten generieren
     rowIdx = UEBERSICHT_START_ROW
     
@@ -556,10 +574,25 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 
                 ' =============================================
                 ' v2.0: Soll-Betrag Logik
+                ' v5.1: Bei Mitgliedsbeitrag und Gemeinschaftskonto
+                '        SOLL mit Anzahl Mitglieder auf diesem EntityKey multiplizieren
                 ' =============================================
+                
+                ' v5.1: MB-Multiplikator ermitteln
+                Dim mbFaktor As Long
+                mbFaktor = 1
+                If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                    Dim mbLookup As String
+                    mbLookup = CStr(parzelleWert) & "|" & entityKey
+                    If mbMultiplier.Exists(mbLookup) Then
+                        mbFaktor = CLng(mbMultiplier(mbLookup))
+                    End If
+                End If
+                
                 If kategorien(k).HatFestenSoll Then
-                    ' Fester Soll-Betrag aus Einstellungen
-                    wsUeb.Cells(rowIdx, UEB_COL_SOLL).value = soll
+                    ' Fester Soll-Betrag aus Einstellungen (ggf. x Mitglieder)
+                    wsUeb.Cells(rowIdx, UEB_COL_SOLL).value = soll * mbFaktor
+                    soll = soll * mbFaktor
                 Else
                     ' KEIN fester Soll-Betrag -> Zelle hell-gelb (editierbar)
                     ' v4.3: Zuerst pruefen ob Nutzer bereits einen Betrag fuer
@@ -1086,6 +1119,8 @@ Private Function PruefePartnerMitgliedsbeitrag( _
     Next partner
     
 End Function
+
+
 
 
 

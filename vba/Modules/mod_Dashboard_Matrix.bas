@@ -330,7 +330,8 @@ NextEKDash:
                     If anzVerzug <= UBound(verzugListe) Then
                         With verzugListe(anzVerzug)
                             .parzNr = parzellen(p).parzNr
-                            .mitglied = Replace(parzellen(p).mitgliedNamen, vbLf, " / ")
+                            ' v5.1: Namen untereinander (vbLf) statt "/" getrennt
+                            .mitglied = parzellen(p).mitgliedNamen
                             .kategorie = kategorie
                             .monatNr = monat
                             .monatText = MonthName(monat) & " " & jahr
@@ -673,6 +674,7 @@ Public Sub SchreibeVerzugsdetail(ByVal ws As Worksheet, _
         With liste(i)
             ws.Cells(dRow, 1).value = .parzNr
             ws.Cells(dRow, 2).value = .mitglied
+            ws.Cells(dRow, 2).WrapText = True
             ws.Cells(dRow, 3).value = .kategorie
             ws.Cells(dRow, 4).value = .monatText
             ws.Cells(dRow, 5).value = .soll
@@ -691,7 +693,14 @@ Public Sub SchreibeVerzugsdetail(ByVal ws As Worksheet, _
             .Font.Name = "Calibri"
             .Font.Size = 9
             .VerticalAlignment = xlCenter
-            .RowHeight = 22
+            ' v5.1: Zeilenhoehe dynamisch je nach Anzahl Namen (vbLf-getrennt)
+            Dim nameCount As Long
+            nameCount = UBound(Split(liste(i).mitglied, vbLf)) + 1
+            If nameCount > 1 Then
+                .RowHeight = 13 * nameCount + 8
+            Else
+                .RowHeight = 22
+            End If
             .Borders.LineStyle = xlContinuous
             .Borders.color = RGB(220, 220, 220)
             .Borders.Weight = xlThin
@@ -793,6 +802,8 @@ Public Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

@@ -31,6 +31,9 @@ Private Sub Workbook_Open()
     ' Mitgliederliste: DropDowns + Spaltenschutz aktualisieren
     Call mod_Mitglieder_UI.ApplyMitgliederDropdowns
     
+    ' v5.1: AutoFilter-Dropdowns auf allen Blaettern aktivieren
+    Call mod_Formatierung.StelleAutoFilterBereit
+    
 End Sub
 
 Private Sub Workbook_NewSheet(ByVal Sh As Object)
@@ -59,9 +62,14 @@ Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
     
     If StrComp(wsName, WS_UEBERSICHT(), vbTextCompare) = 0 Then
         Call mod_Uebersicht_Event.VerarbeiteUebersichtAenderung(Target)
+        ' v5.1: Dashboard bei manuellen Soll-Aenderungen aktualisieren
+        On Error Resume Next
+        Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
+        On Error GoTo 0
     End If
     
 End Sub
+
 
 
 
