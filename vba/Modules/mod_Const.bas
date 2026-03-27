@@ -327,9 +327,11 @@ End Function
 ' ===============================================================
 Public Function WS_UEBERSICHT() As String
     Static val As String
-    If val = "" Then val = Chr$(220) & "bersicht"
+    If val = "" Then val = "Zahlungs" & Chr$(252) & "bersicht"
     WS_UEBERSICHT = val
 End Function
+
+
 
 
 
