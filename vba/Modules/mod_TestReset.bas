@@ -3,13 +3,14 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_TestReset
-' VERSION: 1.0 - 15.03.2026
+' VERSION: 1.1 - 29.03.2026
 ' ZWECK: Setzt die Arbeitsmappe in den Zustand VOR dem
 '        CSV-Import zurueck. Loescht:
 '        1. Bankkonto-Daten (ab Zeile 28)
 '        2. Uebersicht-Daten (ab Zeile 4)
+'        2a. Dashboard Mitgliederzahlungen (komplett)
 '        3. Import-Protokoll (Daten Y500)
-'        4. Vorjahr-Speicher (Daten CA-CF)
+'        4. Vorjahr-Speicher (Daten CA-CF) - optional per MsgBox
 '
 '        Aufruf: Alt+F8 > TestReset_VorCSVImport
 '        Oder im Direktfenster: mod_TestReset.TestReset_VorCSVImport
@@ -87,6 +88,23 @@ Public Sub TestReset_VorCSVImport()
         " gel" & ChrW(246) & "scht."
     
     ' =============================================================
+    ' 2a. DASHBOARD MITGLIEDERZAHLUNGEN loeschen (ganzes Blatt)
+    ' =============================================================
+    Dim wsDash As Worksheet
+    On Error Resume Next
+    Set wsDash = ThisWorkbook.Worksheets("Dashboard Mitgliederzahlungen")
+    On Error GoTo ErrorHandler
+    
+    If Not wsDash Is Nothing Then
+        Application.DisplayAlerts = False
+        wsDash.Delete
+        Application.DisplayAlerts = True
+        Debug.Print "[TestReset] Dashboard Mitgliederzahlungen gel" & ChrW(246) & "scht."
+    Else
+        Debug.Print "[TestReset] Dashboard Mitgliederzahlungen: nicht vorhanden."
+    End If
+    
+    ' =============================================================
     ' 3. IMPORT-PROTOKOLL leeren (Daten Y500)
     ' =============================================================
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
@@ -97,15 +115,30 @@ Public Sub TestReset_VorCSVImport()
     Debug.Print "[TestReset] Import-Protokoll (Y500) gel" & ChrW(246) & "scht."
     
     ' =============================================================
-    ' 4. VORJAHR-SPEICHER leeren (Daten CA-CF)
+    ' 4. VORJAHR-SPEICHER (optional per MsgBox)
     ' =============================================================
+    Dim vorjahrLoeschen As Boolean
+    vorjahrLoeschen = False
     lastRow = wsDaten.Cells(wsDaten.Rows.count, VJ_COL_DATUM).End(xlUp).Row
     
     If lastRow >= VJ_START_ROW Then
-        wsDaten.Range(wsDaten.Cells(VJ_START_ROW, VJ_COL_DATUM), _
-                      wsDaten.Cells(lastRow, VJ_COL_ENTITYKEY)).Clear
-        Debug.Print "[TestReset] Vorjahr-Speicher: " & _
-            (lastRow - VJ_START_ROW + 1) & " Zeilen gel" & ChrW(246) & "scht."
+        Application.ScreenUpdating = True
+        Dim vjAntwort As VbMsgBoxResult
+        vjAntwort = MsgBox("Der Vorjahr-Speicher (Daten CA-CF) enth" & ChrW(228) & "lt " & _
+                           (lastRow - VJ_START_ROW + 1) & " Zeilen." & vbCrLf & vbCrLf & _
+                           "Vorjahr-Speicher ebenfalls l" & ChrW(246) & "schen?", _
+                           vbYesNo + vbQuestion, "Vorjahr-Speicher")
+        Application.ScreenUpdating = False
+        
+        If vjAntwort = vbYes Then
+            wsDaten.Range(wsDaten.Cells(VJ_START_ROW, VJ_COL_DATUM), _
+                          wsDaten.Cells(lastRow, VJ_COL_ENTITYKEY)).Clear
+            vorjahrLoeschen = True
+            Debug.Print "[TestReset] Vorjahr-Speicher: " & _
+                (lastRow - VJ_START_ROW + 1) & " Zeilen gel" & ChrW(246) & "scht."
+        Else
+            Debug.Print "[TestReset] Vorjahr-Speicher: beibehalten (Benutzerauswahl)."
+        End If
     Else
         Debug.Print "[TestReset] Vorjahr-Speicher: keine Daten."
     End If
@@ -129,8 +162,10 @@ Public Sub TestReset_VorCSVImport()
            "Gel" & ChrW(246) & "scht:" & vbCrLf & _
            "  " & ChrW(8226) & " Bankkonto (alle Kontoausz" & ChrW(252) & "ge)" & vbCrLf & _
            "  " & ChrW(8226) & " " & ChrW(220) & "bersicht (alle Eintr" & ChrW(228) & "ge)" & vbCrLf & _
+           "  " & ChrW(8226) & " Dashboard Mitgliederzahlungen" & vbCrLf & _
            "  " & ChrW(8226) & " Import-Protokoll (Y500)" & vbCrLf & _
-           "  " & ChrW(8226) & " Vorjahr-Speicher (CA-CF)" & vbCrLf & vbCrLf & _
+           "  " & ChrW(8226) & " Vorjahr-Speicher: " & _
+           IIf(vorjahrLoeschen, "gel" & ChrW(246) & "scht", "beibehalten") & vbCrLf & vbCrLf & _
            "Du kannst jetzt den CSV-Import erneut starten.", _
            vbInformation, "Test-Reset"
     Exit Sub
@@ -141,6 +176,8 @@ ErrorHandler:
     MsgBox "Fehler beim Test-Reset:" & vbCrLf & _
            "Nr. " & Err.Number & ": " & Err.Description, vbCritical
 End Sub
+
+
 
 
 

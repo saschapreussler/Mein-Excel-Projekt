@@ -31,6 +31,7 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                                     ByRef kpiAnzahlBezahlt As Long, _
                                     ByRef kpiAnzahlSaeumnis As Long, _
                                     ByRef kpiOffenOhneSoll As Long, _
+                                    ByRef kpiOffenBetrag As Double, _
                                     ByRef verzugListe() As VerzugEintrag, _
                                     ByRef anzVerzug As Long)
     
@@ -87,6 +88,7 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
     kpiAnzahlBezahlt = 0
     kpiAnzahlSaeumnis = 0
     kpiOffenOhneSoll = 0
+    kpiOffenBetrag = 0
     
     Dim p As Long
     For p = 1 To anzParz
@@ -331,11 +333,33 @@ NextEKDash:
                     Else
                         kpiAnzahlOffen = kpiAnzahlOffen + 1
                         If mSoll = 0 Then kpiOffenOhneSoll = kpiOffenOhneSoll + 1
+                        ' v5.3: Offenen Betrag akkumulieren
+                        Dim offenPosten As Double
+                        offenPosten = mSoll
+                        If mSoll = 0 And kategorien(k).SollBetrag > 0 Then
+                            If istMB Then
+                                offenPosten = kategorien(k).SollBetrag * mbZahler
+                            Else
+                                offenPosten = kategorien(k).SollBetrag
+                            End If
+                        End If
+                        If offenPosten > 0 Then kpiOffenBetrag = kpiOffenBetrag + offenPosten
                     End If
                 Else
                     katHatRot = True
                     kpiAnzahlOffen = kpiAnzahlOffen + 1
                     If mSoll = 0 Then kpiOffenOhneSoll = kpiOffenOhneSoll + 1
+                    
+                    ' v5.3: Offenen Betrag akkumulieren
+                    offenPosten = mSoll - mIst
+                    If mSoll = 0 And kategorien(k).SollBetrag > 0 Then
+                        If istMB Then
+                            offenPosten = kategorien(k).SollBetrag * mbZahler - mIst
+                        Else
+                            offenPosten = kategorien(k).SollBetrag - mIst
+                        End If
+                    End If
+                    If offenPosten > 0 Then kpiOffenBetrag = kpiOffenBetrag + offenPosten
                     
                     If kategorien(k).saeumnisGebuehr > 0 Then
                         katSaeumnis = katSaeumnis + kategorien(k).saeumnisGebuehr
@@ -493,6 +517,26 @@ NextKatDash:
     End With
     
     matrixEndRow = rowIdx
+    
+    ' v5.3: Leere Kategorie-Spalten ausblenden
+    '   Spalte wird versteckt wenn ALLE Datenzellen nur ChrW(8212) enthalten
+    Dim kCheck As Long
+    For kCheck = 0 To anzKat - 1
+        Dim prufCol As Long
+        prufCol = 3 + kCheck
+        Dim alleLeer As Boolean
+        alleLeer = True
+        Dim rCheck As Long
+        For rCheck = DASH_MATRIX_START_ROW To matrixEndRow - 1
+            Dim zellWert As String
+            zellWert = CStr(ws.Cells(rCheck, prufCol).value)
+            If zellWert <> ChrW(8212) Then
+                alleLeer = False
+                Exit For
+            End If
+        Next rCheck
+        If alleLeer Then ws.Columns(prufCol).Hidden = True
+    Next kCheck
     
     ' Datenbalken fuer Quote-Spalte
     On Error Resume Next
@@ -818,6 +862,8 @@ Public Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

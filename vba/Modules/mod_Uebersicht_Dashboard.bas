@@ -172,6 +172,7 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
     Dim kpiAnzahlBezahlt As Long
     Dim kpiAnzahlSaeumnis As Long
     Dim kpiOffenOhneSoll As Long
+    Dim kpiOffenBetrag As Double
     
     Dim verzugListe() As VerzugEintrag
     Dim anzVerzug As Long
@@ -185,6 +186,7 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
         kpiSummeIst, kpiSummeSoll, kpiSummeSaeumnis, _
         kpiAnzahlOffen, kpiAnzahlBezahlt, _
         kpiAnzahlSaeumnis, kpiOffenOhneSoll, _
+        kpiOffenBetrag, _
         verzugListe, anzVerzug)
     
     ' --- 9. KPI-Karten ---
@@ -194,7 +196,8 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
     Call SchreibeKPI(wsDash, anzParz, anzMitglieder, _
                      kpiSummeIst, kpiSummeSoll, kpiSummeSaeumnis, _
                      kpiAnzahlOffen, kpiAnzahlBezahlt, _
-                     kpiAnzahlSaeumnis, kpiOffenOhneSoll)
+                     kpiAnzahlSaeumnis, kpiOffenOhneSoll, _
+                     kpiOffenBetrag)
     
     ' --- 10. Verzugsdetail ---
     Dim verzugEndRow As Long
@@ -554,7 +557,8 @@ Private Sub SchreibeKPI(ByVal ws As Worksheet, _
                          ByVal anzOffen As Long, _
                          ByVal anzBezahlt As Long, _
                          ByVal anzSaeumnis As Long, _
-                         ByVal offenOhneSoll As Long)
+                         ByVal offenOhneSoll As Long, _
+                         ByVal offenBetragKPI As Double)
     
     ' Karte 1: Parzellen & Mitglieder
     Call SchreibeKPIKarte(ws, DASH_KPI_LABEL_ROW, 1, 2, _
@@ -570,10 +574,9 @@ Private Sub SchreibeKPI(ByVal ws As Worksheet, _
                           CStr(anzBezahlt) & " Posten bezahlt", _
                           m_CLR_KPI_GRUEN)
     
-    ' Karte 3: Offen
+    ' Karte 3: Offen (v5.3: direkt akkumulierter Betrag statt Global-Differenz)
     Dim offenBetrag As Double
-    offenBetrag = summeSoll - summeIst
-    If offenBetrag < 0 Then offenBetrag = 0
+    offenBetrag = offenBetragKPI
     
     Dim offenDetail As String
     offenDetail = CStr(anzOffen) & " Posten offen"
@@ -675,6 +678,8 @@ Private Sub SchreibeKPIKarte(ByVal ws As Worksheet, _
     End With
     
 End Sub
+
+
 
 
 
