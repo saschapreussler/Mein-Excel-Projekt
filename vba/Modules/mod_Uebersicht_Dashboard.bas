@@ -18,6 +18,7 @@ Public Type ParzelleInfo
     mitgliedNamen As String    ' vbLf-getrennt
     entityKeys As String       ' komma-getrennt
     roles As String            ' komma-getrennt (parallel zu entityKeys)
+    eintritte As String        ' komma-getrennt (parallel zu entityKeys, Format YYYYMMDD)
     anzMitglieder As Long
 End Type
 
@@ -376,6 +377,12 @@ Public Sub GruppiereParzellen(ByVal mitglieder As Collection, _
             tempArr(tempCount).mitgliedNamen = m("Name")
             tempArr(tempCount).entityKeys = m("EntityKey")
             tempArr(tempCount).roles = m("Role")
+            ' v5.2: Eintrittsdatum parallel zu entityKeys speichern
+            If IsDate(m("Eintritt")) And CDate(m("Eintritt")) > 0 Then
+                tempArr(tempCount).eintritte = Format(CDate(m("Eintritt")), "YYYYMMDD")
+            Else
+                tempArr(tempCount).eintritte = ""
+            End If
             tempArr(tempCount).anzMitglieder = 1
             dict.Add pKey, tempCount
         Else
@@ -385,13 +392,21 @@ Public Sub GruppiereParzellen(ByVal mitglieder As Collection, _
                 ' Neuer EntityKey fuer diese Parzelle -> hinzufuegen
                 tempArr(ix).entityKeys = tempArr(ix).entityKeys & "," & m("EntityKey")
                 tempArr(ix).roles = tempArr(ix).roles & "," & m("Role")
-                
-                ' v5.1: Name nur hinzufuegen wenn Person noch nicht aufgefuehrt
-                '        (verhindert Duplikate bei Mitgliedern mit Gemeinschafts- UND Einzelkonto)
-                If InStr(1, tempArr(ix).mitgliedNamen, m("Name"), vbTextCompare) = 0 Then
-                    tempArr(ix).mitgliedNamen = tempArr(ix).mitgliedNamen & vbLf & m("Name")
-                    tempArr(ix).anzMitglieder = tempArr(ix).anzMitglieder + 1
+                ' v5.2: Eintrittsdatum parallel speichern
+                Dim eDat As String
+                If IsDate(m("Eintritt")) And CDate(m("Eintritt")) > 0 Then
+                    eDat = Format(CDate(m("Eintritt")), "YYYYMMDD")
+                Else
+                    eDat = ""
                 End If
+                tempArr(ix).eintritte = tempArr(ix).eintritte & "," & eDat
+            End If
+            
+            ' v5.2: Name IMMER pruefen (auch wenn EntityKey bereits bekannt),
+            '        damit alle Personen auf der Parzelle dargestellt werden
+            If InStr(1, tempArr(ix).mitgliedNamen, m("Name"), vbTextCompare) = 0 Then
+                tempArr(ix).mitgliedNamen = tempArr(ix).mitgliedNamen & vbLf & m("Name")
+                tempArr(ix).anzMitglieder = tempArr(ix).anzMitglieder + 1
             End If
         End If
     Next m
@@ -660,6 +675,8 @@ Private Sub SchreibeKPIKarte(ByVal ws As Worksheet, _
     End With
     
 End Sub
+
+
 
 
 

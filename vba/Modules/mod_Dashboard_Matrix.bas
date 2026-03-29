@@ -117,6 +117,9 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
         eKeys = Split(parzellen(p).entityKeys, ",")
         Dim eRollen() As String
         eRollen = Split(parzellen(p).roles, ",")
+        ' v5.2: Eintrittsdaten parallel zu EntityKeys
+        Dim eEintritte() As String
+        eEintritte = Split(parzellen(p).eintritte, ",")
         Dim alleRollen As String
         alleRollen = UCase(parzellen(p).roles)
         
@@ -219,6 +222,19 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                         Dim eRole As String: eRole = ""
                         If eIdx <= UBound(eRollen) Then eRole = UCase(Trim(eRollen(eIdx)))
                         If InStr(eRole, "EHREN") > 0 Then GoTo NextEKDash
+                        
+                        ' v5.2: Eintrittsdatum-Filter fuer MB
+                        ' Mitglied zahlt erst ab seinem Eintrittsmonat
+                        If eIdx <= UBound(eEintritte) Then
+                            Dim eEintritt As String
+                            eEintritt = Trim(eEintritte(eIdx))
+                            If Len(eEintritt) = 8 Then
+                                Dim eJahr As Long, eMon As Long
+                                eJahr = val(Left(eEintritt, 4))
+                                eMon = val(Mid(eEintritt, 5, 2))
+                                If eJahr = jahr And monat < eMon Then GoTo NextEKDash
+                            End If
+                        End If
                     End If
                     
                     Dim ergebnis As String
@@ -802,6 +818,8 @@ Public Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

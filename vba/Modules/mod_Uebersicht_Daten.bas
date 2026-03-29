@@ -261,6 +261,22 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                         dict.Add "Name", zuordnung
                         dict.Add "Role", roleWert
                         
+                        ' v5.2: Eintrittsdatum (Pachtanfang) aus Mitgliederliste
+                        Dim eintritt As Date
+                        eintritt = 0
+                        If Not wsML Is Nothing Then
+                            Dim rE As Long
+                            For rE = M_START_ROW To lastRowML
+                                If Trim(CStr(wsML.Cells(rE, M_COL_ENTITY_KEY).value)) = entityKey Then
+                                    Dim pa As Variant
+                                    pa = wsML.Cells(rE, M_COL_PACHTANFANG).value
+                                    If IsDate(pa) Then eintritt = CDate(pa)
+                                    Exit For
+                                End If
+                            Next rE
+                        End If
+                        dict.Add "Eintritt", eintritt
+                        
                         col.Add dict
                     End If
                 End If
@@ -632,6 +648,8 @@ Public Function HatVorjahrDaten() As Boolean
     lastRow = wsDaten.Cells(wsDaten.Rows.count, VJ_COL_DATUM).End(xlUp).Row
     HatVorjahrDaten = (lastRow >= VJ_START_ROW)
 End Function
+
+
 
 
 

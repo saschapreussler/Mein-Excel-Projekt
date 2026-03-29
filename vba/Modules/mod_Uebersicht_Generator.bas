@@ -425,7 +425,21 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
         Dim mitgliedRole As String
         mitgliedRole = mitglied("Role")
         
+        ' v5.2: Eintrittsdatum -> Beitraege erst ab dem Eintrittsmonat
+        Dim eintrittMonat As Long
+        eintrittMonat = 0
+        If IsDate(mitglied("Eintritt")) Then
+            Dim eintrittDatum As Date
+            eintrittDatum = CDate(mitglied("Eintritt"))
+            If eintrittDatum > 0 And Year(eintrittDatum) = jahr Then
+                eintrittMonat = Month(eintrittDatum)
+            End If
+        End If
+        
         For monat = 1 To 12
+            ' v5.2: Monate vor Eintritt ueberspringen (nur Mitgliedsbeitrag)
+            ' Pacht muss unabhaengig vom Mitglied immer bezahlt werden
+            
             Dim k As Long
             For k = 0 To anzahlKat - 1
                 
@@ -435,6 +449,15 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
                 
                 kategorie = kategorien(k).Name
+                
+                ' v5.2: Eintrittsdatum-Filter fuer Mitgliedsbeitrag
+                ' Mitglieder die erst im laufenden Jahr eintreten zahlen erst
+                ' ab ihrem Eintrittsmonat. Pacht etc. muss immer bezahlt werden.
+                If eintrittMonat > 0 Then
+                    If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                        If monat < eintrittMonat Then GoTo NextKat
+                    End If
+                End If
                 
                 ' v4.0: MITGLIED OHNE PACHT zahlt NUR Mitgliedsbeitrag
                 ' Alle anderen Kategorien (Pacht, Betriebskosten, Fixkosten,
@@ -1119,6 +1142,8 @@ Private Function PruefePartnerMitgliedsbeitrag( _
     Next partner
     
 End Function
+
+
 
 
 
