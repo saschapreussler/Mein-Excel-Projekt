@@ -530,10 +530,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
-                ' v4.6: Januar-Schutz: Wenn keine Vorjahr-Daten vorhanden sind,
-                ' koennte eine Dezember-Zahlung des Vorjahres fuer Januar gelten.
-                ' In diesem Fall ROT -> GELB herabstufen mit Hinweis.
-                If monat = 1 And ist = 0 And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
+                ' v4.6/v5.4: Vorjahr-Schutz: Wenn keine Vorjahr-Daten vorhanden sind,
+                ' koennte eine Okt-Dez-Zahlung des Vorjahres fuer diesen Monat gelten.
+                ' In diesem Fall ROT -> GELB herabstufen mit Hinweis (Monate 1-3).
+                If monat <= 3 And ist = 0 And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
                     If StrComp(status, "ROT", vbTextCompare) = 0 Then
                         status = "GELB"
                     End If
@@ -717,9 +717,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
                 
                 ' v4.6: Hinweis wenn Januar ohne Vorjahr-Daten auf GELB herabgestuft wurde
-                If monat = 1 And ist = 0 And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
+                ' v5.4: Hinweis wenn Monat 1-3 ohne Vorjahr-Daten auf GELB herabgestuft wurde
+                If monat <= 3 And ist = 0 And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
                     Dim vjHinweis As String
-                    vjHinweis = "Keine Vorjahr-Daten: Zahlung evtl. im Dezember erfolgt"
+                    vjHinweis = "Keine Vorjahr-Daten: Zahlung evtl. im Vorjahr (Okt-Dez) erfolgt"
                     If bemerkung = "" Then
                         bemerkung = vjHinweis
                     Else
@@ -791,6 +792,12 @@ NextKat:
     Application.Calculation = xlCalculationAutomatic
     Application.EnableEvents = True
     Application.ScreenUpdating = True
+    
+    ' v5.4: Vorjahr-Pruefung: wenn keine Vorjahr-Daten vorhanden sind,
+    '        dem Nutzer die Moeglichkeit geben GELB-Eintraege zu bestätigen
+    If Not stummModus And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
+        Call PruefeVorjahrGelbEintraege(wsUeb, rowIdx - 1)
+    End If
     
     Dim endTime As Double
     endTime = Timer
@@ -1142,6 +1149,161 @@ Private Function PruefePartnerMitgliedsbeitrag( _
     Next partner
     
 End Function
+
+
+' ===============================================================
+' v5.4: VORJAHR-GELB-PRUEFUNG
+' Scannt die Zahlungsuebersicht nach GELB-Eintraegen in Monaten 1-3
+' wo "Keine Vorjahr-Daten" in der Bemerkung steht.
+' Fragt den Nutzer ob die Zahlungen im Vorjahr erfolgt sind.
+'
+' Ablauf:
+'   1) Sammle alle betroffenen Zeilen
+'   2) Frage: "N Positionen ohne Vorjahr-Daten. Einzeln pruefen?"
+'   3) Pro Position: "Wurde [Kategorie] fuer Parzelle [X] in [Monat]
+'      im Vorjahr (Okt-Dez) fristgerecht bezahlt?"
+'      - Ja -> GRUEN + Bemerkung "Im Vorjahr bezahlt (Nutzer best.)"
+'      - Nein -> ROT + Saeumnis (falls definiert)
+'   4) Abbrechen = Alles bleibt GELB
+' ===============================================================
+Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
+                                         ByVal LetzteZeile As Long)
+    
+    ' 1) Betroffene Zeilen sammeln
+    Dim gelbZeilen As Collection
+    Set gelbZeilen = New Collection
+    
+    Dim r As Long
+    For r = UEBERSICHT_START_ROW To LetzteZeile
+        Dim statusWert As String
+        statusWert = UCase(Trim(CStr(wsUeb.Cells(r, UEB_COL_STATUS).value)))
+        
+        If statusWert = "GELB" Then
+            Dim bemWert As String
+            bemWert = CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value)
+            
+            If InStr(bemWert, "Keine Vorjahr-Daten") > 0 Then
+                gelbZeilen.Add r
+            End If
+        End If
+    Next r
+    
+    If gelbZeilen.count = 0 Then Exit Sub
+    
+    ' 2) Einstiegsfrage
+    Dim antwort As VbMsgBoxResult
+    antwort = MsgBox("Es gibt " & gelbZeilen.count & " Position(en) in den Monaten " & _
+                     "Januar bis M" & ChrW(228) & "rz, f" & ChrW(252) & "r die keine " & _
+                     "Vorjahr-Daten vorliegen." & vbCrLf & vbCrLf & _
+                     "M" & ChrW(246) & "chten Sie diese einzeln pr" & ChrW(252) & "fen " & _
+                     "und best" & ChrW(228) & "tigen, ob die Zahlung im Vorjahr " & _
+                     "(Oktober bis Dezember) fristgerecht erfolgt ist?" & vbCrLf & vbCrLf & _
+                     "  Ja = Einzeln pr" & ChrW(252) & "fen" & vbCrLf & _
+                     "  Nein = Alle als GELB belassen", _
+                     vbYesNo + vbQuestion, "Vorjahr-Pr" & ChrW(252) & "fung")
+    
+    If antwort <> vbYes Then Exit Sub
+    
+    ' 3) Einzelpruefung
+    On Error Resume Next
+    wsUeb.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    Application.EnableEvents = False
+    
+    Dim i As Long
+    Dim bestaetigtGruen As Long: bestaetigtGruen = 0
+    Dim bestaetigtRot As Long: bestaetigtRot = 0
+    
+    For i = 1 To gelbZeilen.count
+        r = gelbZeilen(i)
+        
+        Dim parzelle As String
+        parzelle = CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)
+        Dim vjKategorie As String
+        vjKategorie = CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)
+        Dim monatText As String
+        monatText = CStr(wsUeb.Cells(r, UEB_COL_MONAT).value)
+        Dim vjMitglied As String
+        vjMitglied = CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)
+        
+        Dim vjAntwort As VbMsgBoxResult
+        vjAntwort = MsgBox("Position " & i & " von " & gelbZeilen.count & ":" & vbCrLf & vbCrLf & _
+                           "Parzelle: " & parzelle & vbCrLf & _
+                           "Mitglied: " & vjMitglied & vbCrLf & _
+                           "Kategorie: " & vjKategorie & vbCrLf & _
+                           "Monat: " & monatText & vbCrLf & vbCrLf & _
+                           "Wurde diese Zahlung im Vorjahr (Okt-Dez) " & _
+                           "fristgerecht bezahlt?" & vbCrLf & vbCrLf & _
+                           "  Ja = " & ChrW(10004) & " GR" & ChrW(220) & "N (bezahlt)" & vbCrLf & _
+                           "  Nein = " & ChrW(10008) & " ROT (ausstehend)" & vbCrLf & _
+                           "  Abbrechen = Rest " & ChrW(252) & "berspringen", _
+                           vbYesNoCancel + vbQuestion, _
+                           "Vorjahr-Pr" & ChrW(252) & "fung (" & i & "/" & gelbZeilen.count & ")")
+        
+        If vjAntwort = vbCancel Then Exit For
+        
+        Dim aktBem As String
+        aktBem = CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value)
+        ' Alten Vorjahr-Hinweis entfernen
+        aktBem = Replace(aktBem, "Keine Vorjahr-Daten: Zahlung evtl. im Vorjahr (Okt-Dez) erfolgt", "")
+        aktBem = Replace(aktBem, " | | ", " | ")
+        If Left(aktBem, 3) = " | " Then aktBem = Mid(aktBem, 4)
+        If Right(aktBem, 3) = " | " Then aktBem = Left(aktBem, Len(aktBem) - 3)
+        aktBem = Trim(aktBem)
+        
+        If vjAntwort = vbYes Then
+            ' -> GRUEN
+            wsUeb.Cells(r, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
+            wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
+            
+            Dim gruenBem As String
+            gruenBem = "Im Vorjahr bezahlt (Nutzer best" & ChrW(228) & "tigt)"
+            If aktBem <> "" Then
+                wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = aktBem & " | " & gruenBem
+            Else
+                wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = gruenBem
+            End If
+            
+            bestaetigtGruen = bestaetigtGruen + 1
+            
+        Else  ' vbNo
+            ' -> ROT
+            wsUeb.Cells(r, UEB_COL_STATUS).value = "ROT"
+            wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_ROT
+            
+            Dim rotBem As String
+            rotBem = "Nicht im Vorjahr bezahlt (Nutzer best" & ChrW(228) & "tigt)"
+            If aktBem <> "" Then
+                wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = aktBem & " | " & rotBem
+            Else
+                wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = rotBem
+            End If
+            
+            bestaetigtRot = bestaetigtRot + 1
+        End If
+    Next i
+    
+    On Error Resume Next
+    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+    
+    Application.EnableEvents = True
+    
+    If bestaetigtGruen + bestaetigtRot > 0 Then
+        MsgBox "Vorjahr-Pr" & ChrW(252) & "fung abgeschlossen:" & vbCrLf & vbCrLf & _
+               "  " & ChrW(10004) & " " & bestaetigtGruen & "x als bezahlt best" & _
+               ChrW(228) & "tigt (GR" & ChrW(220) & "N)" & vbCrLf & _
+               "  " & ChrW(10008) & " " & bestaetigtRot & "x als ausstehend markiert (ROT)" & vbCrLf & _
+               "  " & ChrW(8226) & " " & _
+               (gelbZeilen.count - bestaetigtGruen - bestaetigtRot) & _
+               "x ungepr" & ChrW(252) & "ft (GELB)", _
+               vbInformation, "Vorjahr-Pr" & ChrW(252) & "fung"
+    End If
+    
+End Sub
+
+
 
 
 

@@ -650,6 +650,98 @@ Public Function HatVorjahrDaten() As Boolean
 End Function
 
 
+' ===============================================================
+' v5.4: Holt ALLE aktiven Mitglieder aus der Mitgliederliste
+' (unabh. davon ob sie einen EntityKey haben oder nicht)
+' Gibt Collection von Dictionaries zurueck:
+'   Parzelle (Long), Name (String), EntityKey (String, kann leer sein)
+' Aktiv = Pachtanfang vorhanden + Pachtende leer oder in der Zukunft
+' ===============================================================
+Public Function HoleMitgliederAusMitgliederliste() As Collection
+    
+    Dim col As Collection
+    Set col = New Collection
+    
+    Dim wsML As Worksheet
+    On Error Resume Next
+    Set wsML = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    On Error GoTo 0
+    
+    If wsML Is Nothing Then
+        Set HoleMitgliederAusMitgliederliste = col
+        Exit Function
+    End If
+    
+    Dim lastRow As Long
+    lastRow = wsML.Cells(wsML.Rows.count, M_COL_MEMBER_ID).End(xlUp).Row
+    If lastRow < M_START_ROW Then
+        Set HoleMitgliederAusMitgliederliste = col
+        Exit Function
+    End If
+    
+    Dim r As Long
+    For r = M_START_ROW To lastRow
+        ' Parzelle pruefen
+        Dim parzStr As String
+        parzStr = Trim(CStr(wsML.Cells(r, M_COL_PARZELLE).value))
+        If parzStr = "" Then GoTo NextMLRow
+        If Not IsNumeric(parzStr) Then GoTo NextMLRow
+        
+        Dim parzNr As Long
+        parzNr = CLng(parzStr)
+        If parzNr < 1 Or parzNr > 14 Then GoTo NextMLRow
+        
+        ' Pachtanfang pruefen (muss vorhanden sein)
+        Dim paWert As Variant
+        paWert = wsML.Cells(r, M_COL_PACHTANFANG).value
+        If Not IsDate(paWert) Then GoTo NextMLRow
+        
+        ' Pachtende pruefen (leer oder in der Zukunft = aktiv)
+        Dim peWert As Variant
+        peWert = wsML.Cells(r, M_COL_PACHTENDE).value
+        If IsDate(peWert) Then
+            If CDate(peWert) < Date Then GoTo NextMLRow
+        End If
+        
+        ' Name: Vorname + Nachname
+        Dim vorname As String
+        vorname = Trim(CStr(wsML.Cells(r, M_COL_VORNAME).value))
+        Dim nachname As String
+        nachname = Trim(CStr(wsML.Cells(r, M_COL_NACHNAME).value))
+        
+        Dim mlName As String
+        If vorname <> "" And nachname <> "" Then
+            mlName = vorname & " " & nachname
+        ElseIf nachname <> "" Then
+            mlName = nachname
+        ElseIf vorname <> "" Then
+            mlName = vorname
+        Else
+            GoTo NextMLRow
+        End If
+        
+        ' EntityKey (kann leer sein)
+        Dim mlEK As String
+        mlEK = Trim(CStr(wsML.Cells(r, M_COL_ENTITY_KEY).value))
+        
+        Dim dict As Object
+        Set dict = CreateObject("Scripting.Dictionary")
+        dict.Add "Parzelle", parzNr
+        dict.Add "Name", mlName
+        dict.Add "EntityKey", mlEK
+        
+        col.Add dict
+        
+NextMLRow:
+    Next r
+    
+    Set HoleMitgliederAusMitgliederliste = col
+    
+End Function
+
+
+
+
 
 
 

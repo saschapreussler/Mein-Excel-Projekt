@@ -136,6 +136,16 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
         Exit Sub
     End If
     
+    ' --- 3a. Mitglieder aus Mitgliederliste ergaenzen ---
+    ' Auch Mitglieder OHNE eigenen EntityKey werden angezeigt
+    Dim mitgliederML As Collection
+    Set mitgliederML = mod_Uebersicht_Daten.HoleMitgliederAusMitgliederliste()
+    
+    Dim anzMitglieder As Long
+    anzMitglieder = mitgliederML.count
+    
+    Call ErgaenzeParzellennamen(parzellen, anzParz, mitgliederML)
+    
     ' --- 4. Soll-Werte aus Uebersicht laden ---
     Dim sollDict As Object
     Set sollDict = LadeSollAusUebersicht()
@@ -190,8 +200,7 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
         verzugListe, anzVerzug)
     
     ' --- 9. KPI-Karten ---
-    Dim anzMitglieder As Long
-    anzMitglieder = mitglieder.count
+    ' anzMitglieder wurde oben aus Mitgliederliste ermittelt (Schritt 3a)
     
     Call SchreibeKPI(wsDash, anzParz, anzMitglieder, _
                      kpiSummeIst, kpiSummeSoll, kpiSummeSaeumnis, _
@@ -680,7 +689,58 @@ Private Sub SchreibeKPIKarte(ByVal ws As Worksheet, _
 End Sub
 
 
-
+' ============================================================
+'  v5.4: PARZELLEN MIT MITGLIEDERLISTE-NAMEN ERGAENZEN
+'  Fuegt Mitglieder aus der Mitgliederliste hinzu, die keinen
+'  eigenen EntityKey haben (z.B. Partner zahlt Kosten mit).
+'  Vergleicht per InStr (case-insensitive) um Doppeleintraege
+'  zu vermeiden - nutzt Nachname als Schluesselwort.
+' ============================================================
+Private Sub ErgaenzeParzellennamen(ByRef parzellen() As ParzelleInfo, _
+                                    ByVal anzParz As Long, _
+                                    ByVal mitgliederML As Collection)
+    
+    Dim mlM As Object
+    For Each mlM In mitgliederML
+        Dim pNr As Long
+        pNr = CLng(mlM("Parzelle"))
+        
+        ' Passende Parzelle im Array finden
+        Dim p As Long
+        For p = 1 To anzParz
+            If parzellen(p).parzNr = pNr Then
+                Dim mlName As String
+                mlName = CStr(mlM("Name"))
+                
+                ' Pruefen ob Name schon enthalten ist
+                ' (auch Teilstring-Match, da EntityKey-Tabelle ggf.
+                '  Kontoname hat und Mitgliederliste Vorname+Nachname)
+                Dim bereitsVorhanden As Boolean
+                bereitsVorhanden = False
+                
+                ' Nachname extrahieren (letztes Wort) fuer robusteren Vergleich
+                Dim nameParts() As String
+                nameParts = Split(mlName, " ")
+                Dim nachname As String
+                nachname = nameParts(UBound(nameParts))
+                
+                If InStr(1, parzellen(p).mitgliedNamen, nachname, vbTextCompare) > 0 Then
+                    bereitsVorhanden = True
+                End If
+                
+                If Not bereitsVorhanden Then
+                    parzellen(p).mitgliedNamen = parzellen(p).mitgliedNamen & vbLf & mlName
+                    parzellen(p).anzMitglieder = parzellen(p).anzMitglieder + 1
+                    Debug.Print "[Dashboard] Mitglied ergaenzt: " & mlName & _
+                                " auf Parzelle " & pNr & " (ohne eigenen EntityKey)"
+                End If
+                
+                Exit For
+            End If
+        Next p
+    Next mlM
+    
+End Sub
 
 
 

@@ -191,19 +191,9 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                     GoTo NextMonatDash
                 End If
                 
-                ' Monat relevant?
-                Dim monatRelevant As Boolean
-                monatRelevant = False
-                If importierteMonate(monat) Then
-                    monatRelevant = True
-                Else
-                    Dim testSD As Date
-                    Dim testNL As Long, testVL As Long, testSG As Double
-                    testSD = mod_Zahlungspruefung.BerechneSollDatumZP(kategorie, monat, jahr)
-                    Call mod_Zahlungspruefung.HoleToleranzZP(kategorie, testVL, testNL, testSG)
-                    If Date >= DateAdd("d", testNL, testSD) Then monatRelevant = True
-                End If
-                If Not monatRelevant Then GoTo NextMonatDash
+                ' v5.4: Monat nur relevant wenn CSV-Import vorliegt
+                ' (keine Frist-basierte Fallback-Logik mehr)
+                If Not importierteMonate(monat) Then GoTo NextMonatDash
                 
                 faelligMonate = faelligMonate + 1
                 
@@ -281,6 +271,18 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                     
 NextEKDash:
                 Next eIdx
+                
+                ' v5.4: MB-Soll anpassen fuer Mitglieder ohne eigenen EntityKey
+                ' Wenn mehr Mitglieder auf der Parzelle sind als zahlende EntityKeys,
+                ' muss der Soll auf die tatsaechliche Mitgliederzahl hochgerechnet werden.
+                If istMB Then
+                    Dim tatsaechlicheMB As Long
+                    tatsaechlicheMB = parzellen(p).anzMitglieder - mbEhren
+                    If tatsaechlicheMB < 1 Then tatsaechlicheMB = 1
+                    If tatsaechlicheMB > mbZahler And kategorien(k).SollBetrag > 0 Then
+                        mSoll = kategorien(k).SollBetrag * tatsaechlicheMB
+                    End If
+                End If
                 
                 ' MB: Status aus Summen berechnen
                 If istMB Then
@@ -862,6 +864,8 @@ Public Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 
