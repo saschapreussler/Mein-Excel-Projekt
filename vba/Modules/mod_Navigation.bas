@@ -13,8 +13,6 @@ Option Explicit
 Private Const HOME_BTN_NAME As String = "btn_Home"
 Private Const HOME_BTN_WIDTH As Double = 90
 Private Const HOME_BTN_HEIGHT As Double = 28
-Private Const HOME_BTN_LEFT As Double = 6
-Private Const HOME_BTN_TOP As Double = 6
 
 
 ' ===============================================================
@@ -163,11 +161,22 @@ Private Sub ErstelleHomeButton(ByVal ws As Worksheet)
     ' Bestehenden Button entfernen falls vorhanden
     Call EntferneHomeButton(ws)
     
+    ' Zeile 1 auf mindestens 36pt setzen, damit der Button
+    ' INNERHALB der Zeile liegt und keine Daten verdeckt.
+    On Error Resume Next
+    If ws.Rows(1).RowHeight < 36 Then ws.Rows(1).RowHeight = 36
     On Error GoTo BtnFehler
+    
+    ' Button oben rechts im Blatt positionieren
+    ' Left = rechte Seite (Spalte H-I Bereich), Top = innerhalb Zeile 1
+    Dim btnLeft As Double
+    Dim btnTop As Double
+    btnLeft = ws.Range("A1").Left + 6
+    btnTop = ws.Range("A1").Top + 4
     
     Dim shp As Shape
     Set shp = ws.Shapes.AddShape(msoShapeRoundedRectangle, _
-                                  HOME_BTN_LEFT, HOME_BTN_TOP, _
+                                  btnLeft, btnTop, _
                                   HOME_BTN_WIDTH, HOME_BTN_HEIGHT)
     
     With shp
@@ -196,14 +205,14 @@ Private Sub ErstelleHomeButton(ByVal ws As Worksheet)
     End With
     
     On Error Resume Next
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
     Exit Sub
 
 BtnFehler:
     Debug.Print "[Navigation] Home-Button auf """ & ws.Name & """ fehlgeschlagen: " & Err.Description
     On Error Resume Next
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
 
@@ -217,6 +226,8 @@ Private Sub EntferneHomeButton(ByVal ws As Worksheet)
     Err.Clear
     On Error GoTo 0
 End Sub
+
+
 
 
 

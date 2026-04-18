@@ -44,8 +44,8 @@ Public Sub InitialisiereVereinskasseComboBox()
     
     Set oleObj = wsVK.OLEObjects.Add( _
         ClassType:="Forms.ComboBox.1", _
-        Left:=wsVK.Range("A24").Left, _
-        Top:=wsVK.Range("A24").Top + 2, _
+        Left:=wsVK.Range("E24").Left, _
+        Top:=wsVK.Range("E24").Top + 2, _
         Width:=130, _
         Height:=22)
     
@@ -61,7 +61,7 @@ Public Sub InitialisiereVereinskasseComboBox()
     On Error GoTo 0
     
     On Error Resume Next
-    wsVK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsVK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
 
@@ -196,7 +196,7 @@ Public Sub WendeVereinskasseFilterAn(ByVal wsVK As Worksheet, ByVal monatsWert A
 
 FilterExit:
     On Error Resume Next
-    wsVK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsVK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
     
     Application.EnableEvents = True
@@ -231,9 +231,11 @@ Public Sub SetzeVereinskasseFormeln(ByVal wsVK As Worksheet)
     On Error GoTo 0
     
     On Error Resume Next
-    wsVK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsVK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
+
+
 
 
 

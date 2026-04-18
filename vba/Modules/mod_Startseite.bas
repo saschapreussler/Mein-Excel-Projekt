@@ -260,7 +260,18 @@ Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
     ' --- KPI 3: Parzellen ---
     Call SchreibeKPIKarte(ws, "G", "G", CStr(ZaehleBelegteParzellen()), "Parzellen", RGB(142, 68, 173))
     
-    ' --- KPI 4: Aktueller Kontostand ---
+    ' --- KPI 4: Kontostand Vorjahr ---
+    Dim kontoVorjahr As Double
+    kontoVorjahr = HoleKontostandVorjahr()
+    Dim vorjahrText As String
+    vorjahrText = Format$(kontoVorjahr, "#,##0.00") & " " & ChrW(8364)
+    
+    Dim vorjahrFarbe As Long
+    If kontoVorjahr >= 0 Then vorjahrFarbe = RGB(41, 128, 185) Else vorjahrFarbe = RGB(231, 76, 60)
+    
+    Call SchreibeKPIKarte(ws, "I", "I", vorjahrText, "Vorjahr", vorjahrFarbe)
+    
+    ' --- KPI 5: Aktueller Kontostand ---
     Dim kontostand As Double
     kontostand = HoleAktuellerKontostand()
     Dim kontoText As String
@@ -269,7 +280,7 @@ Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
     Dim kontoFarbe As Long
     If kontostand >= 0 Then kontoFarbe = RGB(39, 174, 96) Else kontoFarbe = RGB(231, 76, 60)
     
-    Call SchreibeKPIKarte(ws, "I", "J", kontoText, "Kontostand | " & HoleLetztesBuchungsdatum(), kontoFarbe)
+    Call SchreibeKPIKarte(ws, "J", "J", kontoText, "Aktuell | " & HoleLetztesBuchungsdatum(), kontoFarbe)
 End Sub
 
 
@@ -739,6 +750,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 

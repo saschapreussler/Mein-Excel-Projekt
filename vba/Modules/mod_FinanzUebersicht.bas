@@ -76,7 +76,7 @@ Public Sub ErstelleFinanzUebersicht()
     Call ErstelleDiagramme(ws)
     
     ws.Cells.Locked = True
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
     ws.Activate
     ws.Range("A1").Select
@@ -618,7 +618,7 @@ Public Sub MonatFilterChanged()
     ' Diagrammtitel aktualisieren
     Call AktualisiereDiagrammTitel(ws, monatWert)
     
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
 End Sub
 
 
@@ -726,3 +726,5 @@ Private Sub AktualisiereDiagrammTitel(ByVal ws As Worksheet, ByVal monat As Long
     End If
     On Error GoTo 0
 End Sub
+
+

@@ -172,7 +172,7 @@ Private Sub cbo_RechnungsMonat_Change()
 SafeExit:
     ' Blattschutz wiederherstellen
     On Error Resume Next
-    wsBank.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsBank.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
     
     Application.EnableEvents = True
@@ -903,6 +903,8 @@ Private Function EntferneBemerkungsZeile(ByVal bemerkung As String, _
     
     EntferneBemerkungsZeile = ergebnis
 End Function
+
+
 
 
 

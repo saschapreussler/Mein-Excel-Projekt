@@ -88,9 +88,13 @@ Public Sub StelleAutoFilterBereit()
         
         ws.Unprotect PASSWORD:=PASSWORD
         
-        ' Letzte Spalte mit Daten in Header-Zeile ermitteln
+        ' Letzte Spalte mit NICHT-LEEREM Header ermitteln
         Dim lastCol As Long
-        lastCol = ws.Cells(hRow, ws.Columns.count).End(xlToLeft).Column
+        lastCol = 1
+        Dim c As Long
+        For c = 1 To ws.Cells(hRow, ws.Columns.count).End(xlToLeft).Column
+            If Trim(CStr(ws.Cells(hRow, c).value)) <> "" Then lastCol = c
+        Next c
         If lastCol < 1 Then lastCol = 1
         
         ' Letzte Zeile mit Daten ermitteln
@@ -101,7 +105,7 @@ Public Sub StelleAutoFilterBereit()
         ' Bestehenden AutoFilter entfernen
         If ws.AutoFilterMode Then ws.AutoFilterMode = False
         
-        ' AutoFilter auf Header-Bereich aktivieren
+        ' AutoFilter auf Header-Bereich aktivieren (nur belegte Spalten)
         ws.Range(ws.Cells(hRow, 1), ws.Cells(lastRow, lastCol)).AutoFilter
         
         ' Blatt mit AllowFiltering schuetzen
@@ -510,6 +514,8 @@ ErrorHandler:
     End If
     
 End Sub
+
+
 
 
 

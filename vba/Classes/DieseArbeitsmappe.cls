@@ -31,8 +31,8 @@ Private Sub Workbook_Open()
     ' Mitgliederliste: DropDowns + Spaltenschutz aktualisieren
     Call mod_Mitglieder_UI.ApplyMitgliederDropdowns
     
-    ' v5.1: AutoFilter-Dropdowns auf allen Blaettern aktivieren
-    Call mod_Formatierung.StelleAutoFilterBereit
+    ' v5.1: AutoFilter vorbereiten (wird am Ende erneut aufgerufen)
+    ' (Platzhalter - Hauptaufruf am Ende von Workbook_Open)
     
     ' v6.0: Einstellungen-Layout migrieren (einmalig)
     On Error Resume Next
@@ -88,6 +88,12 @@ Private Sub Workbook_Open()
     ThisWorkbook.Worksheets(WS_STARTMENUE()).Activate
     On Error GoTo 0
     
+    ' v7.0: AutoFilter ZULETZT aufrufen, damit AllowFiltering
+    '        nicht durch vorherige Protect-Aufrufe verloren geht
+    On Error Resume Next
+    Call mod_Formatierung.StelleAutoFilterBereit
+    On Error GoTo 0
+    
 End Sub
 
 Private Sub Workbook_NewSheet(ByVal Sh As Object)
@@ -123,6 +129,7 @@ Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
     End If
     
 End Sub
+
 
 
 
