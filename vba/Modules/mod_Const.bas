@@ -370,6 +370,12 @@ Public Function WS_STARTMENUE() As String
     WS_STARTMENUE = val
 End Function
 
+Public Function WS_FINANZ_UEBERSICHT() As String
+    Static val As String
+    If val = "" Then val = "Finanz-" & Chr$(220) & "bersicht"
+    WS_FINANZ_UEBERSICHT = val
+End Function
+
 
 ' ===============================================================
 ' ZENTRALE FUNKTION: Abrechnungsjahr aus Einstellungen lesen

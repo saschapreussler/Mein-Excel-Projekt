@@ -129,7 +129,7 @@ Public Sub SchreibeKonfigurationsBereich(Optional ByVal ws As Worksheet)
     Call SchreibeSectionHeader(ws, ES_CFG_BEITRAEGE_ROW, "Beitr" & ChrW(228) & "ge & Pacht")
     
     ' Mitgliedsbeitrag
-    Call SchreibeCfgLabel(ws, ES_CFG_MITGLIEDSBEITRAG_ROW, "Mitgliedsbeitrag (j" & ChrW(228) & "hrlich):")
+    Call SchreibeCfgLabel(ws, ES_CFG_MITGLIEDSBEITRAG_ROW, "Mitgliedsbeitrag (monatlich):")
     With ws.Cells(ES_CFG_MITGLIEDSBEITRAG_ROW, ES_CFG_VALUE_COL)
         .NumberFormat = euroFmt
         .HorizontalAlignment = xlRight
@@ -234,12 +234,28 @@ Public Sub SchreibeKonfigurationsBereich(Optional ByVal ws As Worksheet)
         .Locked = False
     End With
     
-    ' Separator-Zeile
+    ' Separator-Zeile (sichtbare Trennung Config <-> Zahlungstermine)
     With ws.Range(ws.Cells(ES_CFG_SEPARATOR_ROW, ES_CFG_LABEL_COL), _
                   ws.Cells(ES_CFG_SEPARATOR_ROW, ES_COL_END))
         .Interior.color = CLR_CFG_HEADER
         .RowHeight = 4
     End With
+    
+    ' --- Zahlungstermine-Header: gleiche Formatierung wie Section-Header ---
+    Call SchreibeSectionHeader(ws, ES_HEADER_ROW, "Zahlungstermine")
+    
+    ' AutoFit fuer alle Konfigurationszeilen
+    Dim cfgRow As Long
+    For cfgRow = ES_CFG_ABRECHNUNGSJAHR_ROW To ES_CFG_PLZ_ORT_ROW
+        ' Section-Header und Separator-Zeilen nicht anfassen
+        Select Case cfgRow
+            Case ES_CFG_KASSENBUCH_ROW, ES_CFG_BEITRAEGE_ROW, _
+                 ES_CFG_ADRESSE_ROW, ES_CFG_SEPARATOR_ROW
+                ' Behalten wie gesetzt
+            Case Else
+                ws.Rows(cfgRow).RowHeight = 20
+        End Select
+    Next cfgRow
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
 End Sub

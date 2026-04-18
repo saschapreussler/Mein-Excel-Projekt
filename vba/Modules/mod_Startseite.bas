@@ -130,16 +130,15 @@ Private Sub VorbereiteBlatt(ByVal ws As Worksheet)
     ws.Rows("12").RowHeight = 8          ' Abstand
     
     Dim r As Long
-    For r = 13 To 19
-        ws.Rows(r).RowHeight = 42        ' Button-Zeilen (groessere Kacheln)
+    For r = 13 To 16
+        ws.Rows(r).RowHeight = 42        ' Button-Zeilen (4 Reihen Navigation)
     Next r
     
-    ws.Rows("20").RowHeight = 14         ' Abstand
-    ws.Rows("21").RowHeight = 26         ' Section-Header "Serienbrief"
-    ws.Rows("22").RowHeight = 8          ' Abstand
-    ws.Rows("23").RowHeight = 42         ' Serienbrief-Buttons
-    ws.Rows("24").RowHeight = 16         ' Abstand
-    ws.Rows("25").RowHeight = 20         ' Footer
+    ws.Rows("17").RowHeight = 26         ' Section-Header "Serienbrief"
+    ws.Rows("18").RowHeight = 8          ' Abstand
+    ws.Rows("19").RowHeight = 42         ' Serienbrief-Buttons
+    ws.Rows("20").RowHeight = 16         ' Abstand
+    ws.Rows("21").RowHeight = 20         ' Footer
 End Sub
 
 
@@ -261,16 +260,16 @@ Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
     ' --- KPI 3: Parzellen ---
     Call SchreibeKPIKarte(ws, "G", "G", CStr(ZaehleBelegteParzellen()), "Parzellen", RGB(142, 68, 173))
     
-    ' --- KPI 4: Kontostand Vorjahr ---
+    ' --- KPI 4: Aktueller Kontostand ---
     Dim kontostand As Double
-    kontostand = HoleKontostandVorjahr()
+    kontostand = HoleAktuellerKontostand()
     Dim kontoText As String
     kontoText = Format$(kontostand, "#,##0.00") & " " & ChrW(8364)
     
     Dim kontoFarbe As Long
     If kontostand >= 0 Then kontoFarbe = RGB(39, 174, 96) Else kontoFarbe = RGB(231, 76, 60)
     
-    Call SchreibeKPIKarte(ws, "I", "J", kontoText, "Kontostand Vorjahr", kontoFarbe)
+    Call SchreibeKPIKarte(ws, "I", "J", kontoText, "Kontostand | " & HoleLetztesBuchungsdatum(), kontoFarbe)
 End Sub
 
 
@@ -397,8 +396,14 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         col3Left, ws.Range("I15").Top + 4, kachelW, kachelH, _
         CLR_BTN_MITGL, "'mod_Navigation.ZeigeMitgliederverwaltung'")
     
+    ' --- Zeile 4: Finanz-Uebersicht ---
+    Call ErstelleKachel(ws, "kachel_FinanzUebersicht", _
+        ChrW(9654) & " Finanz-" & ChrW(220) & "bersicht", _
+        col1Left, ws.Range("C16").Top + 4, kachelW, kachelH, _
+        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_FinanzUebersicht'")
+    
     ' --- Serienbrief-Bereich ---
-    With ws.Range("B21:J21")
+    With ws.Range("B17:J17")
         .Merge
         .value = ChrW(9654) & "  SERIENBRIEF (Word-Dokumente)"
         .Font.Size = 10
@@ -412,12 +417,12 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     
     Call ErstelleKachel(ws, "kachel_Betriebskosten", _
         ChrW(9633) & " Betriebskostenabrechnung", _
-        col1Left, ws.Range("C23").Top + 4, kachelW, kachelH, _
+        col1Left, ws.Range("C19").Top + 4, kachelW, kachelH, _
         CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Betriebskosten'")
     
     Call ErstelleKachel(ws, "kachel_Endabrechnung", _
         ChrW(9633) & " Endabrechnung", _
-        col2Left, ws.Range("F23").Top + 4, kachelW, kachelH, _
+        col2Left, ws.Range("F19").Top + 4, kachelW, kachelH, _
         CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Endabrechnung'")
 End Sub
 
@@ -426,7 +431,7 @@ End Sub
 ' FOOTER: Versionsinfo und Hinweis
 ' ===============================================================
 Private Sub SchreibeFooter(ByVal ws As Worksheet)
-    With ws.Range("B25:J25")
+    With ws.Range("B21:J21")
         .Merge
         .value = "Kassenbuch v2.7  |  " & ChrW(169) & " " & Year(Date)
         .Font.Size = 8
@@ -655,6 +660,53 @@ Private Function HoleKontostandVorjahr() As Double
         HoleKontostandVorjahr = CDbl(wert)
     Else
         HoleKontostandVorjahr = 0
+    End If
+End Function
+
+
+Private Function HoleAktuellerKontostand() As Double
+    Dim vorjahr As Double
+    vorjahr = HoleKontostandVorjahr()
+    
+    Dim wsBK As Worksheet
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    On Error GoTo 0
+    
+    If wsBK Is Nothing Then
+        HoleAktuellerKontostand = vorjahr
+        Exit Function
+    End If
+    
+    Dim summe As Double
+    On Error Resume Next
+    summe = Application.WorksheetFunction.Sum(wsBK.Range("B" & BK_START_ROW & ":B5000"))
+    On Error GoTo 0
+    
+    HoleAktuellerKontostand = vorjahr + summe
+End Function
+
+
+Private Function HoleLetztesBuchungsdatum() As String
+    Dim wsBK As Worksheet
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    On Error GoTo 0
+    
+    If wsBK Is Nothing Then
+        HoleLetztesBuchungsdatum = "---"
+        Exit Function
+    End If
+    
+    On Error Resume Next
+    Dim maxDatum As Double
+    maxDatum = Application.WorksheetFunction.Max(wsBK.Range("A" & BK_START_ROW & ":A5000"))
+    On Error GoTo 0
+    
+    If maxDatum > 0 Then
+        HoleLetztesBuchungsdatum = "Stand: " & Format$(CDate(maxDatum), "dd.mm.yyyy")
+    Else
+        HoleLetztesBuchungsdatum = "keine Buchungen"
     End If
 End Function
 

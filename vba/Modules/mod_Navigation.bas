@@ -59,6 +59,22 @@ Public Sub NavigiereZu_Daten()
     AktiviereTabellenblatt WS_DATEN
 End Sub
 
+Public Sub NavigiereZu_FinanzUebersicht()
+    ' Blatt erstellen falls nicht vorhanden, dann aktivieren
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_FINANZ_UEBERSICHT())
+    On Error GoTo 0
+    
+    If ws Is Nothing Then
+        ' Blatt wird beim ersten Aufruf erstellt
+        mod_FinanzUebersicht.ErstelleFinanzUebersicht
+    Else
+        ws.Activate
+        ws.Range("A1").Select
+    End If
+End Sub
+
 Public Sub NavigiereZu_Uebersicht()
     AktiviereTabellenblatt WS_UEBERSICHT()
 End Sub
