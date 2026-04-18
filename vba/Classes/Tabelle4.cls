@@ -27,9 +27,18 @@ End Sub
 
 Private Sub cbo_MonatFilter_VK_Change()
     ' Filter anwenden basierend auf ComboBox-Auswahl
-    If Me.cbo_MonatFilter_VK.ListIndex = -1 Then Exit Sub
+    ' HINWEIS: Me.cbo_MonatFilter_VK funktioniert NICHT,
+    '          weil die ComboBox zur Laufzeit erstellt wird.
+    '          Daher Zugriff ueber OLEObjects().
+    Dim oleObj As OLEObject
+    On Error Resume Next
+    Set oleObj = Me.OLEObjects("cbo_MonatFilter_VK")
+    On Error GoTo 0
+    If oleObj Is Nothing Then Exit Sub
+    If oleObj.Object.ListIndex = -1 Then Exit Sub
     
-    Call mod_Vereinskasse_Filter.WendeVereinskasseFilterAn(Me, Me.cbo_MonatFilter_VK.value)
+    Call mod_Vereinskasse_Filter.WendeVereinskasseFilterAn(Me, CStr(oleObj.Object.value))
 End Sub
+
 
 

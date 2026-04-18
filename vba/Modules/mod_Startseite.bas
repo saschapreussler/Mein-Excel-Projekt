@@ -351,23 +351,23 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     
     ' --- Spalte 1: Finanzen ---
     Call ErstelleKachel(ws, "kachel_Uebersicht", _
-        ChrW(128202) & " Zahlungs" & ChrW(252) & "bersicht", _
+        ChrW(9654) & " Zahlungs" & ChrW(252) & "bersicht", _
         col1Left, ws.Range("C13").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Uebersicht'")
     
     Call ErstelleKachel(ws, "kachel_Bankkonto", _
-        ChrW(127974) & " Bankkonto", _
+        ChrW(9733) & " Bankkonto", _
         col1Left, ws.Range("C14").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Bankkonto'")
     
     Call ErstelleKachel(ws, "kachel_Vereinskasse", _
-        ChrW(128176) & " Vereinskasse", _
+        ChrW(9830) & " Vereinskasse", _
         col1Left, ws.Range("C15").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Vereinskasse'")
     
     ' --- Spalte 2: Verbrauch & Verwaltung ---
     Call ErstelleKachel(ws, "kachel_Dashboard", _
-        ChrW(128200) & " Dashboard", _
+        ChrW(9650) & " Dashboard", _
         col2Left, ws.Range("F13").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Dashboard'")
     
@@ -377,7 +377,7 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         CLR_BTN_METER, "'mod_Navigation.NavigiereZu_Strom'")
     
     Call ErstelleKachel(ws, "kachel_Wasser", _
-        ChrW(128167) & " Wasser", _
+        ChrW(8776) & " Wasser", _
         col2Left, ws.Range("F15").Top + 4, kachelW, kachelH, _
         CLR_BTN_METER, "'mod_Navigation.NavigiereZu_Wasser'")
     
@@ -388,12 +388,12 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Einstellungen'")
     
     Call ErstelleKachel(ws, "kachel_Daten", _
-        ChrW(128451) & " Daten", _
+        ChrW(9632) & " Daten", _
         col3Left, ws.Range("I14").Top + 4, kachelW, kachelH, _
         CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Daten'")
     
     Call ErstelleKachel(ws, "kachel_Mitglieder", _
-        ChrW(128101) & " Mitgliederverwaltung", _
+        ChrW(9679) & " Mitgliederverwaltung", _
         col3Left, ws.Range("I15").Top + 4, kachelW, kachelH, _
         CLR_BTN_MITGL, "'mod_Navigation.ZeigeMitgliederverwaltung'")
     
@@ -411,12 +411,12 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     End With
     
     Call ErstelleKachel(ws, "kachel_Betriebskosten", _
-        ChrW(128196) & " Betriebskostenabrechnung", _
+        ChrW(9633) & " Betriebskostenabrechnung", _
         col1Left, ws.Range("C23").Top + 4, kachelW, kachelH, _
         CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Betriebskosten'")
     
     Call ErstelleKachel(ws, "kachel_Endabrechnung", _
-        ChrW(128196) & " Endabrechnung", _
+        ChrW(9633) & " Endabrechnung", _
         col2Left, ws.Range("F23").Top + 4, kachelW, kachelH, _
         CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Endabrechnung'")
 End Sub
@@ -687,6 +687,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 

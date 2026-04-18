@@ -236,3 +236,5 @@ Public Sub SetzeVereinskasseFormeln(ByVal wsVK As Worksheet)
 End Sub
 
 
+
+
