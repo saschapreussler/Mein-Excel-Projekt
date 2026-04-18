@@ -42,6 +42,7 @@ Attribute VB_Exposed = False
 
 
 
+
 Option Explicit
 
 Private Const WS_NAME_MITGLIEDER As String = "Mitgliederliste"
@@ -125,7 +126,7 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
         '                  nur txt_Pachtende editierbar
         ' ===================================================
         For Each ctl In Me.Controls
-            If TypeOf ctl Is MSForms.Label And Left(ctl.Name, 4) = "lbl_" Then
+            If TypeOf ctl Is MSForms.label And Left(ctl.Name, 4) = "lbl_" Then
                 ' ALLE Labels sichtbar: sowohl Bezeichner-Labels
                 ' (lbl_PachtbeginnBezeichner, lbl_PachtendeBezeichner)
                 ' als auch Daten-Labels (lbl_Anrede, lbl_Vorname, ...)
@@ -160,7 +161,7 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
     ' NORMALER MODUS (wie bisher, unver�ndert)
     ' ===================================================
     For Each ctl In Me.Controls
-        If TypeOf ctl Is MSForms.Label And Left(ctl.Name, 4) = "lbl_" Then
+        If TypeOf ctl Is MSForms.label And Left(ctl.Name, 4) = "lbl_" Then
             ' Bezeichner-Labels sollen IMMER sichtbar sein
             If ctl.Name = "lbl_PachtbeginnBezeichner" Or ctl.Name = "lbl_PachtendeBezeichner" Then
                 ctl.Visible = True

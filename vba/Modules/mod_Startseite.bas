@@ -3,32 +3,35 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Startseite
-' VERSION: 1.0 - 18.04.2026
-' ZWECK: Startseite (Startmenue) als Eye-Catcher gestalten
+' VERSION: 2.0 - 18.04.2026
+' ZWECK: Startseite (Startmenue) als professioneller Eye-Catcher
+'        - Gradient-Look mit Farbverlauf-Effekt
 '        - KPIs: Abrechnungsjahr, Mitglieder, Parzellen, Kontostand
-'        - Navigations-Buttons zu allen relevanten Blaettern
-'        - Blau-Grau Farbschema (professionell)
+'        - Navigations-Buttons in Kachel-Optik
+'        - Serienbrief-Platzhalter
 ' ===============================================================
 
-' --- Farben (Blau-Grau Schema) ---
-Private Const CLR_HEADER As Long = 2894892      ' RGB(44, 62, 80) - Dunkles Blau-Grau
-Private Const CLR_SECTION As Long = 6182740      ' RGB(52, 73, 94) - Mittleres Blau-Grau
-Private Const CLR_KPI_BG As Long = 15853804      ' RGB(236, 240, 241) - Helles Grau
-Private Const CLR_BTN_NAV As Long = 12161833     ' RGB(41, 128, 185) - Blau Akzent
-Private Const CLR_BTN_SERIENBR As Long = 6723942 ' RGB(230, 126, 102) - Gedaempftes Orange
-Private Const CLR_BTN_MITGL As Long = 5408340    ' RGB(52, 152, 82) - Gruen
-Private Const CLR_WHITE As Long = 16777215       ' RGB(255, 255, 255)
-Private Const CLR_DARK_TEXT As Long = 2500134     ' RGB(38, 50, 56) - Fast Schwarz
-Private Const CLR_BG As Long = 16448250          ' RGB(250, 250, 250) - Hintergrund
-
-' --- Layout-Konstanten ---
-Private Const START_COL_LEFT As Long = 2         ' Spalte B
-Private Const START_COL_RIGHT As Long = 9        ' Spalte I (rechte Grenze)
+' --- Farben (Modernes Blau-Schema mit Akzenten) ---
+Private Const CLR_HERO_DARK As Long = 2763306    ' RGB(26, 35, 42) - Hero-Banner dunkel
+Private Const CLR_HERO_MED As Long = 4735033     ' RGB(41, 50, 72) - Hero-Banner mittel
+Private Const CLR_ACCENT As Long = 14521384      ' RGB(40, 167, 221) - Akzent-Tuerkis
+Private Const CLR_KPI_BG As Long = 16119285      ' RGB(245, 246, 250) - KPI Hintergrund
+Private Const CLR_KPI_BORDER As Long = 14408667  ' RGB(219, 223, 219) - KPI Rahmen
+Private Const CLR_BTN_FINANCE As Long = 11948081 ' RGB(41, 128, 182) - Finanzen-Blau
+Private Const CLR_BTN_METER As Long = 7168108    ' RGB(108, 117, 109) - Zaehler Grau-Gruen
+Private Const CLR_BTN_ADMIN As Long = 6260068    ' RGB(100, 120, 95) - Verwaltung
+Private Const CLR_BTN_SERIENBR As Long = 5202271 ' RGB(95, 110, 79) - Gedaempftes Gruen
+Private Const CLR_BTN_MITGL As Long = 5408340    ' RGB(52, 152, 82) - Mitglieder Gruen
+Private Const CLR_WHITE As Long = 16777215
+Private Const CLR_DARK_TEXT As Long = 2500134     ' RGB(38, 50, 56)
+Private Const CLR_LIGHT_TEXT As Long = 12632256   ' RGB(192, 192, 192)
+Private Const CLR_BG As Long = 16777215           ' Weiss
+Private Const CLR_SECTION_BG As Long = 15921906   ' RGB(242, 242, 242) - Sections
+Private Const CLR_DIVIDER As Long = 14408667      ' RGB(219, 223, 219)
 
 
 ' ===============================================================
 ' HAUPTPROZEDUR: Startseite initialisieren und gestalten
-' Wird bei Workbook_Open aufgerufen
 ' ===============================================================
 Public Sub InitialisiereStartseite()
     Dim ws As Worksheet
@@ -46,22 +49,13 @@ Public Sub InitialisiereStartseite()
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
-    ' Bestehende Shapes entfernen (ausser ActiveX cmdMitgliederverwaltung)
     Call EntferneAlteShapes(ws)
-    
-    ' Blatt vorbereiten
     Call VorbereiteBlatt(ws)
+    Call SchreibeHeroBanner(ws)
+    Call SchreibeKPIBereich(ws)
+    Call ErstelleNavigationsKacheln(ws)
+    Call SchreibeFooter(ws)
     
-    ' Header-Bereich (Titel + Vereinsname)
-    Call SchreibeHeader(ws)
-    
-    ' KPI-Karten
-    Call SchreibeKPIs(ws)
-    
-    ' Navigations-Buttons
-    Call ErstelleNavigationsButtons(ws)
-    
-    ' Blattschutz
     ws.Cells.Locked = True
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
@@ -71,22 +65,19 @@ End Sub
 
 
 ' ===============================================================
-' ALTE SHAPES ENTFERNEN (ausser ActiveX-Controls)
+' ALTE SHAPES ENTFERNEN
 ' ===============================================================
 Private Sub EntferneAlteShapes(ByVal ws As Worksheet)
     Dim shp As Shape
     Dim i As Long
     
-    ' Rueckwaerts durchlaufen um Indexprobleme zu vermeiden
     For i = ws.Shapes.count To 1 Step -1
         Set shp = ws.Shapes(i)
-        ' ActiveX-Controls (OLEObjects) nicht loeschen
         If shp.Type <> msoOLEControlObject Then
             shp.Delete
         End If
     Next i
     
-    ' ActiveX cmdMitgliederverwaltung entfernen (wird als Shape neu erstellt)
     On Error Resume Next
     ws.OLEObjects("cmdMitgliederverwaltung").Delete
     Err.Clear
@@ -95,17 +86,14 @@ End Sub
 
 
 ' ===============================================================
-' BLATT VORBEREITEN: Zellen loeschen, Hintergrund, Spaltenbreiten
+' BLATT VORBEREITEN
 ' ===============================================================
 Private Sub VorbereiteBlatt(ByVal ws As Worksheet)
-    ' Inhalte loeschen (Zeilen 1-40)
-    ws.Range("A1:N40").ClearContents
-    ws.Range("A1:N40").ClearFormats
+    ws.Range("A1:P50").ClearContents
+    ws.Range("A1:P50").ClearFormats
+    ws.Range("A1:P50").Interior.color = CLR_BG
     
-    ' Hintergrundfarbe
-    ws.Range("A1:N40").Interior.color = CLR_BG
-    
-    ' Gitternetzlinien ausblenden
+    ' Gitternetzlinien aus
     Dim wnd As Window
     For Each wnd In Application.Windows
         If wnd.Caption = ThisWorkbook.Name Then
@@ -113,127 +101,200 @@ Private Sub VorbereiteBlatt(ByVal ws As Worksheet)
         End If
     Next wnd
     
-    ' Spaltenbreiten setzen
-    ws.Columns("A").ColumnWidth = 3      ' Rand links
-    ws.Columns("B").ColumnWidth = 18
-    ws.Columns("C").ColumnWidth = 14
-    ws.Columns("D").ColumnWidth = 14
-    ws.Columns("E").ColumnWidth = 4      ' Abstand
-    ws.Columns("F").ColumnWidth = 18
-    ws.Columns("G").ColumnWidth = 14
-    ws.Columns("H").ColumnWidth = 14
-    ws.Columns("I").ColumnWidth = 3      ' Rand rechts
+    ' Spaltenbreiten (breiteres Layout fuer modernes Design)
+    ws.Columns("A").ColumnWidth = 2      ' Rand
+    ws.Columns("B").ColumnWidth = 4      ' Padding links
+    ws.Columns("C").ColumnWidth = 16
+    ws.Columns("D").ColumnWidth = 12
+    ws.Columns("E").ColumnWidth = 6      ' Kachel-Abstand
+    ws.Columns("F").ColumnWidth = 16
+    ws.Columns("G").ColumnWidth = 12
+    ws.Columns("H").ColumnWidth = 6      ' Kachel-Abstand
+    ws.Columns("I").ColumnWidth = 16
+    ws.Columns("J").ColumnWidth = 12
+    ws.Columns("K").ColumnWidth = 4      ' Padding rechts
+    ws.Columns("L").ColumnWidth = 2      ' Rand
     
     ' Zeilenhoehen
-    ws.Rows("1").RowHeight = 8           ' Rand oben
-    ws.Rows("2").RowHeight = 40          ' Titel
-    ws.Rows("3").RowHeight = 22          ' Untertitel
-    ws.Rows("4").RowHeight = 8           ' Abstand
-    ws.Rows("5").RowHeight = 18          ' KPI-Header
-    ws.Rows("6").RowHeight = 50          ' KPI-Werte
-    ws.Rows("7").RowHeight = 18          ' KPI-Labels
-    ws.Rows("8").RowHeight = 12          ' Abstand
+    ws.Rows("1").RowHeight = 6           ' Top-Rand
+    ws.Rows("2").RowHeight = 50          ' Hero Titel
+    ws.Rows("3").RowHeight = 24          ' Hero Untertitel
+    ws.Rows("4").RowHeight = 30          ' Hero Vereinsname+Jahr
+    ws.Rows("5").RowHeight = 4           ' Akzentlinie
+    ws.Rows("6").RowHeight = 10          ' Abstand
+    ws.Rows("7").RowHeight = 18          ' KPI-Header
+    ws.Rows("8").RowHeight = 48          ' KPI-Werte
+    ws.Rows("9").RowHeight = 18          ' KPI-Labels
+    ws.Rows("10").RowHeight = 16         ' Abstand
+    ws.Rows("11").RowHeight = 26         ' Sections-Header "Navigation"
+    ws.Rows("12").RowHeight = 8          ' Abstand
     
     Dim r As Long
-    For r = 9 To 25
-        ws.Rows(r).RowHeight = 38        ' Button-Zeilen
+    For r = 13 To 19
+        ws.Rows(r).RowHeight = 42        ' Button-Zeilen (groessere Kacheln)
     Next r
+    
+    ws.Rows("20").RowHeight = 14         ' Abstand
+    ws.Rows("21").RowHeight = 26         ' Section-Header "Serienbrief"
+    ws.Rows("22").RowHeight = 8          ' Abstand
+    ws.Rows("23").RowHeight = 42         ' Serienbrief-Buttons
+    ws.Rows("24").RowHeight = 16         ' Abstand
+    ws.Rows("25").RowHeight = 20         ' Footer
 End Sub
 
 
 ' ===============================================================
-' HEADER: Titel und Vereinsname
+' HERO-BANNER: Titel, Untertitel, Akzentlinie
 ' ===============================================================
-Private Sub SchreibeHeader(ByVal ws As Worksheet)
-    ' Titel-Zeile
-    With ws.Range("B2:H2")
+Private Sub SchreibeHeroBanner(ByVal ws As Worksheet)
+    ' Hero-Block (Zeilen 2-4) - dunkler Hintergrund
+    With ws.Range("A2:L4")
+        .Interior.color = CLR_HERO_DARK
+    End With
+    
+    ' Titel: "KASSENBUCH" gross und auffaellig
+    With ws.Range("B2:K2")
         .Merge
-        .value = "Kassenbuch"
-        .Font.Size = 22
+        .value = ChrW(9733) & "  K A S S E N B U C H  " & ChrW(9733)
+        .Font.Size = 24
         .Font.Bold = True
         .Font.color = CLR_WHITE
-        .Interior.color = CLR_HEADER
+        .Interior.color = CLR_HERO_DARK
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
     End With
     
-    ' Untertitel mit Vereinsname und Abrechnungsjahr
-    Dim untertitel As String
+    ' Untertitel
+    With ws.Range("B3:K3")
+        .Merge
+        .value = "Kleingartenverein " & ChrW(8226) & " Finanzverwaltung " & ChrW(8226) & " " & ChrW(220) & "bersicht"
+        .Font.Size = 10
+        .Font.Bold = False
+        .Font.color = CLR_LIGHT_TEXT
+        .Interior.color = CLR_HERO_DARK
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+    
+    ' Vereinsname + Abrechnungsjahr
     Dim vereinsname As String
     Dim abrJahr As Long
-    
     vereinsname = HoleVereinsname()
     abrJahr = HoleAbrechnungsjahr()
     
+    Dim infoZeile As String
     If vereinsname <> "" Then
-        untertitel = vereinsname
+        infoZeile = vereinsname
     Else
-        untertitel = "Kleingartenverein"
+        infoZeile = "Dein Kleingartenverein"
     End If
-    
     If abrJahr > 0 Then
-        untertitel = untertitel & " - Abrechnungsjahr " & abrJahr
+        infoZeile = infoZeile & "  |  Abrechnungsjahr " & abrJahr
     End If
     
-    With ws.Range("B3:H3")
+    With ws.Range("B4:K4")
         .Merge
-        .value = untertitel
+        .value = infoZeile
         .Font.Size = 12
-        .Font.Italic = True
-        .Font.color = CLR_WHITE
-        .Interior.color = CLR_SECTION
+        .Font.Bold = True
+        .Font.color = CLR_ACCENT
+        .Interior.color = CLR_HERO_DARK
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
+    End With
+    
+    ' Akzentlinie (schmaler Tuerkis-Streifen)
+    With ws.Range("A5:L5")
+        .Interior.color = CLR_ACCENT
     End With
 End Sub
 
 
 ' ===============================================================
-' KPI-KARTEN: Mitglieder, Parzellen, Kontostand
+' KPI-BEREICH: 4 Kennzahlen-Karten
 ' ===============================================================
-Private Sub SchreibeKPIs(ByVal ws As Worksheet)
-    ' KPI-Header-Zeile
-    With ws.Range("B5:H5")
-        .Interior.color = CLR_BG
+Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
+    ' Hintergrund KPI-Bereich
+    ws.Range("A6:L10").Interior.color = CLR_SECTION_BG
+    
+    ' KPI-Header
+    With ws.Range("B7:J7")
+        .Merge
+        .value = ChrW(9473) & ChrW(9473) & "  KENNZAHLEN  " & ChrW(9473) & ChrW(9473)
+        .Font.Size = 9
+        .Font.Bold = True
+        .Font.color = RGB(140, 140, 140)
+        .Interior.color = CLR_SECTION_BG
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
     End With
     
-    ' --- KPI 1: Mitglieder ---
-    Call SchreibeEinzelKPI(ws, "B", "C", ZaehleMitglieder(), "Mitglieder")
+    ' --- KPI 1: Abrechnungsjahr ---
+    Dim abrJahr As Long
+    abrJahr = HoleAbrechnungsjahr()
+    Dim jahrText As String
+    If abrJahr > 0 Then jahrText = CStr(abrJahr) Else jahrText = "---"
+    Call SchreibeKPIKarte(ws, "C", "D", jahrText, "Abrechnungsjahr", RGB(41, 128, 185))
     
-    ' --- KPI 2: Belegte Parzellen ---
-    Call SchreibeEinzelKPI(ws, "D", "E", ZaehleBelegteParzellen(), "Parzellen belegt")
+    ' --- KPI 2: Mitglieder ---
+    Call SchreibeKPIKarte(ws, "F", "F", CStr(ZaehleMitglieder()), "Mitglieder", RGB(39, 174, 96))
     
-    ' --- KPI 3: Kontostand Vorjahr ---
+    ' --- KPI 3: Parzellen ---
+    Call SchreibeKPIKarte(ws, "G", "G", CStr(ZaehleBelegteParzellen()), "Parzellen", RGB(142, 68, 173))
+    
+    ' --- KPI 4: Kontostand Vorjahr ---
     Dim kontostand As Double
     kontostand = HoleKontostandVorjahr()
-    
     Dim kontoText As String
-    If kontostand = 0 Then
-        kontoText = "---"
-    Else
-        kontoText = Format$(kontostand, "#,##0.00") & " " & ChrW(8364)
-    End If
+    kontoText = Format$(kontostand, "#,##0.00") & " " & ChrW(8364)
     
-    ' KPI 3 ueber Spalten F-H (breiter fuer Waehrung)
-    With ws.Range("F6:H6")
+    Dim kontoFarbe As Long
+    If kontostand >= 0 Then kontoFarbe = RGB(39, 174, 96) Else kontoFarbe = RGB(231, 76, 60)
+    
+    Call SchreibeKPIKarte(ws, "I", "J", kontoText, "Kontostand Vorjahr", kontoFarbe)
+End Sub
+
+
+' ===============================================================
+' EINZEL-KPI-KARTE
+' ===============================================================
+Private Sub SchreibeKPIKarte(ByVal ws As Worksheet, _
+                              ByVal col1 As String, _
+                              ByVal col2 As String, _
+                              ByVal wertText As String, _
+                              ByVal label As String, _
+                              ByVal akzentFarbe As Long)
+    
+    ' Wert-Zelle
+    With ws.Range(col1 & "8:" & col2 & "8")
         .Merge
-        .value = kontoText
-        .Font.Size = 18
+        .value = wertText
+        .Font.Size = 16
         .Font.Bold = True
         .Font.color = CLR_DARK_TEXT
-        .Interior.color = CLR_KPI_BG
+        .Interior.color = CLR_WHITE
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
-        .Borders.color = RGB(189, 195, 199)
-        .Borders.Weight = xlThin
+        
+        ' Rahmen
+        .Borders(xlEdgeBottom).color = akzentFarbe
+        .Borders(xlEdgeBottom).Weight = xlMedium
+        .Borders(xlEdgeTop).color = CLR_KPI_BORDER
+        .Borders(xlEdgeTop).Weight = xlHairline
+        .Borders(xlEdgeLeft).color = CLR_KPI_BORDER
+        .Borders(xlEdgeLeft).Weight = xlHairline
+        .Borders(xlEdgeRight).color = CLR_KPI_BORDER
+        .Borders(xlEdgeRight).Weight = xlHairline
     End With
     
-    With ws.Range("F7:H7")
+    ' Label
+    With ws.Range(col1 & "9:" & col2 & "9")
         .Merge
-        .value = "Kontostand Vorjahr"
-        .Font.Size = 9
-        .Font.color = RGB(127, 140, 141)
-        .Interior.color = CLR_KPI_BG
+        .value = label
+        .Font.Size = 8
+        .Font.Bold = True
+        .Font.color = RGB(120, 120, 120)
+        .Interior.color = CLR_SECTION_BG
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlTop
     End With
@@ -241,144 +302,127 @@ End Sub
 
 
 ' ===============================================================
-' EINZEL-KPI: Formatierte KPI-Karte schreiben
+' NAVIGATIONS-KACHELN: Gruppiert in 3 Spalten
 ' ===============================================================
-Private Sub SchreibeEinzelKPI(ByVal ws As Worksheet, _
-                                ByVal spalte1 As String, _
-                                ByVal spalte2 As String, _
-                                ByVal wert As Long, _
-                                ByVal beschreibung As String)
-    
-    ' Wert (grosse Zahl)
-    With ws.Range(spalte1 & "6:" & spalte2 & "6")
+Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
+    ' Sections-Header
+    With ws.Range("B11:J11")
         .Merge
-        .value = wert
-        .Font.Size = 24
-        .Font.Bold = True
-        .Font.color = CLR_DARK_TEXT
-        .Interior.color = CLR_KPI_BG
-        .HorizontalAlignment = xlCenter
-        .VerticalAlignment = xlCenter
-        .NumberFormat = "0"
-        .Borders.color = RGB(189, 195, 199)
-        .Borders.Weight = xlThin
-    End With
-    
-    ' Beschreibung
-    With ws.Range(spalte1 & "7:" & spalte2 & "7")
-        .Merge
-        .value = beschreibung
-        .Font.Size = 9
-        .Font.color = RGB(127, 140, 141)
-        .Interior.color = CLR_KPI_BG
-        .HorizontalAlignment = xlCenter
-        .VerticalAlignment = xlTop
-    End With
-End Sub
-
-
-' ===============================================================
-' NAVIGATIONS-BUTTONS ERSTELLEN
-' ===============================================================
-Private Sub ErstelleNavigationsButtons(ByVal ws As Worksheet)
-    ' Section-Header: Navigation
-    With ws.Range("B9:H9")
-        .Merge
-        .value = "Navigation"
-        .Font.Size = 11
+        .value = ChrW(9654) & "  NAVIGATION"
+        .Font.Size = 10
         .Font.Bold = True
         .Font.color = CLR_WHITE
-        .Interior.color = CLR_SECTION
-        .HorizontalAlignment = xlCenter
+        .Interior.color = CLR_HERO_DARK
+        .HorizontalAlignment = xlLeft
         .VerticalAlignment = xlCenter
+        .IndentLevel = 1
     End With
     
-    ' Buttons in 2 Spalten anordnen
-    ' Linke Spalte: B-D (Left ~ 22, Width ~ 190)
-    ' Rechte Spalte: F-H (Left ~ 280, Width ~ 190)
+    ' --- Positionen berechnen ---
+    Dim col1Left As Double, col2Left As Double, col3Left As Double
+    Dim kachelW As Double, kachelH As Double
+    Dim gapY As Double
     
-    Dim leftX As Double
-    Dim rightX As Double
-    Dim btnW As Double
-    Dim btnH As Double
-    Dim rowH As Double
-    Dim startTop As Double
+    col1Left = ws.Range("C13").Left
+    col2Left = ws.Range("F13").Left
+    col3Left = ws.Range("I13").Left
+    kachelW = ws.Range("C13:D13").Width
+    kachelH = 34
+    gapY = ws.Rows("13").RowHeight
     
-    ' Positionen aus Zellgeometrie berechnen
-    leftX = ws.Range("B10").Left + 4
-    rightX = ws.Range("F10").Left + 4
-    btnW = ws.Range("B10:D10").Width - 8
-    btnH = 30
-    startTop = ws.Range("B10").Top + 4
-    rowH = ws.Rows("10").RowHeight
+    ' --- Spalte 1: Finanzen ---
+    Call ErstelleKachel(ws, "kachel_Uebersicht", _
+        ChrW(128202) & " Zahlungs" & ChrW(252) & "bersicht", _
+        col1Left, ws.Range("C13").Top + 4, kachelW, kachelH, _
+        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Uebersicht'")
     
-    ' --- Linke Spalte ---
-    Call ErstelleButton(ws, "btn_Uebersicht", ChrW(128202) & " Zahlungs" & ChrW(252) & "bersicht", _
-                        leftX, startTop, btnW, btnH, CLR_BTN_NAV, _
-                        "'mod_Navigation.NavigiereZu_Uebersicht'")
+    Call ErstelleKachel(ws, "kachel_Bankkonto", _
+        ChrW(127974) & " Bankkonto", _
+        col1Left, ws.Range("C14").Top + 4, kachelW, kachelH, _
+        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Bankkonto'")
     
-    Call ErstelleButton(ws, "btn_Bankkonto", ChrW(127974) & " Bankkonto", _
-                        leftX, startTop + rowH, btnW, btnH, CLR_BTN_NAV, _
-                        "'mod_Navigation.NavigiereZu_Bankkonto'")
+    Call ErstelleKachel(ws, "kachel_Vereinskasse", _
+        ChrW(128176) & " Vereinskasse", _
+        col1Left, ws.Range("C15").Top + 4, kachelW, kachelH, _
+        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Vereinskasse'")
     
-    Call ErstelleButton(ws, "btn_Strom", ChrW(9889) & " Strom", _
-                        leftX, startTop + rowH * 2, btnW, btnH, CLR_BTN_NAV, _
-                        "'mod_Navigation.NavigiereZu_Strom'")
+    ' --- Spalte 2: Verbrauch & Verwaltung ---
+    Call ErstelleKachel(ws, "kachel_Dashboard", _
+        ChrW(128200) & " Dashboard", _
+        col2Left, ws.Range("F13").Top + 4, kachelW, kachelH, _
+        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Dashboard'")
     
-    Call ErstelleButton(ws, "btn_Einstellungen", ChrW(9881) & " Einstellungen", _
-                        leftX, startTop + rowH * 3, btnW, btnH, CLR_BTN_NAV, _
-                        "'mod_Navigation.NavigiereZu_Einstellungen'")
+    Call ErstelleKachel(ws, "kachel_Strom", _
+        ChrW(9889) & " Strom", _
+        col2Left, ws.Range("F14").Top + 4, kachelW, kachelH, _
+        CLR_BTN_METER, "'mod_Navigation.NavigiereZu_Strom'")
     
-    Call ErstelleButton(ws, "btn_Mitgliederverwaltung", ChrW(128101) & " Mitgliederverwaltung", _
-                        leftX, startTop + rowH * 4, btnW, btnH, CLR_BTN_MITGL, _
-                        "'mod_Navigation.ZeigeMitgliederverwaltung'")
+    Call ErstelleKachel(ws, "kachel_Wasser", _
+        ChrW(128167) & " Wasser", _
+        col2Left, ws.Range("F15").Top + 4, kachelW, kachelH, _
+        CLR_BTN_METER, "'mod_Navigation.NavigiereZu_Wasser'")
     
-    ' --- Rechte Spalte ---
-    Call ErstelleButton(ws, "btn_Dashboard", ChrW(128200) & " Dashboard", _
-                        rightX, startTop, btnW, btnH, CLR_BTN_NAV, _
-                        "'mod_Navigation.NavigiereZu_Dashboard'")
+    ' --- Spalte 3: Admin ---
+    Call ErstelleKachel(ws, "kachel_Einstellungen", _
+        ChrW(9881) & " Einstellungen", _
+        col3Left, ws.Range("I13").Top + 4, kachelW, kachelH, _
+        CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Einstellungen'")
     
-    Call ErstelleButton(ws, "btn_Vereinskasse", ChrW(128176) & " Vereinskasse", _
-                        rightX, startTop + rowH, btnW, btnH, CLR_BTN_NAV, _
-                        "'mod_Navigation.NavigiereZu_Vereinskasse'")
+    Call ErstelleKachel(ws, "kachel_Daten", _
+        ChrW(128451) & " Daten", _
+        col3Left, ws.Range("I14").Top + 4, kachelW, kachelH, _
+        CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Daten'")
     
-    Call ErstelleButton(ws, "btn_Wasser", ChrW(128167) & " Wasser", _
-                        rightX, startTop + rowH * 2, btnW, btnH, CLR_BTN_NAV, _
-                        "'mod_Navigation.NavigiereZu_Wasser'")
-    
-    Call ErstelleButton(ws, "btn_Daten", ChrW(128451) & " Daten", _
-                        rightX, startTop + rowH * 3, btnW, btnH, CLR_BTN_NAV, _
-                        "'mod_Navigation.NavigiereZu_Daten'")
+    Call ErstelleKachel(ws, "kachel_Mitglieder", _
+        ChrW(128101) & " Mitgliederverwaltung", _
+        col3Left, ws.Range("I15").Top + 4, kachelW, kachelH, _
+        CLR_BTN_MITGL, "'mod_Navigation.ZeigeMitgliederverwaltung'")
     
     ' --- Serienbrief-Bereich ---
-    With ws.Range("B16:H16")
+    With ws.Range("B21:J21")
         .Merge
-        .value = "Serienbrief (Word-Dokumente)"
-        .Font.Size = 11
+        .value = ChrW(9654) & "  SERIENBRIEF (Word-Dokumente)"
+        .Font.Size = 10
         .Font.Bold = True
         .Font.color = CLR_WHITE
-        .Interior.color = CLR_SECTION
-        .HorizontalAlignment = xlCenter
+        .Interior.color = CLR_HERO_DARK
+        .HorizontalAlignment = xlLeft
         .VerticalAlignment = xlCenter
+        .IndentLevel = 1
     End With
     
-    Dim sbTop As Double
-    sbTop = ws.Range("B17").Top + 4
+    Call ErstelleKachel(ws, "kachel_Betriebskosten", _
+        ChrW(128196) & " Betriebskostenabrechnung", _
+        col1Left, ws.Range("C23").Top + 4, kachelW, kachelH, _
+        CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Betriebskosten'")
     
-    Call ErstelleButton(ws, "btn_Betriebskosten", ChrW(128196) & " Betriebskostenabrechnung", _
-                        leftX, sbTop, btnW, btnH, CLR_BTN_SERIENBR, _
-                        "'mod_Navigation.ZeigeSerienbrief_Betriebskosten'")
-    
-    Call ErstelleButton(ws, "btn_Endabrechnung", ChrW(128196) & " Endabrechnung", _
-                        rightX, sbTop, btnW, btnH, CLR_BTN_SERIENBR, _
-                        "'mod_Navigation.ZeigeSerienbrief_Endabrechnung'")
+    Call ErstelleKachel(ws, "kachel_Endabrechnung", _
+        ChrW(128196) & " Endabrechnung", _
+        col2Left, ws.Range("F23").Top + 4, kachelW, kachelH, _
+        CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Endabrechnung'")
 End Sub
 
 
 ' ===============================================================
-' BUTTON ERSTELLEN: Gerundetes Rechteck mit Text
+' FOOTER: Versionsinfo und Hinweis
 ' ===============================================================
-Private Sub ErstelleButton(ByVal ws As Worksheet, _
+Private Sub SchreibeFooter(ByVal ws As Worksheet)
+    With ws.Range("B25:J25")
+        .Merge
+        .value = "Kassenbuch v2.7  |  " & ChrW(169) & " " & Year(Date)
+        .Font.Size = 8
+        .Font.color = RGB(160, 160, 160)
+        .Interior.color = CLR_BG
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+End Sub
+
+
+' ===============================================================
+' KACHEL-BUTTON ERSTELLEN (modernes Design mit Schatten-Effekt)
+' ===============================================================
+Private Sub ErstelleKachel(ByVal ws As Worksheet, _
                             ByVal btnName As String, _
                             ByVal btnText As String, _
                             ByVal x As Double, _
@@ -388,7 +432,7 @@ Private Sub ErstelleButton(ByVal ws As Worksheet, _
                             ByVal farbe As Long, _
                             ByVal makroName As String)
     
-    On Error GoTo BtnErr
+    On Error GoTo KachelErr
     
     Dim shp As Shape
     Set shp = ws.Shapes.AddShape(msoShapeRoundedRectangle, x, y, w, h)
@@ -398,15 +442,26 @@ Private Sub ErstelleButton(ByVal ws As Worksheet, _
         .Fill.ForeColor.RGB = farbe
         .Line.Visible = msoFalse
         
-        ' Abgerundete Ecken etwas staerker
+        ' Leicht abgerundete Ecken
         On Error Resume Next
-        .Adjustments(1) = 0.25
-        On Error GoTo BtnErr
+        .Adjustments(1) = 0.18
+        On Error GoTo KachelErr
+        
+        ' Dezenter Schatten fuer 3D-Effekt
+        With .Shadow
+            .Visible = msoTrue
+            .Type = msoShadow14
+            .ForeColor.RGB = RGB(0, 0, 0)
+            .Transparency = 0.75
+            .OffsetX = 2
+            .OffsetY = 2
+            .Blur = 4
+        End With
         
         With .TextFrame2
             .VerticalAnchor = msoAnchorMiddle
-            .MarginLeft = 8
-            .MarginRight = 8
+            .MarginLeft = 10
+            .MarginRight = 10
             .MarginTop = 2
             .MarginBottom = 2
             .WordWrap = msoFalse
@@ -426,8 +481,8 @@ Private Sub ErstelleButton(ByVal ws As Worksheet, _
     
     Exit Sub
     
-BtnErr:
-    Debug.Print "[Startseite] Button '" & btnName & "' Fehler: " & Err.Description
+KachelErr:
+    Debug.Print "[Startseite] Kachel '" & btnName & "' Fehler: " & Err.Description
     Err.Clear
 End Sub
 
@@ -436,12 +491,10 @@ End Sub
 ' HILFSFUNKTIONEN: KPI-Daten ermitteln
 ' ===============================================================
 
-' Zaehlt aktive Mitglieder (nicht redundant) aus Mitgliederliste
 Public Function ZaehleMitglieder() As Long
     Dim wsMitgl As Worksheet
     Dim r As Long
     Dim lastRow As Long
-    Dim anzahl As Long
     Dim dictNamen As Object
     
     On Error Resume Next
@@ -469,7 +522,6 @@ Public Function ZaehleMitglieder() As Long
         
         If nachname = "" Then GoTo NextMitglied
         
-        ' Nur aktive Mitglieder (Pachtanfang vorhanden, Pachtende leer oder in Zukunft)
         If Not IsDate(pachtAnfang) Then
             If Not IsNumeric(pachtAnfang) Then GoTo NextMitglied
         End If
@@ -478,12 +530,10 @@ Public Function ZaehleMitglieder() As Long
             If CDate(pachtEnde) < Date Then GoTo NextMitglied
         End If
         
-        ' KGA-Eintraege ignorieren
         Dim anrede As String
         anrede = Trim(CStr(wsMitgl.Cells(r, M_COL_ANREDE).value))
         If anrede = ANREDE_KGA Then GoTo NextMitglied
         
-        ' Eindeutigkeit per Name
         Dim schluessel As String
         schluessel = LCase(nachname & "|" & vorname)
         If Not dictNamen.Exists(schluessel) Then
@@ -498,7 +548,6 @@ NextMitglied:
 End Function
 
 
-' Zaehlt belegte (verpachtete) Parzellen aus Mitgliederliste
 Public Function ZaehleBelegteParzellen() As Long
     Dim wsMitgl As Worksheet
     Dim r As Long
@@ -529,7 +578,6 @@ Public Function ZaehleBelegteParzellen() As Long
         If parzelle = "" Then GoTo NextParzelle
         If parzelle = PARZELLE_VEREIN Then GoTo NextParzelle
         
-        ' Nur aktive Pacht
         If Not IsDate(pAnfang) Then
             If Not IsNumeric(pAnfang) Then GoTo NextParzelle
         End If
@@ -538,12 +586,10 @@ Public Function ZaehleBelegteParzellen() As Long
             If CDate(pEnde) < Date Then GoTo NextParzelle
         End If
         
-        ' KGA ignorieren
         Dim anredeP As String
         anredeP = Trim(CStr(wsMitgl.Cells(r, M_COL_ANREDE).value))
         If anredeP = ANREDE_KGA Then GoTo NextParzelle
         
-        ' Parzellennummer normalisieren
         Dim parzNorm As String
         parzNorm = LCase(Trim(parzelle))
         If Not dictParz.Exists(parzNorm) Then
@@ -558,7 +604,6 @@ NextParzelle:
 End Function
 
 
-' Vereinsname aus Einstellungen lesen
 Private Function HoleVereinsname() As String
     Dim ws As Worksheet
     On Error Resume Next
@@ -574,7 +619,6 @@ Private Function HoleVereinsname() As String
 End Function
 
 
-' Kontostand Vorjahr aus Einstellungen lesen
 Private Function HoleKontostandVorjahr() As Double
     Dim ws As Worksheet
     On Error Resume Next
@@ -594,5 +638,7 @@ Private Function HoleKontostandVorjahr() As Double
         HoleKontostandVorjahr = 0
     End If
 End Function
+
+
 
 
