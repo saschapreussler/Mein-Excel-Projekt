@@ -22,7 +22,7 @@ Private Sub Workbook_Open()
     Call mod_Hilfsfunktionen.BereinigeTempWorksheets
     On Error GoTo 0
     
-    ' Stelle sicher dass alle Bl?tter vertikal zentriert sind
+    ' Stelle sicher dass alle Blaetter vertikal zentriert sind
     Call mod_Formatierung.ZentriereAlleZellenVertikal
     
     ' NEU v5.3: Hilfsspalten auf Daten-Blatt ausblenden
@@ -33,6 +33,31 @@ Private Sub Workbook_Open()
     
     ' v5.1: AutoFilter-Dropdowns auf allen Blaettern aktivieren
     Call mod_Formatierung.StelleAutoFilterBereit
+    
+    ' v6.0: Einstellungen-Layout migrieren (einmalig)
+    On Error Resume Next
+    Call mod_Einstellungen.MigriereEinstellungenLayout
+    On Error GoTo 0
+    
+    ' v6.0: Startseite initialisieren (KPIs, Buttons, Design)
+    On Error Resume Next
+    Call mod_Startseite.InitialisiereStartseite
+    On Error GoTo 0
+    
+    ' v6.0: Home-Buttons auf allen Blaettern setzen
+    On Error Resume Next
+    Call mod_Navigation.SetzeHomeButtonsAufAllenBlaettern
+    On Error GoTo 0
+    
+    ' v6.0: Kontostand Vorjahr pruefen (ggf. Nutzer fragen)
+    On Error Resume Next
+    Call mod_Einstellungen.PruefeKontostandVorjahr
+    On Error GoTo 0
+    
+    ' v6.0: Startseite als erstes Blatt anzeigen
+    On Error Resume Next
+    ThisWorkbook.Worksheets(WS_STARTMENUE()).Activate
+    On Error GoTo 0
     
 End Sub
 
@@ -69,6 +94,7 @@ Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
     End If
     
 End Sub
+
 
 
 

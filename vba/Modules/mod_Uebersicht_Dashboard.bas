@@ -279,19 +279,9 @@ End Sub
 ' ============================================================
 Private Function ErmittleDashboardJahr(Optional ByVal stummModus As Boolean = False) As Long
     
+    ' v6.0: Abrechnungsjahr aus Einstellungen statt Startmenue!F1
     Dim jahrF1 As Long
-    jahrF1 = 0
-    
-    Dim wsStart As Worksheet
-    On Error Resume Next
-    Set wsStart = ThisWorkbook.Worksheets("Startmen" & ChrW(252))
-    On Error GoTo 0
-    
-    If Not wsStart Is Nothing Then
-        If IsNumeric(wsStart.Range("F1").value) Then
-            jahrF1 = CLng(wsStart.Range("F1").value)
-        End If
-    End If
+    jahrF1 = HoleAbrechnungsjahr()
     
     Dim jahrBK As Long
     jahrBK = mod_Uebersicht_Daten.ErmittleJahrAusBankkonto()
@@ -302,10 +292,10 @@ Private Function ErmittleDashboardJahr(Optional ByVal stummModus As Boolean = Fa
         Else
             If Not stummModus Then
                 Dim antwort As VbMsgBoxResult
-                antwort = MsgBox("Startmen" & ChrW(252) & "!F1 = " & jahrF1 & _
+                antwort = MsgBox("Abrechnungsjahr = " & jahrF1 & _
                                  ", Bankkonto = " & jahrBK & "." & vbLf & vbLf & _
                                  "Dashboard f" & ChrW(252) & "r " & jahrF1 & _
-                                 " (Startmen" & ChrW(252) & ") erstellen?", _
+                                 " (Einstellungen) erstellen?", _
                                  vbQuestion + vbYesNo, "Abrechnungsjahr")
                 If antwort = vbYes Then
                     ErmittleDashboardJahr = jahrF1
@@ -741,6 +731,8 @@ Private Sub ErgaenzeParzellennamen(ByRef parzellen() As ParzelleInfo, _
     Next mlM
     
 End Sub
+
+
 
 
 

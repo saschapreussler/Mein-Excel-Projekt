@@ -188,23 +188,13 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     startTime = Timer
     
     ' Jahr-Parameter validieren
-    ' v5.1: Prim?r aus Startmen?!F1 lesen, Abgleich mit Bankkonto-Daten
+    ' v6.0: Primaer aus Einstellungen lesen, Abgleich mit Bankkonto-Daten
     If jahr = 0 Then
-        ' 1. Abrechnungsjahr aus Startmen?!F1 lesen
-        Dim wsStart As Worksheet
-        On Error Resume Next
-        Set wsStart = ThisWorkbook.Worksheets("Startmen" & ChrW(252))
-        On Error GoTo ErrorHandler
-        
+        ' 1. Abrechnungsjahr aus Einstellungen lesen
         Dim jahrF1 As Long
-        jahrF1 = 0
-        If Not wsStart Is Nothing Then
-            If IsNumeric(wsStart.Range("F1").value) Then
-                jahrF1 = CLng(wsStart.Range("F1").value)
-            End If
-        End If
+        jahrF1 = HoleAbrechnungsjahr()
         
-        ' 2. Jahr aus Bankkonto-Daten ermitteln (h?ufigstes Jahr)
+        ' 2. Jahr aus Bankkonto-Daten ermitteln (haeufigstes Jahr)
         Dim jahrBK As Long
         jahrBK = mod_Uebersicht_Daten.ErmittleJahrAusBankkonto()
         
@@ -217,13 +207,13 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 If Not stummModus Then
                     ' Abweichung -> Nutzer fragen
                     Dim antwortJahr As VbMsgBoxResult
-                    antwortJahr = MsgBox("Das Abrechnungsjahr in Startmen" & ChrW(252) & "!F1 ist " & _
+                    antwortJahr = MsgBox("Das Abrechnungsjahr ist " & _
                                          jahrF1 & "," & vbLf & _
                                          "aber die meisten Kontoausz" & ChrW(252) & "ge stammen aus " & _
                                          jahrBK & "." & vbLf & vbLf & _
                                          "Soll die " & ChrW(220) & "bersicht f" & ChrW(252) & "r " & _
-                                         jahrF1 & " (Startmen" & ChrW(252) & ") erstellt werden?" & vbLf & _
-                                         "  Ja = " & jahrF1 & " (Startmen" & ChrW(252) & "!F1)" & vbLf & _
+                                         jahrF1 & " erstellt werden?" & vbLf & _
+                                         "  Ja = " & jahrF1 & " (Einstellungen)" & vbLf & _
                                          "  Nein = " & jahrBK & " (Kontoausz" & ChrW(252) & "ge)", _
                                          vbQuestion + vbYesNo, "Abrechnungsjahr")
                     If antwortJahr = vbYes Then
@@ -232,10 +222,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                         jahr = jahrBK
                     End If
                 Else
-                    ' stummModus: Startmen?!F1 hat Vorrang
+                    ' stummModus: Einstellungen hat Vorrang
                     jahr = jahrF1
-                    Debug.Print "[" & ChrW(220) & "bersicht] HINWEIS: F1=" & jahrF1 & _
-                                " vs Bankkonto=" & jahrBK & " -> verwende F1"
+                    Debug.Print "[" & ChrW(220) & "bersicht] HINWEIS: Einst=" & jahrF1 & _
+                                " vs Bankkonto=" & jahrBK & " -> verwende Einstellungen"
                 End If
             End If
         ElseIf jahrF1 > 0 Then
@@ -794,7 +784,7 @@ NextKat:
     Application.ScreenUpdating = True
     
     ' v5.4: Vorjahr-Pruefung: wenn keine Vorjahr-Daten vorhanden sind,
-    '        dem Nutzer die Moeglichkeit geben GELB-Eintraege zu best�tigen
+    '        dem Nutzer die Moeglichkeit geben GELB-Eintraege zu best?tigen
     If Not stummModus And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
         Call PruefeVorjahrGelbEintraege(wsUeb, rowIdx - 1)
     End If
@@ -1302,6 +1292,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     End If
     
 End Sub
+
+
 
 
 

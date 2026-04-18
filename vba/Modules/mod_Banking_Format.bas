@@ -185,14 +185,15 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     On Error Resume Next
     
     ' C3: Kontostand-Anzeige mit Monatsfilter
+    ' v6.0: Abrechnungsjahr aus Einstellungen!C4 statt Startmenue!F1
     ws.Range("C3").FormulaLocal = _
         "=WENN(Daten!$AE$4=0;WENN(ANZAHL(Bankkonto!$A$28:$A$3433)=0;"""";" & _
         """Kontostand nach der letzten Buchung im Monat am: "" & TEXT(MAX(Bankkonto!$A$28:$A$5000);""TT.MM.JJJJ""));" & _
-        "WENN(Z" & ChrW(196) & "HLENWENNS(Bankkonto!$A$28:$A$5000;"">="" & DATUM(Startmen" & ChrW(252) & "!$F$1;Daten!$AE$4;1);" & _
-        "Bankkonto!$A$28:$A$5000;""<="" & DATUM(Startmen" & ChrW(252) & "!$F$1;Daten!$AE$4+1;0))=0;"""";" & _
+        "WENN(Z" & ChrW(196) & "HLENWENNS(Bankkonto!$A$28:$A$5000;"">="" & DATUM(Einstellungen!$C$4;Daten!$AE$4;1);" & _
+        "Bankkonto!$A$28:$A$5000;""<="" & DATUM(Einstellungen!$C$4;Daten!$AE$4+1;0))=0;"""";" & _
         """Kontostand nach der letzten Buchung im Monat am: "" & TEXT(MAXWENNS(Bankkonto!$A$28:$A$5000;" & _
-        "Bankkonto!$A$28:$A$5000;"">="" & DATUM(Startmen" & ChrW(252) & "!$F$1;Daten!$AE$4;1);" & _
-        "Bankkonto!$A$28:$A$5000;""<="" & DATUM(Startmen" & ChrW(252) & "!$F$1;Daten!$AE$4+1;0));""TT.MM.JJJJ""))))"
+        "Bankkonto!$A$28:$A$5000;"">="" & DATUM(Einstellungen!$C$4;Daten!$AE$4;1);" & _
+        "Bankkonto!$A$28:$A$5000;""<="" & DATUM(Einstellungen!$C$4;Daten!$AE$4+1;0));""TT.MM.JJJJ""))))"
     
     ' E8-E14: Einnahmen (Spalten M-S) mit SUMMEWENNS + WENN=0 leer
     ws.Range("E8").FormulaLocal = _
@@ -235,6 +236,8 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

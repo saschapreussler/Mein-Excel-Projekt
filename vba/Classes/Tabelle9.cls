@@ -10,11 +10,10 @@ Attribute VB_Exposed = True
 Option Explicit
 
 ' ===============================================================
-' TABELLENBLATT-MODUL: Einstellungen (v4.4)
-' Formatiert die Zahlungstermin-Tabelle bei ?nderungen.
-' NEU v4.4: "Ultimo" entfernt ? stattdessen 31 (= "31. Tag").
-'           Duplikat-Pr?fung f?r Spalte B.
-'           D/E vs F Sperre ohne Ultimo-Sonderbehandlung.
+' TABELLENBLATT-MODUL: Einstellungen (v5.0)
+' Formatiert die Zahlungstermin-Tabelle bei Aenderungen.
+' NEU v5.0: Konfigurationsbereich (Zeilen 1-19) auswerten
+'           Mitgliedsbeitrag/Pacht -> Zahlungstermine sync
 ' ===============================================================
 
 Private Sub Worksheet_Activate()
@@ -23,7 +22,22 @@ End Sub
 
 Private Sub Worksheet_Change(ByVal Target As Range)
     
-    ' Nur reagieren auf ?nderungen in Spalten B-I, ab Zeile 4
+    ' --- Konfigurationsbereich (Zeilen 4-18, Spalte C) ---
+    If Target.Cells.CountLarge = 1 Then
+        If Target.Column = ES_CFG_VALUE_COL And _
+           Target.Row >= ES_CFG_ABRECHNUNGSJAHR_ROW And _
+           Target.Row <= ES_CFG_PLZ_ORT_ROW Then
+            Call VerarbeiteKonfigAenderung(Target)
+            Exit Sub
+        End If
+        ' PLZ/Ort Spalte D-E
+        If Target.Row = ES_CFG_PLZ_ORT_ROW And _
+           (Target.Column = 4 Or Target.Column = 5) Then
+            Exit Sub  ' Nur Eingabe, keine Aktion noetig
+        End If
+    End If
+    
+    ' --- Zahlungstermine-Tabelle (ab Zeile ES_START_ROW) ---
     If Intersect(Target, Me.Range(Me.Cells(ES_START_ROW, ES_COL_START), _
                                    Me.Cells(Me.Rows.count, ES_COL_END))) Is Nothing Then
         Exit Sub
@@ -240,9 +254,47 @@ Private Function NormalisiereMonate(ByVal eingabe As String) As String
         End If
     Next i
     
-    If result = "" Then result = eingabe  ' Fallback: Original zur?ckgeben
+    If result = "" Then result = eingabe  ' Fallback: Original zurueckgeben
     NormalisiereMonate = result
 End Function
+
+
+' ===============================================================
+' KONFIG-AENDERUNG: Reaktion auf Eingaben im Config-Bereich
+' ===============================================================
+Private Sub VerarbeiteKonfigAenderung(ByVal Target As Range)
+    On Error GoTo CfgExit
+    Application.EnableEvents = False
+    
+    On Error Resume Next
+    Me.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo CfgExit
+    
+    Select Case Target.Row
+        Case ES_CFG_MITGLIEDSBEITRAG_ROW
+            ' Mitgliedsbeitrag -> Zahlungstermine sync
+            Call mod_Einstellungen.SyncMitgliedsbeitragZuTabelle(Me)
+            
+        Case ES_CFG_MIETE_ROW, ES_CFG_GRUNDSTEUER_ROW
+            ' Miete/Grundsteuer geaendert -> Pacht aktualisiert sich per Formel
+            ' -> Pacht in Zahlungstermine sync
+            Application.Calculate  ' Formeln aktualisieren
+            Call mod_Einstellungen.SyncPachtZuTabelle(Me)
+            
+        Case ES_CFG_PARZELLEN_ROW
+            ' Parzellen-Anzahl geaendert -> Pacht aktualisiert sich per Formel
+            Application.Calculate
+            Call mod_Einstellungen.SyncPachtZuTabelle(Me)
+    End Select
+    
+    Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    
+CfgExit:
+    Application.EnableEvents = True
+    If Err.Number <> 0 Then Err.Clear
+End Sub
+
+
 
 
 

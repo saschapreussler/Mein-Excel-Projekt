@@ -63,7 +63,6 @@ End Sub
 
 Private Sub cbo_RechnungsMonat_Change()
 
-    Dim wsStart As Worksheet
     Dim wsBank As Worksheet
     Dim wsDaten As Worksheet
     
@@ -77,7 +76,6 @@ Private Sub cbo_RechnungsMonat_Change()
     Dim rngFilterBereich As Range
     Dim visibleCellsCount As Long
     
-    Set wsStart = ThisWorkbook.Sheets("Startmen" & ChrW(252))
     Set wsBank = ThisWorkbook.Sheets("Bankkonto")
     Set wsDaten = ThisWorkbook.Sheets("Daten")
 
@@ -86,7 +84,7 @@ Private Sub cbo_RechnungsMonat_Change()
 
     With wsBank
     
-        ' Blattschutz aufheben (AutoFilter erfordert ungesch?tztes Blatt)
+        ' Blattschutz aufheben (AutoFilter erfordert ungeschuetztes Blatt)
         On Error Resume Next
         .Unprotect PASSWORD:=PASSWORD
         On Error GoTo SafeExit
@@ -98,11 +96,10 @@ Private Sub cbo_RechnungsMonat_Change()
         
         If Me.cbo_RechnungsMonat.ListIndex = -1 Then GoTo SafeExit
         
-        ' Abrechnungsjahr lesen
-        If IsNumeric(wsStart.Range("F1").value) Then
-            jahr = CLng(wsStart.Range("F1").value)
-        Else
-            MsgBox "Fehler: Ung" & ChrW(252) & "ltiges Abrechnungsjahr in Startmen" & ChrW(252) & "!F1", vbCritical
+        ' v6.0: Abrechnungsjahr aus Einstellungen lesen
+        jahr = HoleAbrechnungsjahr()
+        If jahr = 0 Then
+            MsgBox "Fehler: Kein Abrechnungsjahr auf dem Blatt Einstellungen hinterlegt.", vbCritical
             GoTo SafeExit
         End If
         
@@ -906,6 +903,8 @@ Private Function EntferneBemerkungsZeile(ByVal bemerkung As String, _
     
     EntferneBemerkungsZeile = ergebnis
 End Function
+
+
 
 
 

@@ -3,18 +3,415 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Einstellungen (Orchestrator)
-' VERSION: 3.0 - Modularisiert
-' ZWECK: Formatierung, Schutz/Entsperrung f?r
+' VERSION: 4.0 - 18.04.2026
+' ZWECK: Formatierung, Schutz/Entsperrung fuer
 '        die Zahlungstermin-Tabelle auf Blatt Einstellungen
-'        (Spalten B-I, ab Zeile 4, Header Zeile 3)
+'        (Spalten B-I, ab Zeile 21, Header Zeile 20)
+'        NEU v4.0: Konfigurationsbereich Zeilen 1-19
+'          - Abrechnungsjahr, Kontostand Vorjahr
+'          - Mitgliedsbeitrag, Miete, Grundsteuer, Pacht
+'          - Vereinsadresse (Name, Strasse, PLZ, Ort)
+'          - Migration des alten Layouts (Tabelle von Zeile 3 nach 20)
 ' AUSGELAGERT:
 '   - mod_Einstellungen_DropDowns: SetzeDropDowns, HoleAlleKategorien
 '   - mod_Einstellungen_Debug: DebugDropDownLogik, DebugValidation,
 '                              DebugSetzeDropDownsUndPruefe
 ' ===============================================================
 
-Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Wei?
+' Farben
+Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiss
+Private Const CLR_CFG_HEADER As Long = 2894892   ' RGB(44, 62, 80) - Dunkel Blau-Grau
+Private Const CLR_CFG_SECTION As Long = 6182740  ' RGB(52, 73, 94) - Mittel Blau-Grau
+Private Const CLR_CFG_LABEL As Long = 15853804   ' RGB(236, 240, 241) - Helles Grau
+Private Const CLR_CFG_CALC As Long = 14408667    ' RGB(219, 234, 219) - Helles Gruen (berechnet)
 Private Const ZEBRA_COLOR_2 As Long = &HDEE5E3  ' Hellgrau
+
+
+' ===============================================================
+' 0. MIGRATION: Altes Layout (Header Zeile 3) nach neues (Zeile 20)
+'    Wird einmalig bei Workbook_Open aufgerufen
+' ===============================================================
+Public Sub MigriereEinstellungenLayout()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Sub
+    
+    ' Pruefen ob Migration schon durchgefuehrt
+    If Trim(CStr(ws.Cells(ES_CFG_TITEL_ROW, ES_CFG_LABEL_COL).value)) = "Konfiguration" Then
+        Exit Sub
+    End If
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    
+    ' Pruefen ob altes Layout vorhanden (Header in Zeile 3)
+    Dim altesLayout As Boolean
+    altesLayout = (InStr(1, CStr(ws.Cells(3, ES_COL_KATEGORIE).value), "Kategorie", vbTextCompare) > 0)
+    
+    If altesLayout Then
+        ' 17 Zeilen oben einfuegen - verschiebt alle Daten automatisch
+        ws.Rows("1:17").Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
+        
+        ' Eingefuegte Zeilen bereinigen (keine Formatierung uebernehmen)
+        ws.Range("A1:Z17").Clear
+    End If
+    
+    ' Konfigurationsbereich schreiben
+    Call SchreibeKonfigurationsBereich(ws)
+    
+    ' Parzellen-Anzahl automatisch ermitteln
+    Call AktualisiereParzellen(ws)
+    
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    Application.EnableEvents = True
+    Application.ScreenUpdating = True
+End Sub
+
+
+' ===============================================================
+' 0b. KONFIGURATIONSBEREICH: Labels, Formeln, Formatierung
+' ===============================================================
+Public Sub SchreibeKonfigurationsBereich(Optional ByVal ws As Worksheet)
+    If ws Is Nothing Then
+        On Error Resume Next
+        Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+        On Error GoTo 0
+        If ws Is Nothing Then Exit Sub
+    End If
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    Dim euroFmt As String
+    euroFmt = "#,##0.00 " & ChrW(8364)
+    
+    ' --- TITEL ---
+    With ws.Range(ws.Cells(ES_CFG_TITEL_ROW, ES_CFG_LABEL_COL), _
+                  ws.Cells(ES_CFG_TITEL_ROW, ES_COL_END))
+        .Merge
+        .value = "Konfiguration"
+        .Font.Size = 16
+        .Font.Bold = True
+        .Font.color = RGB(255, 255, 255)
+        .Interior.color = CLR_CFG_HEADER
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .RowHeight = 30
+    End With
+    
+    ' --- SECTION: Kassenbuch ---
+    Call SchreibeSectionHeader(ws, ES_CFG_KASSENBUCH_ROW, "Kassenbuch")
+    
+    ' Abrechnungsjahr
+    Call SchreibeCfgLabel(ws, ES_CFG_ABRECHNUNGSJAHR_ROW, "Abrechnungsjahr:")
+    With ws.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL)
+        .NumberFormat = "0"
+        .HorizontalAlignment = xlCenter
+        .Locked = False
+    End With
+    
+    ' Kontostand Vorjahr
+    Call SchreibeCfgLabel(ws, ES_CFG_KONTOSTAND_ROW, "Kontostand Vorjahr (31.12.):")
+    With ws.Cells(ES_CFG_KONTOSTAND_ROW, ES_CFG_VALUE_COL)
+        .NumberFormat = euroFmt
+        .HorizontalAlignment = xlRight
+        .Locked = False
+    End With
+    
+    ' --- SECTION: Beitraege & Pacht ---
+    Call SchreibeSectionHeader(ws, ES_CFG_BEITRAEGE_ROW, "Beitr" & ChrW(228) & "ge & Pacht")
+    
+    ' Mitgliedsbeitrag
+    Call SchreibeCfgLabel(ws, ES_CFG_MITGLIEDSBEITRAG_ROW, "Mitgliedsbeitrag (j" & ChrW(228) & "hrlich):")
+    With ws.Cells(ES_CFG_MITGLIEDSBEITRAG_ROW, ES_CFG_VALUE_COL)
+        .NumberFormat = euroFmt
+        .HorizontalAlignment = xlRight
+        .Locked = False
+    End With
+    
+    ' Miete
+    Call SchreibeCfgLabel(ws, ES_CFG_MIETE_ROW, "Miete (Pacht vom Verein):")
+    With ws.Cells(ES_CFG_MIETE_ROW, ES_CFG_VALUE_COL)
+        .NumberFormat = euroFmt
+        .HorizontalAlignment = xlRight
+        .Locked = False
+    End With
+    
+    ' Grundsteuer
+    Call SchreibeCfgLabel(ws, ES_CFG_GRUNDSTEUER_ROW, "Grundsteuer:")
+    With ws.Cells(ES_CFG_GRUNDSTEUER_ROW, ES_CFG_VALUE_COL)
+        .NumberFormat = euroFmt
+        .HorizontalAlignment = xlRight
+        .Locked = False
+    End With
+    
+    ' Summe (berechnet)
+    Call SchreibeCfgLabel(ws, ES_CFG_SUMME_ROW, "Summe (Miete + Grundsteuer):")
+    With ws.Cells(ES_CFG_SUMME_ROW, ES_CFG_VALUE_COL)
+        .FormulaLocal = "=C" & ES_CFG_MIETE_ROW & "+C" & ES_CFG_GRUNDSTEUER_ROW
+        .NumberFormat = euroFmt
+        .HorizontalAlignment = xlRight
+        .Interior.color = CLR_CFG_CALC
+        .Font.Bold = True
+        .Locked = True
+    End With
+    
+    ' Verpachtete Parzellen (Dropdown 1-14)
+    Call SchreibeCfgLabel(ws, ES_CFG_PARZELLEN_ROW, "Verpachtete Parzellen:")
+    With ws.Cells(ES_CFG_PARZELLEN_ROW, ES_CFG_VALUE_COL)
+        .NumberFormat = "0"
+        .HorizontalAlignment = xlCenter
+        .Locked = False
+        ' Dropdown 1-14
+        With .Validation
+            .Delete
+            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
+                 Operator:=xlBetween, Formula1:="1,2,3,4,5,6,7,8,9,10,11,12,13,14"
+            .IgnoreBlank = False
+            .InCellDropdown = True
+            .ErrorTitle = "Ung" & ChrW(252) & "ltige Eingabe"
+            .ErrorMessage = "Bitte eine Zahl zwischen 1 und 14 w" & ChrW(228) & "hlen."
+        End With
+    End With
+    
+    ' Pacht pro Parzelle (berechnet)
+    Call SchreibeCfgLabel(ws, ES_CFG_PACHT_ROW, "Pacht pro Parzelle:")
+    With ws.Cells(ES_CFG_PACHT_ROW, ES_CFG_VALUE_COL)
+        .FormulaLocal = "=WENN(C" & ES_CFG_PARZELLEN_ROW & ">0;C" & _
+                        ES_CFG_SUMME_ROW & "/C" & ES_CFG_PARZELLEN_ROW & ";0)"
+        .NumberFormat = euroFmt
+        .HorizontalAlignment = xlRight
+        .Interior.color = CLR_CFG_CALC
+        .Font.Bold = True
+        .Locked = True
+    End With
+    
+    ' --- SECTION: Vereinsadresse ---
+    Call SchreibeSectionHeader(ws, ES_CFG_ADRESSE_ROW, "Vereinsadresse")
+    
+    ' Vereinsname (Wert ueber C-I gemergt)
+    Call SchreibeCfgLabel(ws, ES_CFG_VEREINSNAME_ROW, "Vereinsname:")
+    With ws.Range(ws.Cells(ES_CFG_VEREINSNAME_ROW, ES_CFG_VALUE_COL), _
+                  ws.Cells(ES_CFG_VEREINSNAME_ROW, ES_COL_END))
+        .Merge
+        .HorizontalAlignment = xlLeft
+        .Locked = False
+    End With
+    
+    ' Strasse
+    Call SchreibeCfgLabel(ws, ES_CFG_STRASSE_ROW, "Stra" & ChrW(223) & "e:")
+    With ws.Range(ws.Cells(ES_CFG_STRASSE_ROW, ES_CFG_VALUE_COL), _
+                  ws.Cells(ES_CFG_STRASSE_ROW, ES_COL_END))
+        .Merge
+        .HorizontalAlignment = xlLeft
+        .Locked = False
+    End With
+    
+    ' PLZ + Ort
+    Call SchreibeCfgLabel(ws, ES_CFG_PLZ_ORT_ROW, "PLZ:")
+    With ws.Cells(ES_CFG_PLZ_ORT_ROW, ES_CFG_VALUE_COL)
+        .NumberFormat = "@"
+        .HorizontalAlignment = xlLeft
+        .Locked = False
+    End With
+    ws.Cells(ES_CFG_PLZ_ORT_ROW, 4).value = "Ort:"
+    With ws.Cells(ES_CFG_PLZ_ORT_ROW, 4)
+        .Font.Bold = True
+        .HorizontalAlignment = xlRight
+        .Interior.color = CLR_CFG_LABEL
+    End With
+    With ws.Range(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5), _
+                  ws.Cells(ES_CFG_PLZ_ORT_ROW, ES_COL_END))
+        .Merge
+        .HorizontalAlignment = xlLeft
+        .Locked = False
+    End With
+    
+    ' Separator-Zeile
+    With ws.Range(ws.Cells(ES_CFG_SEPARATOR_ROW, ES_CFG_LABEL_COL), _
+                  ws.Cells(ES_CFG_SEPARATOR_ROW, ES_COL_END))
+        .Interior.color = CLR_CFG_HEADER
+        .RowHeight = 4
+    End With
+    
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+End Sub
+
+
+' --- Hilfs-Sub: Section-Header schreiben ---
+Private Sub SchreibeSectionHeader(ByVal ws As Worksheet, ByVal zeile As Long, ByVal titel As String)
+    With ws.Range(ws.Cells(zeile, ES_CFG_LABEL_COL), _
+                  ws.Cells(zeile, ES_COL_END))
+        .Merge
+        .value = titel
+        .Font.Size = 11
+        .Font.Bold = True
+        .Font.color = RGB(255, 255, 255)
+        .Interior.color = CLR_CFG_SECTION
+        .HorizontalAlignment = xlLeft
+        .VerticalAlignment = xlCenter
+        .IndentLevel = 1
+    End With
+End Sub
+
+
+' --- Hilfs-Sub: Label in Spalte B schreiben ---
+Private Sub SchreibeCfgLabel(ByVal ws As Worksheet, ByVal zeile As Long, ByVal text As String)
+    With ws.Cells(zeile, ES_CFG_LABEL_COL)
+        .value = text
+        .Font.Bold = True
+        .HorizontalAlignment = xlRight
+        .VerticalAlignment = xlCenter
+        .Interior.color = CLR_CFG_LABEL
+        .Locked = True
+    End With
+End Sub
+
+
+' ===============================================================
+' 0c. PARZELLEN-ANZAHL: Automatisch aus Mitgliederliste ermitteln
+' ===============================================================
+Public Sub AktualisiereParzellen(Optional ByVal ws As Worksheet)
+    If ws Is Nothing Then
+        On Error Resume Next
+        Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+        On Error GoTo 0
+        If ws Is Nothing Then Exit Sub
+    End If
+    
+    Dim aktParzellen As Long
+    aktParzellen = mod_Startseite.ZaehleBelegteParzellen()
+    
+    If aktParzellen > 0 And aktParzellen <= 14 Then
+        On Error Resume Next
+        ws.Unprotect PASSWORD:=PASSWORD
+        On Error GoTo 0
+        
+        ws.Cells(ES_CFG_PARZELLEN_ROW, ES_CFG_VALUE_COL).value = aktParzellen
+        
+        On Error Resume Next
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        On Error GoTo 0
+    End If
+End Sub
+
+
+' ===============================================================
+' 0d. KONTOSTAND VORJAHR: Pruefen und ggf. Nutzer fragen
+' ===============================================================
+Public Sub PruefeKontostandVorjahr()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Sub
+    
+    Dim wert As Variant
+    wert = ws.Cells(ES_CFG_KONTOSTAND_ROW, ES_CFG_VALUE_COL).value
+    
+    ' Wenn gueltig -> nichts tun
+    If IsNumeric(wert) And wert <> "" Then
+        If CDbl(wert) <> 0 Then Exit Sub
+    End If
+    
+    ' Nutzer nach Kontostand fragen
+    Dim eingabe As String
+    eingabe = InputBox("Der Kontostand vom 31.12. des Vorjahres fehlt " & _
+                       "oder ist ung" & ChrW(252) & "ltig." & vbLf & vbLf & _
+                       "Bitte den letzten bekannten Kontostand eingeben:", _
+                       "Kontostand Vorjahr", "0,00")
+    
+    If eingabe = "" Then Exit Sub
+    
+    ' Komma durch Punkt ersetzen fuer CDbl
+    eingabe = Replace(eingabe, ".", "")
+    eingabe = Replace(eingabe, ",", ".")
+    eingabe = Replace(eingabe, ChrW(8364), "")
+    eingabe = Trim(eingabe)
+    
+    If IsNumeric(eingabe) Then
+        On Error Resume Next
+        ws.Unprotect PASSWORD:=PASSWORD
+        On Error GoTo 0
+        
+        ws.Cells(ES_CFG_KONTOSTAND_ROW, ES_CFG_VALUE_COL).value = CDbl(eingabe)
+        
+        On Error Resume Next
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        On Error GoTo 0
+    Else
+        MsgBox "Die Eingabe """ & eingabe & """ ist keine g" & ChrW(252) & "ltige Zahl.", _
+               vbExclamation, "Kontostand"
+    End If
+End Sub
+
+
+' ===============================================================
+' 0e. SYNC: Mitgliedsbeitrag -> Zahlungstermine-Tabelle
+' ===============================================================
+Public Sub SyncMitgliedsbeitragZuTabelle(Optional ByVal ws As Worksheet)
+    If ws Is Nothing Then
+        On Error Resume Next
+        Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+        On Error GoTo 0
+        If ws Is Nothing Then Exit Sub
+    End If
+    
+    Dim mbWert As Variant
+    mbWert = ws.Cells(ES_CFG_MITGLIEDSBEITRAG_ROW, ES_CFG_VALUE_COL).value
+    If Not IsNumeric(mbWert) Or mbWert = "" Then Exit Sub
+    
+    ' In Zahlungstermine-Tabelle suchen: Spalte B = "Mitgliedsbeitrag"
+    Dim r As Long
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
+    
+    For r = ES_START_ROW To lastRow
+        If StrComp(Trim(CStr(ws.Cells(r, ES_COL_KATEGORIE).value)), _
+                   "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+            ws.Cells(r, ES_COL_SOLL_BETRAG).value = CDbl(mbWert)
+            Exit For
+        End If
+    Next r
+End Sub
+
+
+' ===============================================================
+' 0f. SYNC: Pacht pro Parzelle -> Zahlungstermine-Tabelle
+' ===============================================================
+Public Sub SyncPachtZuTabelle(Optional ByVal ws As Worksheet)
+    If ws Is Nothing Then
+        On Error Resume Next
+        Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+        On Error GoTo 0
+        If ws Is Nothing Then Exit Sub
+    End If
+    
+    Dim pachtWert As Variant
+    pachtWert = ws.Cells(ES_CFG_PACHT_ROW, ES_CFG_VALUE_COL).value
+    If Not IsNumeric(pachtWert) Or pachtWert = "" Then Exit Sub
+    If CDbl(pachtWert) <= 0 Then Exit Sub
+    
+    ' In Zahlungstermine-Tabelle suchen: Spalte B = "Pacht Mitgliederzahlung"
+    Dim r As Long
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
+    
+    For r = ES_START_ROW To lastRow
+        If StrComp(Trim(CStr(ws.Cells(r, ES_COL_KATEGORIE).value)), _
+                   "Pacht Mitgliederzahlung", vbTextCompare) = 0 Then
+            ws.Cells(r, ES_COL_SOLL_BETRAG).value = CDbl(pachtWert)
+            Exit For
+        End If
+    Next r
+End Sub
 
 
 ' ===============================================================
@@ -415,6 +812,8 @@ Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long
     Call FormatiereZahlungsterminTabelle(ws)
     
 End Sub
+
+
 
 
 

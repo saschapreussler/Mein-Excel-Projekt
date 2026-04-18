@@ -164,21 +164,17 @@ Public Sub Importiere_Kontoauszug()
     On Error GoTo 0
     
     ' ============================================================
-    ' v5.1: Jahrespr?fung - CSV-Daten mit Startmen?!F1 abgleichen
-    ' VOR dem Eintragen ins Bankkonto pr?fen ob die Jahre ?bereinstimmen
+    ' v5.1: Jahrpruefung - CSV-Daten mit Abrechnungsjahr abgleichen
+    ' VOR dem Eintragen ins Bankkonto pruefen ob die Jahre uebereinstimmen
+    ' v6.0: Abrechnungsjahr aus Einstellungen statt Startmenue!F1
     ' ============================================================
-    Dim wsStartImport As Worksheet
+    Dim wsEinstImport As Worksheet
     On Error Resume Next
-    Set wsStartImport = ThisWorkbook.Worksheets("Startmen" & ChrW(252))
+    Set wsEinstImport = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
     On Error GoTo 0
     
     Dim jahrF1Import As Long
-    jahrF1Import = 0
-    If Not wsStartImport Is Nothing Then
-        If IsNumeric(wsStartImport.Range("F1").value) Then
-            jahrF1Import = CLng(wsStartImport.Range("F1").value)
-        End If
-    End If
+    jahrF1Import = HoleAbrechnungsjahr()
     
     ' H?ufigstes Jahr in CSV ermitteln
     Dim jahrCSV As Long
@@ -220,7 +216,7 @@ Public Sub Importiere_Kontoauszug()
         
         Dim jahrAntwort As VbMsgBoxResult
         jahrAntwort = MsgBox( _
-            "Das Abrechnungsjahr in Startmen" & ChrW(252) & "!F1 ist " & jahrF1Import & "," & vbLf & _
+            "Das Abrechnungsjahr ist " & jahrF1Import & "," & vbLf & _
             "aber die CSV-Kontoausz" & ChrW(252) & "ge stammen " & ChrW(252) & "berwiegend aus " & jahrCSV & "." & vbLf & vbLf & _
             "Was ist korrekt?" & vbLf & vbLf & _
             "  Ja = Abrechnungsjahr auf " & jahrCSV & " anpassen und importieren" & vbLf & _
@@ -231,14 +227,16 @@ Public Sub Importiere_Kontoauszug()
         Application.DisplayAlerts = False
         
         If jahrAntwort = vbYes Then
-            ' Nutzer will Jahr anpassen -> Startmen?!F1 aktualisieren
-            On Error Resume Next
-            wsStartImport.Unprotect PASSWORD:=PASSWORD
-            On Error GoTo 0
-            wsStartImport.Range("F1").value = jahrCSV
-            On Error Resume Next
-            wsStartImport.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-            On Error GoTo 0
+            ' Nutzer will Jahr anpassen -> Einstellungen aktualisieren
+            If Not wsEinstImport Is Nothing Then
+                On Error Resume Next
+                wsEinstImport.Unprotect PASSWORD:=PASSWORD
+                On Error GoTo 0
+                wsEinstImport.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL).value = jahrCSV
+                On Error Resume Next
+                wsEinstImport.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+                On Error GoTo 0
+            End If
             Debug.Print "[Import] Abrechnungsjahr angepasst: " & jahrF1Import & " -> " & jahrCSV
         Else
             ' Nutzer will NICHT importieren -> Abbruch
@@ -675,6 +673,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 

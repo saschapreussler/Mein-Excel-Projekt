@@ -288,11 +288,35 @@ Public Const FUNKTION_KASSIERER As String = "Kassierer"
 Public Const FUNKTION_SCHRIFTFUEHRER As String = "Schriftfuehrer"
 
 ' ===============================================================
-' P. EINSTELLUNGEN - ZAHLUNGSTERMINE (Spalten B-I)
-'    v2.7: Neue Spalte E = Soll-Monat(e), alle folgenden +1
+' P. EINSTELLUNGEN - KONFIGURATIONSBEREICH (Zeilen 1-19)
+'    Oberhalb der Zahlungstermine-Tabelle
 ' ===============================================================
-Public Const ES_HEADER_ROW As Long = 3
-Public Const ES_START_ROW As Long = 4
+Public Const ES_CFG_TITEL_ROW As Long = 1
+Public Const ES_CFG_KASSENBUCH_ROW As Long = 3
+Public Const ES_CFG_ABRECHNUNGSJAHR_ROW As Long = 4
+Public Const ES_CFG_KONTOSTAND_ROW As Long = 5
+Public Const ES_CFG_BEITRAEGE_ROW As Long = 7
+Public Const ES_CFG_MITGLIEDSBEITRAG_ROW As Long = 8
+Public Const ES_CFG_MIETE_ROW As Long = 9
+Public Const ES_CFG_GRUNDSTEUER_ROW As Long = 10
+Public Const ES_CFG_SUMME_ROW As Long = 11
+Public Const ES_CFG_PARZELLEN_ROW As Long = 12
+Public Const ES_CFG_PACHT_ROW As Long = 13
+Public Const ES_CFG_ADRESSE_ROW As Long = 15
+Public Const ES_CFG_VEREINSNAME_ROW As Long = 16
+Public Const ES_CFG_STRASSE_ROW As Long = 17
+Public Const ES_CFG_PLZ_ORT_ROW As Long = 18
+Public Const ES_CFG_LABEL_COL As Long = 2    ' Spalte B
+Public Const ES_CFG_VALUE_COL As Long = 3    ' Spalte C
+Public Const ES_CFG_SEPARATOR_ROW As Long = 19
+
+' ===============================================================
+' P2. EINSTELLUNGEN - ZAHLUNGSTERMINE (Spalten B-I)
+'     v2.7: Neue Spalte E = Soll-Monat(e), alle folgenden +1
+'     v2.9: Tabelle nach unten verschoben (Zeile 20/21 statt 3/4)
+' ===============================================================
+Public Const ES_HEADER_ROW As Long = 20
+Public Const ES_START_ROW As Long = 21
 
 Public Const ES_COL_KATEGORIE As Long = 2       ' Spalte B - Referenz Kategorie
 Public Const ES_COL_SOLL_BETRAG As Long = 3     ' Spalte C - Soll-Betrag
@@ -321,7 +345,7 @@ End Function
 ' ===============================================================
 ' ENCODING-SICHERE WORKSHEET-NAMEN
 ' ChrW() ist in Const-Deklarationen nicht erlaubt.
-' Diese Funktion ersetzt die Const-Deklaration und ist
+' Diese Funktionen ersetzen Const-Deklarationen und sind
 ' encoding-sicher (kein Umlaut im Quellcode-Literal).
 ' Aufruf identisch: Worksheets(WS_UEBERSICHT)
 ' ===============================================================
@@ -330,6 +354,35 @@ Public Function WS_UEBERSICHT() As String
     If val = "" Then val = "Zahlungs" & Chr$(252) & "bersicht"
     WS_UEBERSICHT = val
 End Function
+
+Public Function WS_STARTMENUE() As String
+    Static val As String
+    If val = "" Then val = "Startmen" & Chr$(252)
+    WS_STARTMENUE = val
+End Function
+
+
+' ===============================================================
+' ZENTRALE FUNKTION: Abrechnungsjahr aus Einstellungen lesen
+' Ersetzt alle direkten Zugriffe auf Startmenue!F1
+' ===============================================================
+Public Function HoleAbrechnungsjahr() As Long
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    If ws Is Nothing Then
+        HoleAbrechnungsjahr = Year(Date)
+        Exit Function
+    End If
+    If IsNumeric(ws.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL).value) Then
+        HoleAbrechnungsjahr = CLng(ws.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL).value)
+    Else
+        HoleAbrechnungsjahr = 0
+    End If
+End Function
+
+
 
 
 
