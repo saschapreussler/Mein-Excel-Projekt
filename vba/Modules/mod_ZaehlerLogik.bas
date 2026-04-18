@@ -384,7 +384,7 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
     ElseIf foundSheet Then
         On Error Resume Next
         If Not wsTab6 Is Nothing Then
-            If ws.Index <> wsTab6.Index + 1 Then ws.Move After:=wsTab6
+            If ws.index <> wsTab6.index + 1 Then ws.Move After:=wsTab6
         End If
         
         If ws.ProtectContents Then ws.Unprotect PASSWORD
@@ -541,6 +541,8 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
     wsStart.Protect DrawingObjects:=True, Contents:=True, Scenarios:=True
     
 End Sub
+
+
 
 
 

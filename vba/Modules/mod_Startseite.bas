@@ -594,3 +594,5 @@ Private Function HoleKontostandVorjahr() As Double
         HoleKontostandVorjahr = 0
     End If
 End Function
+
+
