@@ -32,3 +32,4 @@ Private Sub cbo_MonatFilter_VK_Change()
     Call mod_Vereinskasse_Filter.WendeVereinskasseFilterAn(Me, Me.cbo_MonatFilter_VK.value)
 End Sub
 
+

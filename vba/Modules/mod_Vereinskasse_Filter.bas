@@ -234,3 +234,5 @@ Public Sub SetzeVereinskasseFormeln(ByVal wsVK As Worksheet)
     wsVK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
 End Sub
+
+
