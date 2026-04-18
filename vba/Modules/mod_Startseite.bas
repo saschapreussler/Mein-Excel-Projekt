@@ -164,40 +164,59 @@ Private Sub SchreibeHeroBanner(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Untertitel
-    With ws.Range("B3:K3")
-        .Merge
-        .value = "Kleingartenverein " & ChrW(8226) & " Finanzverwaltung " & ChrW(8226) & " " & ChrW(220) & "bersicht"
-        .Font.Size = 10
-        .Font.Bold = False
-        .Font.color = CLR_LIGHT_TEXT
-        .Interior.color = CLR_HERO_DARK
-        .HorizontalAlignment = xlCenter
-        .VerticalAlignment = xlCenter
-    End With
-    
-    ' Vereinsname + Abrechnungsjahr
+    ' Vereinsname prominent anzeigen
     Dim vereinsname As String
     Dim abrJahr As Long
     vereinsname = HoleVereinsname()
     abrJahr = HoleAbrechnungsjahr()
     
-    Dim infoZeile As String
+    Dim vereinsZeile As String
     If vereinsname <> "" Then
-        infoZeile = vereinsname
+        vereinsZeile = vereinsname
     Else
-        infoZeile = "Dein Kleingartenverein"
+        vereinsZeile = "Dein Kleingartenverein"
+    End If
+    
+    With ws.Range("B3:K3")
+        .Merge
+        .value = vereinsZeile
+        .Font.Size = 13
+        .Font.Bold = True
+        .Font.color = CLR_ACCENT
+        .Interior.color = CLR_HERO_DARK
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+    
+    ' Adresse + Abrechnungsjahr
+    Dim adressZeile As String
+    Dim strasse As String
+    Dim plz As String
+    Dim ort As String
+    
+    strasse = HoleVereinsStrasse()
+    plz = HoleVereinsPLZ()
+    ort = HoleVereinsOrt()
+    
+    adressZeile = ""
+    If strasse <> "" Then adressZeile = strasse
+    If plz <> "" Or ort <> "" Then
+        If adressZeile <> "" Then adressZeile = adressZeile & " " & ChrW(8226) & " "
+        If plz <> "" Then adressZeile = adressZeile & plz & " "
+        If ort <> "" Then adressZeile = adressZeile & ort
     End If
     If abrJahr > 0 Then
-        infoZeile = infoZeile & "  |  Abrechnungsjahr " & abrJahr
+        If adressZeile <> "" Then adressZeile = adressZeile & "  |  "
+        adressZeile = adressZeile & "Abrechnungsjahr " & abrJahr
     End If
+    If adressZeile = "" Then adressZeile = "Finanzverwaltung " & ChrW(8226) & " " & ChrW(220) & "bersicht"
     
     With ws.Range("B4:K4")
         .Merge
-        .value = infoZeile
-        .Font.Size = 12
-        .Font.Bold = True
-        .Font.color = CLR_ACCENT
+        .value = adressZeile
+        .Font.Size = 10
+        .Font.Bold = False
+        .Font.color = CLR_LIGHT_TEXT
         .Interior.color = CLR_HERO_DARK
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
@@ -638,6 +657,38 @@ Private Function HoleKontostandVorjahr() As Double
         HoleKontostandVorjahr = 0
     End If
 End Function
+
+
+Private Function HoleVereinsStrasse() As String
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    If ws Is Nothing Then HoleVereinsStrasse = "": Exit Function
+    HoleVereinsStrasse = Trim(CStr(ws.Cells(ES_CFG_STRASSE_ROW, ES_CFG_VALUE_COL).value))
+End Function
+
+
+Private Function HoleVereinsPLZ() As String
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    If ws Is Nothing Then HoleVereinsPLZ = "": Exit Function
+    HoleVereinsPLZ = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, ES_CFG_VALUE_COL).value))
+End Function
+
+
+Private Function HoleVereinsOrt() As String
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
+    HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
+End Function
+
+
 
 
 

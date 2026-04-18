@@ -403,6 +403,139 @@ End Sub
 
 
 ' ===============================================================
+' 0d2. ABRECHNUNGSJAHR: Pruefen und ggf. Nutzer fragen
+' ===============================================================
+Public Sub PruefeAbrechnungsjahr()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Sub
+    
+    Dim wert As Variant
+    wert = ws.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL).value
+    
+    ' Wenn gueltig -> nichts tun
+    If IsNumeric(wert) And wert <> "" Then
+        If CLng(wert) >= 2000 And CLng(wert) <= 2100 Then Exit Sub
+    End If
+    
+    ' Nutzer nach Abrechnungsjahr fragen
+    Dim eingabe As String
+    Dim jahrWert As Long
+    Dim gueltig As Boolean
+    
+    Do
+        gueltig = False
+        eingabe = InputBox( _
+            "Das aktuelle Abrechnungsjahr fehlt." & vbLf & vbLf & _
+            "Bitte gib das Abrechnungsjahr ein (z.B. " & Year(Date) & "):", _
+            "Abrechnungsjahr", CStr(Year(Date)))
+        
+        If StrPtr(eingabe) = 0 Then Exit Sub
+        If Trim(eingabe) = "" Then Exit Sub
+        
+        eingabe = Trim(eingabe)
+        
+        If IsNumeric(eingabe) Then
+            jahrWert = CLng(eingabe)
+            If jahrWert >= 2000 And jahrWert <= 2100 Then
+                gueltig = True
+            Else
+                MsgBox "Bitte ein Jahr zwischen 2000 und 2100 eingeben.", _
+                       vbExclamation, "Abrechnungsjahr"
+            End If
+        Else
+            MsgBox "Bitte eine g" & ChrW(252) & "ltige Jahreszahl eingeben.", _
+                   vbExclamation, "Abrechnungsjahr"
+        End If
+    Loop Until gueltig
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    ws.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL).value = jahrWert
+    ws.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL).NumberFormat = "0"
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+End Sub
+
+
+' ===============================================================
+' 0d3. VEREINSDATEN: Pruefen und ggf. Nutzer fragen
+' ===============================================================
+Public Sub PruefeVereinsdaten()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Sub
+    
+    ' Pruefen ob Vereinsname vorhanden
+    Dim vereinsname As String
+    vereinsname = Trim(CStr(ws.Cells(ES_CFG_VEREINSNAME_ROW, ES_CFG_VALUE_COL).value))
+    
+    If vereinsname <> "" Then Exit Sub
+    
+    ' Nutzer nach Vereinsdaten fragen
+    Dim eingabeName As String
+    eingabeName = InputBox( _
+        "Vereinsdaten fehlen auf dem Blatt Einstellungen." & vbLf & vbLf & _
+        "Bitte gib den Namen des Vereins ein:" & vbLf & _
+        "(z.B. KGA ""Elisabeth Scholle"" e.V.)", _
+        "Vereinsname")
+    
+    If StrPtr(eingabeName) = 0 Then Exit Sub
+    eingabeName = Trim(eingabeName)
+    If eingabeName = "" Then Exit Sub
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    ws.Cells(ES_CFG_VEREINSNAME_ROW, ES_CFG_VALUE_COL).value = eingabeName
+    
+    ' Strasse abfragen
+    Dim eingabeStrasse As String
+    eingabeStrasse = InputBox( _
+        "Stra" & ChrW(223) & "e und Hausnummer des Vereins:" & vbLf & _
+        "(z.B. Gartenweg 15)", _
+        "Vereinsadresse - Stra" & ChrW(223) & "e")
+    
+    If StrPtr(eingabeStrasse) <> 0 And Trim(eingabeStrasse) <> "" Then
+        ws.Cells(ES_CFG_STRASSE_ROW, ES_CFG_VALUE_COL).value = Trim(eingabeStrasse)
+    End If
+    
+    ' PLZ abfragen
+    Dim eingabePLZ As String
+    eingabePLZ = InputBox( _
+        "Postleitzahl:", _
+        "Vereinsadresse - PLZ")
+    
+    If StrPtr(eingabePLZ) <> 0 And Trim(eingabePLZ) <> "" Then
+        ws.Cells(ES_CFG_PLZ_ORT_ROW, ES_CFG_VALUE_COL).value = Trim(eingabePLZ)
+    End If
+    
+    ' Ort abfragen
+    Dim eingabeOrt As String
+    eingabeOrt = InputBox( _
+        "Ort:", _
+        "Vereinsadresse - Ort")
+    
+    If StrPtr(eingabeOrt) <> 0 And Trim(eingabeOrt) <> "" Then
+        ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value = Trim(eingabeOrt)
+    End If
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+End Sub
+
+
+' ===============================================================
 ' 0e. SYNC: Mitgliedsbeitrag -> Zahlungstermine-Tabelle
 ' ===============================================================
 Public Sub SyncMitgliedsbeitragZuTabelle(Optional ByVal ws As Worksheet)
@@ -861,6 +994,8 @@ Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long
     Call FormatiereZahlungsterminTabelle(ws)
     
 End Sub
+
+
 
 
 

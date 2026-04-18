@@ -330,6 +330,15 @@ Public Const ES_COL_SAEUMNIS As Long = 9        ' Spalte I - S?umnis-Geb?hr
 Public Const ES_COL_START As Long = 2           ' Erste Datenspalte (B)
 Public Const ES_COL_END As Long = 9             ' Letzte Datenspalte (I)
 
+' ===============================================================
+' Q. VEREINSKASSE - SPALTENSTRUKTUR
+'    Analog zu Bankkonto, Daten ab Zeile 27
+' ===============================================================
+Public Const VK_HEADER_ROW As Long = 26
+Public Const VK_START_ROW As Long = 27
+Public Const VK_COL_DATUM As Long = 1            ' Spalte A - Datum
+Public Const VK_COL_BETRAG As Long = 2           ' Spalte B - Betrag
+
 
 Public Function GetErlaubteFunktionenFuerParzelle() As Variant
     GetErlaubteFunktionenFuerParzelle = Array( _
@@ -381,6 +390,8 @@ Public Function HoleAbrechnungsjahr() As Long
         HoleAbrechnungsjahr = 0
     End If
 End Function
+
+
 
 
 

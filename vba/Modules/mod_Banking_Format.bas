@@ -173,7 +173,7 @@ End Sub
 ' FORMEL-WIEDERHERSTELLUNG
 ' Stellt die Formeln auf dem Bankkonto-Blatt wieder her,
 ' die durch ClearContents oder Import verloren gehen k?nnen.
-' Betrifft: C3, E8-E14, E16-E21, E23
+' Betrifft: E2, C3, E8-E14, E16-E21, E23
 ' WICHTIG: Formeln werden 1:1 als FormulaLocal gesetzt!
 ' ===============================================================
 Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
@@ -183,6 +183,16 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     On Error GoTo 0
     
     On Error Resume Next
+    
+    ' E2: Kontostand laufend mit Monatsfilter
+    ' v6.1: Abrechnungsjahr aus Einstellungen!C4, Kontostand aus Einstellungen!C5
+    ' Logik: Wenn Monat<=1 (ganzes Jahr/Jan) -> nur Kontostand Vorjahr
+    '        Sonst: Kontostand Vorjahr + Summe aller Buchungen von Jan bis Filtermonat
+    ws.Range("E2").FormulaLocal = _
+        "=WENN(Daten!$AE$4<=1;Einstellungen!$C$5;" & _
+        "Einstellungen!$C$5+SUMMEWENNS(Bankkonto!$B$28:$B$5000;" & _
+        "Bankkonto!$A$28:$A$5000;"">=""&DATUM(Einstellungen!$C$4;1;1);" & _
+        "Bankkonto!$A$28:$A$5000;""<""&DATUM(Einstellungen!$C$4;Daten!$AE$4;1)))"
     
     ' C3: Kontostand-Anzeige mit Monatsfilter
     ' v6.0: Abrechnungsjahr aus Einstellungen!C4 statt Startmenue!F1
@@ -236,6 +246,8 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

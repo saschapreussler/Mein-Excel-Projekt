@@ -39,6 +39,21 @@ Private Sub Workbook_Open()
     Call mod_Einstellungen.MigriereEinstellungenLayout
     On Error GoTo 0
     
+    ' v6.1: Abrechnungsjahr pruefen (ggf. Nutzer fragen)
+    On Error Resume Next
+    Call mod_Einstellungen.PruefeAbrechnungsjahr
+    On Error GoTo 0
+    
+    ' v6.0: Kontostand Vorjahr pruefen (ggf. Nutzer fragen)
+    On Error Resume Next
+    Call mod_Einstellungen.PruefeKontostandVorjahr
+    On Error GoTo 0
+    
+    ' v6.1: Vereinsdaten pruefen (ggf. Nutzer fragen)
+    On Error Resume Next
+    Call mod_Einstellungen.PruefeVereinsdaten
+    On Error GoTo 0
+    
     ' v6.0: Startseite initialisieren (KPIs, Buttons, Design)
     On Error Resume Next
     Call mod_Startseite.InitialisiereStartseite
@@ -49,9 +64,23 @@ Private Sub Workbook_Open()
     Call mod_Navigation.SetzeHomeButtonsAufAllenBlaettern
     On Error GoTo 0
     
-    ' v6.0: Kontostand Vorjahr pruefen (ggf. Nutzer fragen)
+    ' v6.1: Vereinskasse ComboBox + Formeln initialisieren
     On Error Resume Next
-    Call mod_Einstellungen.PruefeKontostandVorjahr
+    Call mod_Vereinskasse_Filter.InitialisiereVereinskasseComboBox
+    Dim wsVK As Worksheet
+    Set wsVK = ThisWorkbook.Worksheets(WS_VEREINSKASSE)
+    If Not wsVK Is Nothing Then
+        Call mod_Vereinskasse_Filter.SetzeVereinskasseFormeln(wsVK)
+    End If
+    On Error GoTo 0
+    
+    ' v6.1: Bankkonto-Formeln wiederherstellen (inkl. E2)
+    On Error Resume Next
+    Dim wsBK As Worksheet
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    If Not wsBK Is Nothing Then
+        Call mod_Banking_Format.StelleFormelnWiederHer(wsBK)
+    End If
     On Error GoTo 0
     
     ' v6.0: Startseite als erstes Blatt anzeigen
@@ -94,6 +123,7 @@ Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
     End If
     
 End Sub
+
 
 
 

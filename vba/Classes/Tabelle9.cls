@@ -289,10 +289,18 @@ Private Sub VerarbeiteKonfigAenderung(ByVal Target As Range)
     
     Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
+    ' v6.1: Startseite bei JEDER Konfig-Aenderung aktualisieren
+    ' (Abrechnungsjahr, Kontostand, Vereinsname etc.)
+    On Error Resume Next
+    Call mod_Startseite.InitialisiereStartseite
+    On Error GoTo 0
+    
 CfgExit:
     Application.EnableEvents = True
     If Err.Number <> 0 Then Err.Clear
 End Sub
+
+
 
 
 
