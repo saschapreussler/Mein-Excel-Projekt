@@ -321,35 +321,84 @@ Public Sub PruefeKontostandVorjahr()
         If CDbl(wert) <> 0 Then Exit Sub
     End If
     
-    ' Nutzer nach Kontostand fragen
+    ' Nutzer nach Kontostand fragen (mit Schleife bis gueltig oder Abbruch)
     Dim eingabe As String
-    eingabe = InputBox("Der Kontostand vom 31.12. des Vorjahres fehlt " & _
-                       "oder ist ung" & ChrW(252) & "ltig." & vbLf & vbLf & _
-                       "Bitte den letzten bekannten Kontostand eingeben:", _
-                       "Kontostand Vorjahr", "0,00")
+    Dim dblWert As Double
+    Dim gueltig As Boolean
     
-    If eingabe = "" Then Exit Sub
-    
-    ' Komma durch Punkt ersetzen fuer CDbl
-    eingabe = Replace(eingabe, ".", "")
-    eingabe = Replace(eingabe, ",", ".")
-    eingabe = Replace(eingabe, ChrW(8364), "")
-    eingabe = Trim(eingabe)
-    
-    If IsNumeric(eingabe) Then
-        On Error Resume Next
-        ws.Unprotect PASSWORD:=PASSWORD
-        On Error GoTo 0
+    Do
+        gueltig = False
+        eingabe = InputBox( _
+            "Der Kontostand vom 31.12. des Vorjahres fehlt." & vbLf & vbLf & _
+            "Bitte gib den letzten bekannten Kontostand ein." & vbLf & vbLf & _
+            "Erlaubte Formate:" & vbLf & _
+            "  1234,56" & vbLf & _
+            "  1.234,56" & vbLf & _
+            "  1234.56" & vbLf & vbLf & _
+            "Tausendertrennzeichen (Punkte) und W" & ChrW(228) & "hrungssymbole " & _
+            "werden automatisch entfernt.", _
+            "Kontostand Vorjahr (31.12.)", "0,00")
         
-        ws.Cells(ES_CFG_KONTOSTAND_ROW, ES_CFG_VALUE_COL).value = CDbl(eingabe)
+        ' Abbruch oder leere Eingabe
+        If StrPtr(eingabe) = 0 Then Exit Sub
+        If Trim(eingabe) = "" Then Exit Sub
         
-        On Error Resume Next
-        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-        On Error GoTo 0
-    Else
-        MsgBox "Die Eingabe """ & eingabe & """ ist keine g" & ChrW(252) & "ltige Zahl.", _
-               vbExclamation, "Kontostand"
-    End If
+        ' Bereinigen: Leerzeichen, EUR, Euro-Zeichen entfernen
+        eingabe = Trim(eingabe)
+        eingabe = Replace(eingabe, ChrW(8364), "")
+        eingabe = Replace(eingabe, "EUR", "", , , vbTextCompare)
+        eingabe = Replace(eingabe, " ", "")
+        eingabe = Trim(eingabe)
+        
+        ' Deutsches Zahlenformat erkennen: 1.234,56 oder 1234,56
+        If InStr(eingabe, ",") > 0 Then
+            ' Punkte sind Tausendertrenner -> entfernen
+            eingabe = Replace(eingabe, ".", "")
+            ' Komma ist Dezimaltrenner -> durch Punkt ersetzen
+            eingabe = Replace(eingabe, ",", ".")
+        End If
+        ' Sonst: 1234.56 -> bleibt wie es ist
+        
+        If IsNumeric(eingabe) Then
+            dblWert = CDbl(eingabe)
+            
+            ' Plausibilitaetspruefung: nicht absurd hoch
+            If dblWert > 9999999 Then
+                MsgBox "Der Betrag " & Format(dblWert, "#,##0.00") & " " & ChrW(8364) & _
+                       " erscheint unrealistisch hoch." & vbLf & _
+                       "Bitte pr" & ChrW(252) & "fe die Eingabe.", _
+                       vbExclamation, "Kontostand - Plausibilit" & ChrW(228) & "t"
+            Else
+                gueltig = True
+            End If
+        Else
+            MsgBox "Die Eingabe ist keine g" & ChrW(252) & "ltige Zahl." & vbLf & vbLf & _
+                   "Bitte verwende z.B. das Format: 1.234,56", _
+                   vbExclamation, "Kontostand"
+        End If
+    Loop Until gueltig
+    
+    ' Bestaetigung anzeigen
+    Dim bestaetigung As VbMsgBoxResult
+    bestaetigung = MsgBox( _
+        "Kontostand Vorjahr:" & vbLf & vbLf & _
+        "  " & Format(dblWert, "#,##0.00") & " " & ChrW(8364) & vbLf & vbLf & _
+        "Ist das korrekt?", _
+        vbYesNo + vbQuestion, "Kontostand best" & ChrW(228) & "tigen")
+    
+    If bestaetigung <> vbYes Then Exit Sub
+    
+    ' Wert setzen
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    ws.Cells(ES_CFG_KONTOSTAND_ROW, ES_CFG_VALUE_COL).value = dblWert
+    ws.Cells(ES_CFG_KONTOSTAND_ROW, ES_CFG_VALUE_COL).NumberFormat = "#,##0.00 " & ChrW(8364)
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
 End Sub
 
 
