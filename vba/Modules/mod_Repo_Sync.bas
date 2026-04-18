@@ -178,28 +178,13 @@ Public Sub SyncVBAVomRepository()
         msg = msg & vbCrLf & "FEHLER bei folgenden Dateien:" & vbCrLf & fehlerListe
     End If
     
-    msg = msg & vbCrLf & "Das Projekt ist nun auf dem Stand des Repositories."
+    msg = msg & vbCrLf & "Das Projekt ist nun auf dem Stand des Repositories." & vbCrLf & _
+          "WICHTIG: Bitte f" & ChrW(252) & "hre jetzt 'Debuggen > Kompilieren' aus."
     
     If fehlerListe <> "" Then
         MsgBox msg, vbExclamation, "Synchronisierung mit Warnungen"
     Else
         MsgBox msg, vbInformation, "Synchronisierung erfolgreich"
-    End If
-    
-    ' v3.1: Auto-Save nach erfolgreichem Sync
-    If fehlerListe = "" Then
-        Dim speichern As VbMsgBoxResult
-        speichern = MsgBox( _
-            "Soll die Arbeitsmappe jetzt gespeichert werden?" & vbCrLf & vbCrLf & _
-            "WICHTIG: Ohne Speichern gehen alle importierten " & vbCrLf & _
-            "Module beim Schlie" & ChrW(223) & "en verloren!", _
-            vbYesNo + vbQuestion, "Arbeitsmappe speichern")
-        
-        If speichern = vbYes Then
-            Application.StatusBar = "Speichere Arbeitsmappe..."
-            ThisWorkbook.Save
-            Application.StatusBar = False
-        End If
     End If
     
     Exit Sub
@@ -818,95 +803,6 @@ FallbackKopie:
 End Function
 
 
-' ===============================================================
-' KOMPLETT-WORKFLOW: Sync + Save + Export + Git in einem Schritt
-'
-' Dieser Workflow ersetzt den manuellen Prozess:
-'   1. SyncVBAVomRepository  (Repo -> VBA)
-'   2. Arbeitsmappe speichern
-'   3. ExportiereAlleVBAKomponenten  (VBA -> Repo)
-'   4. Git: add + commit + push
-'
-' Aufruf: mod_Repo_Sync.WorkflowKomplett
-' ===============================================================
-Public Sub WorkflowKomplett()
-    
-    Dim antwort As VbMsgBoxResult
-    
-    antwort = MsgBox( _
-        "KOMPLETT-WORKFLOW" & vbCrLf & vbCrLf & _
-        "Dieser Workflow f" & ChrW(252) & "hrt folgende Schritte aus:" & vbCrLf & vbCrLf & _
-        "  1. Import: Repo -> VBA" & vbCrLf & _
-        "  2. Arbeitsmappe speichern" & vbCrLf & _
-        "  3. Export: VBA -> Repo" & vbCrLf & _
-        "  4. Git: add + commit + push" & vbCrLf & vbCrLf & _
-        "Fortfahren?", _
-        vbYesNo + vbQuestion, "Komplett-Workflow")
-    
-    If antwort <> vbYes Then Exit Sub
-    
-    ' Schritt 1: Sync
-    Call SyncVBAVomRepository
-    
-    ' Schritt 2: Speichern
-    On Error Resume Next
-    ThisWorkbook.Save
-    If Err.Number <> 0 Then
-        MsgBox "FEHLER beim Speichern: " & Err.Description, vbCritical
-        Err.Clear
-        On Error GoTo 0
-        Exit Sub
-    End If
-    On Error GoTo 0
-    
-    ' Schritt 3: Export
-    On Error Resume Next
-    Call mod_VBA_Export.ExportiereAlleVBAKomponenten
-    Err.Clear
-    On Error GoTo 0
-    
-    ' Schritt 4: Git
-    Dim commitMsg As String
-    commitMsg = InputBox( _
-        "Git Commit-Message eingeben:" & vbCrLf & vbCrLf & _
-        "(Leer lassen f" & ChrW(252) & "r Standard-Message)", _
-        "Git Commit", _
-        "VBA-Module aktualisiert " & Format$(Now, "dd.mm.yyyy"))
-    
-    If StrPtr(commitMsg) = 0 Then
-        MsgBox "Schritte 1-3 erfolgreich." & vbCrLf & _
-               "Git wurde " & ChrW(252) & "bersprungen.", _
-               vbInformation, "Workflow"
-        Exit Sub
-    End If
-    
-    If Trim(commitMsg) = "" Then
-        commitMsg = "VBA-Module aktualisiert " & Format$(Now, "dd.mm.yyyy HH:nn")
-    End If
-    commitMsg = Replace(commitMsg, """", "'")
-    
-    Dim repoPfad As String
-    repoPfad = ThisWorkbook.Path
-    If Right(LCase(repoPfad), 6) = "\excel" Then
-        repoPfad = Left(repoPfad, Len(repoPfad) - 6)
-    End If
-    
-    Dim gitCmd As String
-    gitCmd = "cd /d """ & repoPfad & """ && " & _
-             "git add -A && " & _
-             "git commit -m """ & commitMsg & """ && " & _
-             "git push origin main"
-    
-    Dim wsh As Object
-    Set wsh = CreateObject("WScript.Shell")
-    wsh.Run "cmd.exe /c " & gitCmd & " & pause", 1, True
-    Set wsh = Nothing
-    
-    MsgBox "Komplett-Workflow abgeschlossen!" & vbCrLf & vbCrLf & _
-           "  1. Import: Repo -> VBA" & vbCrLf & _
-           "  2. Gespeichert" & vbCrLf & _
-           "  3. Export: VBA -> Repo" & vbCrLf & _
-           "  4. Git commit + push", _
-           vbInformation, "Workflow abgeschlossen"
-End Sub
+
+
 

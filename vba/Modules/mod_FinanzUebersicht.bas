@@ -649,7 +649,7 @@ Private Sub ErstelleDiagramme(ByVal ws As Worksheet)
         Dim sr1 As Series
         Set sr1 = .SeriesCollection.NewSeries
         sr1.Name = "Einnahmen"
-        sr1.Values = ws.Range("D" & R_EINN_START & ":D" & R_EINN_END)
+        sr1.values = ws.Range("D" & R_EINN_START & ":D" & R_EINN_END)
         sr1.XValues = ws.Range("C" & R_EINN_START & ":C" & R_EINN_END)
         sr1.Format.Fill.ForeColor.RGB = RGB(39, 174, 96)
         
@@ -678,7 +678,7 @@ Private Sub ErstelleDiagramme(ByVal ws As Worksheet)
         Dim sr2 As Series
         Set sr2 = .SeriesCollection.NewSeries
         sr2.Name = "Ausgaben"
-        sr2.Values = ws.Range("D" & R_AUSG_START & ":D" & R_AUSG_END)
+        sr2.values = ws.Range("D" & R_AUSG_START & ":D" & R_AUSG_END)
         sr2.XValues = ws.Range("C" & R_AUSG_START & ":C" & R_AUSG_END)
         sr2.Format.Fill.ForeColor.RGB = RGB(231, 76, 60)
         
