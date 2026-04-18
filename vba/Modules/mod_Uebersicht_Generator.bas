@@ -794,7 +794,7 @@ NextKat:
     Application.ScreenUpdating = True
     
     ' v5.4: Vorjahr-Pruefung: wenn keine Vorjahr-Daten vorhanden sind,
-    '        dem Nutzer die Moeglichkeit geben GELB-Eintraege zu bestätigen
+    '        dem Nutzer die Moeglichkeit geben GELB-Eintraege zu bestï¿½tigen
     If Not stummModus And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
         Call PruefeVorjahrGelbEintraege(wsUeb, rowIdx - 1)
     End If
