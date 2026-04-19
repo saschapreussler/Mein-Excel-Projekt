@@ -134,7 +134,7 @@ Public Sub ApplyMitgliederDropdowns()
     
     Debug.Print "[ApplyMitgliederDropdowns] Alle DropDowns gesetzt."
 
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
     Debug.Print "[ApplyMitgliederDropdowns] Fertig."
     Exit Sub
@@ -142,7 +142,7 @@ ErrorHandler:
     Debug.Print "[ApplyMitgliederDropdowns] FEHLER: " & Err.Number & " - " & Err.Description
     If Not ws Is Nothing Then
         On Error Resume Next
-        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
         On Error GoTo 0
     End If
 End Sub
@@ -428,6 +428,8 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False
     
 End Function
+
+
 
 
 

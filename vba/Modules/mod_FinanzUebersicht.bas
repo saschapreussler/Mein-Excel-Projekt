@@ -554,7 +554,7 @@ End Sub
 
 ' ===============================================================
 ' SAMMELZAHLUNG: Spalte L (Bemerkung) parsen
-' Format: "SAMMEL:" & vbLf & "Kategorie: Betrag �" & vbLf & ...
+' Format: "SAMMEL:" & vbLf & "Kategorie: Betrag ?" & vbLf & ...
 ' Wird der Gesamtbetrag (positiv/negativ) beruecksichtigt um
 ' Einnahmen/Ausgaben korrekt zuzuordnen.
 ' ===============================================================
@@ -601,7 +601,7 @@ Private Sub VerteileSammelzahlung(ByVal wsBK As Worksheet, _
         ' Erste Zeile "SAMMEL:" ueberspringen
         If UCase(eineZeile) = "SAMMEL:" Or eineZeile = "" Then GoTo NextZeile
         
-        ' Format: "Kategorie: Betrag �"
+        ' Format: "Kategorie: Betrag ?"
         Dim doppelPunkt As Long
         doppelPunkt = InStr(eineZeile, ":")
         If doppelPunkt > 1 Then
@@ -924,6 +924,8 @@ ChartErr:
     Debug.Print "[FinanzUebersicht] Diagramm-Fehler: " & Err.Description
     Err.Clear
 End Sub
+
+
 
 
 

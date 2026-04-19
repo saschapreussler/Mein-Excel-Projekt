@@ -39,6 +39,12 @@ Private Sub Workbook_Open()
     Call mod_Navigation.MigriereNavigationszeilen
     On Error GoTo 0
     
+    ' v7.2: Zahlungsuebersicht Monats-Register (Shapes) neu positionieren
+    '        Notwendig damit Shapes nach Zeilenverschiebung korrekt sitzen
+    On Error Resume Next
+    Call mod_Uebersicht_Filter.ErstelleMonatsRegister
+    On Error GoTo 0
+    
     ' v6.0: Einstellungen-Layout migrieren (einmalig)
     On Error Resume Next
     Call mod_Einstellungen.MigriereEinstellungenLayout
@@ -134,6 +140,7 @@ Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
     End If
     
 End Sub
+
 
 
 

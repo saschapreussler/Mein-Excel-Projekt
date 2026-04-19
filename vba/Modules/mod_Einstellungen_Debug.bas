@@ -231,7 +231,7 @@ Public Sub DebugSetzeDropDownsUndPruefe()
     ' DropDowns neu setzen
     Call mod_Einstellungen_DropDowns.SetzeDropDowns(ws)
     
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
     Dim lastRow As Long
     lastRow = ws.Cells(ws.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
@@ -287,6 +287,8 @@ Public Sub DebugSetzeDropDownsUndPruefe()
     MsgBox msg, vbInformation, "Debug SetzeDropDowns Ergebnis"
     
 End Sub
+
+
 
 
 

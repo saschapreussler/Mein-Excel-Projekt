@@ -144,7 +144,7 @@ Public Sub FormatSingleColumnComplete(ByRef ws As Worksheet, ByVal colIndex As L
     Call mod_Format_Protection.EntspeerreEditierbareSpalten(ws)
     
     On Error Resume Next
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
     
 End Sub
@@ -218,6 +218,8 @@ Public Sub VerdichteSpalteOhneLuecken(ByRef ws As Worksheet, ByVal checkCol As L
     End If
     
 End Sub
+
+
 
 
 

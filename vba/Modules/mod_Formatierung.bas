@@ -73,7 +73,6 @@ Public Sub StelleAutoFilterBereit()
     
     Application.ScreenUpdating = False
     Application.EnableEvents = False
-    On Error Resume Next
     
     Dim i As Long
     For i = LBound(cfg) To UBound(cfg)
@@ -84,39 +83,76 @@ Public Sub StelleAutoFilterBereit()
         
         Dim ws As Worksheet
         Set ws = Nothing
+        On Error Resume Next
         Set ws = ThisWorkbook.Worksheets(shName)
+        Err.Clear
+        On Error GoTo 0
         If ws Is Nothing Then GoTo NextSheet
         
+        On Error Resume Next
         ws.Unprotect PASSWORD:=PASSWORD
+        Err.Clear
+        On Error GoTo 0
+        
+        ' Header-Zeile validieren: muss mindestens 1 nicht-leere Zelle haben
+        Dim headerCheck As String
+        headerCheck = ""
+        On Error Resume Next
+        headerCheck = Trim(CStr(ws.Cells(hRow, 1).value))
+        On Error GoTo 0
         
         ' Letzte Spalte mit NICHT-LEEREM Header ermitteln
         Dim lastCol As Long
         lastCol = 1
         Dim c As Long
+        On Error Resume Next
         For c = 1 To ws.Cells(hRow, ws.Columns.count).End(xlToLeft).Column
             If Trim(CStr(ws.Cells(hRow, c).value)) <> "" Then lastCol = c
         Next c
+        Err.Clear
+        On Error GoTo 0
         If lastCol < 1 Then lastCol = 1
         
         ' Letzte Zeile mit Daten ermitteln
         Dim lastRow As Long
+        lastRow = hRow + 1
+        On Error Resume Next
         lastRow = ws.Cells(ws.Rows.count, 1).End(xlUp).Row
+        Err.Clear
+        On Error GoTo 0
         If lastRow <= hRow Then lastRow = hRow + 1
         
         ' Bestehenden AutoFilter entfernen
+        On Error Resume Next
         If ws.AutoFilterMode Then ws.AutoFilterMode = False
+        Err.Clear
+        On Error GoTo 0
         
         ' Header-Zellen entsperren damit Filter trotz Blattschutz nutzbar sind
         Dim hc As Long
+        On Error Resume Next
         For hc = 1 To lastCol
             ws.Cells(hRow, hc).Locked = False
         Next hc
+        Err.Clear
+        On Error GoTo 0
         
         ' AutoFilter auf Header-Bereich aktivieren (nur belegte Spalten)
+        On Error Resume Next
         ws.Range(ws.Cells(hRow, 1), ws.Cells(lastRow, lastCol)).AutoFilter
+        If Err.Number <> 0 Then
+            Debug.Print "[AutoFilter] FEHLER auf " & shName & " (Zeile " & hRow & "): " & Err.Description
+            Err.Clear
+        Else
+            Debug.Print "[AutoFilter] OK: " & shName & " (Zeile " & hRow & ", Spalten 1-" & lastCol & ")"
+        End If
+        On Error GoTo 0
         
         ' Blatt mit AllowFiltering schuetzen
+        On Error Resume Next
         ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+        Err.Clear
+        On Error GoTo 0
         
 NextSheet:
     Next i
@@ -124,13 +160,14 @@ NextSheet:
     ' Zurueck zur Startseite navigieren
     Dim wsStart As Worksheet
     Set wsStart = Nothing
+    On Error Resume Next
     Set wsStart = ThisWorkbook.Worksheets(WS_STARTMENUE())
+    On Error GoTo 0
     If Not wsStart Is Nothing Then
         wsStart.Activate
         wsStart.Range("A1").Select
     End If
     
-    On Error GoTo 0
     Application.EnableEvents = True
     Application.ScreenUpdating = True
     
@@ -146,7 +183,7 @@ Public Sub FormatiereNeuesBlatt(ByVal ws As Worksheet)
     
     ws.Unprotect PASSWORD:=PASSWORD
     ws.Cells.VerticalAlignment = xlCenter
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
     On Error GoTo 0
     
@@ -175,7 +212,7 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         On Error Resume Next
         ws.Unprotect PASSWORD:=PASSWORD
         ws.Cells.VerticalAlignment = xlCenter
-        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
         On Error GoTo ErrorHandler
     Next ws
     
@@ -196,7 +233,7 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         Call mod_Format_EntityKey.SortiereEntityKeyTabelle(wsD)
         Call mod_Format_Protection.EntspeerreEditierbareSpalten(wsD)
         
-        wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     End If
     
     On Error Resume Next
@@ -225,7 +262,7 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         wsBK.Range(wsBK.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), _
                    wsBK.Cells(lastRowBK, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
         
-        wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     End If
     
     On Error Resume Next
@@ -236,7 +273,7 @@ Public Sub Formatiere_Alle_Tabellen_Neu()
         On Error Resume Next
         wsM.Unprotect PASSWORD:=PASSWORD
         wsM.Cells.VerticalAlignment = xlCenter
-        wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
         On Error GoTo ErrorHandler
     End If
     
@@ -251,9 +288,9 @@ ErrorHandler:
     Application.EnableEvents = True
     Application.ScreenUpdating = True
     On Error Resume Next
-    If Not wsD Is Nothing Then wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    If Not wsBK Is Nothing Then wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    If Not wsD Is Nothing Then wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    If Not wsBK Is Nothing Then wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     Debug.Print "Fehler in Formatiere_Alle_Tabellen_Neu: " & Err.Description
 End Sub
 
@@ -282,7 +319,7 @@ Public Sub FormatiereBlattDaten()
     Call mod_Format_EntityKey.SortiereEntityKeyTabelle(ws)
     Call mod_Format_Protection.EntspeerreEditierbareSpalten(ws)
     
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
     Call mod_Format_Protection.BlendeDatenSpaltenAus
     
@@ -303,7 +340,7 @@ ErrorHandler:
     Application.EnableEvents = True
     Application.ScreenUpdating = True
     On Error Resume Next
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     MsgBox "Fehler bei der Formatierung: " & Err.Description, vbCritical
 End Sub
 
@@ -345,7 +382,7 @@ Public Sub FormatKategorieTableComplete(ByRef ws As Worksheet)
         Err.Clear
     End If
     
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     If Err.Number <> 0 Then
         Debug.Print "FormatKatComplete: Protect fehlgeschlagen: " & Err.Description
         Err.Clear
@@ -390,7 +427,7 @@ Public Sub FormatEntityKeyTableComplete(ByRef ws As Worksheet)
         Err.Clear
     End If
     
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     If Err.Number <> 0 Then
         Debug.Print "FormatEKComplete: Protect fehlgeschlagen: " & Err.Description
         Err.Clear
@@ -530,6 +567,8 @@ ErrorHandler:
     End If
     
 End Sub
+
+
 
 
 

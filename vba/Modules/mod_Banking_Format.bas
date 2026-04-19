@@ -146,7 +146,7 @@ Public Sub Sortiere_Bankkonto_nach_Datum()
     
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then
-        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
         Exit Sub
     End If
     
@@ -164,7 +164,7 @@ Public Sub Sortiere_Bankkonto_nach_Datum()
         .Apply
     End With
     
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
 End Sub
 
@@ -241,10 +241,12 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     On Error GoTo 0
     
     On Error Resume Next
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

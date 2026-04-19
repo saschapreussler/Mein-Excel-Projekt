@@ -24,22 +24,20 @@ Public Sub InitialisiereVereinskasseComboBox()
     
     If wsVK Is Nothing Then Exit Sub
     
-    ' Pruefen ob ComboBox bereits existiert
+    ' Blattschutz aufheben
+    On Error Resume Next
+    wsVK.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    ' Bestehende ComboBox IMMER loeschen und neu erstellen
+    ' (damit Position-Aenderungen uebernommen werden)
     Dim oleObj As OLEObject
-    Dim cbExists As Boolean
-    cbExists = False
     
     On Error Resume Next
     Set oleObj = wsVK.OLEObjects("cbo_MonatFilter_VK")
-    If Not oleObj Is Nothing Then cbExists = True
+    If Not oleObj Is Nothing Then oleObj.Delete
+    Set oleObj = Nothing
     Err.Clear
-    On Error GoTo 0
-    
-    If cbExists Then Exit Sub
-    
-    ' ComboBox erstellen
-    On Error Resume Next
-    wsVK.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
     Set oleObj = wsVK.OLEObjects.Add( _
@@ -234,6 +232,8 @@ Public Sub SetzeVereinskasseFormeln(ByVal wsVK As Worksheet)
     wsVK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
+
+
 
 
 

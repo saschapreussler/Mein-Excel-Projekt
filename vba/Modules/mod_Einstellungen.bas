@@ -69,7 +69,7 @@ Public Sub MigriereEinstellungenLayout()
     ' Parzellen-Anzahl automatisch ermitteln
     Call AktualisiereParzellen(ws)
     
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     Application.EnableEvents = True
     Application.ScreenUpdating = True
 End Sub
@@ -258,7 +258,7 @@ Public Sub SchreibeKonfigurationsBereich(Optional ByVal ws As Worksheet)
         End Select
     Next cfgRow
     
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
 End Sub
 
 
@@ -314,7 +314,7 @@ Public Sub AktualisiereParzellen(Optional ByVal ws As Worksheet)
         ws.Cells(ES_CFG_PARZELLEN_ROW, ES_CFG_VALUE_COL).value = aktParzellen
         
         On Error Resume Next
-        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
         On Error GoTo 0
     End If
 End Sub
@@ -414,7 +414,7 @@ Public Sub PruefeKontostandVorjahr()
     ws.Cells(ES_CFG_KONTOSTAND_ROW, ES_CFG_VALUE_COL).NumberFormat = "#,##0.00 " & ChrW(8364)
     
     On Error Resume Next
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
 
@@ -476,7 +476,7 @@ Public Sub PruefeAbrechnungsjahr()
     ws.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL).NumberFormat = "0"
     
     On Error Resume Next
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
 
@@ -547,7 +547,7 @@ Public Sub PruefeVereinsdaten()
     End If
     
     On Error Resume Next
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
 
@@ -657,7 +657,7 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     ' 7. Spaltenbreiten (AutoFit f?r alle Spalten)
     Call SetzeSpaltenbreiten(ws)
     
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
     Application.EnableEvents = eventsWaren
     Application.ScreenUpdating = True
@@ -770,7 +770,7 @@ Public Sub SortiereAlphabetisch(ByVal ws As Worksheet)
         .Apply
     End With
     
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
 End Sub
 
@@ -1011,6 +1011,8 @@ Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long
     Call FormatiereZahlungsterminTabelle(ws)
     
 End Sub
+
+
 
 
 

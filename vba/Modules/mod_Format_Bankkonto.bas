@@ -137,7 +137,7 @@ Public Sub FormatiereBlattBankkonto()
         ws.Cells(r, BK_COL_MONAT_PERIODE).Locked = False
     Next r
     
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
     Application.ScreenUpdating = True
     
@@ -154,7 +154,7 @@ Public Sub FormatiereBlattBankkonto()
 ErrorHandler:
     Application.ScreenUpdating = True
     On Error Resume Next
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     MsgBox "Fehler bei der Formatierung: " & Err.Description, vbCritical
 End Sub
 
@@ -172,6 +172,8 @@ Public Function NamedRangeExists(ByVal rangeName As String) As Boolean
     End If
     On Error GoTo 0
 End Function
+
+
 
 
 

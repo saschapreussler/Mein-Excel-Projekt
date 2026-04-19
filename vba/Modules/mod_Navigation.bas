@@ -284,11 +284,13 @@ Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
     ws.Rows(2).RowHeight = 4
     
     On Error Resume Next
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
     
     Debug.Print "[Navigation] Navigationszeilen eingefuegt auf: " & ws.Name
 End Sub
+
+
 
 
 

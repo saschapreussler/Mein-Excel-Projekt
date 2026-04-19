@@ -34,7 +34,7 @@ Public Sub BlendeDatenSpaltenAus()
     ws.Columns(DATA_COL_ES_HILF).Hidden = True
     
     On Error Resume Next
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
     
 End Sub
@@ -230,6 +230,8 @@ Public Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

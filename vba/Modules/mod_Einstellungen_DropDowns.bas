@@ -94,7 +94,7 @@ Public Sub SetzeDropDowns(ByVal ws As Worksheet)
         Next k
         
         wsDaten.Columns(DATA_COL_ES_HILF).Hidden = True
-        wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     End If
     
     Dim hilfLetzte As Long
@@ -162,7 +162,7 @@ Public Sub SetzeDropDowns(ByVal ws As Worksheet)
                     End If
                     On Error GoTo 0
                     wsDaten.Cells(hilfLetzte + 1, DATA_COL_ES_HILF).ClearContents
-                    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+                    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
                 ElseIf Not wsDaten Is Nothing Then
                     On Error Resume Next
                     With ws.Cells(r, ES_COL_KATEGORIE).Validation
@@ -311,6 +311,8 @@ Private Function LetzteZeile(ByVal ws As Worksheet) As Long
     If lr < ES_START_ROW Then lr = ES_START_ROW - 1
     LetzteZeile = lr
 End Function
+
+
 
 
 
