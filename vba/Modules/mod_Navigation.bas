@@ -11,8 +11,6 @@ Option Explicit
 ' ===============================================================
 
 Private Const HOME_BTN_NAME As String = "btn_Home"
-Private Const HOME_BTN_WIDTH As Double = 90
-Private Const HOME_BTN_HEIGHT As Double = 28
 
 
 ' ===============================================================
@@ -144,6 +142,15 @@ Public Sub SetzeHomeButtonsAufAllenBlaettern()
     
     For Each ws In ThisWorkbook.Worksheets
         If ws.Name <> startName Then
+            ' Navigationszeilen-Hoehe korrigieren (falls bereits migriert)
+            On Error Resume Next
+            If Application.WorksheetFunction.CountA(ws.Rows(1)) = 0 Then
+                ws.Unprotect PASSWORD:=PASSWORD
+                ws.Rows(1).RowHeight = 30
+                ws.Rows(2).RowHeight = 3
+                ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+            End If
+            On Error GoTo 0
             Call ErstelleHomeButton(ws)
         End If
     Next ws
@@ -163,16 +170,32 @@ Private Sub ErstelleHomeButton(ByVal ws As Worksheet)
     
     On Error GoTo BtnFehler
     
+    ' Groesse abhaengig vom Blatt-Typ anpassen
+    Dim btnW As Double, btnH As Double, fontSize As Double
+    Select Case ws.Name
+        Case WS_BANKKONTO
+            ' Breites Blatt - etwas groesserer Button
+            btnW = 100: btnH = 30: fontSize = 11
+        Case WS_UEBERSICHT()
+            ' Schmales Blatt mit Filter-Buttons darunter - kompakter
+            btnW = 76: btnH = 24: fontSize = 9.5
+        Case WS_FINANZ_UEBERSICHT()
+            btnW = 80: btnH = 26: fontSize = 10
+        Case Else
+            ' Standard fuer alle anderen Blaetter
+            btnW = 88: btnH = 26: fontSize = 10
+    End Select
+    
     ' Button oben links positionieren (Zelle A1/B1)
     Dim btnLeft As Double
     Dim btnTop As Double
     btnLeft = ws.Range("A1").Left + 4
-    btnTop = ws.Range("A1").Top + 4
+    btnTop = ws.Range("A1").Top + 3
     
     Dim shp As Shape
     Set shp = ws.Shapes.AddShape(msoShapeRoundedRectangle, _
                                   btnLeft, btnTop, _
-                                  HOME_BTN_WIDTH, HOME_BTN_HEIGHT)
+                                  btnW, btnH)
     
     With shp
         .Name = HOME_BTN_NAME
@@ -189,7 +212,7 @@ Private Sub ErstelleHomeButton(ByVal ws As Worksheet)
             With .TextRange
                 .text = ChrW(8962) & " Home"
                 .Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
-                .Font.Size = 10
+                .Font.Size = fontSize
                 .Font.Bold = msoTrue
                 .ParagraphFormat.Alignment = msoAlignCenter
             End With
@@ -280,8 +303,8 @@ Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
     
     ' Eingefuegte Zeilen bereinigen
     ws.Range("A1:AZ2").Clear
-    ws.Rows(1).RowHeight = 32
-    ws.Rows(2).RowHeight = 4
+    ws.Rows(1).RowHeight = 30
+    ws.Rows(2).RowHeight = 3
     
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
@@ -289,6 +312,8 @@ Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
     
     Debug.Print "[Navigation] Navigationszeilen eingefuegt auf: " & ws.Name
 End Sub
+
+
 
 
 

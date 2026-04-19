@@ -40,6 +40,8 @@ Public Sub MigriereEinstellungenLayout()
     
     ' Pruefen ob Migration schon durchgefuehrt
     If Trim(CStr(ws.Cells(ES_CFG_TITEL_ROW, ES_CFG_LABEL_COL).value)) = "Konfiguration" Then
+        ' Labels und Felder-Entsperrung bei jedem Open aktualisieren
+        Call AktualisiereKonfigLabels(ws)
         Exit Sub
     End If
     
@@ -138,7 +140,7 @@ Public Sub SchreibeKonfigurationsBereich(Optional ByVal ws As Worksheet)
     End With
     
     ' Miete
-    Call SchreibeCfgLabel(ws, ES_CFG_MIETE_ROW, "Miete (Pacht vom Verein):")
+    Call SchreibeCfgLabel(ws, ES_CFG_MIETE_ROW, "Miete / Pacht (j" & ChrW(228) & "hrlich):")
     With ws.Cells(ES_CFG_MIETE_ROW, ES_CFG_VALUE_COL)
         .NumberFormat = euroFmt
         .HorizontalAlignment = xlRight
@@ -146,7 +148,7 @@ Public Sub SchreibeKonfigurationsBereich(Optional ByVal ws As Worksheet)
     End With
     
     ' Grundsteuer
-    Call SchreibeCfgLabel(ws, ES_CFG_GRUNDSTEUER_ROW, "Grundsteuer:")
+    Call SchreibeCfgLabel(ws, ES_CFG_GRUNDSTEUER_ROW, "Grundsteuer (j" & ChrW(228) & "hrlich):")
     With ws.Cells(ES_CFG_GRUNDSTEUER_ROW, ES_CFG_VALUE_COL)
         .NumberFormat = euroFmt
         .HorizontalAlignment = xlRight
@@ -259,6 +261,50 @@ Public Sub SchreibeKonfigurationsBereich(Optional ByVal ws As Worksheet)
     Next cfgRow
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+End Sub
+
+
+' ===============================================================
+' Labels und Felder-Entsperrung aktualisieren (bei jedem Open)
+' Stellt sicher, dass Label-Texte und Locked-Status aktuell sind
+' ===============================================================
+Private Sub AktualisiereKonfigLabels(ByVal ws As Worksheet)
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    Dim euroFmt As String
+    euroFmt = "#,##0.00 " & ChrW(8364)
+    
+    ' Labels aktualisieren
+    Call SchreibeCfgLabel(ws, ES_CFG_MITGLIEDSBEITRAG_ROW, "Mitgliedsbeitrag (monatlich):")
+    Call SchreibeCfgLabel(ws, ES_CFG_MIETE_ROW, "Miete / Pacht (j" & ChrW(228) & "hrlich):")
+    Call SchreibeCfgLabel(ws, ES_CFG_GRUNDSTEUER_ROW, "Grundsteuer (j" & ChrW(228) & "hrlich):")
+    
+    ' Editierbare Felder entsperren
+    ws.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Cells(ES_CFG_KONTOSTAND_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Cells(ES_CFG_MITGLIEDSBEITRAG_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Cells(ES_CFG_MIETE_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Cells(ES_CFG_GRUNDSTEUER_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Cells(ES_CFG_PARZELLEN_ROW, ES_CFG_VALUE_COL).Locked = False
+    
+    ' Adressfelder entsperren
+    ws.Range(ws.Cells(ES_CFG_VEREINSNAME_ROW, ES_CFG_VALUE_COL), _
+             ws.Cells(ES_CFG_VEREINSNAME_ROW, ES_COL_END)).Locked = False
+    ws.Range(ws.Cells(ES_CFG_STRASSE_ROW, ES_CFG_VALUE_COL), _
+             ws.Cells(ES_CFG_STRASSE_ROW, ES_COL_END)).Locked = False
+    ws.Cells(ES_CFG_PLZ_ORT_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Range(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5), _
+             ws.Cells(ES_CFG_PLZ_ORT_ROW, ES_COL_END)).Locked = False
+    
+    ' Berechnete Felder gesperrt halten
+    ws.Cells(ES_CFG_SUMME_ROW, ES_CFG_VALUE_COL).Locked = True
+    ws.Cells(ES_CFG_PACHT_ROW, ES_CFG_VALUE_COL).Locked = True
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
 End Sub
 
 
@@ -926,6 +972,24 @@ Private Sub SperreUndEntsperre(ByVal ws As Worksheet)
     
     ws.Cells.Locked = True
     
+    ' Konfigurationsbereich (Zeilen 6-20): editierbare Felder entsperren
+    ws.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Cells(ES_CFG_KONTOSTAND_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Cells(ES_CFG_MITGLIEDSBEITRAG_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Cells(ES_CFG_MIETE_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Cells(ES_CFG_GRUNDSTEUER_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Cells(ES_CFG_PARZELLEN_ROW, ES_CFG_VALUE_COL).Locked = False
+    On Error Resume Next
+    ws.Range(ws.Cells(ES_CFG_VEREINSNAME_ROW, ES_CFG_VALUE_COL), _
+             ws.Cells(ES_CFG_VEREINSNAME_ROW, ES_COL_END)).Locked = False
+    ws.Range(ws.Cells(ES_CFG_STRASSE_ROW, ES_CFG_VALUE_COL), _
+             ws.Cells(ES_CFG_STRASSE_ROW, ES_COL_END)).Locked = False
+    ws.Cells(ES_CFG_PLZ_ORT_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Range(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5), _
+             ws.Cells(ES_CFG_PLZ_ORT_ROW, ES_COL_END)).Locked = False
+    On Error GoTo 0
+    
+    ' Zahlungstermin-Tabelle: Datenzeilen + naechste freie Zeile entsperren
     If lastRow >= ES_START_ROW Then
         ws.Range(ws.Cells(ES_START_ROW, ES_COL_START), _
                  ws.Cells(lastRow, ES_COL_END)).Locked = False
@@ -1011,6 +1075,8 @@ Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long
     Call FormatiereZahlungsterminTabelle(ws)
     
 End Sub
+
+
 
 
 
