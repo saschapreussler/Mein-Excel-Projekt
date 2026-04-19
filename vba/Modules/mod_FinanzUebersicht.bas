@@ -3,11 +3,11 @@ Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_FinanzUebersicht
-' VERSION: 1.0 - 20.04.2026
+' VERSION: 2.0 - 21.04.2026
 ' ZWECK: Erstellt und pflegt das Blatt "Finanz-Uebersicht"
-'        - KPI-Bereich (Einnahmen, Ausgaben, Saldo, Kontostand)
-'        - Einnahmen/Ausgaben-Tabellen nach Kategorie
-'        - Vereinskasse-Zusammenfassung
+'        - Kategorien dynamisch aus Bankkonto Spalte H
+'        - Sammelzahlungen: Aufschluesselung via Spalten M-Z
+'        - KPIs: Einnahmen, Ausgaben, Saldo, Kontostand, VK-Saldo
 '        - Monatsfilter via DropDown
 '        - Balkendiagramme Einnahmen / Ausgaben
 ' ===============================================================
@@ -17,37 +17,16 @@ Private Const CLR_HEADER As Long = 2763306      ' RGB(26, 35, 42)
 Private Const CLR_ACCENT As Long = 14521384     ' RGB(40, 167, 221)
 Private Const CLR_WHITE As Long = 16777215
 Private Const CLR_LIGHT_BG As Long = 15921906   ' RGB(242, 242, 242)
-Private Const CLR_EINN As Long = 2573097        ' RGB(41, 69, 39) - Einnahmen dunkelgruen
-Private Const CLR_EINN_LIGHT As Long = 14348258 ' RGB(226, 240, 217) - Einnahmen hell
-Private Const CLR_AUSG As Long = 4743219        ' RGB(163, 80, 72) - Ausgaben rot
-Private Const CLR_AUSG_LIGHT As Long = 13688301 ' RGB(237, 220, 209) - Ausgaben hell
+Private Const CLR_EINN As Long = 2573097        ' RGB(41, 69, 39)
+Private Const CLR_EINN_LIGHT As Long = 14348258 ' RGB(226, 240, 217)
+Private Const CLR_AUSG As Long = 4743219        ' RGB(163, 80, 72)
+Private Const CLR_AUSG_LIGHT As Long = 13688301 ' RGB(237, 220, 209)
 Private Const CLR_DARK_TEXT As Long = 2500134    ' RGB(38, 50, 56)
-Private Const CLR_SUM_BG As Long = 14408667     ' RGB(219, 223, 219) - Summenzeile
-Private Const CLR_VK As Long = 7168108          ' RGB(108, 117, 109) - Vereinskasse
-
-' --- Layout-Zeilen ---
-Private Const R_TITLE As Long = 1
-Private Const R_SUBTITLE As Long = 2
-Private Const R_ACCENT As Long = 3
-Private Const R_KPI_HEADER As Long = 5
-Private Const R_KPI_VALUE As Long = 6
-Private Const R_KPI_LABEL As Long = 7
-Private Const R_EINN_HEADER As Long = 9
-Private Const R_EINN_COLHEAD As Long = 10
-Private Const R_EINN_START As Long = 11
-Private Const R_EINN_END As Long = 17
-Private Const R_EINN_SUM As Long = 18
-Private Const R_AUSG_HEADER As Long = 20
-Private Const R_AUSG_COLHEAD As Long = 21
-Private Const R_AUSG_START As Long = 22
-Private Const R_AUSG_END As Long = 28
-Private Const R_AUSG_SUM As Long = 29
-Private Const R_VK_HEADER As Long = 31
-Private Const R_VK_COLHEAD As Long = 32
-Private Const R_VK_DATA As Long = 33
-Private Const R_CHART_START As Long = 35
+Private Const CLR_SUM_BG As Long = 14408667     ' RGB(219, 223, 219)
+Private Const CLR_VK As Long = 7168108          ' RGB(108, 117, 109)
 
 Private Const FILTER_DD_NAME As String = "dd_MonatFilter_FU"
+Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung"
 
 
 ' ===============================================================
@@ -66,14 +45,7 @@ Public Sub ErstelleFinanzUebersicht()
     On Error GoTo 0
     
     Call EntferneAlleObjekte(ws)
-    Call VorbereiteBlatt(ws)
-    Call SchreibeTitel(ws)
-    Call SchreibeKPIs(ws)
-    Call SchreibeEinnahmenTabelle(ws)
-    Call SchreibeAusgabenTabelle(ws)
-    Call SchreibeVereinskasse(ws)
-    Call ErstelleFilterDropDown(ws)
-    Call ErstelleDiagramme(ws)
+    Call BaueFinanzUebersicht(ws, 0)
     
     ws.Cells.Locked = True
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
@@ -138,14 +110,33 @@ End Sub
 
 
 ' ===============================================================
-' BLATT VORBEREITEN
+' KERNFUNKTION: Daten sammeln und Blatt aufbauen
+' Wird bei Erstellung und bei Filterwechsel aufgerufen
 ' ===============================================================
-Private Sub VorbereiteBlatt(ByVal ws As Worksheet)
-    ws.Cells.ClearContents
-    ws.Cells.ClearFormats
-    ws.Cells.Interior.color = CLR_WHITE
+Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Long)
     
-    ' Gitternetzlinien aus
+    ' --- 1. Daten sammeln ---
+    Dim dictEinn As Object
+    Dim dictAusg As Object
+    Set dictEinn = CreateObject("Scripting.Dictionary")
+    Set dictAusg = CreateObject("Scripting.Dictionary")
+    
+    Call SammleDaten(dictEinn, dictAusg, monatFilter)
+    
+    ' Sortierte Arrays erstellen
+    Dim arrEinnKat() As String, arrEinnVal() As Double, cntEinn As Long
+    Dim arrAusgKat() As String, arrAusgVal() As Double, cntAusg As Long
+    
+    Call DictToSortedArrays(dictEinn, arrEinnKat, arrEinnVal, cntEinn)
+    Call DictToSortedArrays(dictAusg, arrAusgKat, arrAusgVal, cntAusg)
+    
+    ' --- 2. Blatt vorbereiten ---
+    Dim maxRows As Long
+    maxRows = 40 + cntEinn + cntAusg
+    ws.Range("A1:K" & maxRows).ClearContents
+    ws.Range("A1:K" & maxRows).ClearFormats
+    ws.Range("A1:K" & maxRows).Interior.color = CLR_WHITE
+    
     Dim wnd As Window
     For Each wnd In Application.Windows
         If wnd.Caption = ThisWorkbook.Name Then
@@ -154,61 +145,19 @@ Private Sub VorbereiteBlatt(ByVal ws As Worksheet)
     Next wnd
     
     ' Spaltenbreiten
-    ws.Columns("A").ColumnWidth = 2      ' Rand
-    ws.Columns("B").ColumnWidth = 4      ' Padding
-    ws.Columns("C").ColumnWidth = 24     ' Kategorie / Label
-    ws.Columns("D").ColumnWidth = 14     ' Betrag
-    ws.Columns("E").ColumnWidth = 10     ' Anteil
-    ws.Columns("F").ColumnWidth = 4      ' Luecke
-    ws.Columns("G").ColumnWidth = 24     ' Label 2
-    ws.Columns("H").ColumnWidth = 14     ' Wert 2
-    ws.Columns("I").ColumnWidth = 10     ' Extra
-    ws.Columns("J").ColumnWidth = 4      ' Padding
-    ws.Columns("K").ColumnWidth = 2      ' Rand
+    ws.Columns("A").ColumnWidth = 2
+    ws.Columns("B").ColumnWidth = 4
+    ws.Columns("C").ColumnWidth = 30
+    ws.Columns("D").ColumnWidth = 16
+    ws.Columns("E").ColumnWidth = 10
+    ws.Columns("F").ColumnWidth = 4
+    ws.Columns("G").ColumnWidth = 16
+    ws.Columns("H").ColumnWidth = 16
+    ws.Columns("I").ColumnWidth = 10
+    ws.Columns("J").ColumnWidth = 4
+    ws.Columns("K").ColumnWidth = 2
     
-    ' Zeilenhoehen
-    ws.Rows(R_TITLE).RowHeight = 40
-    ws.Rows(R_SUBTITLE).RowHeight = 24
-    ws.Rows(R_ACCENT).RowHeight = 4
-    ws.Rows(4).RowHeight = 10
-    ws.Rows(R_KPI_HEADER).RowHeight = 18
-    ws.Rows(R_KPI_VALUE).RowHeight = 42
-    ws.Rows(R_KPI_LABEL).RowHeight = 16
-    ws.Rows(8).RowHeight = 10
-    ws.Rows(R_EINN_HEADER).RowHeight = 24
-    ws.Rows(R_EINN_COLHEAD).RowHeight = 20
-    
-    Dim r As Long
-    For r = R_EINN_START To R_EINN_END
-        ws.Rows(r).RowHeight = 20
-    Next r
-    ws.Rows(R_EINN_SUM).RowHeight = 22
-    
-    ws.Rows(19).RowHeight = 10
-    ws.Rows(R_AUSG_HEADER).RowHeight = 24
-    ws.Rows(R_AUSG_COLHEAD).RowHeight = 20
-    
-    For r = R_AUSG_START To R_AUSG_END
-        ws.Rows(r).RowHeight = 20
-    Next r
-    ws.Rows(R_AUSG_SUM).RowHeight = 22
-    
-    ws.Rows(30).RowHeight = 10
-    ws.Rows(R_VK_HEADER).RowHeight = 24
-    ws.Rows(R_VK_COLHEAD).RowHeight = 20
-    ws.Rows(R_VK_DATA).RowHeight = 22
-    ws.Rows(34).RowHeight = 10
-    
-    ' Filter-Monat Standardwert (0 = Gesamtjahr)
-    ws.Range("A2").value = 0
-    ws.Range("A2").Font.color = CLR_WHITE
-End Sub
-
-
-' ===============================================================
-' TITEL-BANNER
-' ===============================================================
-Private Sub SchreibeTitel(ByVal ws As Worksheet)
+    ' --- 3. Titel-Banner ---
     With ws.Range("A1:K1")
         .Merge
         .value = "   FINANZ-" & ChrW(220) & "BERSICHT"
@@ -219,9 +168,17 @@ Private Sub SchreibeTitel(ByVal ws As Worksheet)
         .HorizontalAlignment = xlLeft
         .VerticalAlignment = xlCenter
     End With
+    ws.Rows(1).RowHeight = 40
     
+    ' Untertitel mit Filter-Info
     Dim abrJahr As Long
     abrJahr = HoleAbrechnungsjahr()
+    Dim filterText As String
+    If monatFilter = 0 Then
+        filterText = "Gesamtjahr"
+    Else
+        filterText = Format$(DateSerial(2000, monatFilter, 1), "MMMM")
+    End If
     
     With ws.Range("B2:F2")
         .Merge
@@ -232,20 +189,20 @@ Private Sub SchreibeTitel(ByVal ws As Worksheet)
         .HorizontalAlignment = xlLeft
         .VerticalAlignment = xlCenter
     End With
-    
     ws.Range("A2").Interior.color = CLR_HEADER
     ws.Range("G2:K2").Interior.color = CLR_HEADER
+    ws.Rows(2).RowHeight = 24
     
-    With ws.Range("A3:K3")
-        .Interior.color = CLR_ACCENT
-    End With
-End Sub
-
-
-' ===============================================================
-' KPI-BEREICH: 4 Kennzahlen
-' ===============================================================
-Private Sub SchreibeKPIs(ByVal ws As Worksheet)
+    ' Akzentlinie
+    ws.Range("A3:K3").Interior.color = CLR_ACCENT
+    ws.Rows(3).RowHeight = 4
+    
+    ' Filterwert speichern (versteckt)
+    ws.Range("A2").value = monatFilter
+    ws.Range("A2").Font.color = CLR_HEADER
+    
+    ' --- 4. KPIs (Zeile 5-7) ---
+    ws.Rows(4).RowHeight = 10
     ws.Range("A4:K8").Interior.color = CLR_LIGHT_BG
     
     With ws.Range("B5:I5")
@@ -257,31 +214,449 @@ Private Sub SchreibeKPIs(ByVal ws As Worksheet)
         .Interior.color = CLR_LIGHT_BG
         .HorizontalAlignment = xlCenter
     End With
+    ws.Rows(5).RowHeight = 18
     
-    ' KPI 1: Gesamteinnahmen (Summe Einnahmen-Tabelle)
-    Call SchreibeKPIZelle(ws, "C", "=C" & R_EINN_SUM, "Einnahmen", RGB(39, 174, 96))
+    ' Summen berechnen
+    Dim sumEinn As Double, sumAusg As Double
+    Dim k As Variant
+    For Each k In dictEinn.keys
+        sumEinn = sumEinn + dictEinn(k)
+    Next k
+    For Each k In dictAusg.keys
+        sumAusg = sumAusg + dictAusg(k)
+    Next k
     
-    ' KPI 2: Gesamtausgaben (ABS weil Ausgaben negativ)
-    Call SchreibeKPIZelle(ws, "E", "=ABS(C" & R_AUSG_SUM & ")", "Ausgaben", RGB(231, 76, 60))
+    ' Kontostand berechnen (Vorjahr + alle Buchungen)
+    Dim kontostand As Double
+    kontostand = HoleKontostandVorjahr()
+    Dim wsBK As Worksheet
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    On Error GoTo 0
+    If Not wsBK Is Nothing Then
+        Dim lr As Long
+        lr = wsBK.Cells(wsBK.Rows.count, BK_COL_BETRAG).End(xlUp).Row
+        If lr >= BK_START_ROW Then
+            kontostand = kontostand + Application.WorksheetFunction.Sum( _
+                wsBK.Range(wsBK.Cells(BK_START_ROW, BK_COL_BETRAG), wsBK.Cells(lr, BK_COL_BETRAG)))
+        End If
+    End If
     
-    ' KPI 3: Saldo (Einnahmen + Ausgaben, da Ausgaben negativ)
-    Call SchreibeKPIZelle(ws, "G", "=C" & R_EINN_SUM & "+C" & R_AUSG_SUM, "Saldo", RGB(41, 128, 185))
+    ' VK-Saldo berechnen
+    Dim vkSaldo As Double
+    Dim wsVK As Worksheet
+    On Error Resume Next
+    Set wsVK = ThisWorkbook.Worksheets(WS_VEREINSKASSE)
+    On Error GoTo 0
+    Dim lrVK As Long
+    lrVK = 0
+    If Not wsVK Is Nothing Then
+        lrVK = wsVK.Cells(wsVK.Rows.count, VK_COL_BETRAG).End(xlUp).Row
+        If lrVK >= VK_START_ROW Then
+            vkSaldo = Application.WorksheetFunction.Sum( _
+                wsVK.Range(wsVK.Cells(VK_START_ROW, VK_COL_BETRAG), wsVK.Cells(lrVK, VK_COL_BETRAG)))
+        End If
+    End If
     
-    ' KPI 4: Kontostand aktuell (Vorjahr + alle Buchungen)
-    Dim fKonto As String
-    fKonto = "=Einstellungen!C" & ES_CFG_KONTOSTAND_ROW & _
-             "+SUM(Bankkonto!B" & BK_START_ROW & ":B5000)"
-    Call SchreibeKPIZelle(ws, "I", fKonto, "Kontostand", RGB(142, 68, 173))
+    ' KPI-Karten schreiben
+    ws.Rows(6).RowHeight = 42
+    ws.Rows(7).RowHeight = 16
+    
+    Call SchreibeKPI(ws, "C", sumEinn, "Einnahmen", RGB(39, 174, 96))
+    Call SchreibeKPI(ws, "E", sumAusg, "Ausgaben", RGB(231, 76, 60))
+    Call SchreibeKPI(ws, "G", sumEinn - sumAusg, "Saldo", RGB(41, 128, 185))
+    Call SchreibeKPI(ws, "I", kontostand, "Kontostand", RGB(142, 68, 173))
+    
+    ws.Rows(8).RowHeight = 10
+    
+    ' VK-Saldo als kleine Zusatzinfo
+    With ws.Range("G8:I8")
+        .Merge
+        .value = "Vereinskasse: " & Format$(vkSaldo, "#,##0.00") & " " & ChrW(8364)
+        .Font.Size = 8
+        .Font.color = RGB(120, 120, 120)
+        .Interior.color = CLR_LIGHT_BG
+        .HorizontalAlignment = xlRight
+    End With
+    
+    ' --- 5. Einnahmen-Tabelle ---
+    Dim curRow As Long
+    curRow = 9
+    ws.Rows(curRow).RowHeight = 10
+    curRow = curRow + 1
+    
+    With ws.Range("B" & curRow & ":I" & curRow)
+        .Merge
+        .value = ChrW(9650) & "  EINNAHMEN"
+        .Font.Size = 11
+        .Font.Bold = True
+        .Font.color = CLR_WHITE
+        .Interior.color = CLR_EINN
+        .HorizontalAlignment = xlLeft
+        .IndentLevel = 1
+    End With
+    ws.Rows(curRow).RowHeight = 24
+    curRow = curRow + 1
+    
+    Call SchreibeTabellenkopf(ws, curRow, CLR_EINN_LIGHT)
+    curRow = curRow + 1
+    
+    Dim einnStartRow As Long
+    einnStartRow = curRow
+    
+    If cntEinn > 0 Then
+        Dim ie As Long
+        For ie = 0 To cntEinn - 1
+            ws.Range("C" & curRow).value = arrEinnKat(ie)
+            ws.Range("D" & curRow).value = arrEinnVal(ie)
+            ws.Range("D" & curRow).NumberFormat = "#,##0.00"
+            ws.Range("D" & curRow).HorizontalAlignment = xlRight
+            If sumEinn > 0 Then
+                ws.Range("E" & curRow).value = arrEinnVal(ie) / sumEinn
+            End If
+            ws.Range("E" & curRow).NumberFormat = "0.0%"
+            ws.Range("E" & curRow).HorizontalAlignment = xlRight
+            ws.Range("C" & curRow & ":E" & curRow).Font.Size = 9
+            If ie Mod 2 = 1 Then
+                ws.Range("B" & curRow & ":I" & curRow).Interior.color = CLR_LIGHT_BG
+            End If
+            ws.Rows(curRow).RowHeight = 20
+            curRow = curRow + 1
+        Next ie
+    Else
+        ws.Range("C" & curRow).value = "(keine Einnahmen)"
+        ws.Range("C" & curRow).Font.Size = 9
+        ws.Range("C" & curRow).Font.Italic = True
+        ws.Rows(curRow).RowHeight = 20
+        curRow = curRow + 1
+    End If
+    
+    Dim einnEndRow As Long
+    einnEndRow = curRow - 1
+    
+    ' Summenzeile Einnahmen
+    ws.Range("C" & curRow).value = "SUMME"
+    ws.Range("C" & curRow).Font.Bold = True
+    ws.Range("C" & curRow).Font.Size = 10
+    ws.Range("D" & curRow).value = sumEinn
+    ws.Range("D" & curRow).NumberFormat = "#,##0.00"
+    ws.Range("D" & curRow).Font.Bold = True
+    ws.Range("D" & curRow).Font.Size = 10
+    ws.Range("D" & curRow).HorizontalAlignment = xlRight
+    ws.Range("B" & curRow & ":I" & curRow).Interior.color = CLR_SUM_BG
+    ws.Range("B" & curRow & ":I" & curRow).Borders(xlEdgeTop).Weight = xlThin
+    ws.Range("B" & curRow & ":I" & curRow).Borders(xlEdgeBottom).Weight = xlMedium
+    ws.Range("B" & curRow & ":I" & curRow).Borders(xlEdgeBottom).color = CLR_EINN
+    ws.Rows(curRow).RowHeight = 22
+    curRow = curRow + 1
+    
+    ' --- 6. Ausgaben-Tabelle ---
+    ws.Rows(curRow).RowHeight = 10
+    curRow = curRow + 1
+    
+    With ws.Range("B" & curRow & ":I" & curRow)
+        .Merge
+        .value = ChrW(9660) & "  AUSGABEN"
+        .Font.Size = 11
+        .Font.Bold = True
+        .Font.color = CLR_WHITE
+        .Interior.color = CLR_AUSG
+        .HorizontalAlignment = xlLeft
+        .IndentLevel = 1
+    End With
+    ws.Rows(curRow).RowHeight = 24
+    curRow = curRow + 1
+    
+    Call SchreibeTabellenkopf(ws, curRow, CLR_AUSG_LIGHT)
+    curRow = curRow + 1
+    
+    Dim ausgStartRow As Long
+    ausgStartRow = curRow
+    
+    If cntAusg > 0 Then
+        Dim ia As Long
+        For ia = 0 To cntAusg - 1
+            ws.Range("C" & curRow).value = arrAusgKat(ia)
+            ws.Range("D" & curRow).value = arrAusgVal(ia)
+            ws.Range("D" & curRow).NumberFormat = "#,##0.00"
+            ws.Range("D" & curRow).HorizontalAlignment = xlRight
+            If sumAusg > 0 Then
+                ws.Range("E" & curRow).value = arrAusgVal(ia) / sumAusg
+            End If
+            ws.Range("E" & curRow).NumberFormat = "0.0%"
+            ws.Range("E" & curRow).HorizontalAlignment = xlRight
+            ws.Range("C" & curRow & ":E" & curRow).Font.Size = 9
+            If ia Mod 2 = 1 Then
+                ws.Range("B" & curRow & ":I" & curRow).Interior.color = CLR_LIGHT_BG
+            End If
+            ws.Rows(curRow).RowHeight = 20
+            curRow = curRow + 1
+        Next ia
+    Else
+        ws.Range("C" & curRow).value = "(keine Ausgaben)"
+        ws.Range("C" & curRow).Font.Size = 9
+        ws.Range("C" & curRow).Font.Italic = True
+        ws.Rows(curRow).RowHeight = 20
+        curRow = curRow + 1
+    End If
+    
+    Dim ausgEndRow As Long
+    ausgEndRow = curRow - 1
+    
+    ' Summenzeile Ausgaben
+    ws.Range("C" & curRow).value = "SUMME"
+    ws.Range("C" & curRow).Font.Bold = True
+    ws.Range("C" & curRow).Font.Size = 10
+    ws.Range("D" & curRow).value = sumAusg
+    ws.Range("D" & curRow).NumberFormat = "#,##0.00"
+    ws.Range("D" & curRow).Font.Bold = True
+    ws.Range("D" & curRow).Font.Size = 10
+    ws.Range("D" & curRow).HorizontalAlignment = xlRight
+    ws.Range("B" & curRow & ":I" & curRow).Interior.color = CLR_SUM_BG
+    ws.Range("B" & curRow & ":I" & curRow).Borders(xlEdgeTop).Weight = xlThin
+    ws.Range("B" & curRow & ":I" & curRow).Borders(xlEdgeBottom).Weight = xlMedium
+    ws.Range("B" & curRow & ":I" & curRow).Borders(xlEdgeBottom).color = CLR_AUSG
+    ws.Rows(curRow).RowHeight = 22
+    curRow = curRow + 1
+    
+    ' --- 7. Vereinskasse-Bereich ---
+    ws.Rows(curRow).RowHeight = 10
+    curRow = curRow + 1
+    
+    With ws.Range("B" & curRow & ":I" & curRow)
+        .Merge
+        .value = ChrW(9830) & "  VEREINSKASSE"
+        .Font.Size = 11
+        .Font.Bold = True
+        .Font.color = CLR_WHITE
+        .Interior.color = CLR_VK
+        .HorizontalAlignment = xlLeft
+        .IndentLevel = 1
+    End With
+    ws.Rows(curRow).RowHeight = 24
+    curRow = curRow + 1
+    
+    ' VK-Einnahmen, -Ausgaben, -Saldo
+    Dim vkEinn As Double, vkAusg As Double
+    If Not wsVK Is Nothing And lrVK >= VK_START_ROW Then
+        Dim rv As Long
+        For rv = VK_START_ROW To lrVK
+            Dim vkBetrag As Double
+            vkBetrag = 0
+            If IsNumeric(wsVK.Cells(rv, VK_COL_BETRAG).value) Then
+                vkBetrag = CDbl(wsVK.Cells(rv, VK_COL_BETRAG).value)
+            End If
+            
+            If monatFilter > 0 And IsDate(wsVK.Cells(rv, VK_COL_DATUM).value) Then
+                If Month(CDate(wsVK.Cells(rv, VK_COL_DATUM).value)) <> monatFilter Then GoTo NextVK
+            End If
+            
+            If vkBetrag > 0 Then
+                vkEinn = vkEinn + vkBetrag
+            ElseIf vkBetrag < 0 Then
+                vkAusg = vkAusg + Abs(vkBetrag)
+            End If
+NextVK:
+        Next rv
+    End If
+    
+    ws.Range("C" & curRow).value = "Einnahmen"
+    ws.Range("D" & curRow).value = "Ausgaben"
+    ws.Range("E" & curRow).value = "Saldo"
+    ws.Range("C" & curRow & ":E" & curRow).Font.Bold = True
+    ws.Range("C" & curRow & ":E" & curRow).Font.Size = 9
+    ws.Range("D" & curRow & ":E" & curRow).HorizontalAlignment = xlRight
+    ws.Range("B" & curRow & ":I" & curRow).Interior.color = RGB(230, 235, 230)
+    ws.Rows(curRow).RowHeight = 20
+    curRow = curRow + 1
+    
+    ws.Range("C" & curRow).value = vkEinn
+    ws.Range("D" & curRow).value = vkAusg
+    ws.Range("E" & curRow).value = vkEinn - vkAusg
+    ws.Range("C" & curRow & ":E" & curRow).NumberFormat = "#,##0.00"
+    ws.Range("C" & curRow & ":E" & curRow).Font.Size = 10
+    ws.Range("C" & curRow & ":E" & curRow).Font.Bold = True
+    ws.Range("D" & curRow & ":E" & curRow).HorizontalAlignment = xlRight
+    ws.Range("B" & curRow & ":I" & curRow).Interior.color = CLR_LIGHT_BG
+    ws.Rows(curRow).RowHeight = 22
+    curRow = curRow + 1
+    
+    ' --- 8. Filter-DropDown erstellen ---
+    Call ErstelleFilterDropDown(ws, monatFilter)
+    
+    ' --- 9. Diagramme ---
+    ws.Rows(curRow).RowHeight = 10
+    curRow = curRow + 1
+    
+    Call ErstelleDiagramme(ws, curRow, _
+        einnStartRow, einnEndRow, cntEinn, _
+        ausgStartRow, ausgEndRow, cntAusg, _
+        filterText)
 End Sub
 
 
-Private Sub SchreibeKPIZelle(ByVal ws As Worksheet, _
-                              ByVal col As String, _
-                              ByVal formel As String, _
-                              ByVal label As String, _
-                              ByVal akzentFarbe As Long)
-    With ws.Range(col & R_KPI_VALUE)
-        .Formula = formel
+' ===============================================================
+' DATEN SAMMELN: Bankkonto iterieren, nach Kategorie gruppieren
+' ===============================================================
+Private Sub SammleDaten(ByRef dictEinn As Object, _
+                        ByRef dictAusg As Object, _
+                        ByVal monatFilter As Long)
+    
+    Dim wsBK As Worksheet
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    On Error GoTo 0
+    If wsBK Is Nothing Then Exit Sub
+    
+    Dim lastRow As Long
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Sub
+    
+    ' Header-Namen fuer Spalten M-Z lesen (fuer Sammelzahlungen)
+    Dim headersMS(13 To 26) As String
+    Dim hc As Long
+    For hc = BK_COL_EINNAHMEN_START To BK_COL_AUSGABEN_ENDE
+        headersMS(hc) = Trim(CStr(wsBK.Cells(BK_HEADER_ROW, hc).value))
+    Next hc
+    
+    Dim r As Long
+    For r = BK_START_ROW To lastRow
+        ' Monatsfilter pruefen
+        If monatFilter > 0 Then
+            If IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then
+                If Month(CDate(wsBK.Cells(r, BK_COL_DATUM).value)) <> monatFilter Then GoTo nextRow
+            Else
+                GoTo nextRow
+            End If
+        End If
+        
+        Dim kategorie As String
+        kategorie = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
+        If kategorie = "" Then GoTo nextRow
+        
+        Dim betrag As Double
+        betrag = 0
+        If IsNumeric(wsBK.Cells(r, BK_COL_BETRAG).value) Then
+            betrag = CDbl(wsBK.Cells(r, BK_COL_BETRAG).value)
+        End If
+        If betrag = 0 Then GoTo nextRow
+        
+        ' Sammelzahlung? -> Einzelbetraege aus Spalten M-Z lesen
+        If InStr(1, LCase(kategorie), LCase(KAT_SAMMELZAHLUNG)) > 0 Then
+            Call VerteileSammelzahlung(wsBK, r, headersMS, dictEinn, dictAusg)
+        Else
+            ' Normaler Eintrag: Betrag der Kategorie zuordnen
+            If betrag > 0 Then
+                If Not dictEinn.Exists(kategorie) Then dictEinn.Add kategorie, 0
+                dictEinn(kategorie) = dictEinn(kategorie) + betrag
+            Else
+                If Not dictAusg.Exists(kategorie) Then dictAusg.Add kategorie, 0
+                dictAusg(kategorie) = dictAusg(kategorie) + Abs(betrag)
+            End If
+        End If
+nextRow:
+    Next r
+End Sub
+
+
+' ===============================================================
+' SAMMELZAHLUNG: Betraege aus Spalten M-Z einzeln zuordnen
+' ===============================================================
+Private Sub VerteileSammelzahlung(ByVal wsBK As Worksheet, _
+                                  ByVal zeile As Long, _
+                                  ByRef headers() As String, _
+                                  ByRef dictEinn As Object, _
+                                  ByRef dictAusg As Object)
+    Dim col As Long
+    Dim hatTeilbetraege As Boolean
+    hatTeilbetraege = False
+    
+    For col = BK_COL_EINNAHMEN_START To BK_COL_AUSGABEN_ENDE
+        Dim teilBetrag As Double
+        teilBetrag = 0
+        If IsNumeric(wsBK.Cells(zeile, col).value) Then
+            teilBetrag = CDbl(wsBK.Cells(zeile, col).value)
+        End If
+        
+        If teilBetrag <> 0 Then
+            hatTeilbetraege = True
+            Dim teilKat As String
+            teilKat = headers(col)
+            If teilKat = "" Then teilKat = "Sonstige"
+            
+            If teilBetrag > 0 Then
+                If Not dictEinn.Exists(teilKat) Then dictEinn.Add teilKat, 0
+                dictEinn(teilKat) = dictEinn(teilKat) + teilBetrag
+            Else
+                If Not dictAusg.Exists(teilKat) Then dictAusg.Add teilKat, 0
+                dictAusg(teilKat) = dictAusg(teilKat) + Abs(teilBetrag)
+            End If
+        End If
+    Next col
+    
+    ' Falls keine Teilbetraege in M-Z: Gesamtbetrag als "Sammelzahlung" buchen
+    If Not hatTeilbetraege Then
+        Dim gesamtBetrag As Double
+        If IsNumeric(wsBK.Cells(zeile, BK_COL_BETRAG).value) Then
+            gesamtBetrag = CDbl(wsBK.Cells(zeile, BK_COL_BETRAG).value)
+        End If
+        If gesamtBetrag > 0 Then
+            If Not dictEinn.Exists(KAT_SAMMELZAHLUNG) Then dictEinn.Add KAT_SAMMELZAHLUNG, 0
+            dictEinn(KAT_SAMMELZAHLUNG) = dictEinn(KAT_SAMMELZAHLUNG) + gesamtBetrag
+        ElseIf gesamtBetrag < 0 Then
+            If Not dictAusg.Exists(KAT_SAMMELZAHLUNG) Then dictAusg.Add KAT_SAMMELZAHLUNG, 0
+            dictAusg(KAT_SAMMELZAHLUNG) = dictAusg(KAT_SAMMELZAHLUNG) + Abs(gesamtBetrag)
+        End If
+    End If
+End Sub
+
+
+' ===============================================================
+' DICTIONARY -> SORTIERTE ARRAYS (absteigend nach Betrag)
+' ===============================================================
+Private Sub DictToSortedArrays(ByVal dict As Object, _
+                                ByRef arrKat() As String, _
+                                ByRef arrVal() As Double, _
+                                ByRef cnt As Long)
+    cnt = dict.count
+    If cnt = 0 Then Exit Sub
+    
+    ReDim arrKat(0 To cnt - 1)
+    ReDim arrVal(0 To cnt - 1)
+    
+    Dim idx As Long
+    idx = 0
+    Dim k As Variant
+    For Each k In dict.keys
+        arrKat(idx) = CStr(k)
+        arrVal(idx) = dict(k)
+        idx = idx + 1
+    Next k
+    
+    ' Bubble-Sort absteigend nach Betrag
+    Dim i As Long, j As Long
+    Dim tmpK As String, tmpV As Double
+    For i = 0 To cnt - 2
+        For j = i + 1 To cnt - 1
+            If arrVal(j) > arrVal(i) Then
+                tmpK = arrKat(i): arrKat(i) = arrKat(j): arrKat(j) = tmpK
+                tmpV = arrVal(i): arrVal(i) = arrVal(j): arrVal(j) = tmpV
+            End If
+        Next j
+    Next i
+End Sub
+
+
+' ===============================================================
+' KPI-KARTE SCHREIBEN
+' ===============================================================
+Private Sub SchreibeKPI(ByVal ws As Worksheet, _
+                         ByVal col As String, _
+                         ByVal wert As Double, _
+                         ByVal label As String, _
+                         ByVal akzentFarbe As Long)
+    With ws.Range(col & "6")
+        .value = wert
         .NumberFormat = "#,##0.00 " & ChrW(8364)
         .Font.Size = 14
         .Font.Bold = True
@@ -293,7 +668,7 @@ Private Sub SchreibeKPIZelle(ByVal ws As Worksheet, _
         .Borders(xlEdgeBottom).Weight = xlMedium
     End With
     
-    With ws.Range(col & R_KPI_LABEL)
+    With ws.Range(col & "7")
         .value = label
         .Font.Size = 8
         .Font.Bold = True
@@ -305,67 +680,7 @@ End Sub
 
 
 ' ===============================================================
-' EINNAHMEN-TABELLE (Bankkonto Spalten M-S)
-' ===============================================================
-Private Sub SchreibeEinnahmenTabelle(ByVal ws As Worksheet)
-    ' Section Header
-    With ws.Range("B" & R_EINN_HEADER & ":I" & R_EINN_HEADER)
-        .Merge
-        .value = ChrW(9650) & "  EINNAHMEN"
-        .Font.Size = 11
-        .Font.Bold = True
-        .Font.color = CLR_WHITE
-        .Interior.color = CLR_EINN
-        .HorizontalAlignment = xlLeft
-        .IndentLevel = 1
-    End With
-    
-    ' Spaltenkoepfe
-    Call SchreibeTabellenkopf(ws, R_EINN_COLHEAD, CLR_EINN_LIGHT)
-    
-    ' 7 Einnahmen-Kategorien (Spalte M=13 bis S=19)
-    Dim i As Long
-    For i = 0 To 6
-        Call SchreibeKategorieZeile(ws, R_EINN_START + i, _
-            BK_COL_EINNAHMEN_START + i, R_EINN_SUM, (i Mod 2 = 1), False)
-    Next i
-    
-    ' Summenzeile
-    Call SchreibeSummenZeile(ws, R_EINN_SUM, R_EINN_START, R_EINN_END, CLR_EINN)
-End Sub
-
-
-' ===============================================================
-' AUSGABEN-TABELLE (Bankkonto Spalten T-Z)
-' ===============================================================
-Private Sub SchreibeAusgabenTabelle(ByVal ws As Worksheet)
-    With ws.Range("B" & R_AUSG_HEADER & ":I" & R_AUSG_HEADER)
-        .Merge
-        .value = ChrW(9660) & "  AUSGABEN"
-        .Font.Size = 11
-        .Font.Bold = True
-        .Font.color = CLR_WHITE
-        .Interior.color = CLR_AUSG
-        .HorizontalAlignment = xlLeft
-        .IndentLevel = 1
-    End With
-    
-    Call SchreibeTabellenkopf(ws, R_AUSG_COLHEAD, CLR_AUSG_LIGHT)
-    
-    ' 7 Ausgaben-Kategorien (Spalte T=20 bis Z=26)
-    ' Ausgaben-Betraege sind negativ -> ABS fuer Anzeige
-    Dim i As Long
-    For i = 0 To 6
-        Call SchreibeKategorieZeile(ws, R_AUSG_START + i, _
-            BK_COL_AUSGABEN_START + i, R_AUSG_SUM, (i Mod 2 = 1), True)
-    Next i
-    
-    Call SchreibeSummenZeile(ws, R_AUSG_SUM, R_AUSG_START, R_AUSG_END, CLR_AUSG)
-End Sub
-
-
-' ===============================================================
-' TABELLEN-HILFSFUNKTIONEN
+' TABELLENKOPF SCHREIBEN
 ' ===============================================================
 Private Sub SchreibeTabellenkopf(ByVal ws As Worksheet, _
                                   ByVal zeile As Long, _
@@ -393,165 +708,14 @@ Private Sub SchreibeTabellenkopf(ByVal ws As Worksheet, _
     
     ws.Range("B" & zeile).Interior.color = bgColor
     ws.Range("F" & zeile & ":I" & zeile).Interior.color = bgColor
-End Sub
-
-
-Private Sub SchreibeKategorieZeile(ByVal ws As Worksheet, _
-                                    ByVal zeile As Long, _
-                                    ByVal bkSpalte As Long, _
-                                    ByVal sumZeile As Long, _
-                                    ByVal alteFarbe As Boolean, _
-                                    ByVal istAusgabe As Boolean)
-    ' Spaltenbuchstabe berechnen
-    Dim bkColLetter As String
-    bkColLetter = Split(Cells(1, bkSpalte).Address(True, False), "$")(0)
-    
-    ' Kategoriename aus Bankkonto-Header
-    With ws.Range("C" & zeile)
-        .Formula = "=Bankkonto!" & bkColLetter & BK_HEADER_ROW
-        .Font.Size = 9
-        .Font.color = CLR_DARK_TEXT
-    End With
-    
-    ' Betrag: Gefiltert nach Monat (A2 = 0 fuer Gesamtjahr)
-    Dim fBetrag As String
-    If Not istAusgabe Then
-        ' Einnahmen: Werte sind positiv
-        fBetrag = "=IF($A$2=0," & _
-                  "SUM(Bankkonto!" & bkColLetter & BK_START_ROW & ":" & bkColLetter & "5000)," & _
-                  "SUMPRODUCT((MONTH(Bankkonto!$A$" & BK_START_ROW & ":$A$5000)=$A$2)*" & _
-                  "(Bankkonto!" & bkColLetter & BK_START_ROW & ":" & bkColLetter & "5000)))"
-    Else
-        ' Ausgaben: Werte sind negativ -> ABS fuer positive Anzeige
-        fBetrag = "=ABS(IF($A$2=0," & _
-                  "SUM(Bankkonto!" & bkColLetter & BK_START_ROW & ":" & bkColLetter & "5000)," & _
-                  "SUMPRODUCT((MONTH(Bankkonto!$A$" & BK_START_ROW & ":$A$5000)=$A$2)*" & _
-                  "(Bankkonto!" & bkColLetter & BK_START_ROW & ":" & bkColLetter & "5000))))"
-    End If
-    
-    With ws.Range("D" & zeile)
-        .Formula = fBetrag
-        .NumberFormat = "#,##0.00"
-        .Font.Size = 9
-        .HorizontalAlignment = xlRight
-    End With
-    
-    ' Anteil an Summe
-    With ws.Range("E" & zeile)
-        .Formula = "=IF(D" & sumZeile & "=0,0,D" & zeile & "/D" & sumZeile & ")"
-        .NumberFormat = "0.0%"
-        .Font.Size = 9
-        .HorizontalAlignment = xlRight
-    End With
-    
-    ' Alternating row color
-    If alteFarbe Then
-        ws.Range("B" & zeile & ":I" & zeile).Interior.color = CLR_LIGHT_BG
-    End If
-End Sub
-
-
-Private Sub SchreibeSummenZeile(ByVal ws As Worksheet, _
-                                 ByVal zeile As Long, _
-                                 ByVal vonZeile As Long, _
-                                 ByVal bisZeile As Long, _
-                                 ByVal farbe As Long)
-    With ws.Range("C" & zeile)
-        .value = "SUMME"
-        .Font.Bold = True
-        .Font.Size = 10
-    End With
-    
-    With ws.Range("D" & zeile)
-        .Formula = "=SUM(D" & vonZeile & ":D" & bisZeile & ")"
-        .NumberFormat = "#,##0.00"
-        .Font.Bold = True
-        .Font.Size = 10
-        .HorizontalAlignment = xlRight
-    End With
-    
-    ws.Range("B" & zeile & ":I" & zeile).Interior.color = CLR_SUM_BG
-    ws.Range("B" & zeile & ":I" & zeile).Borders(xlEdgeTop).Weight = xlThin
-    ws.Range("B" & zeile & ":I" & zeile).Borders(xlEdgeBottom).Weight = xlMedium
-    ws.Range("B" & zeile & ":I" & zeile).Borders(xlEdgeBottom).color = farbe
+    ws.Rows(zeile).RowHeight = 20
 End Sub
 
 
 ' ===============================================================
-' VEREINSKASSE-BEREICH
+' FILTER-DROPDOWN
 ' ===============================================================
-Private Sub SchreibeVereinskasse(ByVal ws As Worksheet)
-    With ws.Range("B" & R_VK_HEADER & ":I" & R_VK_HEADER)
-        .Merge
-        .value = ChrW(9830) & "  VEREINSKASSE"
-        .Font.Size = 11
-        .Font.Bold = True
-        .Font.color = CLR_WHITE
-        .Interior.color = CLR_VK
-        .HorizontalAlignment = xlLeft
-        .IndentLevel = 1
-    End With
-    
-    ' Spaltenkoepfe
-    ws.Range("C" & R_VK_COLHEAD).value = "Einnahmen"
-    ws.Range("D" & R_VK_COLHEAD).value = "Ausgaben"
-    ws.Range("E" & R_VK_COLHEAD).value = "Saldo"
-    With ws.Range("C" & R_VK_COLHEAD & ":E" & R_VK_COLHEAD)
-        .Font.Bold = True
-        .Font.Size = 9
-    End With
-    ws.Range("D" & R_VK_COLHEAD & ":E" & R_VK_COLHEAD).HorizontalAlignment = xlRight
-    ws.Range("B" & R_VK_COLHEAD & ":I" & R_VK_COLHEAD).Interior.color = RGB(230, 235, 230)
-    
-    Dim vs As Long
-    vs = VK_START_ROW
-    
-    ' Einnahmen (positive Betraege)
-    Dim fEinn As String
-    fEinn = "=IF($A$2=0," & _
-            "SUMPRODUCT((Vereinskasse!B" & vs & ":B5000>0)*Vereinskasse!B" & vs & ":B5000)," & _
-            "SUMPRODUCT((MONTH(Vereinskasse!A" & vs & ":A5000)=$A$2)*" & _
-            "(Vereinskasse!B" & vs & ":B5000>0)*Vereinskasse!B" & vs & ":B5000))"
-    
-    With ws.Range("C" & R_VK_DATA)
-        .Formula = fEinn
-        .NumberFormat = "#,##0.00"
-        .Font.Size = 10
-        .Font.Bold = True
-    End With
-    
-    ' Ausgaben (negative Betraege -> ABS)
-    Dim fAusg As String
-    fAusg = "=ABS(IF($A$2=0," & _
-            "SUMPRODUCT((Vereinskasse!B" & vs & ":B5000<0)*Vereinskasse!B" & vs & ":B5000)," & _
-            "SUMPRODUCT((MONTH(Vereinskasse!A" & vs & ":A5000)=$A$2)*" & _
-            "(Vereinskasse!B" & vs & ":B5000<0)*Vereinskasse!B" & vs & ":B5000)))"
-    
-    With ws.Range("D" & R_VK_DATA)
-        .Formula = fAusg
-        .NumberFormat = "#,##0.00"
-        .Font.Size = 10
-        .Font.Bold = True
-        .HorizontalAlignment = xlRight
-    End With
-    
-    ' Saldo
-    With ws.Range("E" & R_VK_DATA)
-        .Formula = "=C" & R_VK_DATA & "-D" & R_VK_DATA
-        .NumberFormat = "#,##0.00"
-        .Font.Size = 10
-        .Font.Bold = True
-        .HorizontalAlignment = xlRight
-    End With
-    
-    ws.Range("B" & R_VK_DATA & ":I" & R_VK_DATA).Interior.color = CLR_LIGHT_BG
-End Sub
-
-
-' ===============================================================
-' FILTER-DROPDOWN (Forms DropDown mit OnAction)
-' ===============================================================
-Private Sub ErstelleFilterDropDown(ByVal ws As Worksheet)
+Private Sub ErstelleFilterDropDown(ByVal ws As Worksheet, ByVal aktuellerMonat As Long)
     Dim ddLeft As Double
     Dim ddTop As Double
     ddLeft = ws.Range("G2").Left
@@ -577,7 +741,7 @@ Private Sub ErstelleFilterDropDown(ByVal ws As Worksheet)
         .AddItem "Oktober"
         .AddItem "November"
         .AddItem "Dezember"
-        .value = 1  ' Index 1 = Gesamtjahr
+        .value = aktuellerMonat + 1
         .OnAction = "'mod_FinanzUebersicht.MonatFilterChanged'"
     End With
     
@@ -590,7 +754,7 @@ End Sub
 
 
 ' ===============================================================
-' FILTER-HANDLER: Wird bei Auswahlaenderung aufgerufen
+' FILTER-HANDLER: Komplette Neuberechnung bei Filterwechsel
 ' ===============================================================
 Public Sub MonatFilterChanged()
     Dim ws As Worksheet
@@ -605,126 +769,115 @@ Public Sub MonatFilterChanged()
     On Error GoTo 0
     If dd Is Nothing Then Exit Sub
     
-    ' Index 1 = Gesamtjahr (Monat 0), Index 2-13 = Jan-Dez (Monat 1-12)
     Dim monatWert As Long
     monatWert = dd.value - 1
+    
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
     
     On Error Resume Next
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
-    ws.Range("A2").value = monatWert
+    Call EntferneAlleObjekte(ws)
+    Call BaueFinanzUebersicht(ws, monatWert)
     
-    ' Diagrammtitel aktualisieren
-    Call AktualisiereDiagrammTitel(ws, monatWert)
-    
+    ws.Cells.Locked = True
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    
+    Application.EnableEvents = True
+    Application.ScreenUpdating = True
 End Sub
 
 
 ' ===============================================================
-' DIAGRAMME ERSTELLEN (Einnahmen + Ausgaben)
+' DIAGRAMME ERSTELLEN
 ' ===============================================================
-Private Sub ErstelleDiagramme(ByVal ws As Worksheet)
+Private Sub ErstelleDiagramme(ByVal ws As Worksheet, _
+                               ByVal startZeile As Long, _
+                               ByVal einnVon As Long, _
+                               ByVal einnBis As Long, _
+                               ByVal cntEinn As Long, _
+                               ByVal ausgVon As Long, _
+                               ByVal ausgBis As Long, _
+                               ByVal cntAusg As Long, _
+                               ByVal zeitraum As String)
+    
     Dim chartLeft As Double
     Dim chartTop As Double
     Dim chartWidth As Double
     Dim chartHeight As Long
     
-    chartLeft = ws.Range("C" & R_CHART_START).Left
-    chartTop = ws.Range("C" & R_CHART_START).Top
-    chartWidth = ws.Range("C" & R_CHART_START & ":I" & R_CHART_START).Width
+    chartLeft = ws.Range("C" & startZeile).Left
+    chartTop = ws.Range("C" & startZeile).Top
+    chartWidth = ws.Range("C" & startZeile & ":I" & startZeile).Width
     chartHeight = 220
     
     On Error GoTo ChartErr
     
     ' --- Diagramm 1: Einnahmen ---
-    Dim cht1 As ChartObject
-    Set cht1 = ws.ChartObjects.Add(chartLeft, chartTop, chartWidth, chartHeight)
-    cht1.Name = "cht_Einnahmen"
-    
-    With cht1.Chart
-        .ChartType = xlColumnClustered
+    If cntEinn > 0 Then
+        Dim cht1 As ChartObject
+        Set cht1 = ws.ChartObjects.Add(chartLeft, chartTop, chartWidth, chartHeight)
+        cht1.Name = "cht_Einnahmen"
         
-        Dim sr1 As Series
-        Set sr1 = .SeriesCollection.NewSeries
-        sr1.Name = "Einnahmen"
-        sr1.values = ws.Range("D" & R_EINN_START & ":D" & R_EINN_END)
-        sr1.XValues = ws.Range("C" & R_EINN_START & ":C" & R_EINN_END)
-        sr1.Format.Fill.ForeColor.RGB = RGB(39, 174, 96)
+        With cht1.Chart
+            .ChartType = xlColumnClustered
+            
+            Dim sr1 As Series
+            Set sr1 = .SeriesCollection.NewSeries
+            sr1.Name = "Einnahmen"
+            sr1.values = ws.Range("D" & einnVon & ":D" & einnBis)
+            sr1.XValues = ws.Range("C" & einnVon & ":C" & einnBis)
+            sr1.Format.Fill.ForeColor.RGB = RGB(39, 174, 96)
+            
+            .HasTitle = True
+            .ChartTitle.text = "Einnahmen nach Kategorie - " & zeitraum
+            .ChartTitle.Font.Size = 11
+            .ChartTitle.Font.Bold = True
+            .HasLegend = False
+            
+            .Axes(xlCategory).TickLabels.Font.Size = 8
+            .Axes(xlValue).TickLabels.Font.Size = 8
+            .Axes(xlValue).TickLabels.NumberFormat = "#,##0"
+        End With
         
-        .HasTitle = True
-        .ChartTitle.text = "Einnahmen nach Kategorie - Gesamtjahr"
-        .ChartTitle.Font.Size = 11
-        .ChartTitle.Font.Bold = True
-        .HasLegend = False
-        
-        .Axes(xlCategory).TickLabels.Font.Size = 8
-        .Axes(xlValue).TickLabels.Font.Size = 8
-        .Axes(xlValue).TickLabels.NumberFormat = "#,##0"
-    End With
+        chartTop = chartTop + chartHeight + 15
+    End If
     
     ' --- Diagramm 2: Ausgaben ---
-    Dim cht2Top As Double
-    cht2Top = chartTop + chartHeight + 15
-    
-    Dim cht2 As ChartObject
-    Set cht2 = ws.ChartObjects.Add(chartLeft, cht2Top, chartWidth, chartHeight)
-    cht2.Name = "cht_Ausgaben"
-    
-    With cht2.Chart
-        .ChartType = xlColumnClustered
+    If cntAusg > 0 Then
+        Dim cht2 As ChartObject
+        Set cht2 = ws.ChartObjects.Add(chartLeft, chartTop, chartWidth, chartHeight)
+        cht2.Name = "cht_Ausgaben"
         
-        Dim sr2 As Series
-        Set sr2 = .SeriesCollection.NewSeries
-        sr2.Name = "Ausgaben"
-        sr2.values = ws.Range("D" & R_AUSG_START & ":D" & R_AUSG_END)
-        sr2.XValues = ws.Range("C" & R_AUSG_START & ":C" & R_AUSG_END)
-        sr2.Format.Fill.ForeColor.RGB = RGB(231, 76, 60)
-        
-        .HasTitle = True
-        .ChartTitle.text = "Ausgaben nach Kategorie - Gesamtjahr"
-        .ChartTitle.Font.Size = 11
-        .ChartTitle.Font.Bold = True
-        .HasLegend = False
-        
-        .Axes(xlCategory).TickLabels.Font.Size = 8
-        .Axes(xlValue).TickLabels.Font.Size = 8
-        .Axes(xlValue).TickLabels.NumberFormat = "#,##0"
-    End With
+        With cht2.Chart
+            .ChartType = xlColumnClustered
+            
+            Dim sr2 As Series
+            Set sr2 = .SeriesCollection.NewSeries
+            sr2.Name = "Ausgaben"
+            sr2.values = ws.Range("D" & ausgVon & ":D" & ausgBis)
+            sr2.XValues = ws.Range("C" & ausgVon & ":C" & ausgBis)
+            sr2.Format.Fill.ForeColor.RGB = RGB(231, 76, 60)
+            
+            .HasTitle = True
+            .ChartTitle.text = "Ausgaben nach Kategorie - " & zeitraum
+            .ChartTitle.Font.Size = 11
+            .ChartTitle.Font.Bold = True
+            .HasLegend = False
+            
+            .Axes(xlCategory).TickLabels.Font.Size = 8
+            .Axes(xlValue).TickLabels.Font.Size = 8
+            .Axes(xlValue).TickLabels.NumberFormat = "#,##0"
+        End With
+    End If
     
     Exit Sub
 
 ChartErr:
     Debug.Print "[FinanzUebersicht] Diagramm-Fehler: " & Err.Description
     Err.Clear
-End Sub
-
-
-' ===============================================================
-' DIAGRAMMTITEL AKTUALISIEREN (bei Filterwechsel)
-' ===============================================================
-Private Sub AktualisiereDiagrammTitel(ByVal ws As Worksheet, ByVal monat As Long)
-    Dim zeitraum As String
-    If monat = 0 Then
-        zeitraum = "Gesamtjahr"
-    Else
-        zeitraum = Format$(DateSerial(2000, monat, 1), "MMMM")
-    End If
-    
-    On Error Resume Next
-    Dim cht1 As ChartObject
-    Set cht1 = ws.ChartObjects("cht_Einnahmen")
-    If Not cht1 Is Nothing Then
-        cht1.Chart.ChartTitle.text = "Einnahmen nach Kategorie - " & zeitraum
-    End If
-    
-    Dim cht2 As ChartObject
-    Set cht2 = ws.ChartObjects("cht_Ausgaben")
-    If Not cht2 Is Nothing Then
-        cht2.Chart.ChartTitle.text = "Ausgaben nach Kategorie - " & zeitraum
-    End If
-    On Error GoTo 0
 End Sub
 
 

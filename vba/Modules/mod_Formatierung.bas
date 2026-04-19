@@ -67,8 +67,9 @@ Public Sub StelleAutoFilterBereit()
         Array("Wasser", 9), _
         Array(WS_MITGLIEDER, 5), _
         Array(WS_MITGLIEDER_HISTORIE, 3), _
-        Array(WS_EINSTELLUNGEN, 3), _
-        Array(WS_DATEN, 3))
+        Array(WS_EINSTELLUNGEN, 20), _
+        Array(WS_DATEN, 3), _
+        Array("Dashboard Mitgliederzahlungen", 3))
     
     Application.ScreenUpdating = False
     Application.EnableEvents = False
@@ -108,11 +109,26 @@ Public Sub StelleAutoFilterBereit()
         ' AutoFilter auf Header-Bereich aktivieren (nur belegte Spalten)
         ws.Range(ws.Cells(hRow, 1), ws.Cells(lastRow, lastCol)).AutoFilter
         
+        ' FreezePanes: Header-Zeile fixieren (Zeile unter Header einfrieren)
+        ws.Activate
+        ActiveWindow.FreezePanes = False
+        ws.Cells(hRow + 1, 1).Select
+        ActiveWindow.FreezePanes = True
+        
         ' Blatt mit AllowFiltering schuetzen
         ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
         
 NextSheet:
     Next i
+    
+    ' Zurueck zur Startseite navigieren
+    Dim wsStart As Worksheet
+    Set wsStart = Nothing
+    Set wsStart = ThisWorkbook.Worksheets(WS_STARTMENUE())
+    If Not wsStart Is Nothing Then
+        wsStart.Activate
+        wsStart.Range("A1").Select
+    End If
     
     On Error GoTo 0
     Application.EnableEvents = True
@@ -514,6 +530,8 @@ ErrorHandler:
     End If
     
 End Sub
+
+
 
 
 

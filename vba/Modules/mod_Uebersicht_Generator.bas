@@ -320,7 +320,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
         
         ' v4.5b: Blatt trotzdem schuetzen und aufraumen
         On Error Resume Next
-        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
         On Error GoTo 0
         
         m_IsGenerating = False
@@ -1292,6 +1292,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     End If
     
 End Sub
+
+
 
 
 

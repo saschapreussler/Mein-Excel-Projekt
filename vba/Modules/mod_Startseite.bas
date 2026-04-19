@@ -89,9 +89,9 @@ End Sub
 ' BLATT VORBEREITEN
 ' ===============================================================
 Private Sub VorbereiteBlatt(ByVal ws As Worksheet)
-    ws.Range("A1:P50").ClearContents
-    ws.Range("A1:P50").ClearFormats
-    ws.Range("A1:P50").Interior.color = CLR_BG
+    ws.Range("A1:P55").ClearContents
+    ws.Range("A1:P55").ClearFormats
+    ws.Range("A1:P55").Interior.color = CLR_BG
     
     ' Gitternetzlinien aus
     Dim wnd As Window
@@ -123,22 +123,24 @@ Private Sub VorbereiteBlatt(ByVal ws As Worksheet)
     ws.Rows("5").RowHeight = 4           ' Akzentlinie
     ws.Rows("6").RowHeight = 10          ' Abstand
     ws.Rows("7").RowHeight = 18          ' KPI-Header
-    ws.Rows("8").RowHeight = 48          ' KPI-Werte
-    ws.Rows("9").RowHeight = 18          ' KPI-Labels
-    ws.Rows("10").RowHeight = 16         ' Abstand
-    ws.Rows("11").RowHeight = 26         ' Sections-Header "Navigation"
-    ws.Rows("12").RowHeight = 8          ' Abstand
+    ws.Rows("8").RowHeight = 48          ' KPI-Werte Zeile 1
+    ws.Rows("9").RowHeight = 18          ' KPI-Labels Zeile 1
+    ws.Rows("10").RowHeight = 48         ' KPI-Werte Zeile 2 (Kontostand)
+    ws.Rows("11").RowHeight = 18         ' KPI-Labels Zeile 2
+    ws.Rows("12").RowHeight = 16         ' Abstand
+    ws.Rows("13").RowHeight = 26         ' Sections-Header "Navigation"
+    ws.Rows("14").RowHeight = 8          ' Abstand
     
     Dim r As Long
-    For r = 13 To 16
+    For r = 15 To 18
         ws.Rows(r).RowHeight = 42        ' Button-Zeilen (4 Reihen Navigation)
     Next r
     
-    ws.Rows("17").RowHeight = 26         ' Section-Header "Serienbrief"
-    ws.Rows("18").RowHeight = 8          ' Abstand
-    ws.Rows("19").RowHeight = 42         ' Serienbrief-Buttons
-    ws.Rows("20").RowHeight = 16         ' Abstand
-    ws.Rows("21").RowHeight = 20         ' Footer
+    ws.Rows("19").RowHeight = 26         ' Section-Header "Serienbrief"
+    ws.Rows("20").RowHeight = 8          ' Abstand
+    ws.Rows("21").RowHeight = 42         ' Serienbrief-Buttons
+    ws.Rows("22").RowHeight = 16         ' Abstand
+    ws.Rows("23").RowHeight = 20         ' Footer
 End Sub
 
 
@@ -232,8 +234,8 @@ End Sub
 ' KPI-BEREICH: 4 Kennzahlen-Karten
 ' ===============================================================
 Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
-    ' Hintergrund KPI-Bereich
-    ws.Range("A6:L10").Interior.color = CLR_SECTION_BG
+    ' Hintergrund KPI-Bereich (erweitert fuer 2 KPI-Zeilen)
+    ws.Range("A6:L12").Interior.color = CLR_SECTION_BG
     
     ' KPI-Header
     With ws.Range("B7:J7")
@@ -247,20 +249,18 @@ Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' --- KPI 1: Abrechnungsjahr ---
+    ' --- KPI-Zeile 1: Abrechnungsjahr, Mitglieder, Parzellen ---
     Dim abrJahr As Long
     abrJahr = HoleAbrechnungsjahr()
     Dim jahrText As String
     If abrJahr > 0 Then jahrText = CStr(abrJahr) Else jahrText = "---"
-    Call SchreibeKPIKarte(ws, "C", "D", jahrText, "Abrechnungsjahr", RGB(41, 128, 185))
+    Call SchreibeKPIKarte(ws, "C", "D", 8, 9, jahrText, "Abrechnungsjahr", RGB(41, 128, 185))
     
-    ' --- KPI 2: Mitglieder ---
-    Call SchreibeKPIKarte(ws, "F", "F", CStr(ZaehleMitglieder()), "Mitglieder", RGB(39, 174, 96))
+    Call SchreibeKPIKarte(ws, "F", "F", 8, 9, CStr(ZaehleMitglieder()), "Mitglieder", RGB(39, 174, 96))
     
-    ' --- KPI 3: Parzellen ---
-    Call SchreibeKPIKarte(ws, "G", "G", CStr(ZaehleBelegteParzellen()), "Parzellen", RGB(142, 68, 173))
+    Call SchreibeKPIKarte(ws, "G", "G", 8, 9, CStr(ZaehleBelegteParzellen()), "Parzellen", RGB(142, 68, 173))
     
-    ' --- KPI 4: Kontostand Vorjahr ---
+    ' --- KPI-Zeile 2: Kontostand Vorjahr + Aktuell (breitere Karten) ---
     Dim kontoVorjahr As Double
     kontoVorjahr = HoleKontostandVorjahr()
     Dim vorjahrText As String
@@ -269,9 +269,8 @@ Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
     Dim vorjahrFarbe As Long
     If kontoVorjahr >= 0 Then vorjahrFarbe = RGB(41, 128, 185) Else vorjahrFarbe = RGB(231, 76, 60)
     
-    Call SchreibeKPIKarte(ws, "I", "I", vorjahrText, "Vorjahr", vorjahrFarbe)
+    Call SchreibeKPIKarte(ws, "C", "E", 10, 11, vorjahrText, "Kontostand Vorjahr", vorjahrFarbe)
     
-    ' --- KPI 5: Aktueller Kontostand ---
     Dim kontostand As Double
     kontostand = HoleAktuellerKontostand()
     Dim kontoText As String
@@ -280,7 +279,7 @@ Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
     Dim kontoFarbe As Long
     If kontostand >= 0 Then kontoFarbe = RGB(39, 174, 96) Else kontoFarbe = RGB(231, 76, 60)
     
-    Call SchreibeKPIKarte(ws, "J", "J", kontoText, "Aktuell | " & HoleLetztesBuchungsdatum(), kontoFarbe)
+    Call SchreibeKPIKarte(ws, "G", "J", 10, 11, kontoText, "Kontostand Aktuell | " & HoleLetztesBuchungsdatum(), kontoFarbe)
 End Sub
 
 
@@ -290,12 +289,14 @@ End Sub
 Private Sub SchreibeKPIKarte(ByVal ws As Worksheet, _
                               ByVal col1 As String, _
                               ByVal col2 As String, _
+                              ByVal wertZeile As Long, _
+                              ByVal labelZeile As Long, _
                               ByVal wertText As String, _
                               ByVal label As String, _
                               ByVal akzentFarbe As Long)
     
     ' Wert-Zelle
-    With ws.Range(col1 & "8:" & col2 & "8")
+    With ws.Range(col1 & wertZeile & ":" & col2 & wertZeile)
         .Merge
         .value = wertText
         .Font.Size = 16
@@ -317,7 +318,7 @@ Private Sub SchreibeKPIKarte(ByVal ws As Worksheet, _
     End With
     
     ' Label
-    With ws.Range(col1 & "9:" & col2 & "9")
+    With ws.Range(col1 & labelZeile & ":" & col2 & labelZeile)
         .Merge
         .value = label
         .Font.Size = 8
@@ -335,7 +336,7 @@ End Sub
 ' ===============================================================
 Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     ' Sections-Header
-    With ws.Range("B11:J11")
+    With ws.Range("B13:J13")
         .Merge
         .value = ChrW(9654) & "  NAVIGATION"
         .Font.Size = 10
@@ -352,69 +353,69 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     Dim kachelW As Double, kachelH As Double
     Dim gapY As Double
     
-    col1Left = ws.Range("C13").Left
-    col2Left = ws.Range("F13").Left
-    col3Left = ws.Range("I13").Left
-    kachelW = ws.Range("C13:D13").Width
+    col1Left = ws.Range("C15").Left
+    col2Left = ws.Range("F15").Left
+    col3Left = ws.Range("I15").Left
+    kachelW = ws.Range("C15:D15").Width
     kachelH = 34
-    gapY = ws.Rows("13").RowHeight
+    gapY = ws.Rows("15").RowHeight
     
     ' --- Spalte 1: Finanzen ---
     Call ErstelleKachel(ws, "kachel_Uebersicht", _
         ChrW(9654) & " Zahlungs" & ChrW(252) & "bersicht", _
-        col1Left, ws.Range("C13").Top + 4, kachelW, kachelH, _
+        col1Left, ws.Range("C15").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Uebersicht'")
     
     Call ErstelleKachel(ws, "kachel_Bankkonto", _
         ChrW(9733) & " Bankkonto", _
-        col1Left, ws.Range("C14").Top + 4, kachelW, kachelH, _
+        col1Left, ws.Range("C16").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Bankkonto'")
     
     Call ErstelleKachel(ws, "kachel_Vereinskasse", _
         ChrW(9830) & " Vereinskasse", _
-        col1Left, ws.Range("C15").Top + 4, kachelW, kachelH, _
+        col1Left, ws.Range("C17").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Vereinskasse'")
     
     ' --- Spalte 2: Verbrauch & Verwaltung ---
     Call ErstelleKachel(ws, "kachel_Dashboard", _
         ChrW(9650) & " Dashboard", _
-        col2Left, ws.Range("F13").Top + 4, kachelW, kachelH, _
+        col2Left, ws.Range("F15").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Dashboard'")
     
     Call ErstelleKachel(ws, "kachel_Strom", _
         ChrW(9889) & " Strom", _
-        col2Left, ws.Range("F14").Top + 4, kachelW, kachelH, _
+        col2Left, ws.Range("F16").Top + 4, kachelW, kachelH, _
         CLR_BTN_METER, "'mod_Navigation.NavigiereZu_Strom'")
     
     Call ErstelleKachel(ws, "kachel_Wasser", _
         ChrW(8776) & " Wasser", _
-        col2Left, ws.Range("F15").Top + 4, kachelW, kachelH, _
+        col2Left, ws.Range("F17").Top + 4, kachelW, kachelH, _
         CLR_BTN_METER, "'mod_Navigation.NavigiereZu_Wasser'")
     
     ' --- Spalte 3: Admin ---
     Call ErstelleKachel(ws, "kachel_Einstellungen", _
         ChrW(9881) & " Einstellungen", _
-        col3Left, ws.Range("I13").Top + 4, kachelW, kachelH, _
+        col3Left, ws.Range("I15").Top + 4, kachelW, kachelH, _
         CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Einstellungen'")
     
     Call ErstelleKachel(ws, "kachel_Daten", _
         ChrW(9632) & " Daten", _
-        col3Left, ws.Range("I14").Top + 4, kachelW, kachelH, _
+        col3Left, ws.Range("I16").Top + 4, kachelW, kachelH, _
         CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Daten'")
     
     Call ErstelleKachel(ws, "kachel_Mitglieder", _
         ChrW(9679) & " Mitgliederverwaltung", _
-        col3Left, ws.Range("I15").Top + 4, kachelW, kachelH, _
+        col3Left, ws.Range("I17").Top + 4, kachelW, kachelH, _
         CLR_BTN_MITGL, "'mod_Navigation.ZeigeMitgliederverwaltung'")
     
     ' --- Zeile 4: Finanz-Uebersicht ---
     Call ErstelleKachel(ws, "kachel_FinanzUebersicht", _
         ChrW(9654) & " Finanz-" & ChrW(220) & "bersicht", _
-        col1Left, ws.Range("C16").Top + 4, kachelW, kachelH, _
+        col1Left, ws.Range("C18").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_FinanzUebersicht'")
     
     ' --- Serienbrief-Bereich ---
-    With ws.Range("B17:J17")
+    With ws.Range("B19:J19")
         .Merge
         .value = ChrW(9654) & "  SERIENBRIEF (Word-Dokumente)"
         .Font.Size = 10
@@ -428,12 +429,12 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     
     Call ErstelleKachel(ws, "kachel_Betriebskosten", _
         ChrW(9633) & " Betriebskostenabrechnung", _
-        col1Left, ws.Range("C19").Top + 4, kachelW, kachelH, _
+        col1Left, ws.Range("C21").Top + 4, kachelW, kachelH, _
         CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Betriebskosten'")
     
     Call ErstelleKachel(ws, "kachel_Endabrechnung", _
         ChrW(9633) & " Endabrechnung", _
-        col2Left, ws.Range("F19").Top + 4, kachelW, kachelH, _
+        col2Left, ws.Range("F21").Top + 4, kachelW, kachelH, _
         CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Endabrechnung'")
 End Sub
 
@@ -442,7 +443,7 @@ End Sub
 ' FOOTER: Versionsinfo und Hinweis
 ' ===============================================================
 Private Sub SchreibeFooter(ByVal ws As Worksheet)
-    With ws.Range("B21:J21")
+    With ws.Range("B23:J23")
         .Merge
         .value = "Kassenbuch v2.7  |  " & ChrW(169) & " " & Year(Date)
         .Font.Size = 8
@@ -654,7 +655,7 @@ Private Function HoleVereinsname() As String
 End Function
 
 
-Private Function HoleKontostandVorjahr() As Double
+Public Function HoleKontostandVorjahr() As Double
     Dim ws As Worksheet
     On Error Resume Next
     Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
@@ -750,6 +751,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 

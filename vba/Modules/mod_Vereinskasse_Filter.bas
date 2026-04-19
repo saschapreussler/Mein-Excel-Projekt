@@ -44,8 +44,8 @@ Public Sub InitialisiereVereinskasseComboBox()
     
     Set oleObj = wsVK.OLEObjects.Add( _
         ClassType:="Forms.ComboBox.1", _
-        Left:=wsVK.Range("E24").Left, _
-        Top:=wsVK.Range("E24").Top + 2, _
+        Left:=wsVK.Range("E25").Left, _
+        Top:=wsVK.Range("E25").Top + 2, _
         Width:=130, _
         Height:=22)
     
@@ -160,7 +160,7 @@ Public Sub WendeVereinskasseFilterAn(ByVal wsVK As Worksheet, ByVal monatsWert A
     
     If letzteDatenZeile < VK_START_ROW Then
         ' Keine Daten vorhanden
-        wsVK.Range("C24").value = "Auszug: ganzes Jahr " & jahr
+        wsVK.Range("C25").value = "Auszug: ganzes Jahr " & jahr
         GoTo FilterExit
     End If
     
@@ -168,7 +168,7 @@ Public Sub WendeVereinskasseFilterAn(ByVal wsVK As Worksheet, ByVal monatsWert A
     Set rngFilterBereich = wsVK.Range("A" & VK_HEADER_ROW & ":A" & letzteDatenZeile)
     
     ' Anzeige aktualisieren
-    wsVK.Range("C24").value = "Auszug: " & monatsWert & " " & jahr
+    wsVK.Range("C25").value = "Auszug: " & monatsWert & " " & jahr
     
     If monatsIndex > 0 Then
         Dim erstesDesMonats As Date
@@ -191,7 +191,7 @@ Public Sub WendeVereinskasseFilterAn(ByVal wsVK As Worksheet, ByVal monatsWert A
     If visibleCellsCount <= 1 And monatsIndex > 0 Then
         ' Keine sichtbaren Daten - Filter zuruecksetzen
         wsVK.ShowAllData
-        wsVK.Range("C24").value = "Auszug: ganzes Jahr " & jahr & " (keine Daten f" & ChrW(252) & "r " & monatsWert & ")"
+        wsVK.Range("C25").value = "Auszug: ganzes Jahr " & jahr & " (keine Daten f" & ChrW(252) & "r " & monatsWert & ")"
     End If
 
 FilterExit:
@@ -234,6 +234,8 @@ Public Sub SetzeVereinskasseFormeln(ByVal wsVK As Worksheet)
     wsVK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
+
+
 
 
 

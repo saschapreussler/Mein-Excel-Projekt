@@ -161,17 +161,30 @@ Private Sub ErstelleHomeButton(ByVal ws As Worksheet)
     ' Bestehenden Button entfernen falls vorhanden
     Call EntferneHomeButton(ws)
     
-    ' Zeile 1 auf mindestens 36pt setzen, damit der Button
-    ' INNERHALB der Zeile liegt und keine Daten verdeckt.
-    On Error Resume Next
-    If ws.Rows(1).RowHeight < 36 Then ws.Rows(1).RowHeight = 36
     On Error GoTo BtnFehler
     
-    ' Button oben rechts im Blatt positionieren
-    ' Left = rechte Seite (Spalte H-I Bereich), Top = innerhalb Zeile 1
+    ' Button oben rechts positionieren - RECHTS vom letzten
+    ' belegten Header-Bereich, damit nichts verdeckt wird.
+    ' Letzte belegte Spalte ermitteln (max. Zeilen 1-5 pruefen)
+    Dim lastCol As Long
+    lastCol = 1
+    Dim scanRow As Long
+    For scanRow = 1 To WorksheetFunction.Min(5, ws.UsedRange.Rows.count + ws.UsedRange.Row - 1)
+        Dim rowLastCol As Long
+        rowLastCol = ws.Cells(scanRow, ws.Columns.count).End(xlToLeft).Column
+        If rowLastCol > lastCol Then lastCol = rowLastCol
+    Next scanRow
+    
+    ' Mindestens Spalte H (8) damit der Button nicht zu weit links steht
+    If lastCol < 8 Then lastCol = 8
+    
+    ' Button 2 Spalten rechts vom letzten Inhalt
+    Dim btnCol As Long
+    btnCol = lastCol + 2
+    
     Dim btnLeft As Double
     Dim btnTop As Double
-    btnLeft = ws.Range("A1").Left + 6
+    btnLeft = ws.Cells(1, btnCol).Left
     btnTop = ws.Range("A1").Top + 4
     
     Dim shp As Shape
@@ -226,6 +239,8 @@ Private Sub EntferneHomeButton(ByVal ws As Worksheet)
     Err.Clear
     On Error GoTo 0
 End Sub
+
+
 
 
 
