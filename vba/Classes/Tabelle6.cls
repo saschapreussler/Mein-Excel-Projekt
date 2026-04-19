@@ -23,7 +23,7 @@ End Sub
 Private Sub Worksheet_Change(ByVal Target As Range)
     ' Relevant: Stand Anfang (B) und Stand Ende (C) f?r Parzellen (Z. 10-23) und Hauptz?hler (Z. 29)
     ' Wir pr?fen den gesamten relevanten Bereich f?r Wasser: B10:C29
-    If Not Intersect(Target, Me.Range("B10:C29")) Is Nothing Then
+    If Not Intersect(Target, Me.Range("B12:C31")) Is Nothing Then
         Application.EnableEvents = False
         Call UpdateWasserblatt
         Application.EnableEvents = True
@@ -75,6 +75,8 @@ End Sub
 Public Sub KorrigiereHistorieFarben()
     Call mod_Zaehler_Historie.FarbeHistorieEintraege
 End Sub
+
+
 
 
 

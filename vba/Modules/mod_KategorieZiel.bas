@@ -72,12 +72,12 @@ Private Function GetZielspaltenListe(ByVal einAus As String) As String
         Case "E"   ' Einnahmen
             GetZielspaltenListe = _
                 "='" & WS_BANKKONTO & "'!" & _
-                wsBK.Range("M27:S27").Address
+                wsBK.Range("M29:S29").Address
 
         Case "A"   ' Ausgaben
             GetZielspaltenListe = _
                 "='" & WS_BANKKONTO & "'!" & _
-                wsBK.Range("T27:Z27").Address
+                wsBK.Range("T29:Z29").Address
 
         Case Else
             GetZielspaltenListe = ""
@@ -85,6 +85,8 @@ Private Function GetZielspaltenListe(ByVal einAus As String) As String
     End Select
 
 End Function
+
+
 
 
 

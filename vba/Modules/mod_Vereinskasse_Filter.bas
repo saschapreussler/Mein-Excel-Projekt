@@ -44,8 +44,8 @@ Public Sub InitialisiereVereinskasseComboBox()
     
     Set oleObj = wsVK.OLEObjects.Add( _
         ClassType:="Forms.ComboBox.1", _
-        Left:=wsVK.Range("E25").Left, _
-        Top:=wsVK.Range("E25").Top + 2, _
+        Left:=wsVK.Range("F18").Left, _
+        Top:=wsVK.Range("F18").Top + 2, _
         Width:=130, _
         Height:=22)
     
@@ -160,7 +160,7 @@ Public Sub WendeVereinskasseFilterAn(ByVal wsVK As Worksheet, ByVal monatsWert A
     
     If letzteDatenZeile < VK_START_ROW Then
         ' Keine Daten vorhanden
-        wsVK.Range("C25").value = "Auszug: ganzes Jahr " & jahr
+        wsVK.Range("C24").value = "Auszug: ganzes Jahr " & jahr
         GoTo FilterExit
     End If
     
@@ -168,7 +168,7 @@ Public Sub WendeVereinskasseFilterAn(ByVal wsVK As Worksheet, ByVal monatsWert A
     Set rngFilterBereich = wsVK.Range("A" & VK_HEADER_ROW & ":A" & letzteDatenZeile)
     
     ' Anzeige aktualisieren
-    wsVK.Range("C25").value = "Auszug: " & monatsWert & " " & jahr
+    wsVK.Range("C24").value = "Auszug: " & monatsWert & " " & jahr
     
     If monatsIndex > 0 Then
         Dim erstesDesMonats As Date
@@ -191,7 +191,7 @@ Public Sub WendeVereinskasseFilterAn(ByVal wsVK As Worksheet, ByVal monatsWert A
     If visibleCellsCount <= 1 And monatsIndex > 0 Then
         ' Keine sichtbaren Daten - Filter zuruecksetzen
         wsVK.ShowAllData
-        wsVK.Range("C25").value = "Auszug: ganzes Jahr " & jahr & " (keine Daten f" & ChrW(252) & "r " & monatsWert & ")"
+        wsVK.Range("C24").value = "Auszug: ganzes Jahr " & jahr & " (keine Daten f" & ChrW(252) & "r " & monatsWert & ")"
     End If
 
 FilterExit:
@@ -216,15 +216,15 @@ Public Sub SetzeVereinskasseFormeln(ByVal wsVK As Worksheet)
     On Error Resume Next
     
     ' C24: Kontostand laufend mit Filter
-    ' Wenn kein Monatsfilter -> Kontostand Vorjahr (Einstellungen C5)
+    ' Wenn kein Monatsfilter -> Kontostand Vorjahr (Einstellungen C7)
     ' Sonst: Kontostand Vorjahr + Summe aller Vereinskasse-Buchungen bis Filtermonat
     ' Hinweis: Vereinskasse nutzt eigene Hilfszelle fuer Monatsfilter
     ' Wir verwenden dieselbe Daten!AE4 Hilfszelle wie Bankkonto
     wsVK.Range("C24").FormulaLocal = _
-        "=WENN(Daten!$AE$4<=1;Einstellungen!$C$5;" & _
-        "Einstellungen!$C$5+SUMMEWENNS(Vereinskasse!$B$" & VK_START_ROW & ":$B$5000;" & _
-        "Vereinskasse!$A$" & VK_START_ROW & ":$A$5000;"">=""&DATUM(Einstellungen!$C$4;1;1);" & _
-        "Vereinskasse!$A$" & VK_START_ROW & ":$A$5000;""<""&DATUM(Einstellungen!$C$4;Daten!$AE$4;1)))"
+        "=WENN(Daten!$AE$4<=1;Einstellungen!$C$7;" & _
+        "Einstellungen!$C$7+SUMMEWENNS(Vereinskasse!$B$" & VK_START_ROW & ":$B$5000;" & _
+        "Vereinskasse!$A$" & VK_START_ROW & ":$A$5000;"">=""&DATUM(Einstellungen!$C$6;1;1);" & _
+        "Vereinskasse!$A$" & VK_START_ROW & ":$A$5000;""<""&DATUM(Einstellungen!$C$6;Daten!$AE$4;1)))"
     
     wsVK.Range("C24").NumberFormat = "#,##0.00 " & ChrW(8364)
     
@@ -234,6 +234,8 @@ Public Sub SetzeVereinskasseFormeln(ByVal wsVK As Worksheet)
     wsVK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
+
+
 
 
 

@@ -50,16 +50,17 @@ Public Sub MigriereEinstellungenLayout()
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     
-    ' Pruefen ob altes Layout vorhanden (Header in Zeile 3)
+    ' Pruefen ob altes Layout vorhanden (Header in Zeile 3 oder 5)
     Dim altesLayout As Boolean
-    altesLayout = (InStr(1, CStr(ws.Cells(3, ES_COL_KATEGORIE).value), "Kategorie", vbTextCompare) > 0)
+    altesLayout = (InStr(1, CStr(ws.Cells(5, ES_COL_KATEGORIE).value), "Kategorie", vbTextCompare) > 0) Or _
+                  (InStr(1, CStr(ws.Cells(3, ES_COL_KATEGORIE).value), "Kategorie", vbTextCompare) > 0)
     
     If altesLayout Then
-        ' 17 Zeilen oben einfuegen - verschiebt alle Daten automatisch
-        ws.Rows("1:17").Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
+        ' 19 Zeilen oben einfuegen - verschiebt alle Daten automatisch
+        ws.Rows("1:19").Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
         
         ' Eingefuegte Zeilen bereinigen (keine Formatierung uebernehmen)
-        ws.Range("A1:Z17").Clear
+        ws.Range("A1:Z19").Clear
     End If
     
     ' Konfigurationsbereich schreiben
@@ -1010,6 +1011,8 @@ Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long
     Call FormatiereZahlungsterminTabelle(ws)
     
 End Sub
+
+
 
 
 

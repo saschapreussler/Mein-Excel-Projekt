@@ -61,13 +61,13 @@ Public Sub StelleAutoFilterBereit()
     Dim cfg As Variant
     ' Array: Blattname, Header-Zeile
     cfg = Array( _
-        Array(WS_BANKKONTO, 27), _
+        Array(WS_BANKKONTO, 29), _
         Array(WS_VEREINSKASSE, 26), _
-        Array("Strom", 7), _
-        Array("Wasser", 9), _
+        Array("Strom", 9), _
+        Array("Wasser", 11), _
         Array(WS_MITGLIEDER, 5), _
         Array(WS_MITGLIEDER_HISTORIE, 3), _
-        Array(WS_EINSTELLUNGEN, 20), _
+        Array(WS_EINSTELLUNGEN, 22), _
         Array(WS_DATEN, 3), _
         Array("Dashboard Mitgliederzahlungen", 3))
     
@@ -106,14 +106,14 @@ Public Sub StelleAutoFilterBereit()
         ' Bestehenden AutoFilter entfernen
         If ws.AutoFilterMode Then ws.AutoFilterMode = False
         
+        ' Header-Zellen entsperren damit Filter trotz Blattschutz nutzbar sind
+        Dim hc As Long
+        For hc = 1 To lastCol
+            ws.Cells(hRow, hc).Locked = False
+        Next hc
+        
         ' AutoFilter auf Header-Bereich aktivieren (nur belegte Spalten)
         ws.Range(ws.Cells(hRow, 1), ws.Cells(lastRow, lastCol)).AutoFilter
-        
-        ' FreezePanes: Header-Zeile fixieren (Zeile unter Header einfrieren)
-        ws.Activate
-        ActiveWindow.FreezePanes = False
-        ws.Cells(hRow + 1, 1).Select
-        ActiveWindow.FreezePanes = True
         
         ' Blatt mit AllowFiltering schuetzen
         ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
@@ -530,6 +530,8 @@ ErrorHandler:
     End If
     
 End Sub
+
+
 
 
 

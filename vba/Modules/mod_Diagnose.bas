@@ -300,7 +300,7 @@ End Sub
 
 
 ' ===============================================================
-' TEST 06: Bankkonto E2-Formel pruefen
+' TEST 06: Bankkonto E4-Formel pruefen
 ' ===============================================================
 Public Sub Test_06_BankkontoFormeln()
     LogZeile ""
@@ -316,27 +316,27 @@ Public Sub Test_06_BankkontoFormeln()
         Exit Sub
     End If
     
-    ' E2 pruefen
+    ' E4 pruefen
     Dim formelE2 As String
     On Error Resume Next
-    formelE2 = ws.Range("E2").FormulaLocal
+    formelE2 = ws.Range("E4").FormulaLocal
     On Error GoTo 0
     
     If formelE2 = "" Then
-        LogFEHLER "E2 ist leer (keine Formel)"
+        LogFEHLER "E4 ist leer (keine Formel)"
     ElseIf InStr(formelE2, "Startmen") > 0 Then
-        LogFEHLER "E2 referenziert noch 'Startmen" & ChrW(252) & "' statt 'Einstellungen'!"
+        LogFEHLER "E4 referenziert noch 'Startmen" & ChrW(252) & "' statt 'Einstellungen'!"
         LogZeile "  Aktuelle Formel: " & Left$(formelE2, 80) & "..."
         LogZeile "  -> StelleFormelnWiederHer muss ausgef" & ChrW(252) & "hrt werden"
     ElseIf InStr(formelE2, "Einstellungen") > 0 Then
-        LogOK "E2 referenziert korrekt 'Einstellungen'"
+        LogOK "E4 referenziert korrekt 'Einstellungen'"
         LogZeile "  Formel: " & Left$(formelE2, 80) & "..."
     Else
-        LogZeile "  E2 Formel: " & Left$(formelE2, 80) & "..."
+        LogZeile "  E4 Formel: " & Left$(formelE2, 80) & "..."
     End If
     
-    ' E2-Formel manuell wiederherstellen
-    LogZeile "  -> Stelle E2-Formel jetzt wieder her..."
+    ' E4-Formel manuell wiederherstellen
+    LogZeile "  -> Stelle E4-Formel jetzt wieder her..."
     On Error Resume Next
     Err.Clear
     Call mod_Banking_Format.StelleFormelnWiederHer(ws)
@@ -346,9 +346,9 @@ Public Sub Test_06_BankkontoFormeln()
     Else
         LogOK "StelleFormelnWiederHer erfolgreich"
         ' Nochmal pruefen
-        formelE2 = ws.Range("E2").FormulaLocal
+        formelE2 = ws.Range("E4").FormulaLocal
         If InStr(formelE2, "Einstellungen") > 0 Then
-            LogOK "E2 jetzt korrekt: " & Left$(formelE2, 60) & "..."
+            LogOK "E4 jetzt korrekt: " & Left$(formelE2, 60) & "..."
         End If
     End If
     On Error GoTo 0
@@ -784,6 +784,8 @@ Private Sub LogFEHLER(ByVal text As String)
     m_log = m_log & "  " & ChrW(10060) & " " & text & vbLf
     m_fehler = m_fehler + 1
 End Sub
+
+
 
 
 

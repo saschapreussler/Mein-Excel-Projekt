@@ -50,19 +50,19 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     On Error GoTo Fehler_Handler_Berechnung
     
     ' --- Formatierung ---
-    wsTarget.Range("8:23").RowHeight = 50
+    wsTarget.Range("10:25").RowHeight = 50
 
-    With wsTarget.Range("B8:D23, F8:I23")
+    With wsTarget.Range("B10:D25, F10:I25")
         .ShrinkToFit = True
         .WrapText = False
     End With
     
-    With wsTarget.Range("A8:A23")
+    With wsTarget.Range("A10:A25")
         .ShrinkToFit = False
         .WrapText = True
     End With
 
-    With wsTarget.Range(COL_BEMERKUNG & "8:" & COL_BEMERKUNG & "23")
+    With wsTarget.Range(COL_BEMERKUNG & "10:" & COL_BEMERKUNG & "25")
         .ShrinkToFit = False
         .WrapText = True
     End With
@@ -77,36 +77,36 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     ' ==========================================================
     
     If LCase(wsTarget.Name) = "strom" Then
-        ' STROM: Parzelle 1 bis 12 (Zeilen 8 bis 19)
+        ' STROM: Parzelle 1 bis 12 (Zeilen 10 bis 21)
         For r = 1 To 12
-            Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Parzelle " & r, r + 7)
-            wsTarget.Rows(r + 7).AutoFit
-            Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, r + 7)
+            Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Parzelle " & r, r + 9)
+            wsTarget.Rows(r + 9).AutoFit
+            Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, r + 9)
         Next r
         
         ' STROM: Feste Z?hler
-        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Clubwagen", 22)
+        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Clubwagen", 24)
+        wsTarget.Rows(24).AutoFit
+        Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 24)
+        
+        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "K?hltruhe", 25)
+        wsTarget.Rows(25).AutoFit
+        Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 25)
+        
+        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Parzelle 13", 22)
         wsTarget.Rows(22).AutoFit
         Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 22)
         
-        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "K?hltruhe", 23)
+        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Parzelle 14", 23)
         wsTarget.Rows(23).AutoFit
         Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 23)
         
-        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Parzelle 13", 20)
-        wsTarget.Rows(20).AutoFit
-        Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 20)
-        
-        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Parzelle 14", 21)
-        wsTarget.Rows(21).AutoFit
-        Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 21)
-        
     ElseIf LCase(wsTarget.Name) = "wasser" Then
-        ' WASSER: Parzelle 1 bis 14 (Zeilen 10 bis 23)
+        ' WASSER: Parzelle 1 bis 14 (Zeilen 12 bis 25)
         For r = 1 To 14
-            Call CalculateSingleZaehler(wsTarget, wsHist, "Wasser", "Parzelle " & r, r + 9)
-            wsTarget.Rows(r + 9).AutoFit
-            Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, r + 9)
+            Call CalculateSingleZaehler(wsTarget, wsHist, "Wasser", "Parzelle " & r, r + 11)
+            wsTarget.Rows(r + 11).AutoFit
+            Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, r + 11)
         Next r
     End If
     
@@ -115,15 +115,15 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     ' ==========================================================
     
     If LCase(wsTarget.Name) = "strom" Then
-        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Hauptz?hler", 26)
-        wsTarget.Rows(26).AutoFit
-        Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 26)
+        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Hauptz?hler", 28)
+        wsTarget.Rows(28).AutoFit
+        Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 28)
     End If
     
     If LCase(wsTarget.Name) = "wasser" Then
-        Call CalculateSingleZaehler(wsTarget, wsHist, "Wasser", "Hauptz?hler", 29)
-        wsTarget.Rows(29).AutoFit
-        Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 29)
+        Call CalculateSingleZaehler(wsTarget, wsHist, "Wasser", "Hauptz?hler", 31)
+        wsTarget.Rows(31).AutoFit
+        Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 31)
     End If
 
 Cleanup_Berechnung:
@@ -340,6 +340,8 @@ Private Sub CalculateSingleZaehler( _
     End If
     
 End Sub
+
+
 
 
 

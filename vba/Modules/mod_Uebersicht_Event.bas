@@ -12,8 +12,8 @@ Option Explicit
 ' ***************************************************************
 
 ' Konstanten (identisch mit mod_Uebersicht_Generator)
-Private Const UEBERSICHT_START_ROW As Long = 4
-Private Const UEBERSICHT_HEADER_ROW As Long = 3
+Private Const UEBERSICHT_START_ROW As Long = 6
+Private Const UEBERSICHT_HEADER_ROW As Long = 5
 Private Const UEB_COL_PARZELLE As Long = 1
 Private Const UEB_COL_MITGLIED As Long = 2
 Private Const UEB_COL_MONAT As Long = 3
@@ -248,6 +248,8 @@ Private Function EntferneTeilBemerkung(ByVal bemerkung As String, _
     EntferneTeilBemerkung = ergebnis
     
 End Function
+
+
 
 
 

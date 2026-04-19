@@ -34,6 +34,11 @@ Private Sub Workbook_Open()
     ' v5.1: AutoFilter vorbereiten (wird am Ende erneut aufgerufen)
     ' (Platzhalter - Hauptaufruf am Ende von Workbook_Open)
     
+    ' v7.1: Navigationszeilen migrieren (einmalig: 2 Zeilen oben einfuegen)
+    On Error Resume Next
+    Call mod_Navigation.MigriereNavigationszeilen
+    On Error GoTo 0
+    
     ' v6.0: Einstellungen-Layout migrieren (einmalig)
     On Error Resume Next
     Call mod_Einstellungen.MigriereEinstellungenLayout
@@ -129,6 +134,7 @@ Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
     End If
     
 End Sub
+
 
 
 

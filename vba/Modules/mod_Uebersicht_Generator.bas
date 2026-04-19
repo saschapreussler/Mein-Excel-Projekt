@@ -76,8 +76,8 @@ Option Explicit
 ' ===============================================================
 ' KONSTANTEN
 ' ===============================================================
-Private Const UEBERSICHT_START_ROW As Long = 4
-Private Const UEBERSICHT_HEADER_ROW As Long = 3
+Private Const UEBERSICHT_START_ROW As Long = 6
+Private Const UEBERSICHT_HEADER_ROW As Long = 5
 
 ' Spalten im ?bersichtsblatt
 Private Const UEB_COL_PARZELLE As Long = 1      ' A - Parzelle
@@ -1292,6 +1292,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     End If
     
 End Sub
+
+
 
 
 

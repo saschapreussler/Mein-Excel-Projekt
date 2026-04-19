@@ -84,12 +84,12 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     On Error GoTo ErrHandler
     
     ' 1. Pr?fen, ob eine Z?hlerstand-relevante Zelle ge?ndert wurde (Original-Logik B8:C26)
-    If Not Intersect(Target, Me.Range("B8:C26")) Is Nothing Then
+    If Not Intersect(Target, Me.Range("B10:C28")) Is Nothing Then
         isZaehlerChange = True
     End If
     
-    ' 2. Pr?fen, ob eine Netto/Brutto-relevante Zelle ge?ndert wurde (Neue Logik B5, K2:K3, M2:M3)
-    If Not Intersect(Target, Me.Range("B5,K2:K3,M2:M3")) Is Nothing Then
+    ' 2. Pr?fen, ob eine Netto/Brutto-relevante Zelle ge?ndert wurde (Neue Logik B7, K4:K5, M4:M5)
+    If Not Intersect(Target, Me.Range("B7,K4:K5,M4:M5")) Is Nothing Then
         isCalculationChange = True
     End If
     
@@ -107,7 +107,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     If isCalculationChange Then
         
-        ' Blattschutz-Handling nur f?r die Berechnungsteile (K2:M3, B5) notwendig
+        ' Blattschutz-Handling nur f?r die Berechnungsteile (K4:M5, B7) notwendig
         wasProtected = Me.ProtectContents
         If wasProtected Then
             Me.Unprotect PASSWORD:=""
@@ -118,9 +118,9 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             
             ' A. Netto/Brutto-Werte neu berechnen (Neue Logik)
             If ToggleControl.value = True Then ' NETTO Modus
-                If Not Intersect(Target, Me.Range("B5,K2:K3")) Is Nothing Then Call RechneAlleZeilen("NETTO")
+                If Not Intersect(Target, Me.Range("B7,K4:K5")) Is Nothing Then Call RechneAlleZeilen("NETTO")
             Else ' BRUTTO Modus
-                If Not Intersect(Target, Me.Range("B5,M2:M3")) Is Nothing Then Call RechneAlleZeilen("BRUTTO")
+                If Not Intersect(Target, Me.Range("B7,M4:M5")) Is Nothing Then Call RechneAlleZeilen("BRUTTO")
             End If
             
         End If
@@ -199,7 +199,7 @@ Private Sub SetModus(modus As String)
     
     Debug.Print "SetModus(" & UCase(modus) & ") gestartet. Blatt gesch?tzt? " & Me.ProtectContents
     
-    For r = 2 To 3 ' Nur f?r die Zeilen 2 und 3
+    For r = 4 To 5 ' Nur f?r die Zeilen 4 und 5
         If UCase(modus) = "NETTO" Then
             ' NETTO (K) ist Eingabe, MWST (L) und BRUTTO (M) sind Ausgabe
             
@@ -243,19 +243,19 @@ Private Sub RechneAlleZeilen(modus As String)
     Dim mwstSatz As Double
     Dim nettoVal As Variant, bruttoVal As Variant, mwstVal As Double
     
-    ' MwSt-Satz in B5 lesen
-    If IsNumeric(Me.Range("B5").value) Then
-        mwstSatz = CDbl(Me.Range("B5").value)
+    ' MwSt-Satz in B7 lesen
+    If IsNumeric(Me.Range("B7").value) Then
+        mwstSatz = CDbl(Me.Range("B7").value)
         If mwstSatz >= 1 And mwstSatz <= 100 Then
             mwstSatz = mwstSatz / 100
         End If
     Else
         ' Dieser Fehler w?rde nicht 1004 ausl?sen
-        ' MsgBox "Der MwSt-Satz in B5 ist ung?ltig. Bitte korrigieren Sie ihn.", vbExclamation
+        ' MsgBox "Der MwSt-Satz in B7 ist ung?ltig. Bitte korrigieren Sie ihn.", vbExclamation
         Exit Sub
     End If
     
-    For r = 2 To 3
+    For r = 4 To 5
         ' Pr?fung auf Zell-Zusammenf?hrung beibehalten
         If Me.Cells(r, "K").MergeCells Or Me.Cells(r, "L").MergeCells Or Me.Cells(r, "M").MergeCells Then
             MsgBox "Zeile " & r & ": Bitte entferne jegliche Zell-Zusammenf?hrung (MergeCells) in Spalte K, L oder M.", vbCritical
@@ -326,6 +326,7 @@ End Sub
 Public Sub KorrigiereHistorieFarben()
     Call mod_Zaehler_Historie.FarbeHistorieEintraege
 End Sub
+
 
 
 

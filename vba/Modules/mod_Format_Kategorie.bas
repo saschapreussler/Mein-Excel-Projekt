@@ -179,11 +179,11 @@ Public Sub SetzeZielspalteDropdown(ByRef ws As Worksheet, ByVal zeile As Long, B
     
     Select Case einAus
         Case "E"
-            dropdownSource = "=" & WS_BANKKONTO & "!$M$27:$S$27"
+            dropdownSource = "=" & WS_BANKKONTO & "!$M$29:$S$29"
         Case "A"
-            dropdownSource = "=" & WS_BANKKONTO & "!$T$27:$Z$27"
+            dropdownSource = "=" & WS_BANKKONTO & "!$T$29:$Z$29"
         Case Else
-            dropdownSource = "=" & WS_BANKKONTO & "!$M$27:$Z$27"
+            dropdownSource = "=" & WS_BANKKONTO & "!$M$29:$Z$29"
     End Select
     
     On Error Resume Next
@@ -199,6 +199,8 @@ Public Sub SetzeZielspalteDropdown(ByRef ws As Worksheet, ByVal zeile As Long, B
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

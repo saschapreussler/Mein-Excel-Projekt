@@ -101,17 +101,17 @@ Private Sub VorbereiteBlatt(ByVal ws As Worksheet)
         End If
     Next wnd
     
-    ' Spaltenbreiten (breiteres Layout fuer modernes Design)
+    ' Spaltenbreiten (sauberes KPI-Layout)
     ws.Columns("A").ColumnWidth = 2      ' Rand
     ws.Columns("B").ColumnWidth = 4      ' Padding links
-    ws.Columns("C").ColumnWidth = 16
-    ws.Columns("D").ColumnWidth = 12
-    ws.Columns("E").ColumnWidth = 6      ' Kachel-Abstand
-    ws.Columns("F").ColumnWidth = 16
-    ws.Columns("G").ColumnWidth = 12
-    ws.Columns("H").ColumnWidth = 6      ' Kachel-Abstand
-    ws.Columns("I").ColumnWidth = 16
-    ws.Columns("J").ColumnWidth = 12
+    ws.Columns("C").ColumnWidth = 14
+    ws.Columns("D").ColumnWidth = 14
+    ws.Columns("E").ColumnWidth = 14
+    ws.Columns("F").ColumnWidth = 4      ' Trennspalte (leer)
+    ws.Columns("G").ColumnWidth = 14
+    ws.Columns("H").ColumnWidth = 14
+    ws.Columns("I").ColumnWidth = 14
+    ws.Columns("J").ColumnWidth = 14
     ws.Columns("K").ColumnWidth = 4      ' Padding rechts
     ws.Columns("L").ColumnWidth = 2      ' Rand
     
@@ -254,13 +254,16 @@ Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
     abrJahr = HoleAbrechnungsjahr()
     Dim jahrText As String
     If abrJahr > 0 Then jahrText = CStr(abrJahr) Else jahrText = "---"
-    Call SchreibeKPIKarte(ws, "C", "D", 8, 9, jahrText, "Abrechnungsjahr", RGB(41, 128, 185))
+    Call SchreibeKPIKarte(ws, "C", "E", 8, 9, jahrText, "Abrechnungsjahr", RGB(41, 128, 185))
     
-    Call SchreibeKPIKarte(ws, "F", "F", 8, 9, CStr(ZaehleMitglieder()), "Mitglieder", RGB(39, 174, 96))
+    ' Spalte F bleibt leer (Trennung)
+    ws.Range("F8:F9").Interior.color = CLR_SECTION_BG
     
-    Call SchreibeKPIKarte(ws, "G", "G", 8, 9, CStr(ZaehleBelegteParzellen()), "Parzellen", RGB(142, 68, 173))
+    Call SchreibeKPIKarte(ws, "G", "H", 8, 9, CStr(ZaehleMitglieder()), "Mitglieder", RGB(39, 174, 96))
     
-    ' --- KPI-Zeile 2: Kontostand Vorjahr + Aktuell (breitere Karten) ---
+    Call SchreibeKPIKarte(ws, "I", "J", 8, 9, CStr(ZaehleBelegteParzellen()), "Parzellen", RGB(142, 68, 173))
+    
+    ' --- KPI-Zeile 2: Kontostand Vorjahr + Aktuell ---
     Dim kontoVorjahr As Double
     kontoVorjahr = HoleKontostandVorjahr()
     Dim vorjahrText As String
@@ -270,6 +273,9 @@ Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
     If kontoVorjahr >= 0 Then vorjahrFarbe = RGB(41, 128, 185) Else vorjahrFarbe = RGB(231, 76, 60)
     
     Call SchreibeKPIKarte(ws, "C", "E", 10, 11, vorjahrText, "Kontostand Vorjahr", vorjahrFarbe)
+    
+    ' Spalte F bleibt leer (Trennung)
+    ws.Range("F10:F11").Interior.color = CLR_SECTION_BG
     
     Dim kontostand As Double
     kontostand = HoleAktuellerKontostand()
@@ -751,6 +757,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 

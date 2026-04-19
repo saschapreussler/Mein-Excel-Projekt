@@ -70,8 +70,8 @@ Private Sub cbo_RechnungsMonat_Change()
     Dim monatsIndex As Long
     Dim letzteDatenZeile As Long
     
-    Const ersteDatenZeile As Long = 28
-    Const ersteZeileFilterbereich As Long = 27
+    Const ersteDatenZeile As Long = 30
+    Const ersteZeileFilterbereich As Long = 29
     
     Dim rngFilterBereich As Range
     Dim visibleCellsCount As Long
@@ -139,7 +139,7 @@ Private Sub cbo_RechnungsMonat_Change()
         
         Set rngFilterBereich = .Range("A" & ersteZeileFilterbereich & ":A" & letzteDatenZeile)
         
-        .Range("C25").value = "Auszug: " & Me.cbo_RechnungsMonat.value & " " & jahr
+        .Range("C27").value = "Auszug: " & Me.cbo_RechnungsMonat.value & " " & jahr
         
         ' Datumsgrenzen nur wenn nicht "ganzes Jahr"
         If monatsIndex > 0 Then
@@ -903,6 +903,8 @@ Private Function EntferneBemerkungsZeile(ByVal bemerkung As String, _
     
     EntferneBemerkungsZeile = ergebnis
 End Function
+
+
 
 
 

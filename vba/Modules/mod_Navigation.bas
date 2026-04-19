@@ -163,28 +163,10 @@ Private Sub ErstelleHomeButton(ByVal ws As Worksheet)
     
     On Error GoTo BtnFehler
     
-    ' Button oben rechts positionieren - RECHTS vom letzten
-    ' belegten Header-Bereich, damit nichts verdeckt wird.
-    ' Letzte belegte Spalte ermitteln (max. Zeilen 1-5 pruefen)
-    Dim lastCol As Long
-    lastCol = 1
-    Dim scanRow As Long
-    For scanRow = 1 To WorksheetFunction.Min(5, ws.UsedRange.Rows.count + ws.UsedRange.Row - 1)
-        Dim rowLastCol As Long
-        rowLastCol = ws.Cells(scanRow, ws.Columns.count).End(xlToLeft).Column
-        If rowLastCol > lastCol Then lastCol = rowLastCol
-    Next scanRow
-    
-    ' Mindestens Spalte H (8) damit der Button nicht zu weit links steht
-    If lastCol < 8 Then lastCol = 8
-    
-    ' Button 2 Spalten rechts vom letzten Inhalt
-    Dim btnCol As Long
-    btnCol = lastCol + 2
-    
+    ' Button oben links positionieren (Zelle A1/B1)
     Dim btnLeft As Double
     Dim btnTop As Double
-    btnLeft = ws.Cells(1, btnCol).Left
+    btnLeft = ws.Range("A1").Left + 4
     btnTop = ws.Range("A1").Top + 4
     
     Dim shp As Shape
@@ -239,6 +221,76 @@ Private Sub EntferneHomeButton(ByVal ws As Worksheet)
     Err.Clear
     On Error GoTo 0
 End Sub
+
+
+' ===============================================================
+' MIGRATION: 2 Zeilen oben einfuegen fuer Navigationsleiste
+' Wird einmalig aufgerufen wenn Blatt noch keine Navigationszeilen hat.
+' Prueft ob Zeile 1 leer ist (= bereits migriert) oder Daten enthaelt.
+' Betroffene Blaetter: Bankkonto, Strom, Wasser, Einstellungen,
+'                      Zahlungsuebersicht, Finanz-Uebersicht
+' ===============================================================
+Public Sub MigriereNavigationszeilen()
+    Dim blaetter As Variant
+    blaetter = Array(WS_BANKKONTO, "Strom", "Wasser", WS_EINSTELLUNGEN)
+    
+    Dim i As Long
+    Dim ws As Worksheet
+    
+    For i = LBound(blaetter) To UBound(blaetter)
+        On Error Resume Next
+        Set ws = Nothing
+        Set ws = ThisWorkbook.Worksheets(CStr(blaetter(i)))
+        On Error GoTo 0
+        
+        If Not ws Is Nothing Then
+            Call FuegeNavigationsZeilenEin(ws)
+        End If
+    Next i
+    
+    ' Uebersicht und Finanz-Uebersicht separat (Function-Konstanten)
+    On Error Resume Next
+    Set ws = Nothing
+    Set ws = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo 0
+    If Not ws Is Nothing Then Call FuegeNavigationsZeilenEin(ws)
+    
+    On Error Resume Next
+    Set ws = Nothing
+    Set ws = ThisWorkbook.Worksheets(WS_FINANZ_UEBERSICHT())
+    On Error GoTo 0
+    If Not ws Is Nothing Then Call FuegeNavigationsZeilenEin(ws)
+End Sub
+
+Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
+    ' Pruefen ob bereits migriert: Zeile 1 muss leer sein UND
+    ' Zeile 3 muss Daten enthalten (sonst ist das Blatt neu/leer)
+    If Application.WorksheetFunction.CountA(ws.Rows(1)) = 0 And _
+       Application.WorksheetFunction.CountA(ws.Rows(2)) = 0 Then
+        ' Bereits migriert oder leer -> nichts tun
+        Exit Sub
+    End If
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    ' 2 leere Zeilen oben einfuegen
+    ws.Rows("1:2").Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
+    
+    ' Eingefuegte Zeilen bereinigen
+    ws.Range("A1:AZ2").Clear
+    ws.Rows(1).RowHeight = 32
+    ws.Rows(2).RowHeight = 4
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+    
+    Debug.Print "[Navigation] Navigationszeilen eingefuegt auf: " & ws.Name
+End Sub
+
+
 
 
 

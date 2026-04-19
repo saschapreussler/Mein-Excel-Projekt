@@ -6,7 +6,7 @@ Option Explicit
 ' VERSION: 2.0 - 21.04.2026
 ' ZWECK: Erstellt und pflegt das Blatt "Finanz-Uebersicht"
 '        - Kategorien dynamisch aus Bankkonto Spalte H
-'        - Sammelzahlungen: Aufschluesselung via Spalten M-Z
+'        - Sammelzahlungen: Aufschluesselung via Spalte L (Bemerkung)
 '        - KPIs: Einnahmen, Ausgaben, Saldo, Kontostand, VK-Saldo
 '        - Monatsfilter via DropDown
 '        - Balkendiagramme Einnahmen / Ausgaben
@@ -158,7 +158,7 @@ Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Lon
     ws.Columns("K").ColumnWidth = 2
     
     ' --- 3. Titel-Banner ---
-    With ws.Range("A1:K1")
+    With ws.Range("A3:K3")
         .Merge
         .value = "   FINANZ-" & ChrW(220) & "BERSICHT"
         .Font.Size = 18
@@ -168,7 +168,7 @@ Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Lon
         .HorizontalAlignment = xlLeft
         .VerticalAlignment = xlCenter
     End With
-    ws.Rows(1).RowHeight = 40
+    ws.Rows(3).RowHeight = 40
     
     ' Untertitel mit Filter-Info
     Dim abrJahr As Long
@@ -180,7 +180,7 @@ Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Lon
         filterText = Format$(DateSerial(2000, monatFilter, 1), "MMMM")
     End If
     
-    With ws.Range("B2:F2")
+    With ws.Range("B4:F4")
         .Merge
         .value = "Abrechnungsjahr " & IIf(abrJahr > 0, CStr(abrJahr), "---") & "  |  Filter:"
         .Font.Size = 10
@@ -189,23 +189,23 @@ Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Lon
         .HorizontalAlignment = xlLeft
         .VerticalAlignment = xlCenter
     End With
-    ws.Range("A2").Interior.color = CLR_HEADER
-    ws.Range("G2:K2").Interior.color = CLR_HEADER
-    ws.Rows(2).RowHeight = 24
+    ws.Range("A4").Interior.color = CLR_HEADER
+    ws.Range("G4:K4").Interior.color = CLR_HEADER
+    ws.Rows(4).RowHeight = 24
     
     ' Akzentlinie
-    ws.Range("A3:K3").Interior.color = CLR_ACCENT
-    ws.Rows(3).RowHeight = 4
+    ws.Range("A5:K5").Interior.color = CLR_ACCENT
+    ws.Rows(5).RowHeight = 4
     
     ' Filterwert speichern (versteckt)
-    ws.Range("A2").value = monatFilter
-    ws.Range("A2").Font.color = CLR_HEADER
+    ws.Range("A4").value = monatFilter
+    ws.Range("A4").Font.color = CLR_HEADER
     
-    ' --- 4. KPIs (Zeile 5-7) ---
-    ws.Rows(4).RowHeight = 10
-    ws.Range("A4:K8").Interior.color = CLR_LIGHT_BG
+    ' --- 4. KPIs (Zeile 7-9) ---
+    ws.Rows(6).RowHeight = 10
+    ws.Range("A6:K10").Interior.color = CLR_LIGHT_BG
     
-    With ws.Range("B5:I5")
+    With ws.Range("B7:I7")
         .Merge
         .value = ChrW(9473) & ChrW(9473) & "  KENNZAHLEN  " & ChrW(9473) & ChrW(9473)
         .Font.Size = 9
@@ -214,7 +214,7 @@ Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Lon
         .Interior.color = CLR_LIGHT_BG
         .HorizontalAlignment = xlCenter
     End With
-    ws.Rows(5).RowHeight = 18
+    ws.Rows(7).RowHeight = 18
     
     ' Summen berechnen
     Dim sumEinn As Double, sumAusg As Double
@@ -259,18 +259,18 @@ Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Lon
     End If
     
     ' KPI-Karten schreiben
-    ws.Rows(6).RowHeight = 42
-    ws.Rows(7).RowHeight = 16
+    ws.Rows(8).RowHeight = 42
+    ws.Rows(9).RowHeight = 16
     
     Call SchreibeKPI(ws, "C", sumEinn, "Einnahmen", RGB(39, 174, 96))
     Call SchreibeKPI(ws, "E", sumAusg, "Ausgaben", RGB(231, 76, 60))
     Call SchreibeKPI(ws, "G", sumEinn - sumAusg, "Saldo", RGB(41, 128, 185))
     Call SchreibeKPI(ws, "I", kontostand, "Kontostand", RGB(142, 68, 173))
     
-    ws.Rows(8).RowHeight = 10
+    ws.Rows(10).RowHeight = 10
     
     ' VK-Saldo als kleine Zusatzinfo
-    With ws.Range("G8:I8")
+    With ws.Range("G10:I10")
         .Merge
         .value = "Vereinskasse: " & Format$(vkSaldo, "#,##0.00") & " " & ChrW(8364)
         .Font.Size = 8
@@ -281,7 +281,7 @@ Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Lon
     
     ' --- 5. Einnahmen-Tabelle ---
     Dim curRow As Long
-    curRow = 9
+    curRow = 11
     ws.Rows(curRow).RowHeight = 10
     curRow = curRow + 1
     
@@ -512,13 +512,6 @@ Private Sub SammleDaten(ByRef dictEinn As Object, _
     lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    ' Header-Namen fuer Spalten M-Z lesen (fuer Sammelzahlungen)
-    Dim headersMS(13 To 26) As String
-    Dim hc As Long
-    For hc = BK_COL_EINNAHMEN_START To BK_COL_AUSGABEN_ENDE
-        headersMS(hc) = Trim(CStr(wsBK.Cells(BK_HEADER_ROW, hc).value))
-    Next hc
-    
     Dim r As Long
     For r = BK_START_ROW To lastRow
         ' Monatsfilter pruefen
@@ -541,9 +534,9 @@ Private Sub SammleDaten(ByRef dictEinn As Object, _
         End If
         If betrag = 0 Then GoTo nextRow
         
-        ' Sammelzahlung? -> Einzelbetraege aus Spalten M-Z lesen
+        ' Sammelzahlung? -> Spalte L (Bemerkung) parsen
         If InStr(1, LCase(kategorie), LCase(KAT_SAMMELZAHLUNG)) > 0 Then
-            Call VerteileSammelzahlung(wsBK, r, headersMS, dictEinn, dictAusg)
+            Call VerteileSammelzahlung(wsBK, r, betrag, dictEinn, dictAusg)
         Else
             ' Normaler Eintrag: Betrag der Kategorie zuordnen
             If betrag > 0 Then
@@ -560,46 +553,98 @@ End Sub
 
 
 ' ===============================================================
-' SAMMELZAHLUNG: Betraege aus Spalten M-Z einzeln zuordnen
+' SAMMELZAHLUNG: Spalte L (Bemerkung) parsen
+' Format: "SAMMEL:" & vbLf & "Kategorie: Betrag €" & vbLf & ...
+' Wird der Gesamtbetrag (positiv/negativ) beruecksichtigt um
+' Einnahmen/Ausgaben korrekt zuzuordnen.
 ' ===============================================================
 Private Sub VerteileSammelzahlung(ByVal wsBK As Worksheet, _
                                   ByVal zeile As Long, _
-                                  ByRef headers() As String, _
+                                  ByVal gesamtBetrag As Double, _
                                   ByRef dictEinn As Object, _
                                   ByRef dictAusg As Object)
-    Dim col As Long
+    
+    Dim bemerkung As String
+    bemerkung = Trim(CStr(wsBK.Cells(zeile, BK_COL_BEMERKUNG).value))
+    
+    ' Pruefen ob Spalte L das SAMMEL:-Format enthaelt
+    If Left(UCase(bemerkung), 7) <> "SAMMEL:" Then
+        ' Kein SAMMEL-Format -> Gesamtbetrag als "Sammelzahlung" buchen
+        If gesamtBetrag > 0 Then
+            If Not dictEinn.Exists(KAT_SAMMELZAHLUNG) Then dictEinn.Add KAT_SAMMELZAHLUNG, 0
+            dictEinn(KAT_SAMMELZAHLUNG) = dictEinn(KAT_SAMMELZAHLUNG) + gesamtBetrag
+        ElseIf gesamtBetrag < 0 Then
+            If Not dictAusg.Exists(KAT_SAMMELZAHLUNG) Then dictAusg.Add KAT_SAMMELZAHLUNG, 0
+            dictAusg(KAT_SAMMELZAHLUNG) = dictAusg(KAT_SAMMELZAHLUNG) + Abs(gesamtBetrag)
+        End If
+        Exit Sub
+    End If
+    
+    ' SAMMEL:-Format parsen: Zeilen nach "SAMMEL:" lesen
+    Dim zeilen() As String
+    If InStr(bemerkung, vbLf) > 0 Then
+        zeilen = Split(bemerkung, vbLf)
+    ElseIf InStr(bemerkung, vbCrLf) > 0 Then
+        zeilen = Split(bemerkung, vbCrLf)
+    Else
+        zeilen = Split(bemerkung, Chr(10))
+    End If
+    
     Dim hatTeilbetraege As Boolean
     hatTeilbetraege = False
     
-    For col = BK_COL_EINNAHMEN_START To BK_COL_AUSGABEN_ENDE
-        Dim teilBetrag As Double
-        teilBetrag = 0
-        If IsNumeric(wsBK.Cells(zeile, col).value) Then
-            teilBetrag = CDbl(wsBK.Cells(zeile, col).value)
-        End If
+    Dim z As Long
+    For z = LBound(zeilen) To UBound(zeilen)
+        Dim eineZeile As String
+        eineZeile = Trim(zeilen(z))
         
-        If teilBetrag <> 0 Then
-            hatTeilbetraege = True
+        ' Erste Zeile "SAMMEL:" ueberspringen
+        If UCase(eineZeile) = "SAMMEL:" Or eineZeile = "" Then GoTo NextZeile
+        
+        ' Format: "Kategorie: Betrag €"
+        Dim doppelPunkt As Long
+        doppelPunkt = InStr(eineZeile, ":")
+        If doppelPunkt > 1 Then
             Dim teilKat As String
-            teilKat = headers(col)
-            If teilKat = "" Then teilKat = "Sonstige"
+            teilKat = Trim(Left(eineZeile, doppelPunkt - 1))
             
-            If teilBetrag > 0 Then
-                If Not dictEinn.Exists(teilKat) Then dictEinn.Add teilKat, 0
-                dictEinn(teilKat) = dictEinn(teilKat) + teilBetrag
-            Else
-                If Not dictAusg.Exists(teilKat) Then dictAusg.Add teilKat, 0
-                dictAusg(teilKat) = dictAusg(teilKat) + Abs(teilBetrag)
+            ' Betrag extrahieren: alles nach dem Doppelpunkt
+            Dim betragStr As String
+            betragStr = Trim(Mid(eineZeile, doppelPunkt + 1))
+            
+            ' Euro-Zeichen und Leerzeichen entfernen
+            betragStr = Replace(betragStr, ChrW(8364), "")
+            betragStr = Replace(betragStr, "EUR", "")
+            betragStr = Trim(betragStr)
+            
+            ' Komma durch Punkt ersetzen fuer CDbl
+            betragStr = Replace(betragStr, ".", "")
+            betragStr = Replace(betragStr, ",", ".")
+            
+            Dim teilBetrag As Double
+            teilBetrag = 0
+            On Error Resume Next
+            teilBetrag = CDbl(betragStr)
+            On Error GoTo 0
+            
+            If teilBetrag > 0 And teilKat <> "" Then
+                hatTeilbetraege = True
+                
+                ' Richtung (Einnahme/Ausgabe) vom Gesamtbetrag ableiten
+                If gesamtBetrag > 0 Then
+                    If Not dictEinn.Exists(teilKat) Then dictEinn.Add teilKat, 0
+                    dictEinn(teilKat) = dictEinn(teilKat) + teilBetrag
+                Else
+                    If Not dictAusg.Exists(teilKat) Then dictAusg.Add teilKat, 0
+                    dictAusg(teilKat) = dictAusg(teilKat) + teilBetrag
+                End If
             End If
         End If
-    Next col
+NextZeile:
+    Next z
     
-    ' Falls keine Teilbetraege in M-Z: Gesamtbetrag als "Sammelzahlung" buchen
+    ' Falls Parsing fehlgeschlagen: Gesamtbetrag als "Sammelzahlung"
     If Not hatTeilbetraege Then
-        Dim gesamtBetrag As Double
-        If IsNumeric(wsBK.Cells(zeile, BK_COL_BETRAG).value) Then
-            gesamtBetrag = CDbl(wsBK.Cells(zeile, BK_COL_BETRAG).value)
-        End If
         If gesamtBetrag > 0 Then
             If Not dictEinn.Exists(KAT_SAMMELZAHLUNG) Then dictEinn.Add KAT_SAMMELZAHLUNG, 0
             dictEinn(KAT_SAMMELZAHLUNG) = dictEinn(KAT_SAMMELZAHLUNG) + gesamtBetrag
@@ -655,7 +700,7 @@ Private Sub SchreibeKPI(ByVal ws As Worksheet, _
                          ByVal wert As Double, _
                          ByVal label As String, _
                          ByVal akzentFarbe As Long)
-    With ws.Range(col & "6")
+    With ws.Range(col & "8")
         .value = wert
         .NumberFormat = "#,##0.00 " & ChrW(8364)
         .Font.Size = 14
@@ -668,7 +713,7 @@ Private Sub SchreibeKPI(ByVal ws As Worksheet, _
         .Borders(xlEdgeBottom).Weight = xlMedium
     End With
     
-    With ws.Range(col & "7")
+    With ws.Range(col & "9")
         .value = label
         .Font.Size = 8
         .Font.Bold = True
@@ -718,8 +763,8 @@ End Sub
 Private Sub ErstelleFilterDropDown(ByVal ws As Worksheet, ByVal aktuellerMonat As Long)
     Dim ddLeft As Double
     Dim ddTop As Double
-    ddLeft = ws.Range("G2").Left
-    ddTop = ws.Range("G2").Top + 2
+    ddLeft = ws.Range("G4").Left
+    ddTop = ws.Range("G4").Top + 2
     
     On Error GoTo DDErr
     
@@ -879,5 +924,7 @@ ChartErr:
     Debug.Print "[FinanzUebersicht] Diagramm-Fehler: " & Err.Description
     Err.Clear
 End Sub
+
+
 
 

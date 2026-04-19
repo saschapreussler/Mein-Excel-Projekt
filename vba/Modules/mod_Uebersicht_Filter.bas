@@ -23,7 +23,7 @@ Private Const REG_SCHRIFT_INAKTIV As Long = 0          ' Schwarz
 Private Const REG_SHAPE_PREFIX As String = "regMonat_"
 
 ' Zeile/Spalte fuer Shape-Platzierung
-Private Const REG_TOP_ROW As Long = 1    ' Zeile 1
+Private Const REG_TOP_ROW As Long = 3    ' Zeile 3 (Zeile 1-2 = Navigation)
 Private Const REG_HEIGHT As Double = 22
 Private Const REG_WIDTH As Double = 72
 Private Const REG_SPACING As Double = 2
@@ -39,7 +39,7 @@ Private Const UEB_COL_BEMERKUNG As Long = 8
 Private Const UEB_COL_SUMME_IST As Long = 9
 Private Const FARBE_SUMME As Long = 16247773
 Private Const FARBE_SUMME_ZEBRA As Long = 15790320
-Private Const UEBERSICHT_START_ROW As Long = 4
+Private Const UEBERSICHT_START_ROW As Long = 6
 
 
 ' ===============================================================
@@ -158,18 +158,18 @@ Public Sub FilterUebersichtNachMonat(ByVal monatIndex As Long)
     ' Letzte Datenzeile ermitteln
     Dim lastRow As Long
     lastRow = wsUeb.Cells(wsUeb.Rows.count, 1).End(xlUp).Row
-    If lastRow < 4 Then lastRow = 4
+    If lastRow < 6 Then lastRow = 6
 
     If monatIndex = 0 Then
         ' "Alle" -> Filter-Kriterien entfernen, AutoFilter-Dropdowns behalten
-        wsUeb.Range("A3:H" & lastRow).AutoFilter
+        wsUeb.Range("A5:H" & lastRow).AutoFilter
     Else
         ' Filter auf Spalte C (Monat) anwenden
         ' Filterkriterium: "*MonatName*" (enthaelt den Monatsnamen)
         Dim filterMonat As String
         filterMonat = MonthName(monatIndex)
 
-        wsUeb.Range("A3:H" & lastRow).AutoFilter _
+        wsUeb.Range("A5:H" & lastRow).AutoFilter _
             Field:=3, _
             Criteria1:="=*" & filterMonat & "*", _
             Operator:=xlAnd
@@ -304,6 +304,8 @@ Public Sub EntferneMonatsRegister()
     On Error GoTo 0
 
 End Sub
+
+
 
 
 

@@ -83,15 +83,15 @@ Public Function GetTargetRow(ByVal ZaehlerName As String, ByVal Medium As String
     
     Select Case ZaehlerName
         Case "Clubwagen"
-            GetTargetRow = 22
+            GetTargetRow = 24
         Case "K?hltruhe"
-            GetTargetRow = 23
+            GetTargetRow = 25
         Case "Hauptz?hler"
-            GetTargetRow = IIf(Medium = "Strom", 26, 29)
+            GetTargetRow = IIf(Medium = "Strom", 28, 31)
         Case Else
             If Left(ZaehlerName, 8) = "Parzelle" Then
                 idx = val(Mid(ZaehlerName, 10))
-                GetTargetRow = IIf(Medium = "Strom", idx + 7, idx + 9)
+                GetTargetRow = IIf(Medium = "Strom", idx + 9, idx + 11)
             Else
                 GetTargetRow = 0
             End If
@@ -153,7 +153,7 @@ Sub ErzeugeParzellenUebersicht()
         End If
     Next i
     
-    With wsZiel.Range("B5:C" & wsZiel.Rows.count)
+    With wsZiel.Range("B7:C" & wsZiel.Rows.count)
         .UnMerge
         .ClearContents
         .Locked = True
@@ -161,7 +161,7 @@ Sub ErzeugeParzellenUebersicht()
 
     wsZiel.Columns("C").WrapText = True
     
-    zielZeile = 5
+    zielZeile = 7
     
     For i = 1 To maxParzelle
         nameGefunden = HoleNamenFuerParzelle(wsQuelle, CStr(i), lastRow)
@@ -226,8 +226,8 @@ Sub AktualisiereZaehlerTabellenSpalteA()
     Set wsStrom = ThisWorkbook.Worksheets("Strom")
     Set wsWasser = ThisWorkbook.Worksheets("Wasser")
 
-    zielZeileStrom = 8
-    zielZeileWasser = 10
+    zielZeileStrom = 10
+    zielZeileWasser = 12
 
     lastRowQuelle = wsQuelle.Cells(wsQuelle.Rows.count, 2).End(xlUp).Row
     
@@ -541,6 +541,8 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
     wsStart.Protect DrawingObjects:=True, Contents:=True, Scenarios:=True
     
 End Sub
+
+
 
 
 
