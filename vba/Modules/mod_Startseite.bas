@@ -729,6 +729,56 @@ Private Function HoleLetztesBuchungsdatum() As String
 End Function
 
 
+' ===============================================================
+' KPI-UPDATE: Kontostand auf Startseite aktualisieren
+' Wird nach CSV-Import und manuellen Aenderungen aufgerufen
+' ===============================================================
+Public Sub AktualisiereKontostandKPI()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Sub
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    ' Kontostand Vorjahr aktualisieren
+    Dim kontoVorjahr As Double
+    kontoVorjahr = HoleKontostandVorjahr()
+    Dim vorjahrText As String
+    vorjahrText = Format$(kontoVorjahr, "#,##0.00") & " " & ChrW(8364)
+    Dim vorjahrFarbe As Long
+    If kontoVorjahr >= 0 Then vorjahrFarbe = RGB(41, 128, 185) Else vorjahrFarbe = RGB(231, 76, 60)
+    
+    On Error Resume Next
+    ws.Range("C10:E10").value = vorjahrText
+    ws.Range("C10:E10").Font.color = CLR_DARK_TEXT
+    ws.Range("C10:E10").Borders(xlEdgeBottom).color = vorjahrFarbe
+    On Error GoTo 0
+    
+    ' Aktueller Kontostand aktualisieren
+    Dim kontostand As Double
+    kontostand = HoleAktuellerKontostand()
+    Dim kontoText As String
+    kontoText = Format$(kontostand, "#,##0.00") & " " & ChrW(8364)
+    Dim kontoFarbe As Long
+    If kontostand >= 0 Then kontoFarbe = RGB(39, 174, 96) Else kontoFarbe = RGB(231, 76, 60)
+    
+    On Error Resume Next
+    ws.Range("G10:J10").value = kontoText
+    ws.Range("G10:J10").Font.color = CLR_DARK_TEXT
+    ws.Range("G10:J10").Borders(xlEdgeBottom).color = kontoFarbe
+    ws.Range("G11:J11").value = "Kontostand Aktuell | " & HoleLetztesBuchungsdatum()
+    On Error GoTo 0
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+End Sub
+
+
 Private Function HoleVereinsStrasse() As String
     Dim ws As Worksheet
     On Error Resume Next

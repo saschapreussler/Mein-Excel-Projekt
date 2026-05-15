@@ -455,6 +455,9 @@ ImportAbschluss:
         Call PruefeUnvollstaendigeEntityKeys
     End If
     
+    ' Kontostand auf Startseite aktualisieren
+    Call mod_Startseite.AktualisiereKontostandKPI
+    
 End Sub
 
 

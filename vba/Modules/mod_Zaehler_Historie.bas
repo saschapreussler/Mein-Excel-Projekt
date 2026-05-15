@@ -171,10 +171,10 @@ CleanUp:
     Application.EnableEvents = True
     
     If Not wsTarget Is Nothing Then
-        If wasTargetProtected Then wsTarget.Protect PASSWORD, AllowFormattingCells:=True
+        If wasTargetProtected Then wsTarget.Protect PASSWORD, AllowFormattingCells:=True, UserInterfaceOnly:=True, AllowFiltering:=True
     End If
     If Not ws Is Nothing Then
-        If wasHistoryProtected Then ws.Protect PASSWORD, AllowFormattingCells:=True
+        If wasHistoryProtected Then ws.Protect PASSWORD, AllowFormattingCells:=True, UserInterfaceOnly:=True, AllowFiltering:=True
     End If
     
     Exit Sub
@@ -230,7 +230,7 @@ Public Sub FarbeHistorieEintraege()
     lo.Range.Borders.LineStyle = xlContinuous
     lo.Range.Borders.color = RGB(0, 0, 0)
     
-    If wasProtected Then ws.Protect PASSWORD, AllowFormattingCells:=True
+    If wasProtected Then ws.Protect PASSWORD, AllowFormattingCells:=True, UserInterfaceOnly:=True, AllowFiltering:=True
 End Sub
 
 

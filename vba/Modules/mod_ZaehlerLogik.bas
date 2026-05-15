@@ -205,7 +205,7 @@ Sub ErzeugeParzellenUebersicht()
         End With
     End If
     
-    wsZiel.Protect DrawingObjects:=True, Contents:=True, Scenarios:=True
+    wsZiel.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True
 End Sub
 
 Sub AktualisiereZaehlerTabellenSpalteA()
@@ -294,8 +294,8 @@ Sub AktualisiereZaehlerTabellenSpalteA()
         zielZeileWasser = zielZeileWasser + 1
     Next ParzellenID
     
-    wsStrom.Protect DrawingObjects:=True, Contents:=True, Scenarios:=True
-    wsWasser.Protect DrawingObjects:=True, Contents:=True, Scenarios:=True
+    wsStrom.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True
+    wsWasser.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True
     
 End Sub
 
@@ -418,7 +418,7 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
             ws.Range("C:K").VerticalAlignment = xlCenter
             ws.Columns("A").HorizontalAlignment = xlCenter
         End If
-        If ws.ProtectContents Then ws.Protect PASSWORD, AllowFormattingCells:=True
+        If ws.ProtectContents Then ws.Protect PASSWORD, AllowFormattingCells:=True, UserInterfaceOnly:=True, AllowFiltering:=True
         
         On Error GoTo 0
     End If
@@ -536,9 +536,9 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
     
     wsStart.Range("F3").value = ZaehlerMitgliederGesamt
 
-    wsStrom.Protect DrawingObjects:=True, Contents:=True, Scenarios:=True
-    wsWasser.Protect DrawingObjects:=True, Contents:=True, Scenarios:=True
-    wsStart.Protect DrawingObjects:=True, Contents:=True, Scenarios:=True
+    wsStrom.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True
+    wsWasser.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True
+    wsStart.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True
     
 End Sub
 

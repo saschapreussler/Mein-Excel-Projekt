@@ -264,6 +264,8 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                         ' v5.2: Eintrittsdatum (Pachtanfang) aus Mitgliederliste
                         Dim eintritt As Date
                         eintritt = 0
+                        Dim austritt As Date
+                        austritt = 0
                         If Not wsML Is Nothing Then
                             Dim rE As Long
                             For rE = M_START_ROW To lastRowML
@@ -271,11 +273,15 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                                     Dim pa As Variant
                                     pa = wsML.Cells(rE, M_COL_PACHTANFANG).value
                                     If IsDate(pa) Then eintritt = CDate(pa)
+                                    Dim pe As Variant
+                                    pe = wsML.Cells(rE, M_COL_PACHTENDE).value
+                                    If IsDate(pe) Then austritt = CDate(pe)
                                     Exit For
                                 End If
                             Next rE
                         End If
                         dict.Add "Eintritt", eintritt
+                        dict.Add "Austritt", austritt
                         
                         col.Add dict
                     End If

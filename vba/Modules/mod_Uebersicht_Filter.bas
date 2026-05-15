@@ -39,7 +39,7 @@ Private Const UEB_COL_BEMERKUNG As Long = 8
 Private Const UEB_COL_SUMME_IST As Long = 9
 Private Const FARBE_SUMME As Long = 16247773
 Private Const FARBE_SUMME_ZEBRA As Long = 15790320
-Private Const UEBERSICHT_START_ROW As Long = 6
+Private Const UEBERSICHT_START_ROW As Long = 4
 
 
 ' ===============================================================

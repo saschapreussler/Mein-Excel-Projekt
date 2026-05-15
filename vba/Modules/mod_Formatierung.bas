@@ -69,7 +69,8 @@ Public Sub StelleAutoFilterBereit()
         Array(WS_MITGLIEDER_HISTORIE, 3), _
         Array(WS_EINSTELLUNGEN, 22), _
         Array(WS_DATEN, 3), _
-        Array("Dashboard Mitgliederzahlungen", 3))
+        Array("Dashboard Mitgliederzahlungen", 10), _
+        Array(WS_UEBERSICHT(), 3))
     
     Application.ScreenUpdating = False
     Application.EnableEvents = False

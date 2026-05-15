@@ -79,7 +79,7 @@ Public Sub BefuelleVereinskasseComboBox(ByVal wsVK As Worksheet)
     Application.EnableEvents = False
     
     Dim arrMonate(1 To 13) As String
-    arrMonate(1) = "ganzes Jahr"
+    arrMonate(1) = "gesamtes Jahr"
     arrMonate(2) = "Januar"
     arrMonate(3) = "Februar"
     arrMonate(4) = "M" & ChrW(228) & "rz"
@@ -137,7 +137,7 @@ Public Sub WendeVereinskasseFilterAn(ByVal wsVK As Worksheet, ByVal monatsWert A
     
     ' Monatsindex bestimmen
     Select Case monatsWert
-        Case "ganzes Jahr": monatsIndex = 0
+        Case "gesamtes Jahr": monatsIndex = 0
         Case "Januar": monatsIndex = 1
         Case "Februar": monatsIndex = 2
         Case "M" & ChrW(228) & "rz": monatsIndex = 3
@@ -158,7 +158,7 @@ Public Sub WendeVereinskasseFilterAn(ByVal wsVK As Worksheet, ByVal monatsWert A
     
     If letzteDatenZeile < VK_START_ROW Then
         ' Keine Daten vorhanden
-        wsVK.Range("C24").value = "Auszug: ganzes Jahr " & jahr
+        wsVK.Range("C24").value = "Auszug: gesamtes Jahr " & jahr
         GoTo FilterExit
     End If
     
@@ -189,7 +189,7 @@ Public Sub WendeVereinskasseFilterAn(ByVal wsVK As Worksheet, ByVal monatsWert A
     If visibleCellsCount <= 1 And monatsIndex > 0 Then
         ' Keine sichtbaren Daten - Filter zuruecksetzen
         wsVK.ShowAllData
-        wsVK.Range("C24").value = "Auszug: ganzes Jahr " & jahr & " (keine Daten f" & ChrW(252) & "r " & monatsWert & ")"
+        wsVK.Range("C24").value = "Auszug: gesamtes Jahr " & jahr & " (keine Daten f" & ChrW(252) & "r " & monatsWert & ")"
     End If
 
 FilterExit:

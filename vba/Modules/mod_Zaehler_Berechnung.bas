@@ -128,7 +128,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
 
 Cleanup_Berechnung:
     If wasProtected Then
-        wsTarget.Protect PASSWORD, AllowFormattingCells:=True
+        wsTarget.Protect PASSWORD, AllowFormattingCells:=True, UserInterfaceOnly:=True, AllowFiltering:=True
     End If
     Exit Sub
 

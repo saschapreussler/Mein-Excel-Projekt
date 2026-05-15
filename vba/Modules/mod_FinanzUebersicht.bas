@@ -508,6 +508,30 @@ Private Sub SammleDaten(ByRef dictEinn As Object, _
     On Error GoTo 0
     If wsBK Is Nothing Then Exit Sub
     
+    ' Gueltige Kategorien aus Daten!J laden
+    Dim dictGueltig As Object
+    Set dictGueltig = CreateObject("Scripting.Dictionary")
+    dictGueltig.CompareMode = vbTextCompare
+    
+    Dim wsDaten As Worksheet
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If Not wsDaten Is Nothing Then
+        Dim lrD As Long
+        lrD = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
+        Dim rd As Long
+        For rd = DATA_START_ROW To lrD
+            Dim katName As String
+            katName = Trim(CStr(wsDaten.Cells(rd, DATA_CAT_COL_KATEGORIE).value))
+            If katName <> "" Then
+                If Not dictGueltig.Exists(katName) Then dictGueltig.Add katName, True
+            End If
+        Next rd
+    End If
+    ' Sammelzahlung immer erlauben
+    If Not dictGueltig.Exists(KAT_SAMMELZAHLUNG) Then dictGueltig.Add KAT_SAMMELZAHLUNG, True
+    
     Dim lastRow As Long
     lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
@@ -526,6 +550,9 @@ Private Sub SammleDaten(ByRef dictEinn As Object, _
         Dim kategorie As String
         kategorie = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
         If kategorie = "" Then GoTo nextRow
+        
+        ' Nur gueltige Kategorien aus Daten!J verwenden
+        If dictGueltig.count > 1 And Not dictGueltig.Exists(kategorie) Then GoTo nextRow
         
         Dim betrag As Double
         betrag = 0

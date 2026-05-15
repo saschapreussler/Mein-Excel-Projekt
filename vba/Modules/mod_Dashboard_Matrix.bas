@@ -417,7 +417,7 @@ NextKatDash:
         ' Gesamt-Spalte
         With ws.Cells(rowIdx, colGesamt)
             .value = zeileIst
-            .NumberFormat = "#,##0.00"
+            .NumberFormat = "#,##0.00 " & ChrW(8364)
             .Font.Bold = True
             .Font.Name = "Calibri"
             .Font.Size = 10
@@ -486,7 +486,7 @@ NextKatDash:
     End With
     With ws.Cells(rowIdx, colGesamt)
         .value = kpiSummeIst
-        .NumberFormat = "#,##0.00"
+        .NumberFormat = "#,##0.00 " & ChrW(8364)
         .Font.Bold = True
         .Font.Name = "Calibri"
         .VerticalAlignment = xlCenter
@@ -581,37 +581,49 @@ Private Sub SchreibeMatrixZelle(ByVal ws As Worksheet, _
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
         
+        Dim euroFmt As String
+        euroFmt = "#,##0.00 " & ChrW(8364)
+        
         If faellig = 0 Then
             .value = ChrW(8212)
             .Font.color = RGB(180, 180, 180)
             .Interior.color = m_CLR_ZELLE_GRAU
             
         ElseIf bezahlt >= faellig And Not hatRot Then
-            .value = ChrW(10004) & " " & Format(ist, "#,##0.00")
+            .value = ChrW(10004) & " " & Format(ist, euroFmt)
             .Font.color = m_CLR_TEXT_GRUEN
             .Font.Bold = True
             .Interior.color = m_CLR_ZELLE_GRUEN
             
         ElseIf hatRot And bezahlt = 0 Then
-            .value = ChrW(10008) & " " & Format(soll, "#,##0.00")
+            If faellig = 1 Then
+                ' Jaehrliche Kategorie: "offen" statt "0/1"
+                .value = ChrW(10008) & " offen " & Format(soll, euroFmt)
+            Else
+                .value = ChrW(10008) & " " & Format(soll, euroFmt)
+            End If
             .Font.color = m_CLR_TEXT_DUNKELROT
             .Font.Bold = True
             .Interior.color = m_CLR_ZELLE_ROT
             
         ElseIf hatRot Then
             .value = CStr(bezahlt) & "/" & CStr(faellig) & " " & ChrW(8226) & " " & _
-                     Format(ist, "#,##0.00")
+                     Format(ist, euroFmt)
             .Font.color = m_CLR_TEXT_DUNKELROT
             .Interior.color = m_CLR_ZELLE_ROT
             
         ElseIf hatGelb Then
-            .value = CStr(bezahlt) & "/" & CStr(faellig) & " " & ChrW(8226) & " " & _
-                     Format(ist, "#,##0.00")
+            If faellig = 1 Then
+                .value = ChrW(9888) & " " & Format(ist, euroFmt)
+            Else
+                .value = CStr(bezahlt) & "/" & CStr(faellig) & " " & ChrW(8226) & " " & _
+                         Format(ist, euroFmt)
+            End If
             .Font.color = RGB(120, 100, 0)
             .Interior.color = m_CLR_ZELLE_GELB
             
         Else
-            .value = Format(ist, "#,##0.00")
+            .value = Format(ist, euroFmt)
             .Font.color = m_CLR_TEXT_GRUEN
             .Interior.color = m_CLR_ZELLE_GRUEN
         End If
@@ -848,12 +860,18 @@ Public Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     ws.Columns(1).ColumnWidth = 10   ' Parzelle
     ws.Columns(2).ColumnWidth = 26   ' Mitglied(er)
     
+    ' Kategorie-Spalten: AutoFit mit Mindestbreite
     Dim k As Long
     For k = 0 To anzKat - 1
-        ws.Columns(3 + k).ColumnWidth = 22
+        ws.Columns(3 + k).AutoFit
+        If ws.Columns(3 + k).ColumnWidth < 18 Then
+            ws.Columns(3 + k).ColumnWidth = 18
+        End If
+        ' Etwas Puffer
+        ws.Columns(3 + k).ColumnWidth = ws.Columns(3 + k).ColumnWidth + 2
     Next k
     
-    ws.Columns(3 + anzKat).ColumnWidth = 14     ' Gesamt
+    ws.Columns(3 + anzKat).ColumnWidth = 16     ' Gesamt
     ws.Columns(4 + anzKat).ColumnWidth = 10     ' Quote
     
     ' Verzugsdetail: Bemerkungsspalte breiter

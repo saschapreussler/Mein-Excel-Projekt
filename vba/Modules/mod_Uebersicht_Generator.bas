@@ -76,8 +76,8 @@ Option Explicit
 ' ===============================================================
 ' KONSTANTEN
 ' ===============================================================
-Private Const UEBERSICHT_START_ROW As Long = 6
-Private Const UEBERSICHT_HEADER_ROW As Long = 5
+Private Const UEBERSICHT_START_ROW As Long = 4
+Private Const UEBERSICHT_HEADER_ROW As Long = 3
 
 ' Spalten im ?bersichtsblatt
 Private Const UEB_COL_PARZELLE As Long = 1      ' A - Parzelle
@@ -426,9 +426,32 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
             End If
         End If
         
+        ' v4.7: Pachtende pruefen - Monate nach Pachtende ueberspringen
+        Dim austrittMonat As Long
+        austrittMonat = 13 ' Standardwert: kein Austritt (alle Monate aktiv)
+        If IsDate(mitglied("Austritt")) Then
+            Dim austrittDatum As Date
+            austrittDatum = CDate(mitglied("Austritt"))
+            If austrittDatum > 0 Then
+                If Year(austrittDatum) < jahr Then
+                    ' Pacht endete vor dem Abrechnungsjahr -> gesamtes Jahr ueberspringen
+                    austrittMonat = 0
+                ElseIf Year(austrittDatum) = jahr Then
+                    ' Pacht endet im Abrechnungsjahr -> nur bis zum Austrittsmonat
+                    austrittMonat = Month(austrittDatum)
+                End If
+            End If
+        End If
+        
+        ' Wenn Pachtende vor dem Abrechnungsjahr -> dieses Mitglied komplett ueberspringen
+        If austrittMonat = 0 Then GoTo NextMitglied
+        
         For monat = 1 To 12
             ' v5.2: Monate vor Eintritt ueberspringen (nur Mitgliedsbeitrag)
             ' Pacht muss unabhaengig vom Mitglied immer bezahlt werden
+            
+            ' v4.7: Monate nach Pachtende ueberspringen
+            If monat > austrittMonat Then GoTo NextMonat
             
             Dim k As Long
             For k = 0 To anzahlKat - 1
@@ -743,7 +766,9 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 
 NextKat:
             Next k
+NextMonat:
         Next monat
+NextMitglied:
     Next mitglied
     
     ' v5.0: Kumulierte Ist-Summen in Spalte I schreiben

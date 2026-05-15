@@ -108,7 +108,7 @@ CleanUp:
     Application.ScreenUpdating = True
     If Not wsM Is Nothing Then
         If wsM.AutoFilterMode Then wsM.AutoFilterMode = False
-        If wasProtected Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        If wasProtected Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     End If
     Exit Sub
     
