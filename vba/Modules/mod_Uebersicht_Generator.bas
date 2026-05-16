@@ -1243,6 +1243,7 @@ End Function
 ' ===============================================================
 Private Function KonsolidiereMitgliedsbeitragZeilen(ByVal wsUeb As Worksheet, _
                                                     ByVal lastRow As Long) As Long
+
     On Error GoTo Ende
 
     Dim dictGroups As Object
@@ -1253,8 +1254,7 @@ Private Function KonsolidiereMitgliedsbeitragZeilen(ByVal wsUeb As Worksheet, _
     For r = UEBERSICHT_START_ROW To lastRow
         If StrComp(Trim(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), "Mitgliedsbeitrag", vbTextCompare) = 0 Then
             Dim gKey As String
-            gKey = Trim(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
-                   Trim(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value))
+            gKey = Trim(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & Trim(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value))
             If Not dictGroups.exists(gKey) Then
                 Set dictGroups(gKey) = New Collection
             End If
@@ -1270,70 +1270,62 @@ Private Function KonsolidiereMitgliedsbeitragZeilen(ByVal wsUeb As Worksheet, _
     Dim keys As Variant
     keys = dictGroups.keys
 
-    Dim i As Long, j As Long
-    For i = LBound(keys) To UBound(keys) - 1
-        For j = i + 1 To UBound(keys)
-            If CLng(dictGroups(keys(i))(dictGroups(keys(i)).count)) < CLng(dictGroups(keys(j))(dictGroups(keys(j)).count)) Then
-                Dim tmpK As Variant
-                tmpK = keys(i)
-                keys(i) = keys(j)
-                keys(j) = tmpK
-            End If
-        Next j
-    Next i
-
     Dim deletedRows As Long
     deletedRows = 0
 
+    Dim i As Long
     For i = LBound(keys) To UBound(keys)
         Dim rowsInGroup As Collection
         Set rowsInGroup = dictGroups(keys(i))
-        If rowsInGroup.count < 2 Then GoTo NextGroup
 
-        Dim goodRows As New Collection
+        ' 1. Alle GRÜNEN Zeilen sammeln (bezahlt)
+        Dim paidRows As New Collection
+        ' 2. Alle GELBEN/anderen Zeilen sammeln (unbezahlt/abweichend)
+        Dim unpaidRows As New Collection
         Dim rr As Variant
         For Each rr In rowsInGroup
             Dim statusTxt As String
             statusTxt = UCase(Trim(CStr(wsUeb.Cells(CLng(rr), UEB_COL_STATUS).value)))
             If Left(statusTxt, 2) = "GR" Then
-                goodRows.Add CLng(rr)
+                paidRows.Add CLng(rr)
+            Else
+                unpaidRows.Add CLng(rr)
             End If
         Next rr
 
-        If goodRows.count < 2 Then GoTo NextGroup
-
-        Dim keepRow As Long
-        keepRow = CLng(goodRows(1))
-
-        Dim namen As String
-        Dim gesSoll As Double
-        Dim bemGes As String
-        namen = ""
-        gesSoll = 0
-        bemGes = ""
-
-        For Each rr In goodRows
+        ' --- GRÜNE Zeilen zusammenfassen (wie Daten!U, Zeilenumbruch) ---
+        If paidRows.count > 1 Then
+            Dim keepRow As Long
+            keepRow = CLng(paidRows(1))
+            Dim namen As String
+            Dim gesSoll As Double
+            Dim bemGes As String
+            namen = ""
+            gesSoll = 0
+            bemGes = ""
             Dim rowN As Long
-            rowN = CLng(rr)
-            namen = SammleNamenEinmal(namen, CStr(wsUeb.Cells(rowN, UEB_COL_MITGLIED).value))
-            gesSoll = gesSoll + CDbl(val(CStr(wsUeb.Cells(rowN, UEB_COL_SOLL).value)))
-            bemGes = FuegeTeiltextEinmalHinzu(bemGes, CStr(wsUeb.Cells(rowN, UEB_COL_BEMERKUNG).value), " | ")
-        Next rr
-
-        wsUeb.Cells(keepRow, UEB_COL_MITGLIED).value = namen
-        wsUeb.Cells(keepRow, UEB_COL_SOLL).value = gesSoll
-        wsUeb.Cells(keepRow, UEB_COL_IST).value = gesSoll
-        wsUeb.Cells(keepRow, UEB_COL_STATUS).value = m_STATUS_GRUEN
-        wsUeb.Cells(keepRow, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
-        wsUeb.Cells(keepRow, UEB_COL_BEMERKUNG).value = bemGes
-        wsUeb.Cells(keepRow, UEB_COL_MITGLIED).WrapText = True
-
-        For j = goodRows.count To 2 Step -1
-            wsUeb.Rows(CLng(goodRows(j))).Delete
-            deletedRows = deletedRows + 1
-        Next j
-
-NextGroup:
+            For Each rr In paidRows
+                rowN = CLng(rr)
+                namen = SammleNamenEinmal(namen, CStr(wsUeb.Cells(rowN, UEB_COL_MITGLIED).value))
+                gesSoll = gesSoll + CDbl(val(CStr(wsUeb.Cells(rowN, UEB_COL_SOLL).value)))
+                bemGes = FuegeTeiltextEinmalHinzu(bemGes, CStr(wsUeb.Cells(rowN, UEB_COL_BEMERKUNG).value), " | ")
+            Next rr
+            wsUeb.Cells(keepRow, UEB_COL_MITGLIED).value = namen
+            wsUeb.Cells(keepRow, UEB_COL_SOLL).value = gesSoll
+            wsUeb.Cells(keepRow, UEB_COL_IST).value = gesSoll
+            wsUeb.Cells(keepRow, UEB_COL_STATUS).value = m_STATUS_GRUEN
+            wsUeb.Cells(keepRow, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
+            wsUeb.Cells(keepRow, UEB_COL_BEMERKUNG).value = bemGes
+            wsUeb.Cells(keepRow, UEB_COL_MITGLIED).WrapText = True
+            ' Alle weiteren paidRows löschen (außer keepRow)
+            Dim j As Long
+            For j = paidRows.count To 2 Step -1
+                wsUeb.Rows(CLng(paidRows(j))).Delete
+                deletedRows = deletedRows + 1
+            Next j
+        End If
+        ' --- GELBE/andere Zeilen bleiben immer einzeln bestehen ---
+        ' (keine Änderung nötig, sie werden nicht zusammengefasst)
     Next i
 
     KonsolidiereMitgliedsbeitragZeilen = lastRow - deletedRows
@@ -1676,6 +1668,8 @@ NextPos:
     End If
     
 End Sub
+
+
 
 
 
