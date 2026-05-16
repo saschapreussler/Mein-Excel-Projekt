@@ -350,6 +350,16 @@ Private Function HoleOderErstelleSheet() As Worksheet
                 After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.count))
         End If
         ws.Name = sheetName
+    Else
+        ' Auch bestehende Dashboards bei jeder Generierung direkt hinter
+        ' die Zahlungsuebersicht einsortieren.
+        Dim wsUebMove As Worksheet
+        On Error Resume Next
+        Set wsUebMove = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+        On Error GoTo 0
+        If Not wsUebMove Is Nothing Then
+            ws.Move After:=wsUebMove
+        End If
     End If
     
     Set HoleOderErstelleSheet = ws
@@ -737,6 +747,8 @@ Private Sub ErgaenzeParzellennamen(ByRef parzellen() As ParzelleInfo, _
     Next mlM
     
 End Sub
+
+
 
 
 

@@ -290,6 +290,17 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
 
         Debug.Print "[" & ChrW(220) & "bersicht] Blatt neu erstellt: " & wsUeb.Name
     End If
+
+    ' Blattreihenfolge sicherstellen: Startmenue -> Zahlungsuebersicht -> Dashboard
+    On Error Resume Next
+    If Not wsUeb Is Nothing Then
+        Dim wsStart As Worksheet
+        Set wsStart = ThisWorkbook.Worksheets(WS_STARTMENUE())
+        If Not wsStart Is Nothing Then
+            wsUeb.Move After:=wsStart
+        End If
+    End If
+    On Error GoTo ErrorHandler
     
     Application.ScreenUpdating = False
     Application.EnableEvents = False
@@ -319,6 +330,11 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     
     ' Header setzen
     Call SetzeUebersichtHeader(wsUeb)
+
+    ' Home-Button auf der Zahlungsuebersicht immer neu setzen
+    On Error Resume Next
+    Call mod_Navigation.ErstelleHomeButton(wsUeb)
+    On Error GoTo ErrorHandler
     
     ' Einstellungen-Cache laden (Performance)
     Call mod_Zahlungspruefung.LadeEinstellungenCacheZP
@@ -1168,24 +1184,14 @@ Private Function PruefePartnerMitgliedsbeitrag( _
         If CLng(partner("Parzelle")) = parzelle Then
             If StrComp(CStr(partner("EntityKey")), meineEntityKey, vbTextCompare) <> 0 Then
                 ' Partner gefunden - Zahlung pruefen
-                Dim partnerErgebnis As String
-                partnerErgebnis = mod_Zahlungspruefung.PruefeZahlungen( _
-                    CStr(partner("EntityKey")), "Mitgliedsbeitrag", monat, jahr)
-                
-                ' IST aus Ergebnis parsen
-                Dim partnerTeile() As String
-                partnerTeile = Split(partnerErgebnis, "|")
-                
+                Dim partnerCount As Long
                 Dim partnerIst As Double
-                partnerIst = 0
-                If UBound(partnerTeile) >= 2 Then
-                    Dim pIT() As String
-                    pIT = Split(partnerTeile(2), ":")
-                    If UBound(pIT) >= 1 Then partnerIst = val(pIT(1))
-                End If
-                
-                ' Partner hat >= 2x Soll bezahlt -> deckt beide ab
-                If partnerIst >= sollProPerson * 2 - 0.01 Then
+                Call mod_Zahlungspruefung.ZaehleZahlungenZP( _
+                    CStr(partner("EntityKey")), "Mitgliedsbeitrag", monat, jahr, _
+                    partnerCount, partnerIst)
+
+                ' Nur genau eine passende Zahlung darf als Gemeinschaftszahlung gelten
+                If partnerCount = 1 And partnerIst >= sollProPerson * 2 - 0.01 Then
                     PruefePartnerMitgliedsbeitrag = _
                         "Mitbezahlt durch " & CStr(partner("Name"))
                     Exit Function
@@ -1347,6 +1353,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     End If
     
 End Sub
+
+
 
 
 
