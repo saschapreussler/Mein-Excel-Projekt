@@ -261,12 +261,34 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     On Error GoTo ErrorHandler
     
-    If wsUeb Is Nothing Or wsDaten Is Nothing Then
+    If wsDaten Is Nothing Then
         If Not stummModus Then
-            MsgBox "Blatt '" & ChrW(220) & "bersicht' oder 'Daten' nicht gefunden!", vbCritical
+            MsgBox "Blatt 'Daten' nicht gefunden!", vbCritical
         End If
         m_IsGenerating = False
         Exit Sub
+    End If
+
+    If wsUeb Is Nothing Then
+        On Error Resume Next
+        Set wsUeb = ThisWorkbook.Worksheets.Add(After:=wsDaten)
+        If wsUeb Is Nothing Then
+            Set wsUeb = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.count))
+        End If
+        If Not wsUeb Is Nothing Then
+            wsUeb.Name = WS_UEBERSICHT()
+        End If
+        On Error GoTo ErrorHandler
+
+        If wsUeb Is Nothing Then
+            If Not stummModus Then
+                MsgBox "Blatt '" & WS_UEBERSICHT() & "' konnte nicht erstellt werden!", vbCritical
+            End If
+            m_IsGenerating = False
+            Exit Sub
+        End If
+
+        Debug.Print "[" & ChrW(220) & "bersicht] Blatt neu erstellt: " & wsUeb.Name
     End If
     
     Application.ScreenUpdating = False
@@ -1325,6 +1347,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     End If
     
 End Sub
+
+
 
 
 
