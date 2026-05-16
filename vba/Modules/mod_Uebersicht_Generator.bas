@@ -547,10 +547,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
-                ' v4.6/v5.4: Vorjahr-Schutz: Wenn keine Vorjahr-Daten vorhanden sind,
-                ' koennte eine Okt-Dez-Zahlung des Vorjahres fuer diesen Monat gelten.
-                ' In diesem Fall ROT -> GELB herabstufen mit Hinweis (Monate 1-3).
-                If monat <= 3 And ist = 0 And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
+                ' v4.6/v5.4: Vorjahr-Schutz nur fuer Januar:
+                ' Wenn keine Vorjahr-Daten vorhanden sind, koennte eine Okt-Dez-
+                ' Zahlung des Vorjahres fuer Januar gelten.
+                If monat = 1 And ist = 0 And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
                     If StrComp(status, "ROT", vbTextCompare) = 0 Then
                         status = "GELB"
                     End If
@@ -736,9 +736,8 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
-                ' v4.6: Hinweis wenn Januar ohne Vorjahr-Daten auf GELB herabgestuft wurde
-                ' v5.4: Hinweis wenn Monat 1-3 ohne Vorjahr-Daten auf GELB herabgestuft wurde
-                If monat <= 3 And ist = 0 And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
+                ' v4.6/v5.4: Hinweis NUR fuer Januar ohne Vorjahr-Daten
+                If monat = 1 And ist = 0 And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
                     Dim vjHinweis As String
                     vjHinweis = "Keine Vorjahr-Daten: Zahlung evtl. im Vorjahr (Okt-Dez) erfolgt"
                     If bemerkung = "" Then
@@ -1178,7 +1177,7 @@ End Function
 
 ' ===============================================================
 ' v5.4: VORJAHR-GELB-PRUEFUNG
-' Scannt die Zahlungsuebersicht nach GELB-Eintraegen in Monaten 1-3
+' Scannt die Zahlungsuebersicht nach GELB-Eintraegen im Januar
 ' wo "Keine Vorjahr-Daten" in der Bemerkung steht.
 ' Fragt den Nutzer ob die Zahlungen im Vorjahr erfolgt sind.
 '
@@ -1217,8 +1216,7 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     
     ' 2) Einstiegsfrage
     Dim antwort As VbMsgBoxResult
-    antwort = MsgBox("Es gibt " & gelbZeilen.count & " Position(en) in den Monaten " & _
-                     "Januar bis M" & ChrW(228) & "rz, f" & ChrW(252) & "r die keine " & _
+    antwort = MsgBox("Es gibt " & gelbZeilen.count & " Januar-Position(en), f" & ChrW(252) & "r die keine " & _
                      "Vorjahr-Daten vorliegen." & vbCrLf & vbCrLf & _
                      "M" & ChrW(246) & "chten Sie diese einzeln pr" & ChrW(252) & "fen " & _
                      "und best" & ChrW(228) & "tigen, ob die Zahlung im Vorjahr " & _
@@ -1327,6 +1325,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     End If
     
 End Sub
+
+
 
 
 

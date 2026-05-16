@@ -780,6 +780,21 @@ Public Function ZaehleAktiveMitgliederGesamt() As Long
         vn = Trim(CStr(wsML.Cells(r, M_COL_VORNAME).value))
         nn = Trim(CStr(wsML.Cells(r, M_COL_NACHNAME).value))
         If vn = "" And nn = "" Then GoTo NextMR
+
+        ' KGA-/Systemzeilen und ehemalige Mitglieder nicht als aktiv zaehlen
+        Dim anrede As String
+        anrede = Trim(CStr(wsML.Cells(r, M_COL_ANREDE).value))
+        If StrComp(anrede, ANREDE_KGA, vbTextCompare) = 0 Then GoTo NextMR
+
+        Dim funktion As String
+        funktion = Trim(CStr(wsML.Cells(r, M_COL_FUNKTION).value))
+        If StrComp(funktion, AUSTRITT_STATUS, vbTextCompare) = 0 Then GoTo NextMR
+
+        ' Nur gueltige Parzellen 1-14 zaehlen
+        Dim parzStr As String
+        parzStr = Trim(CStr(wsML.Cells(r, M_COL_PARZELLE).value))
+        If Not IsNumeric(parzStr) Then GoTo NextMR
+        If CLng(parzStr) < 1 Or CLng(parzStr) > 14 Then GoTo NextMR
         
         ' Pachtanfang muss vorhanden sein (= aktives Mitglied)
         Dim paWert As Variant
@@ -800,6 +815,8 @@ NextMR:
     ZaehleAktiveMitgliederGesamt = cnt
     
 End Function
+
+
 
 
 

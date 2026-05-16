@@ -540,59 +540,8 @@ End Sub
 ' ===============================================================
 
 Public Function ZaehleMitglieder() As Long
-    Dim wsMitgl As Worksheet
-    Dim r As Long
-    Dim lastRow As Long
-    Dim dictNamen As Object
-    
-    On Error Resume Next
-    Set wsMitgl = ThisWorkbook.Worksheets(WS_MITGLIEDER)
-    On Error GoTo 0
-    
-    If wsMitgl Is Nothing Then
-        ZaehleMitglieder = 0
-        Exit Function
-    End If
-    
-    Set dictNamen = CreateObject("Scripting.Dictionary")
-    lastRow = wsMitgl.Cells(wsMitgl.Rows.count, M_COL_NACHNAME).End(xlUp).Row
-    
-    For r = M_START_ROW To lastRow
-        Dim nachname As String
-        Dim vorname As String
-        Dim pachtAnfang As Variant
-        Dim pachtEnde As Variant
-        
-        nachname = Trim(CStr(wsMitgl.Cells(r, M_COL_NACHNAME).value))
-        vorname = Trim(CStr(wsMitgl.Cells(r, M_COL_VORNAME).value))
-        pachtAnfang = wsMitgl.Cells(r, M_COL_PACHTANFANG).value
-        pachtEnde = wsMitgl.Cells(r, M_COL_PACHTENDE).value
-        
-        If nachname = "" Then GoTo NextMitglied
-        
-        If Not IsDate(pachtAnfang) Then
-            If Not IsNumeric(pachtAnfang) Then GoTo NextMitglied
-        End If
-        
-        If IsDate(pachtEnde) Then
-            If CDate(pachtEnde) < Date Then GoTo NextMitglied
-        End If
-        
-        Dim anrede As String
-        anrede = Trim(CStr(wsMitgl.Cells(r, M_COL_ANREDE).value))
-        If anrede = ANREDE_KGA Then GoTo NextMitglied
-        
-        Dim schluessel As String
-        schluessel = LCase(nachname & "|" & vorname)
-        If Not dictNamen.Exists(schluessel) Then
-            dictNamen.Add schluessel, True
-        End If
-        
-NextMitglied:
-    Next r
-    
-    ZaehleMitglieder = dictNamen.count
-    Set dictNamen = Nothing
+    ' Einheitliche Logik wie im Dashboard verwenden
+    ZaehleMitglieder = mod_Uebersicht_Daten.ZaehleAktiveMitgliederGesamt()
 End Function
 
 
@@ -813,6 +762,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 

@@ -217,6 +217,14 @@ ErrorHandler:
            "Nr. " & Err.Number & ": " & Err.Description, vbCritical
 End Sub
 
+' ***************************************************************
+' KURZBEFEHL: Alt+F8 > TestReset_Kurz
+' Fuehrt den Test-Reset mit Standardablauf aus.
+' ***************************************************************
+Public Sub TestReset_Kurz()
+    Call TestReset_VorCSVImport
+End Sub
+
 ' ===============================================================
 ' ABSCHNITT 2: TEST-CSV GENERATOR
 ' ===============================================================
@@ -665,6 +673,8 @@ Private Sub SchreibeUTF8Datei(ByVal pfad As String, ByVal inhalt As String)
     Set utf8Stream = Nothing
     Set binStream = Nothing
 End Sub
+
+
 
 
 

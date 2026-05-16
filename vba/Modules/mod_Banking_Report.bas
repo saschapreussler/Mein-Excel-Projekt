@@ -36,14 +36,12 @@ Public Sub Initialize_ImportReport_ListBox()
     
     Dim wsBK As Worksheet
     Dim wsDaten As Worksheet
-    Dim lb As MSForms.ListBox
-    Dim oleObj As OLEObject
     Dim gespeichert As String
     Dim zeilen() As String
     Dim anzahl As Long
     Dim i As Long
-    Dim savLeft As Double, savTop As Double
-    Dim savWidth As Double, savHeight As Double
+    Dim reportText As String
+    Dim reportFarbe As Long
     
     On Error Resume Next
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
@@ -52,68 +50,37 @@ Public Sub Initialize_ImportReport_ListBox()
     
     If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
     
-    ' OLEObject holen und Position/Gr??e VORHER sichern
-    On Error Resume Next
-    Set oleObj = wsBK.OLEObjects(FORM_LISTBOX_NAME)
-    On Error GoTo 0
-    If oleObj Is Nothing Then Exit Sub
-    
-    ' Blattschutz aufheben (OLE-Zugriff erfordert ungesch?tztes Blatt)
+    ' Blattschutz aufheben
     On Error Resume Next
     wsBK.Unprotect PASSWORD:=PASSWORD
+    wsBK.OLEObjects(FORM_LISTBOX_NAME).Delete
     On Error GoTo 0
-    
-    savLeft = oleObj.Left
-    savTop = oleObj.Top
-    savWidth = oleObj.Width
-    savHeight = oleObj.Height
-    
-    ' Placement auf freifliegend setzen
-    On Error Resume Next
-    oleObj.Placement = xlFreeFloating
-    On Error GoTo 0
-    
-    ' ActiveX ListBox holen
-    On Error Resume Next
-    Set lb = oleObj.Object
-    On Error GoTo 0
-    If lb Is Nothing Then
-        wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-        Exit Sub
-    End If
-    
-    ' ListBox leeren
-    lb.Clear
+    reportText = ""
+    reportFarbe = LB_COLOR_WEISS
     
     ' Gespeichertes Protokoll aus Y500 lesen
     gespeichert = CStr(wsDaten.Cells(PROTO_ZEILE, PROTO_SPALTE).value)
     
     If gespeichert = "" Or gespeichert = "0" Then
-        ' Kein Protokoll vorhanden - Standardtext
-        lb.AddItem "Kein Status Report"
-        lb.AddItem "vorhanden."
-        lb.BackColor = LB_COLOR_WEISS
+        reportText = "Kein Status Report" & vbLf & "vorhanden."
     Else
-        ' Protokoll-Zeilen aus Y500 deserialisieren und einf?gen
+        ' Protokoll-Zeilen aus Y500 lesen (neuester Block zuerst)
         zeilen = Split(gespeichert, PROTO_SEP)
         anzahl = UBound(zeilen) + 1
-        If anzahl > MAX_ZEILEN Then anzahl = MAX_ZEILEN
+        If anzahl > 5 Then anzahl = 5
         
         For i = 0 To anzahl - 1
-            lb.AddItem zeilen(i)
+            If reportText = "" Then
+                reportText = zeilen(i)
+            Else
+                reportText = reportText & vbLf & zeilen(i)
+            End If
         Next i
-        
-        ' Farbe aus j?ngstem Block bestimmen
-        Call FaerbeListBoxAusProtokoll(lb, zeilen)
+
+        reportFarbe = BestimmeReportFarbe(zeilen)
     End If
-    
-    ' Position und Gr??e WIEDERHERSTELLEN (AddItem kann sie ?ndern)
-    On Error Resume Next
-    oleObj.Left = savLeft
-    oleObj.Top = savTop
-    oleObj.Width = savWidth
-    oleObj.Height = savHeight
-    On Error GoTo 0
+
+    Call SchreibeReportNachH8(wsBK, reportText, reportFarbe)
     
     ' Blattschutz wiederherstellen
     On Error Resume Next
@@ -131,8 +98,6 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     
     Dim wsBK As Worksheet
     Dim wsDaten As Worksheet
-    Dim lb As MSForms.ListBox
-    Dim oleObj As OLEObject
     Dim altGespeichert As String
     Dim neuerBlock As String
     Dim gesamt As String
@@ -140,8 +105,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     Dim anzahl As Long
     Dim i As Long
     Dim eventsWaren As Boolean
-    Dim savLeft As Double, savTop As Double
-    Dim savWidth As Double, savHeight As Double
+    Dim reportText As String
     
     On Error Resume Next
     Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
@@ -150,25 +114,10 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     
     If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
     
-    ' OLEObject holen und Position/Gr??e VORHER sichern
-    On Error Resume Next
-    Set oleObj = wsBK.OLEObjects(FORM_LISTBOX_NAME)
-    On Error GoTo 0
-    If oleObj Is Nothing Then Exit Sub
-    
-    ' Blattschutz aufheben (OLE-Zugriff erfordert ungesch?tztes Blatt)
+    ' Blattschutz aufheben
     On Error Resume Next
     wsBK.Unprotect PASSWORD:=PASSWORD
-    On Error GoTo 0
-    
-    savLeft = oleObj.Left
-    savTop = oleObj.Top
-    savWidth = oleObj.Width
-    savHeight = oleObj.Height
-    
-    ' Placement auf freifliegend setzen
-    On Error Resume Next
-    oleObj.Placement = xlFreeFloating
+    wsBK.OLEObjects(FORM_LISTBOX_NAME).Delete
     On Error GoTo 0
     
     ' --- 5-Zeilen-Block zusammenbauen ---
@@ -222,29 +171,18 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     ' --- Events wieder herstellen ---
     Application.EnableEvents = eventsWaren
     
-    ' --- ActiveX ListBox aktualisieren ---
-    On Error Resume Next
-    Set lb = oleObj.Object
-    On Error GoTo 0
-    
-    If Not lb Is Nothing Then
-        lb.Clear
-        zeilen = Split(gesamt, PROTO_SEP)
-        For i = 0 To anzahl - 1
-            lb.AddItem zeilen(i)
-        Next i
-        
-        ' Farbcodierung
-        Call FaerbeListBoxNachImport(lb, imported, dupes, failed)
-    End If
-    
-    ' Position und Gr??e WIEDERHERSTELLEN (AddItem kann sie ?ndern)
-    On Error Resume Next
-    oleObj.Left = savLeft
-    oleObj.Top = savTop
-    oleObj.Width = savWidth
-    oleObj.Height = savHeight
-    On Error GoTo 0
+    ' --- Report in Bankkonto H8 aktualisieren ---
+    reportText = ""
+    zeilen = Split(neuerBlock, PROTO_SEP)
+    For i = 0 To UBound(zeilen)
+        If reportText = "" Then
+            reportText = zeilen(i)
+        Else
+            reportText = reportText & vbLf & zeilen(i)
+        End If
+    Next i
+    Call SchreibeReportNachH8(wsBK, reportText, _
+                              IIf(failed > 0, LB_COLOR_ROT, IIf(dupes > 0, LB_COLOR_GELB, LB_COLOR_GRUEN)))
     
     ' Blattschutz wiederherstellen
     On Error Resume Next
@@ -254,53 +192,43 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
 End Sub
 
 ' ---------------------------------------------------------------
-' Farbcodierung nach Import-Ergebnis (direkt auf ListBox)
-'     GR?N   = Alles OK (dupes = 0, failed = 0)
-'     GELB   = Duplikate vorhanden (dupes > 0, failed = 0)
-'     ROT    = Fehler vorhanden (failed > 0)
+' Schreibt den Importstatus formatiert in Bankkonto!H8
 ' ---------------------------------------------------------------
-Private Sub FaerbeListBoxNachImport(ByVal lb As MSForms.ListBox, _
-                                     ByVal imported As Long, _
-                                     ByVal dupes As Long, _
-                                     ByVal failed As Long)
-    
-    If failed > 0 Then
-        lb.BackColor = LB_COLOR_ROT
-    ElseIf dupes > 0 Then
-        lb.BackColor = LB_COLOR_GELB
-    Else
-        lb.BackColor = LB_COLOR_GRUEN
-    End If
-    
+Private Sub SchreibeReportNachH8(ByVal wsBK As Worksheet, _
+                                 ByVal reportText As String, _
+                                 ByVal bgColor As Long)
+    With wsBK.Range("H8")
+        .value = reportText
+        .WrapText = True
+        .HorizontalAlignment = xlLeft
+        .VerticalAlignment = xlTop
+        .Interior.color = bgColor
+        .Font.Bold = True
+        .Font.Size = 9
+    End With
+    wsBK.Rows(8).RowHeight = 72
 End Sub
 
 ' ---------------------------------------------------------------
-' Farbcodierung aus gespeichertem Protokoll bestimmen
-'     Liest Index 2: "X Duplikate erkannt"
-'     Liest Index 3: "X Fehler"
+' Farbe fuer den aktuellsten Report-Block bestimmen
 ' ---------------------------------------------------------------
-Private Sub FaerbeListBoxAusProtokoll(ByVal lb As MSForms.ListBox, ByRef zeilen() As String)
+Private Function BestimmeReportFarbe(ByRef zeilen() As String) As Long
+    BestimmeReportFarbe = LB_COLOR_WEISS
+    If UBound(zeilen) < 3 Then Exit Function
     
     Dim dupes As Long
     Dim failed As Long
-    
-    If UBound(zeilen) < 3 Then
-        lb.BackColor = LB_COLOR_WEISS
-        Exit Sub
-    End If
-    
     dupes = ExtrahiereZahl(CStr(zeilen(2)))
     failed = ExtrahiereZahl(CStr(zeilen(3)))
     
     If failed > 0 Then
-        lb.BackColor = LB_COLOR_ROT
+        BestimmeReportFarbe = LB_COLOR_ROT
     ElseIf dupes > 0 Then
-        lb.BackColor = LB_COLOR_GELB
+        BestimmeReportFarbe = LB_COLOR_GELB
     Else
-        lb.BackColor = LB_COLOR_GRUEN
+        BestimmeReportFarbe = LB_COLOR_GRUEN
     End If
-    
-End Sub
+End Function
 
 ' ---------------------------------------------------------------
 ' Zahl am Anfang eines Strings extrahieren
@@ -327,6 +255,8 @@ Public Function ExtrahiereZahl(ByVal text As String) As Long
     End If
     
 End Function
+
+
 
 
 
