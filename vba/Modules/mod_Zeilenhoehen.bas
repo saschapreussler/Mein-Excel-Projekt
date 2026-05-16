@@ -57,3 +57,4 @@ Private Sub SetzeZeilenhoehe(ByVal blattName As String, ByVal zeile As Long, ByV
     
     If warGeschuetzt Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
 End Sub
+

@@ -60,6 +60,7 @@ Attribute VB_Exposed = False
 
 
 
+
 Option Explicit
 
 Private m_SelectedOption As Integer
@@ -165,7 +166,7 @@ Private Sub cmd_OK_Click()
                 MsgBox "Es muss ein neuer Nachpächter erfasst werden.", vbInformation, "Nachpächter erfassen"
                 
                 m_SelectedOption = 1
-                m_CustomReason = "Übergabe an Nachpächter"
+                m_CustomReason = "übergabe an Nachpächter"
                 m_NachpaechterID = "NACHPAECHTER_NEU"
                 m_NachpaechterName = ""
                 Me.Hide
@@ -177,7 +178,7 @@ Private Sub cmd_OK_Click()
         Else
             ' Nachpächter wurde ausgewählt
             m_SelectedOption = 1
-            m_CustomReason = "Übergabe an Nachpächter"
+            m_CustomReason = "übergabe an Nachpächter"
             
             ' Hole Member ID aus ComboBox (versteckte Spalte)
             Dim ws As Worksheet

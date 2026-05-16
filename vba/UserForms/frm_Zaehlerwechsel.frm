@@ -60,6 +60,7 @@ Attribute VB_Exposed = False
 
 
 
+
 Option Explicit
 
 ' ==========================================================
@@ -67,8 +68,8 @@ Option Explicit
 ' ==========================================================
 Public m_Medium As String
 Private m_targetRow As Long
-' Der Dezimaltrenner muss hier bekannt sein fï¿½r die Formatierung
-Private Const DECIMAL_SEP As String = "," ' Standard fï¿½r DE-Excel-UI
+' Der Dezimaltrenner muss hier bekannt sein für die Formatierung
+Private Const DECIMAL_SEP As String = "," ' Standard für DE-Excel-UI
 
 ' ==========================================================
 ' INIT
@@ -92,7 +93,7 @@ Public Sub InitForm_Runtime(ByVal Medium As String)
             einheit = "kWh"
             color = RGB(255, 0, 0)
         Case "Wasser"
-            einheit = "m" & ChrW(179)   ' mÂ³
+            einheit = "m" & ChrW(179)   ' m³
             color = RGB(0, 0, 255)
         Case Else
             einheit = "---"
@@ -102,7 +103,7 @@ Public Sub InitForm_Runtime(ByVal Medium As String)
     Me.fra_Header.Caption = "Z" & ChrW(228) & "hlerwechsel erfassen (" & Medium & ")"
     Me.fra_Header.ForeColor = color
 
-    ' Zuweisung der Einheit fÃ¼r das ALT-Feld und das NEU-Start-Feld
+    ' Zuweisung der Einheit für das ALT-Feld und das NEU-Start-Feld
     Me.lbl_EinheitAlt.Caption = einheit
     Me.lbl_EinheitNeuStart.Caption = einheit
  
@@ -132,10 +133,10 @@ Private Sub Populate_cmb_Parzelle()
 
     If m_Medium = "Strom" Then
         Me.cmb_Parzelle.AddItem "Clubwagen"
-        Me.cmb_Parzelle.AddItem "Kï¿½hltruhe"
+        Me.cmb_Parzelle.AddItem "Kühltruhe"
     End If
 
-    Me.cmb_Parzelle.AddItem "Hauptzï¿½hler"
+    Me.cmb_Parzelle.AddItem "Hauptzähler"
 
 End Sub
 
@@ -149,9 +150,9 @@ Private Sub cmb_Parzelle_Change()
     
     ' Code-Namen verwenden
     If m_Medium = "Strom" Then
-        Set ws = Tabelle5 ' Code-Name fï¿½r das Strom-Blatt
+        Set ws = Tabelle5 ' Code-Name für das Strom-Blatt
     ElseIf m_Medium = "Wasser" Then
-        Set ws = Tabelle6 ' Code-Name fï¿½r das Wasser-Blatt
+        Set ws = Tabelle6 ' Code-Name für das Wasser-Blatt
     Else
         Exit Sub ' Falls Medium unbekannt
     End If
@@ -160,9 +161,9 @@ Private Sub cmb_Parzelle_Change()
     Select Case Me.cmb_Parzelle.value
         Case "Clubwagen"
             m_targetRow = 22
-        Case "Kï¿½hltruhe"
+        Case "Kühltruhe"
             m_targetRow = 23
-        Case "Hauptzï¿½hler"
+        Case "Hauptzähler"
             m_targetRow = IIf(m_Medium = "Strom", 26, 29)
         Case Else
             If Left(Me.cmb_Parzelle.value, 8) = "Parzelle" Then
@@ -174,12 +175,12 @@ Private Sub cmb_Parzelle_Change()
             End If
     End Select
 
-    ' ===== STAND ALT ï¿½ EXAKT: C-Spalte der Hauptblï¿½tter =====
+    ' ===== STAND ALT ? EXAKT: C-Spalte der Hauptblätter =====
     ' Wir lesen den Rohwert (der potentiell Dezimalstellen hat)
     standAltValue = ws.Cells(m_targetRow, "C").value
     
     If IsNumeric(standAltValue) Then
-        ' NEU: CleanNumber verwenden, um unnï¿½tige .0 oder ,0 zu entfernen
+        ' NEU: CleanNumber verwenden, um unnötige .0 oder ,0 zu entfernen
         Me.txt_StandAlt.text = CleanAndFormatNumber(standAltValue)
     Else
         Me.txt_StandAlt.text = "0"
@@ -195,7 +196,7 @@ Private Sub cmb_Parzelle_Change()
 End Sub
 
 ' ==========================================================
-' NEU: ERWEITERTE FORMATIERUNG Fï¿½R ZAHLEN UND DEZIMALEN
+' NEU: ERWEITERTE FORMATIERUNG FÜR ZAHLEN UND DEZIMALEN
 ' (Ersetzt FormatTausender und FormatNumberInput)
 ' ==========================================================
 Private Function CleanAndFormatNumber(ByVal v As Variant) As String
@@ -208,7 +209,7 @@ Private Function CleanAndFormatNumber(ByVal v As Variant) As String
         cleanStr = Replace(cleanStr, Application.International(xlDecimalSeparator), DECIMAL_SEP)
     End If
     
-    ' 3. Fï¿½hre Tausender-Formatierung nur fï¿½r den Vorkomma-Teil durch (optional)
+    ' 3. Führe Tausender-Formatierung nur für den Vorkomma-Teil durch (optional)
     Dim parts() As String
     Dim preDecimal As String
     Dim postDecimal As String
@@ -222,7 +223,7 @@ Private Function CleanAndFormatNumber(ByVal v As Variant) As String
         postDecimal = ""
     End If
     
-    ' Tausenderformatierung fï¿½r den Vorkomma-Teil
+    ' Tausenderformatierung für den Vorkomma-Teil
     Dim i As Long
     Dim tempPreDecimal As String
     tempPreDecimal = ""
@@ -294,7 +295,7 @@ Private Sub chk_Bemerkung_Click()
 End Sub
 
 ' ==========================================================
-' SPEICHERN (KORRIGIERT: Logik fï¿½r editierbaren Alt-Stand und Plausibilitï¿½tsprï¿½fung)
+' SPEICHERN (KORRIGIERT: Logik für editierbaren Alt-Stand und Plausibilitätsprüfung)
 ' ==========================================================
 Private Sub Btn_Speichern_Click()
 
@@ -302,7 +303,7 @@ Private Sub Btn_Speichern_Click()
     Dim standAltOriginal As Double ' Originaler Wert aus Spalte C des Hauptblatts
     Dim standAltUser As Double     ' Der (korrigierte) Wert aus der Textbox txt_StandAlt
     Dim standNeuStart_Raw As Double
-    Dim standNeuStart_Final As Double ' Bereinigter Wert fï¿½r die ï¿½bergabe
+    Dim standNeuStart_Final As Double ' Bereinigter Wert für die übergabe
     
     ' Die Fehlerbehandlung wird zuerst aktiviert
     On Error GoTo SpeichernErrHandler
@@ -317,21 +318,21 @@ Private Sub Btn_Speichern_Click()
         Exit Sub
     End If
     
-    ' 1. Plausibilitï¿½tsprï¿½fungen (unverï¿½ndert)
+    ' 1. Plausibilitätsprüfungen (unverändert)
     If Me.cmb_Parzelle.value = "" Then
-        MsgBox "Bitte wï¿½hlen Sie eine Parzelle/einen Zï¿½hler aus.", vbExclamation
+        MsgBox "Bitte wählen Sie eine Parzelle/einen Zähler aus.", vbExclamation
         Me.cmb_Parzelle.SetFocus
         Exit Sub
     End If
     
     If Not mod_ZaehlerLogik.PlausiDatum(Me.txt_Datum.text) Then
-        MsgBox "Das eingegebene Datum ist ungï¿½ltig. Bitte korrigieren. (Prï¿½fen Sie auch das Format tt.mm.jjjj).", vbExclamation
+        MsgBox "Das eingegebene Datum ist ungültig. Bitte korrigieren. (Prüfen Sie auch das Format tt.mm.jjjj).", vbExclamation
         Me.txt_Datum.SetFocus
         Exit Sub
     End If
     
     If Trim(Me.txt_ZaehlerAlt.text) = "" Or Trim(Me.txt_ZaehlerNeu.text) = "" Then
-        If MsgBox("Achtung: Haben Sie Zï¿½hlernummer Alt/Neu vergessen einzugeben? Trotzdem speichern?", vbYesNo + vbQuestion) = vbNo Then
+        If MsgBox("Achtung: Haben Sie Zählernummer Alt/Neu vergessen einzugeben? Trotzdem speichern?", vbYesNo + vbQuestion) = vbNo Then
             Me.txt_ZaehlerAlt.SetFocus
             Exit Sub
         End If
@@ -339,8 +340,8 @@ Private Sub Btn_Speichern_Click()
 
     ' 2. Daten einlesen und konvertieren (KERNKORREKTUREN)
     
-    ' a) Originaler Stand Alt: Liest den Endstand des alten Zï¿½hlers (der in C steht)
-    ' Dient als Grundlage fï¿½r die Plausibilitï¿½tsprï¿½fung des User-korrigierten Wertes.
+    ' a) Originaler Stand Alt: Liest den Endstand des alten Zählers (der in C steht)
+    ' Dient als Grundlage für die Plausibilitätsprüfung des User-korrigierten Wertes.
     standAltOriginal = ws.Cells(m_targetRow, "C").value
     
     ' b) Korrigierter Stand Alt: Liest den Wert aus der Textbox txt_StandAlt und bereinigt ihn
@@ -349,7 +350,7 @@ Private Sub Btn_Speichern_Click()
     rawTextAlt = Replace(rawTextAlt, DECIMAL_SEP, Application.International(xlDecimalSeparator)) ' UI-Dezimal in VBA-Dezimal konvertieren
 
     If Not IsNumeric(rawTextAlt) Then
-         MsgBox "Der Stand Alt (Ende) ist ungï¿½ltig oder enthï¿½lt unzulï¿½ssige Zeichen.", vbExclamation
+         MsgBox "Der Stand Alt (Ende) ist ungültig oder enthält unzulässige Zeichen.", vbExclamation
          Me.txt_StandAlt.SetFocus
          Exit Sub
     End If
@@ -357,7 +358,7 @@ Private Sub Btn_Speichern_Click()
     ' Deterministische Bereinigung des Finalwerts
     standAltUser = CDbl(mod_ZaehlerLogik.CleanNumber(CDbl(rawTextAlt)))
     
-    ' !!! NEUE PLAUSIBILITï¿½TSPRï¿½FUNG: STAND ALT KORRIGIERT GEGEN ORIGINAL !!!
+    ' !!! NEUE PLAUSIBILITÄTSPRÜFUNG: STAND ALT KORRIGIERT GEGEN ORIGINAL !!!
     If standAltUser < standAltOriginal Then
         If MsgBox("Achtung: Der korrigierte Stand Alt (" & Format(standAltUser, "0.####") & _
                   ") ist KLEINER als der letzte Stand aus dem Ableseblatt (" & Format(standAltOriginal, "0.####") & _
@@ -373,7 +374,7 @@ Private Sub Btn_Speichern_Click()
     rawTextNeu = Replace(rawTextNeu, DECIMAL_SEP, Application.International(xlDecimalSeparator)) ' UI-Dezimal in VBA-Dezimal konvertieren
     
     If Not IsNumeric(rawTextNeu) Then
-        MsgBox "Der Stand Neu (Start) ist ungï¿½ltig oder enthï¿½lt unzulï¿½ssige Zeichen.", vbExclamation
+        MsgBox "Der Stand Neu (Start) ist ungültig oder enthält unzulässige Zeichen.", vbExclamation
         Me.txt_StandNeuStart.SetFocus
         Exit Sub
     End If
@@ -381,29 +382,29 @@ Private Sub Btn_Speichern_Click()
     standNeuStart_Raw = CDbl(rawTextNeu)
     standNeuStart_Final = CDbl(mod_ZaehlerLogik.CleanNumber(standNeuStart_Raw))
     
-    ' Optional: Textboxen mit dem endgï¿½ltigen, bereinigten String aktualisieren
+    ' Optional: Textboxen mit dem endgültigen, bereinigten String aktualisieren
     Me.txt_StandAlt.text = CleanAndFormatNumber(standAltUser)
     Me.txt_StandNeuStart.text = CleanAndFormatNumber(standNeuStart_Final)
     
     
-    ' 3. Plausibilitï¿½tsprï¿½fung fï¿½r Stï¿½nde (NEU GEGEN KORRIGIERTEN ALT)
+    ' 3. Plausibilitätsprüfung für Stände (NEU GEGEN KORRIGIERTEN ALT)
     If standNeuStart_Final < 0 Then
-        MsgBox "Der Startstand des neuen Zï¿½hlers darf nicht negativ sein.", vbExclamation
+        MsgBox "Der Startstand des neuen Zählers darf nicht negativ sein.", vbExclamation
         Me.txt_StandNeuStart.SetFocus
         Exit Sub
     End If
     
-    ' !!! WARNUNG, WENN DER NEUE Zï¿½HLERSTAND GRï¿½SSER IST ALS DER KORRIGIERTE ALTE Zï¿½HLERSTAND !!!
+    ' !!! WARNUNG, WENN DER NEUE ZÄHLERSTAND GRÖSSER IST ALS DER KORRIGIERTE ALTE ZÄHLERSTAND !!!
     ' Wichtig: Wir vergleichen gegen standAltUser (den korrigierten Wert)!
     If standNeuStart_Final > standAltUser Then
-        If MsgBox("Achtung: Der neue Zï¿½hlerstand (" & Format(standNeuStart_Final, "0.####") & ") ist GRï¿½SSER als der Endstand des alten Zï¿½hlers (" & Format(standAltUser, "0.####") & "). Fortfahren?", vbYesNo + vbExclamation) = vbNo Then
+        If MsgBox("Achtung: Der neue Zählerstand (" & Format(standNeuStart_Final, "0.####") & ") ist GRÖSSER als der Endstand des alten Zählers (" & Format(standAltUser, "0.####") & "). Fortfahren?", vbYesNo + vbExclamation) = vbNo Then
             Me.txt_StandNeuStart.SetFocus
             Exit Sub
         End If
     End If
     
     ' 4. Aufruf der Logik (Argumente sind korrekt)
-    ' WICHTIG: Wir ï¿½bergeben standAltUser (den korrigierten Wert) als AltEnde.
+    ' WICHTIG: Wir übergeben standAltUser (den korrigierten Wert) als AltEnde.
     Call mod_Zaehler_Historie.SchreibeHistorie( _
         parzelle:=Me.cmb_Parzelle.value, _
         DatumW:=CDate(Me.txt_Datum.text), _
@@ -414,8 +415,8 @@ Private Sub Btn_Speichern_Click()
         bem:=Me.txt_Bemerkung.text, _
         Medium:=m_Medium)
 
-    ' Wenn SchreibeHistorie KEINEN Fehler ausgelï¿½st hat, kommt der Code hier an.
-    MsgBox "Zï¿½hlerwechsel erfolgreich gespeichert.", vbInformation
+    ' Wenn SchreibeHistorie KEINEN Fehler ausgelöst hat, kommt der Code hier an.
+    MsgBox "Zählerwechsel erfolgreich gespeichert.", vbInformation
     Unload Me
     
     Exit Sub ' Erfolgreicher Ausgang
