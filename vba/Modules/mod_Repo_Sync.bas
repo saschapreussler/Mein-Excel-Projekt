@@ -220,7 +220,7 @@ Private Sub ImportiereStandardDateien(fso As Object, vbProj As Object, _
                                       pfad As String, ext As String, _
                                       tempPfad As String, _
                                       ByRef counter As Long, _
-                                      ByRef fehler As String)
+                                      ByRef Fehler As String)
     Dim folder As Object
     Dim file As Object
     Dim compName As String
@@ -254,7 +254,7 @@ Private Sub ImportiereStandardDateien(fso As Object, vbProj As Object, _
                 If ErsetzeCodeInDokumentModul(vbComp, file.Path) Then
                     counter = counter + 1
                 Else
-                    fehler = fehler & "  " & file.Name & _
+                    Fehler = Fehler & "  " & file.Name & _
                              " (Code-Ersetzung fehlgeschlagen)" & vbCrLf
                 End If
             Else
@@ -274,7 +274,7 @@ Private Sub ImportiereStandardDateien(fso As Object, vbProj As Object, _
                 If Err.Number = 0 Then
                     counter = counter + 1
                 Else
-                    fehler = fehler & "  " & file.Name & " (" & Err.Description & ")" & vbCrLf
+                    Fehler = Fehler & "  " & file.Name & " (" & Err.Description & ")" & vbCrLf
                     Err.Clear
                 End If
                 On Error GoTo 0
@@ -298,7 +298,7 @@ Private Sub ImportiereKlassenModule(fso As Object, vbProj As Object, _
                                      pfad As String, tempPfad As String, _
                                      ByRef countKlassen As Long, _
                                      ByRef countDokumente As Long, _
-                                     ByRef fehler As String)
+                                     ByRef Fehler As String)
     Dim folder As Object
     Dim file As Object
     Dim compName As String
@@ -329,7 +329,7 @@ Private Sub ImportiereKlassenModule(fso As Object, vbProj As Object, _
                         countKlassen = countKlassen + 1
                     End If
                 Else
-                    fehler = fehler & "  " & file.Name & _
+                    Fehler = Fehler & "  " & file.Name & _
                              " (Code-Ersetzung fehlgeschlagen)" & vbCrLf
                 End If
             Else
@@ -347,7 +347,7 @@ Private Sub ImportiereKlassenModule(fso As Object, vbProj As Object, _
                 If Err.Number = 0 Then
                     countKlassen = countKlassen + 1
                 Else
-                    fehler = fehler & "  " & file.Name & " (" & Err.Description & ")" & vbCrLf
+                    Fehler = Fehler & "  " & file.Name & " (" & Err.Description & ")" & vbCrLf
                     Err.Clear
                 End If
                 On Error GoTo 0
@@ -367,7 +367,7 @@ End Sub
 Private Sub ImportiereUserForms(fso As Object, vbProj As Object, _
                                  pfad As String, tempPfad As String, _
                                  ByRef counter As Long, _
-                                 ByRef fehler As String)
+                                 ByRef Fehler As String)
     Dim folder As Object
     Dim file As Object
     Dim compName As String
@@ -420,7 +420,7 @@ Private Sub ImportiereUserForms(fso As Object, vbProj As Object, _
             If Err.Number = 0 Then
                 counter = counter + 1
             Else
-                fehler = fehler & "  " & file.Name & " (" & Err.Description & ")" & vbCrLf
+                Fehler = Fehler & "  " & file.Name & " (" & Err.Description & ")" & vbCrLf
                 Err.Clear
             End If
             
@@ -449,7 +449,7 @@ End Sub
 ' ===============================================================
 Private Sub BereinigeDoubletten(fso As Object, vbProj As Object, _
                                  ByRef countEntfernt As Long, _
-                                 ByRef fehler As String)
+                                 ByRef Fehler As String)
     
     ' 1. Alle erwarteten Modulnamen aus dem Repo sammeln
     Dim repoNamen As Object
@@ -532,7 +532,7 @@ NaechsteKomponente:
             If Err.Number = 0 Then
                 countEntfernt = countEntfernt + 1
             Else
-                fehler = fehler & "  " & vbComp.Name & _
+                Fehler = Fehler & "  " & vbComp.Name & _
                          " (Doublette konnte nicht entfernt werden)" & vbCrLf
                 Err.Clear
             End If

@@ -285,6 +285,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' v4.5b: AutoFilter VORHER entfernen (verhindert Probleme mit gefilterten Zeilen)
     If wsUeb.AutoFilterMode Then wsUeb.AutoFilterMode = False
     
+    ' Migration: Reste aus altem Layout (Header=5) entfernen
+    wsUeb.Range(wsUeb.Cells(1, 1), wsUeb.Cells(UEBERSICHT_START_ROW - 1, UEB_COL_SUMME_IST)).ClearContents
+    wsUeb.Range(wsUeb.Cells(1, 1), wsUeb.Cells(UEBERSICHT_START_ROW - 1, UEB_COL_SUMME_IST)).Interior.ColorIndex = xlNone
+    
     ' Alten Inhalt l?schen (ab Zeile 4, inkl. Spalte I)
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
                 wsUeb.Cells(wsUeb.Rows.count, UEB_COL_SUMME_IST)).ClearContents
@@ -563,6 +567,9 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     If partnerInfo <> "" Then
                         ist = soll
                         status = m_STATUS_GRUEN
+                        ' BUGFIX: Saeumnis-/Verspaetungs-Bemerkung aus ZP entfernen,
+                        ' weil die Zahlung jetzt als bezahlt (durch Partner) gilt
+                        If UBound(teile) >= 3 Then teile(3) = ""
                     End If
                 End If
                 
@@ -904,6 +911,9 @@ End Function
 ' Header im ?bersichtsblatt setzen
 ' ===============================================================
 Private Sub SetzeUebersichtHeader(ByVal wsUeb As Worksheet)
+    
+    ' Zeile 1 als Titelzeile mit definierter H?he (62 Punkte)
+    wsUeb.Rows(1).RowHeight = 62
     
     With wsUeb
         .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_PARZELLE).value = "Parzelle"
@@ -1317,6 +1327,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     End If
     
 End Sub
+
+
 
 
 

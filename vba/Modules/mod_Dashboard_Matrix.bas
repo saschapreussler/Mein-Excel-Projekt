@@ -41,6 +41,25 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
     Dim importierteMonate() As Boolean
     importierteMonate = mod_Uebersicht_Daten.ErmittleImportierteMonate(jahr)
     
+    ' --- PUNKT 12: Kategorien klassifizieren (monatlich vs. jaehrlich) ---
+    Dim katIstJaehrlich() As Boolean
+    Dim katSpalte() As Long
+    ReDim katIstJaehrlich(0 To anzKat)
+    ReDim katSpalte(0 To anzKat)
+    Dim anzMonatlich As Long: anzMonatlich = 0
+    Dim anzJaehrlich As Long: anzJaehrlich = 0
+    Dim kk As Long
+    For kk = 0 To anzKat - 1
+        katIstJaehrlich(kk) = IstJaehrlicheKategorie(kategorien(kk))
+        If katIstJaehrlich(kk) Then
+            katSpalte(kk) = 0    ' wird in Sammelspalte geschrieben
+            anzJaehrlich = anzJaehrlich + 1
+        Else
+            anzMonatlich = anzMonatlich + 1
+            katSpalte(kk) = 2 + anzMonatlich   ' 3, 4, 5, ...
+        End If
+    Next kk
+    
     ' --- Header (ohne Nr-Spalte) ---
     Dim headerRow As Long
     headerRow = DASH_MATRIX_HEADER_ROW
@@ -50,11 +69,21 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
     
     Dim k As Long
     For k = 0 To anzKat - 1
-        ws.Cells(headerRow, 3 + k).value = kategorien(k).Name
+        If Not katIstJaehrlich(k) Then
+            ws.Cells(headerRow, katSpalte(k)).value = kategorien(k).Name
+        End If
     Next k
     
+    ' Jahresposten-Spalte (Punkt 12)
+    Dim colJahresposten As Long
+    colJahresposten = 0
+    If anzJaehrlich > 0 Then
+        colJahresposten = 3 + anzMonatlich
+        ws.Cells(headerRow, colJahresposten).value = "Jahresposten"
+    End If
+    
     Dim colGesamt As Long
-    colGesamt = 3 + anzKat
+    colGesamt = 3 + anzMonatlich + IIf(anzJaehrlich > 0, 1, 0)
     ws.Cells(headerRow, colGesamt).value = "Gesamt"
     ws.Cells(headerRow, colGesamt + 1).value = "Quote"
     
@@ -125,11 +154,19 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
         Dim alleRollen As String
         alleRollen = UCase(parzellen(p).roles)
         
+        ' Punkt 12: Aggregator fuer Jahresposten-Sammelspalte (pro Mitgliederzeile)
+        Dim jpFaellig As Long: jpFaellig = 0
+        Dim jpBezahlt As Long: jpBezahlt = 0
+        Dim jpSoll As Double: jpSoll = 0
+        Dim jpIst As Double: jpIst = 0
+        Dim jpHatRot As Boolean: jpHatRot = False
+        Dim jpHatGelb As Boolean: jpHatGelb = False
+        
         For k = 0 To anzKat - 1
             Dim kategorie As String
             kategorie = kategorien(k).Name
             Dim katCol As Long
-            katCol = 3 + k
+            katCol = katSpalte(k)   ' Punkt 12: 0 wenn jaehrlich, sonst echte Spalte
             
             ' OHNE PACHT: nur Mitgliedsbeitrag
             Dim istNurMitgliedsbeitrag As Boolean
@@ -137,7 +174,7 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                                       InStr(alleRollen, "OHNE PACHT") > 0 And _
                                       StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) <> 0)
             If istNurMitgliedsbeitrag Then
-                Call SchreibeNichtAnwendbar(ws, rowIdx, katCol)
+                If katCol > 0 Then Call SchreibeNichtAnwendbar(ws, rowIdx, katCol)
                 GoTo NextKatDash
             End If
             
@@ -161,6 +198,7 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                 
                 If mbZahler = 0 And mbEhren > 0 Then
                     ' Alle Ehrenmitglieder -> Befreit (gruen)
+                    If katCol > 0 Then
                     With ws.Cells(rowIdx, katCol)
                         .value = ChrW(10004) & " Befreit"
                         .Font.Name = "Calibri"
@@ -172,6 +210,7 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                         .HorizontalAlignment = xlCenter
                         .VerticalAlignment = xlCenter
                     End With
+                    End If
                     GoTo NextKatDash
                 End If
             End If
@@ -407,12 +446,31 @@ NextMonatDash:
             zeileSoll = zeileSoll + katSoll
             zeileIst = zeileIst + katIst
             
+            ' Punkt 12: Bei jaehrlichen Kategorien in Sammel-Aggregator statt eigene Zelle
+            If katCol = 0 Then
+                jpFaellig = jpFaellig + faelligMonate
+                jpBezahlt = jpBezahlt + bezahltMonate
+                jpSoll = jpSoll + katSoll
+                jpIst = jpIst + katIst
+                If katHatRot Then jpHatRot = True
+                If katHatGelb Then jpHatGelb = True
+                GoTo NextKatDash
+            End If
+            
             Call SchreibeMatrixZelle(ws, rowIdx, katCol, _
                                      faelligMonate, bezahltMonate, _
                                      katSoll, katIst, katHatRot, katHatGelb)
             
 NextKatDash:
         Next k
+        
+        ' Punkt 12: Jahresposten-Sammelspalte schreiben
+        If colJahresposten > 0 Then
+            Call SchreibeMatrixZelle(ws, rowIdx, colJahresposten, _
+                                     jpFaellig, jpBezahlt, _
+                                     jpSoll, jpIst, jpHatRot, jpHatGelb, _
+                                     alsPunkte:=True)
+        End If
         
         ' Gesamt-Spalte
         With ws.Cells(rowIdx, colGesamt)
@@ -573,7 +631,8 @@ Private Sub SchreibeMatrixZelle(ByVal ws As Worksheet, _
                                  ByVal soll As Double, _
                                  ByVal ist As Double, _
                                  ByVal hatRot As Boolean, _
-                                 ByVal hatGelb As Boolean)
+                                 ByVal hatGelb As Boolean, _
+                                 Optional ByVal alsPunkte As Boolean = False)
     
     With ws.Cells(zeile, spalte)
         .Font.Name = "Calibri"
@@ -584,20 +643,39 @@ Private Sub SchreibeMatrixZelle(ByVal ws As Worksheet, _
         Dim euroFmt As String
         euroFmt = "#,##0.00 " & ChrW(8364)
         
+        ' PUNKT 12: Kreis-Anzeige fuer Sammelspalte Jahresposten
+        Dim punkte As String: punkte = ""
+        If alsPunkte And faellig > 0 Then
+            Dim ii As Long
+            For ii = 1 To faellig
+                If ii <= bezahlt Then
+                    punkte = punkte & ChrW(9679)   ' gefuellt
+                Else
+                    punkte = punkte & ChrW(9675)   ' leer
+                End If
+            Next ii
+            punkte = punkte & " "
+        End If
+        
         If faellig = 0 Then
             .value = ChrW(8212)
             .Font.color = RGB(180, 180, 180)
             .Interior.color = m_CLR_ZELLE_GRAU
             
         ElseIf bezahlt >= faellig And Not hatRot Then
-            .value = ChrW(10004) & " " & Format(ist, euroFmt)
+            If alsPunkte Then
+                .value = punkte & CStr(bezahlt) & "/" & CStr(faellig) & " " & ChrW(8226) & " " & Format(ist, euroFmt)
+            Else
+                .value = ChrW(10004) & " " & Format(ist, euroFmt)
+            End If
             .Font.color = m_CLR_TEXT_GRUEN
             .Font.Bold = True
             .Interior.color = m_CLR_ZELLE_GRUEN
             
         ElseIf hatRot And bezahlt = 0 Then
-            If faellig = 1 Then
-                ' Jaehrliche Kategorie: "offen" statt "0/1"
+            If alsPunkte Then
+                .value = punkte & "0/" & CStr(faellig) & " " & ChrW(8226) & " " & Format(soll, euroFmt)
+            ElseIf faellig = 1 Then
                 .value = ChrW(10008) & " offen " & Format(soll, euroFmt)
             Else
                 .value = ChrW(10008) & " " & Format(soll, euroFmt)
@@ -607,13 +685,15 @@ Private Sub SchreibeMatrixZelle(ByVal ws As Worksheet, _
             .Interior.color = m_CLR_ZELLE_ROT
             
         ElseIf hatRot Then
-            .value = CStr(bezahlt) & "/" & CStr(faellig) & " " & ChrW(8226) & " " & _
+            .value = punkte & CStr(bezahlt) & "/" & CStr(faellig) & " " & ChrW(8226) & " " & _
                      Format(ist, euroFmt)
             .Font.color = m_CLR_TEXT_DUNKELROT
             .Interior.color = m_CLR_ZELLE_ROT
             
         ElseIf hatGelb Then
-            If faellig = 1 Then
+            If alsPunkte Then
+                .value = punkte & CStr(bezahlt) & "/" & CStr(faellig) & " " & ChrW(8226) & " " & Format(ist, euroFmt)
+            ElseIf faellig = 1 Then
                 .value = ChrW(9888) & " " & Format(ist, euroFmt)
             Else
                 .value = CStr(bezahlt) & "/" & CStr(faellig) & " " & ChrW(8226) & " " & _
@@ -649,11 +729,42 @@ End Sub
 
 
 ' ============================================================
+'  PUNKT 12: JAEHRLICHE KATEGORIE ERKENNEN
+' ============================================================
+Public Function IstJaehrlicheKategorie(ByRef kat As UebKategorie) As Boolean
+    Dim fl As String
+    fl = LCase(Trim(kat.faelligkeit))
+    If fl = "j" & ChrW(228) & "hrlich" Or fl = "jaehrlich" Or fl = "jahr" Or fl = "annual" Then
+        IstJaehrlicheKategorie = True
+        Exit Function
+    End If
+    
+    ' SollMonate hat genau einen Monat -> jaehrlich
+    If kat.SollMonate <> "" Then
+        Dim teile() As String
+        teile = Split(kat.SollMonate, ",")
+        If UBound(teile) = 0 Then
+            IstJaehrlicheKategorie = True
+            Exit Function
+        End If
+    End If
+    
+    ' Klassiker als Fallback
+    Dim nm As String: nm = LCase(Trim(kat.Name))
+    Select Case nm
+        Case "pacht", "betriebskosten", "endabrechnung", "fixkosten"
+            IstJaehrlicheKategorie = True
+        Case Else
+            IstJaehrlicheKategorie = False
+    End Select
+End Function
+
+
+' ============================================================
 '  FAELLIGKEIT PRUEFEN
 ' ============================================================
 Public Function IstKatImMonatFaellig(ByRef kat As UebKategorie, _
-                                       ByVal monat As Long) As Boolean
-    If kat.SollMonate <> "" Then
+                                       ByVal monat As Long) As Boolean    If kat.SollMonate <> "" Then
         IstKatImMonatFaellig = mod_KategorieEngine_Zeitraum.IstMonatInListe(monat, kat.SollMonate)
         Exit Function
     End If
@@ -860,19 +971,29 @@ Public Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     ws.Columns(1).ColumnWidth = 10   ' Parzelle
     ws.Columns(2).ColumnWidth = 26   ' Mitglied(er)
     
-    ' Kategorie-Spalten: AutoFit mit Mindestbreite
-    Dim k As Long
-    For k = 0 To anzKat - 1
-        ws.Columns(3 + k).AutoFit
-        If ws.Columns(3 + k).ColumnWidth < 18 Then
-            ws.Columns(3 + k).ColumnWidth = 18
-        End If
-        ' Etwas Puffer
-        ws.Columns(3 + k).ColumnWidth = ws.Columns(3 + k).ColumnWidth + 2
-    Next k
+    ' PUNKT 12: Spalten anhand der Header-Zelle erkennen statt fixer Indizes
+    Dim hdrRow As Long: hdrRow = DASH_MATRIX_HEADER_ROW
+    Dim col As Long
+    Dim maxCol As Long
+    maxCol = ws.Cells(hdrRow, ws.Columns.count).End(xlToLeft).Column
+    If maxCol < 3 Then maxCol = 3 + anzKat + 1
     
-    ws.Columns(3 + anzKat).ColumnWidth = 16     ' Gesamt
-    ws.Columns(4 + anzKat).ColumnWidth = 10     ' Quote
+    For col = 3 To maxCol
+        Dim hdr As String
+        hdr = CStr(ws.Cells(hdrRow, col).value)
+        Select Case hdr
+            Case "Gesamt"
+                ws.Columns(col).ColumnWidth = 16
+            Case "Quote"
+                ws.Columns(col).ColumnWidth = 10
+            Case "Jahresposten"
+                ws.Columns(col).ColumnWidth = 28
+            Case Else
+                ws.Columns(col).AutoFit
+                If ws.Columns(col).ColumnWidth < 18 Then ws.Columns(col).ColumnWidth = 18
+                ws.Columns(col).ColumnWidth = ws.Columns(col).ColumnWidth + 2
+        End Select
+    Next col
     
     ' Verzugsdetail: Bemerkungsspalte breiter
     On Error Resume Next
@@ -882,6 +1003,8 @@ Public Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

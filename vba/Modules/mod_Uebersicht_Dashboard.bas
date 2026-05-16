@@ -142,7 +142,8 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
     Set mitgliederML = mod_Uebersicht_Daten.HoleMitgliederAusMitgliederliste()
     
     Dim anzMitglieder As Long
-    anzMitglieder = mitgliederML.count
+    anzMitglieder = mod_Uebersicht_Daten.ZaehleAktiveMitgliederGesamt()
+    If anzMitglieder = 0 Then anzMitglieder = mitgliederML.count
     
     Call ErgaenzeParzellennamen(parzellen, anzParz, mitgliederML)
     
@@ -222,6 +223,11 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
     
     ' --- 12. Spaltenbreiten ---
     Call mod_Dashboard_Matrix.PasseSpaltenAn(wsDash, anzKat)
+    
+    ' --- 12b. Home-Button setzen (Dashboard wird neu erstellt -> Button fehlt sonst) ---
+    On Error Resume Next
+    Call mod_Navigation.ErstelleHomeButton(wsDash)
+    On Error GoTo ErrorHandler
     
     ' --- 13. Blatt schuetzen ---
     On Error Resume Next
@@ -731,6 +737,8 @@ Private Sub ErgaenzeParzellennamen(ByRef parzellen() As ParzelleInfo, _
     Next mlM
     
 End Sub
+
+
 
 
 

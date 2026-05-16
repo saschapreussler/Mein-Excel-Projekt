@@ -520,14 +520,14 @@ Private Sub SammleDaten(ByRef dictEinn As Object, _
     If Not wsDaten Is Nothing Then
         Dim lrD As Long
         lrD = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
-        Dim rd As Long
-        For rd = DATA_START_ROW To lrD
+        Dim rD As Long
+        For rD = DATA_START_ROW To lrD
             Dim katName As String
-            katName = Trim(CStr(wsDaten.Cells(rd, DATA_CAT_COL_KATEGORIE).value))
+            katName = Trim(CStr(wsDaten.Cells(rD, DATA_CAT_COL_KATEGORIE).value))
             If katName <> "" Then
                 If Not dictGueltig.Exists(katName) Then dictGueltig.Add katName, True
             End If
-        Next rd
+        Next rD
     End If
     ' Sammelzahlung immer erlauben
     If Not dictGueltig.Exists(KAT_SAMMELZAHLUNG) Then dictGueltig.Add KAT_SAMMELZAHLUNG, True
@@ -951,6 +951,8 @@ ChartErr:
     Debug.Print "[FinanzUebersicht] Diagramm-Fehler: " & Err.Description
     Err.Clear
 End Sub
+
+
 
 
 

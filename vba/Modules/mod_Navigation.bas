@@ -160,7 +160,7 @@ End Sub
 ' ===============================================================
 ' HOME-BUTTON: Einzelnen Button auf Blatt erstellen
 ' ===============================================================
-Private Sub ErstelleHomeButton(ByVal ws As Worksheet)
+Public Sub ErstelleHomeButton(ByVal ws As Worksheet)
     On Error Resume Next
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
@@ -312,6 +312,8 @@ Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
     
     Debug.Print "[Navigation] Navigationszeilen eingefuegt auf: " & ws.Name
 End Sub
+
+
 
 
 

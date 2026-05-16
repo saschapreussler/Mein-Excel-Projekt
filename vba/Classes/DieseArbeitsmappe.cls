@@ -116,6 +116,30 @@ End Sub
 
 
 ' ===============================================================
+' SheetActivate: Gitternetzlinien je Blatt korrekt setzen
+' Startmen?, Finanz-?bersicht und Dashboard ohne Gitternetz,
+' alle anderen Bl?tter (BK, VK, Strom, Wasser, ?bersicht etc.) MIT Gitternetz
+' ===============================================================
+Private Sub Workbook_SheetActivate(ByVal Sh As Object)
+    On Error Resume Next
+    Dim shName As String
+    shName = Sh.Name
+    
+    Dim ohneGitter As Boolean
+    ohneGitter = False
+    
+    Select Case shName
+        Case WS_STARTMENUE(), WS_FINANZ_UEBERSICHT(), "Dashboard Mitgliederzahlungen"
+            ohneGitter = True
+    End Select
+    
+    If ActiveWindow Is Nothing Then Exit Sub
+    ActiveWindow.DisplayGridlines = Not ohneGitter
+End Sub
+
+
+
+' ===============================================================
 ' v4.5: Aenderungen auf dem Uebersicht-Blatt abfangen
 ' Wird ausgeloest wenn Nutzer einen Soll-Betrag manuell eintraegt
 ' v4.5b: Guard gegen Ausfuehrung waehrend GeneriereUebersicht
@@ -140,6 +164,21 @@ Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
     End If
     
 End Sub
+
+
+' ===============================================================
+' Punkt 10: Snapshot der IST-Zelle bei Selektion auf Uebersicht
+' Wird benoetigt fuer Rollback bei Abbruch der Datums-Inputbox
+' ===============================================================
+Private Sub Workbook_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Range)
+    On Error Resume Next
+    Dim shName As String
+    shName = Sh.Name
+    If StrComp(shName, WS_UEBERSICHT(), vbTextCompare) = 0 Then
+        Call mod_Uebersicht_Event.MerkeAktuellenUebersichtZustand(Target)
+    End If
+End Sub
+
 
 
 

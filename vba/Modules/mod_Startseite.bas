@@ -442,6 +442,12 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         ChrW(9633) & " Endabrechnung", _
         col2Left, ws.Range("F21").Top + 4, kachelW, kachelH, _
         CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Endabrechnung'")
+    
+    ' Punkt 13: Neues Kalenderjahr starten
+    Call ErstelleKachel(ws, "kachel_NeuesJahr", _
+        ChrW(9654) & " Neues Kalenderjahr", _
+        col1Left + (kachelW + 6) * 2, ws.Range("C18").Top + 4, kachelW, kachelH, _
+        CLR_BTN_ADMIN, "'mod_Jahreswechsel.StarteNeuesJahr'")
 End Sub
 
 
@@ -807,6 +813,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 

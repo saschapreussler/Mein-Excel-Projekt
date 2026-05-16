@@ -431,7 +431,17 @@ End Sub
 ' Z?HLERWECHSEL-FORMULAR START
 ' ==========================================================
 Public Sub Start_Zaehlerwechsel(ByVal Medium As String)
-    ' HINWEIS: Hier wird das UserForm 'frm_Zaehlerwechsel' ben?tigt.
+    On Error GoTo ErrHandler
+    With frm_Zaehlerwechsel
+        Call .InitForm_Runtime(Medium)
+        .Show
+    End With
+    Exit Sub
+ErrHandler:
+    MsgBox "Fehler beim " & ChrW(214) & "ffnen des Z" & ChrW(228) & "hlerwechsel-Formulars: " & vbLf & _
+           Err.Description & vbLf & vbLf & _
+           "Stellen Sie sicher, dass das UserForm den Code-Namen 'frm_Zaehlerwechsel' hat.", _
+           vbExclamation, "Z" & ChrW(228) & "hlerwechsel"
 End Sub
 
 
@@ -541,6 +551,8 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
     wsStart.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True
     
 End Sub
+
+
 
 
 

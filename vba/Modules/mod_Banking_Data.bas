@@ -458,6 +458,11 @@ ImportAbschluss:
     ' Kontostand auf Startseite aktualisieren
     Call mod_Startseite.AktualisiereKontostandKPI
     
+    ' Punkt 11: BK-/KA-Nummern nach CSV-Import neu vergeben
+    On Error Resume Next
+    Call mod_BK_KA_Nummern.NeuberechneAlleBKNummern
+    On Error GoTo 0
+    
 End Sub
 
 
@@ -676,6 +681,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 

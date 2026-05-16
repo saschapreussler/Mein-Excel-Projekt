@@ -25,6 +25,19 @@ Private Const UEB_COL_BEMERKUNG As Long = 8
 
 Private Const FARBE_HELLGELB_MANUELL As Long = 10092543  ' RGB(255, 255, 153)
 Private Const AMPEL_GRUEN As Long = 12968900             ' RGB(196, 225, 196)
+Private Const AMPEL_GELB As Long = 10092543              ' RGB(255, 255, 153)
+Private Const AMPEL_ROT As Long = 13408767               ' RGB(255, 204, 204)
+
+' ---------------------------------------------------------------
+' Snapshot der zuletzt selektierten IST-Zelle (fuer Rollback bei
+' Abbruch der Datums-Inputbox in Punkt 10).
+' Wird gefuellt von MerkeAktuellenUebersichtZustand (SheetSelectionChange).
+' ---------------------------------------------------------------
+Private g_SnapAdresse As String
+Private g_SnapIst As Variant
+Private g_SnapStatus As Variant
+Private g_SnapStatusFarbe As Long
+Private g_SnapBemerkung As Variant
 
 
 ' ===============================================================
@@ -39,11 +52,17 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     ' Nur einzelne Zelle
     If Target.Cells.CountLarge <> 1 Then Exit Sub
     
+    ' Nur Datenzeilen
+    If Target.Row < UEBERSICHT_START_ROW Then Exit Sub
+    
+    ' Punkt 10: Manuelle IST-Aenderung -> Datumsabfrage
+    If Target.Column = UEB_COL_IST Then
+        Call VerarbeiteIstAenderung(Target)
+        Exit Sub
+    End If
+    
     ' Nur Spalte E (Soll)
     If Target.Column <> UEB_COL_SOLL Then Exit Sub
-    
-    ' Nur Datenzeilen (ab Zeile 4)
-    If Target.Row < UEBERSICHT_START_ROW Then Exit Sub
     
     ' Nur wenn Zelle aktuell hell-gelb ist (= variabel, editierbar)
     If Target.Interior.color <> FARBE_HELLGELB_MANUELL Then Exit Sub
@@ -248,6 +267,147 @@ Private Function EntferneTeilBemerkung(ByVal bemerkung As String, _
     EntferneTeilBemerkung = ergebnis
     
 End Function
+
+
+' ===============================================================
+' PUNKT 10: Snapshot der aktuellen IST-Zelle merken
+' Wird von DieseArbeitsmappe.Workbook_SheetSelectionChange aufgerufen,
+' damit wir bei Abbruch der Datums-Inputbox den Original-Zustand
+' wiederherstellen koennen.
+' ===============================================================
+Public Sub MerkeAktuellenUebersichtZustand(ByVal Target As Range)
+    On Error Resume Next
+    If Target Is Nothing Then Exit Sub
+    If Target.Cells.CountLarge <> 1 Then Exit Sub
+    If Target.Row < UEBERSICHT_START_ROW Then Exit Sub
+    If Target.Column <> UEB_COL_IST Then Exit Sub
+    
+    Dim ws As Worksheet
+    Set ws = Target.Worksheet
+    
+    g_SnapAdresse = Target.Address(External:=True)
+    g_SnapIst = Target.value
+    g_SnapStatus = ws.Cells(Target.Row, UEB_COL_STATUS).value
+    g_SnapStatusFarbe = ws.Cells(Target.Row, UEB_COL_STATUS).Interior.color
+    g_SnapBemerkung = ws.Cells(Target.Row, UEB_COL_BEMERKUNG).value
+End Sub
+
+
+' ===============================================================
+' PUNKT 10: Manuelle IST-Aenderung verarbeiten
+' - Inputbox: Wann wurde gezahlt? (Datum)
+' - Bei gueltigem Datum: Status GRUEN, Bemerkung "manuell geaendert,
+'   Zahlungsdatum TT.MM.JJJJ", Dashboard updaten
+' - Bei Abbruch / ungueltig: ALLES zuruecksetzen aus Snapshot
+' ===============================================================
+Private Sub VerarbeiteIstAenderung(ByVal Target As Range)
+    On Error GoTo ErrorHandler
+    
+    Dim ws As Worksheet
+    Set ws = Target.Worksheet
+    Dim zeile As Long
+    zeile = Target.Row
+    
+    ' Status der Zeile pruefen - nur wenn Zelle einen Inhalt hat
+    Dim neuerWert As Variant
+    neuerWert = Target.value
+    
+    Dim neuerIst As Double
+    neuerIst = 0
+    If IsNumeric(neuerWert) Then neuerIst = CDbl(neuerWert)
+    
+    ' Wenn Loeschen oder 0 -> nichts tun (User darf zuruecksetzen)
+    If neuerIst <= 0 Then Exit Sub
+    
+    ' Snapshot pruefen - nur weiter wenn wir die alten Werte haben
+    Dim hatSnapshot As Boolean
+    hatSnapshot = (g_SnapAdresse = Target.Address(External:=True))
+    
+    Application.EnableEvents = False
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo ErrorHandler
+    
+    ' Datums-Inputbox
+    Dim datumsStr As String
+    Dim parzelle As String, mitglied As String, kategorie As String
+    parzelle = CStr(ws.Cells(zeile, UEB_COL_PARZELLE).value)
+    mitglied = CStr(ws.Cells(zeile, UEB_COL_MITGLIED).value)
+    kategorie = CStr(ws.Cells(zeile, UEB_COL_KATEGORIE).value)
+    
+    Dim prompt As String
+    prompt = "Manuelle IST-Eingabe: " & Format(neuerIst, "#,##0.00") & " " & ChrW(8364) & vbLf & vbLf & _
+             "Parzelle " & parzelle & " - " & mitglied & vbLf & _
+             "Kategorie: " & kategorie & vbLf & vbLf & _
+             "Wann wurde die Zahlung get" & ChrW(228) & "tigt?" & vbLf & _
+             "(Format: TT.MM.JJJJ)"
+    
+    datumsStr = InputBox(prompt, "Zahlungsdatum erfassen", Format(Date, "dd.mm.yyyy"))
+    
+    Dim zahlDatum As Date
+    Dim datumOk As Boolean
+    datumOk = False
+    
+    If LenB(Trim(datumsStr)) > 0 Then
+        On Error Resume Next
+        zahlDatum = CDate(Trim(datumsStr))
+        If Err.Number = 0 Then
+            If Year(zahlDatum) >= 2000 And Year(zahlDatum) <= 2100 Then
+                datumOk = True
+            End If
+        End If
+        Err.Clear
+        On Error GoTo ErrorHandler
+    End If
+    
+    If Not datumOk Then
+        ' Abbruch oder ungueltiges Datum -> ALLES zuruecksetzen
+        If hatSnapshot Then
+            Target.value = g_SnapIst
+            ws.Cells(zeile, UEB_COL_STATUS).value = g_SnapStatus
+            ws.Cells(zeile, UEB_COL_STATUS).Interior.color = g_SnapStatusFarbe
+            ws.Cells(zeile, UEB_COL_BEMERKUNG).value = g_SnapBemerkung
+        Else
+            ' Kein Snapshot - vorsichtig zuruecksetzen
+            Target.value = ""
+        End If
+        
+        MsgBox "Eingabe abgebrochen oder kein g" & ChrW(252) & "ltiges Datum." & vbLf & _
+               "Die " & ChrW(196) & "nderung wurde zur" & ChrW(252) & "ckgesetzt.", _
+               vbInformation, "Abgebrochen"
+    Else
+        ' Gueltiges Datum -> Status GRUEN + Bemerkung
+        ws.Cells(zeile, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
+        ws.Cells(zeile, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
+        
+        Dim bem As String
+        bem = "manuell ge" & ChrW(228) & "ndert, Zahlungsdatum " & Format(zahlDatum, "dd.mm.yyyy")
+        ws.Cells(zeile, UEB_COL_BEMERKUNG).value = bem
+        
+        ' Dashboard updaten
+        On Error Resume Next
+        Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
+        On Error GoTo ErrorHandler
+    End If
+    
+    ' Snapshot invalidieren
+    g_SnapAdresse = ""
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+    Application.EnableEvents = True
+    Exit Sub
+    
+ErrorHandler:
+    Application.EnableEvents = True
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+    Debug.Print "[" & ChrW(220) & "bersicht IST] FEHLER: " & Err.Description
+End Sub
+
+
 
 
 

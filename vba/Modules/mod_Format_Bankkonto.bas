@@ -137,6 +137,11 @@ Public Sub FormatiereBlattBankkonto()
         ws.Cells(r, BK_COL_MONAT_PERIODE).Locked = False
     Next r
     
+    ' Spalte L (Bemerkung) ebenfalls editierbar machen
+    For r = BK_START_ROW To lastRow
+        ws.Cells(r, BK_COL_BEMERKUNG).Locked = False
+    Next r
+    
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
     Application.ScreenUpdating = True
@@ -172,6 +177,8 @@ Public Function NamedRangeExists(ByVal rangeName As String) As Boolean
     End If
     On Error GoTo 0
 End Function
+
+
 
 
 

@@ -337,8 +337,13 @@ Public Const ES_COL_END As Long = 9             ' Letzte Datenspalte (I)
 ' ===============================================================
 Public Const VK_HEADER_ROW As Long = 26
 Public Const VK_START_ROW As Long = 27
-Public Const VK_COL_DATUM As Long = 1            ' Spalte A - Datum
-Public Const VK_COL_BETRAG As Long = 2           ' Spalte B - Betrag
+' Vereinskasse Layout: A=leer (Padding), B=Datum, C=Beschreibung,
+' D=Name, E=Betrag, F=Interne KA/BK Nr.
+Public Const VK_COL_DATUM As Long = 2            ' Spalte B
+Public Const VK_COL_BESCHREIBUNG As Long = 3     ' Spalte C
+Public Const VK_COL_NAME As Long = 4             ' Spalte D
+Public Const VK_COL_BETRAG As Long = 5           ' Spalte E
+Public Const VK_COL_INTERNE_NR As Long = 6       ' Spalte F
 
 
 Public Function GetErlaubteFunktionenFuerParzelle() As Variant
@@ -397,6 +402,8 @@ Public Function HoleAbrechnungsjahr() As Long
         HoleAbrechnungsjahr = 0
     End If
 End Function
+
+
 
 
 

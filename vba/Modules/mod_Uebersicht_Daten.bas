@@ -746,6 +746,64 @@ NextMLRow:
 End Function
 
 
+' ===============================================================
+' Zaehlt ALLE aktiven Mitglieder aus der Mitgliederliste
+' (auch ohne eigene Parzelle, z.B. Mitnutzer / passive Mitglieder)
+' Aktiv = Pachtanfang vorhanden UND (Pachtende leer ODER Pachtende in der Zukunft)
+' ===============================================================
+Public Function ZaehleAktiveMitgliederGesamt() As Long
+    
+    Dim cnt As Long
+    cnt = 0
+    
+    Dim wsML As Worksheet
+    On Error Resume Next
+    Set wsML = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    On Error GoTo 0
+    
+    If wsML Is Nothing Then
+        ZaehleAktiveMitgliederGesamt = 0
+        Exit Function
+    End If
+    
+    Dim lastRow As Long
+    lastRow = wsML.Cells(wsML.Rows.count, M_COL_NACHNAME).End(xlUp).Row
+    If lastRow < M_START_ROW Then
+        ZaehleAktiveMitgliederGesamt = 0
+        Exit Function
+    End If
+    
+    Dim r As Long
+    For r = M_START_ROW To lastRow
+        ' Mindestens Nachname oder Vorname muss vorhanden sein
+        Dim vn As String, nn As String
+        vn = Trim(CStr(wsML.Cells(r, M_COL_VORNAME).value))
+        nn = Trim(CStr(wsML.Cells(r, M_COL_NACHNAME).value))
+        If vn = "" And nn = "" Then GoTo NextMR
+        
+        ' Pachtanfang muss vorhanden sein (= aktives Mitglied)
+        Dim paWert As Variant
+        paWert = wsML.Cells(r, M_COL_PACHTANFANG).value
+        If Not IsDate(paWert) Then GoTo NextMR
+        
+        ' Pachtende: leer ODER in der Zukunft = aktiv
+        Dim peWert As Variant
+        peWert = wsML.Cells(r, M_COL_PACHTENDE).value
+        If IsDate(peWert) Then
+            If CDate(peWert) < Date Then GoTo NextMR
+        End If
+        
+        cnt = cnt + 1
+NextMR:
+    Next r
+    
+    ZaehleAktiveMitgliederGesamt = cnt
+    
+End Function
+
+
+
+
 
 
 

@@ -1,0 +1,336 @@
+Attribute VB_Name = "mod_Navigation"
+Option Explicit
+
+' ===============================================================
+' MODUL: mod_Navigation
+' VERSION: 1.0 - 18.04.2026
+' ZWECK: Navigation zwischen Tabellenblaettern
+'        - Startseite -> alle Blaetter (Button-Handler)
+'        - Alle Blaetter -> Startseite (Home-Button)
+'        - Home-Buttons auf allen Blaettern erstellen/entfernen
+' ===============================================================
+
+Private Const HOME_BTN_NAME As String = "btn_Home"
+
+
+' ===============================================================
+' NAVIGATION: Startseite aktivieren
+' ===============================================================
+Public Sub NavigiereZuStartseite()
+    On Error Resume Next
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
+    If Not ws Is Nothing Then
+        ws.Activate
+        ws.Range("A1").Select
+    End If
+    On Error GoTo 0
+End Sub
+
+
+' ===============================================================
+' NAVIGATION: Einzelne Blaetter aktivieren (Button-Handler)
+' ===============================================================
+Public Sub NavigiereZu_Bankkonto()
+    AktiviereTabellenblatt WS_BANKKONTO
+End Sub
+
+Public Sub NavigiereZu_Einstellungen()
+    AktiviereTabellenblatt WS_EINSTELLUNGEN
+End Sub
+
+Public Sub NavigiereZu_Vereinskasse()
+    AktiviereTabellenblatt WS_VEREINSKASSE
+End Sub
+
+Public Sub NavigiereZu_Strom()
+    AktiviereTabellenblatt "Strom"
+End Sub
+
+Public Sub NavigiereZu_Wasser()
+    AktiviereTabellenblatt "Wasser"
+End Sub
+
+Public Sub NavigiereZu_Daten()
+    AktiviereTabellenblatt WS_DATEN
+End Sub
+
+Public Sub NavigiereZu_FinanzUebersicht()
+    ' Blatt erstellen falls nicht vorhanden, dann aktivieren
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_FINANZ_UEBERSICHT())
+    On Error GoTo 0
+    
+    If ws Is Nothing Then
+        ' Blatt wird beim ersten Aufruf erstellt
+        mod_FinanzUebersicht.ErstelleFinanzUebersicht
+    Else
+        ws.Activate
+        ws.Range("A1").Select
+    End If
+End Sub
+
+Public Sub NavigiereZu_Uebersicht()
+    AktiviereTabellenblatt WS_UEBERSICHT()
+End Sub
+
+Public Sub NavigiereZu_Dashboard()
+    ' Dashboard wird dynamisch erzeugt - Name kann variieren
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets("Dashboard Mitgliederzahlungen")
+    On Error GoTo 0
+    
+    If ws Is Nothing Then
+        MsgBox "Das Dashboard wurde noch nicht erstellt." & vbLf & vbLf & _
+               "Bitte zuerst die Zahlungs" & ChrW(252) & "bersicht " & _
+               "oder das Dashboard generieren.", _
+               vbInformation, "Dashboard nicht vorhanden"
+        Exit Sub
+    End If
+    
+    ws.Activate
+    ws.Range("A1").Select
+End Sub
+
+Public Sub ZeigeMitgliederverwaltung()
+    frm_Mitgliederverwaltung.Show
+End Sub
+
+Public Sub ZeigeSerienbrief_Betriebskosten()
+    MsgBox "Die Serienbrief-Funktion f" & ChrW(252) & "r die " & _
+           "Betriebskostenabrechnung wird in einem sp" & ChrW(228) & _
+           "teren Schritt implementiert.", _
+           vbInformation, "Betriebskostenabrechnung"
+End Sub
+
+Public Sub ZeigeSerienbrief_Endabrechnung()
+    MsgBox "Die Serienbrief-Funktion f" & ChrW(252) & "r die " & _
+           "Endabrechnung wird in einem sp" & ChrW(228) & _
+           "teren Schritt implementiert.", _
+           vbInformation, "Endabrechnung"
+End Sub
+
+
+' ===============================================================
+' HILFSFUNKTION: Tabellenblatt aktivieren (intern)
+' ===============================================================
+Private Sub AktiviereTabellenblatt(ByVal blattName As String)
+    On Error Resume Next
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets(blattName)
+    If Not ws Is Nothing Then
+        ws.Activate
+        ws.Range("A1").Select
+    Else
+        MsgBox "Tabellenblatt """ & blattName & """ nicht gefunden.", _
+               vbExclamation, "Navigation"
+    End If
+    On Error GoTo 0
+End Sub
+
+
+' ===============================================================
+' HOME-BUTTONS: Auf allen Blaettern erstellen (ausser Startseite)
+' Wird bei Workbook_Open aufgerufen
+' ===============================================================
+Public Sub SetzeHomeButtonsAufAllenBlaettern()
+    Dim ws As Worksheet
+    Dim startName As String
+    startName = WS_STARTMENUE()
+    
+    For Each ws In ThisWorkbook.Worksheets
+        If ws.Name <> startName Then
+            ' Navigationszeilen-Hoehe korrigieren (falls bereits migriert)
+            On Error Resume Next
+            If Application.WorksheetFunction.CountA(ws.Rows(1)) = 0 Then
+                ws.Unprotect PASSWORD:=PASSWORD
+                ws.Rows(1).RowHeight = 30
+                ws.Rows(2).RowHeight = 3
+                ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+            End If
+            On Error GoTo 0
+            Call ErstelleHomeButton(ws)
+        End If
+    Next ws
+End Sub
+
+
+' ===============================================================
+' HOME-BUTTON: Einzelnen Button auf Blatt erstellen
+' ===============================================================
+Public Sub ErstelleHomeButton(ByVal ws As Worksheet)
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    ' Bestehenden Button entfernen falls vorhanden
+    Call EntferneHomeButton(ws)
+    
+    On Error GoTo BtnFehler
+    
+    ' Groesse abhaengig vom Blatt-Typ anpassen
+    Dim btnW As Double, btnH As Double, fontSize As Double
+    Select Case ws.Name
+        Case WS_BANKKONTO
+            ' Breites Blatt - etwas groesserer Button
+            btnW = 100: btnH = 30: fontSize = 11
+        Case WS_UEBERSICHT()
+            ' Schmales Blatt mit Filter-Buttons darunter - kompakter
+            btnW = 76: btnH = 24: fontSize = 9.5
+        Case WS_FINANZ_UEBERSICHT()
+            btnW = 80: btnH = 26: fontSize = 10
+        Case Else
+            ' Standard fuer alle anderen Blaetter
+            btnW = 88: btnH = 26: fontSize = 10
+    End Select
+    
+    ' Button oben links positionieren (Zelle A1/B1)
+    Dim btnLeft As Double
+    Dim btnTop As Double
+    btnLeft = ws.Range("A1").Left + 4
+    btnTop = ws.Range("A1").Top + 3
+    
+    Dim shp As Shape
+    Set shp = ws.Shapes.AddShape(msoShapeRoundedRectangle, _
+                                  btnLeft, btnTop, _
+                                  btnW, btnH)
+    
+    With shp
+        .Name = HOME_BTN_NAME
+        .Fill.ForeColor.RGB = RGB(44, 62, 80)
+        .Line.Visible = msoFalse
+        
+        With .TextFrame2
+            .VerticalAnchor = msoAnchorMiddle
+            .MarginLeft = 4
+            .MarginRight = 4
+            .MarginTop = 2
+            .MarginBottom = 2
+            
+            With .TextRange
+                .text = ChrW(8962) & " Home"
+                .Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
+                .Font.Size = fontSize
+                .Font.Bold = msoTrue
+                .ParagraphFormat.Alignment = msoAlignCenter
+            End With
+        End With
+        
+        .OnAction = "'mod_Navigation.NavigiereZuStartseite'"
+        .Placement = xlFreeFloating
+    End With
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+    Exit Sub
+
+BtnFehler:
+    Debug.Print "[Navigation] Home-Button auf """ & ws.Name & """ fehlgeschlagen: " & Err.Description
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+End Sub
+
+
+' ===============================================================
+' HOME-BUTTON: Bestehenden Button entfernen
+' ===============================================================
+Private Sub EntferneHomeButton(ByVal ws As Worksheet)
+    On Error Resume Next
+    ws.Shapes(HOME_BTN_NAME).Delete
+    Err.Clear
+    On Error GoTo 0
+End Sub
+
+
+' ===============================================================
+' MIGRATION: 2 Zeilen oben einfuegen fuer Navigationsleiste
+' Wird einmalig aufgerufen wenn Blatt noch keine Navigationszeilen hat.
+' Prueft ob Zeile 1 leer ist (= bereits migriert) oder Daten enthaelt.
+' Betroffene Blaetter: Bankkonto, Strom, Wasser, Einstellungen,
+'                      Zahlungsuebersicht, Finanz-Uebersicht
+' ===============================================================
+Public Sub MigriereNavigationszeilen()
+    Dim blaetter As Variant
+    blaetter = Array(WS_BANKKONTO, "Strom", "Wasser", WS_EINSTELLUNGEN)
+    
+    Dim i As Long
+    Dim ws As Worksheet
+    
+    For i = LBound(blaetter) To UBound(blaetter)
+        On Error Resume Next
+        Set ws = Nothing
+        Set ws = ThisWorkbook.Worksheets(CStr(blaetter(i)))
+        On Error GoTo 0
+        
+        If Not ws Is Nothing Then
+            Call FuegeNavigationsZeilenEin(ws)
+        End If
+    Next i
+    
+    ' Uebersicht und Finanz-Uebersicht separat (Function-Konstanten)
+    On Error Resume Next
+    Set ws = Nothing
+    Set ws = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo 0
+    If Not ws Is Nothing Then Call FuegeNavigationsZeilenEin(ws)
+    
+    On Error Resume Next
+    Set ws = Nothing
+    Set ws = ThisWorkbook.Worksheets(WS_FINANZ_UEBERSICHT())
+    On Error GoTo 0
+    If Not ws Is Nothing Then Call FuegeNavigationsZeilenEin(ws)
+End Sub
+
+Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
+    ' Pruefen ob bereits migriert: Zeile 1 muss leer sein UND
+    ' Zeile 3 muss Daten enthalten (sonst ist das Blatt neu/leer)
+    If Application.WorksheetFunction.CountA(ws.Rows(1)) = 0 And _
+       Application.WorksheetFunction.CountA(ws.Rows(2)) = 0 Then
+        ' Bereits migriert oder leer -> nichts tun
+        Exit Sub
+    End If
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    ' 2 leere Zeilen oben einfuegen
+    ws.Rows("1:2").Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
+    
+    ' Eingefuegte Zeilen bereinigen
+    ws.Range("A1:AZ2").Clear
+    ws.Rows(1).RowHeight = 30
+    ws.Rows(2).RowHeight = 3
+    
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+    
+    Debug.Print "[Navigation] Navigationszeilen eingefuegt auf: " & ws.Name
+End Sub
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

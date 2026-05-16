@@ -1,6 +1,6 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frm_Zaehlerwechsel 
-   Caption         =   "neuer Z�hler"
+   Caption         =   "neuer Z�hler"
    ClientHeight    =   4700
    ClientLeft      =   110
    ClientTop       =   450
@@ -13,6 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
+
 
 
 
@@ -90,17 +91,17 @@ Public Sub InitForm_Runtime(ByVal Medium As String)
             einheit = "kWh"
             color = RGB(255, 0, 0)
         Case "Wasser"
-            einheit = "m�"
+            einheit = "m" & ChrW(179)   ' m³
             color = RGB(0, 0, 255)
         Case Else
             einheit = "---"
             color = RGB(0, 0, 0)
     End Select
 
-    Me.fra_Header.Caption = "Z�hlerwechsel erfassen (" & Medium & ")"
+    Me.fra_Header.Caption = "Z" & ChrW(228) & "hlerwechsel erfassen (" & Medium & ")"
     Me.fra_Header.ForeColor = color
 
-    ' Zuweisung der Einheit f�r das ALT-Feld und das NEU-Start-Feld
+    ' Zuweisung der Einheit für das ALT-Feld und das NEU-Start-Feld
     Me.lbl_EinheitAlt.Caption = einheit
     Me.lbl_EinheitNeuStart.Caption = einheit
  

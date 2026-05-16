@@ -282,6 +282,13 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
     On Error GoTo 0
     
+    ' Punkt 11: BK-/KA-Nummern bei Kategorie-Aenderung neu vergeben
+    If Target.Column = BK_COL_KATEGORIE Then
+        On Error Resume Next
+        Call mod_BK_KA_Nummern.NeuberechneAlleBKNummern(Me)
+        On Error GoTo 0
+    End If
+    
 End Sub
 
 
@@ -903,6 +910,8 @@ Private Function EntferneBemerkungsZeile(ByVal bemerkung As String, _
     
     EntferneBemerkungsZeile = ergebnis
 End Function
+
+
 
 
 
