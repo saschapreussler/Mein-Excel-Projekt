@@ -324,7 +324,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
         
         ' v4.5b: Blatt trotzdem schuetzen und aufraumen
         On Error Resume Next
-        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
         On Error GoTo 0
         
         m_IsGenerating = False
@@ -808,7 +808,7 @@ NextMitglied:
     ' Blatt sch?tzen (Soll-Zellen ohne festen Betrag bleiben editierbar)
     ' AllowFiltering: Nutzer kann AutoFilter ohne Blattschutz-Aufhebung verwenden
     On Error Resume Next
-    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     On Error GoTo ErrorHandler
     
     Application.Calculation = xlCalculationAutomatic
@@ -849,7 +849,7 @@ ErrorHandler:
     ' v4.5b: Blatt im Fehlerfall trotzdem schuetzen
     On Error Resume Next
     If Not wsUeb Is Nothing Then
-        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     End If
     On Error GoTo 0
     
@@ -912,8 +912,9 @@ End Function
 ' ===============================================================
 Private Sub SetzeUebersichtHeader(ByVal wsUeb As Worksheet)
     
-    ' Zeile 1 als Titelzeile mit definierter H?he (62 Punkte)
-    wsUeb.Rows(1).RowHeight = 62
+    ' Hinweis: Die Zeilenhoehen fuer Zeile 1 (Home-Button) und Zeile 2
+    ' (Monats-Register) werden zentral in mod_Uebersicht_Filter.ErstelleMonatsRegister
+    ' bzw. mod_Navigation gesetzt und sollten hier NICHT ueberschrieben werden.
     
     With wsUeb
         .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_PARZELLE).value = "Parzelle"
@@ -937,6 +938,9 @@ Private Sub SetzeUebersichtHeader(ByVal wsUeb As Worksheet)
             .VerticalAlignment = xlCenter
             .Interior.color = RGB(217, 217, 217)  ' Hellgrau
             .Borders.LineStyle = xlContinuous
+            ' Header-Zellen explizit entsperren, damit das AutoFilter-Dropdown
+            ' auch bei aktivem Blattschutz zuverlaessig klickbar bleibt.
+            .Locked = False
         End With
     End With
     
@@ -974,15 +978,13 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                        wsUeb.Cells(r, c).Interior.color <> AMPEL_GRUEN Then
                         wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                     End If
-                ElseIf c = UEB_COL_SUMME_IST Then
-                    ' Summen-Spalte: eigene Zebra-Farbe (hellblau)
-                    wsUeb.Cells(r, c).Interior.color = FARBE_SUMME_ZEBRA
                 Else
+                    ' Alle uebrigen Spalten inkl. Summe Ist (I): einheitliches Zebra
                     wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                 End If
             Next c
         Else
-            ' Ungerade Datenzeile -> weiss (aber Soll/Status/Summe auslassen)
+            ' Ungerade Datenzeile -> weiss (aber Soll/Status auslassen)
             For c = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
                 If c = UEB_COL_STATUS Then
                     ' Status-Spalte behaelt Ampelfarbe
@@ -991,10 +993,8 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                        wsUeb.Cells(r, c).Interior.color <> AMPEL_GRUEN Then
                         wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                     End If
-                ElseIf c = UEB_COL_SUMME_IST Then
-                    ' Summen-Spalte: dezentes Hellblau
-                    wsUeb.Cells(r, c).Interior.color = FARBE_SUMME
                 Else
+                    ' Alle uebrigen Spalten inkl. Summe Ist (I): einheitlich weiss
                     wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                 End If
             Next c
@@ -1310,7 +1310,7 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     Next i
     
     On Error Resume Next
-    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     On Error GoTo 0
     
     Application.EnableEvents = True
@@ -1327,10 +1327,6 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     End If
     
 End Sub
-
-
-
-
 
 
 

@@ -139,19 +139,21 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     ' Call mod_ZaehlerLogik.AktualisiereZaehlerTabellenSpalteA
 
 Fertig:
-    Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     Application.EnableEvents = True
     Exit Sub
 
 Fehlerbehandlung:
     ' Sicherstellen, dass der Blattschutz wiederhergestellt und Events aktiviert werden
-    Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     Application.EnableEvents = True
 
     MsgBox "Fehler bei ?nderung der Mitgliederliste." & vbCrLf & _
            "Fehler-Nr: " & Err.Number & vbCrLf & _
            "Beschreibung: " & Err.Description, vbCritical
 End Sub
+
+
 
 
 

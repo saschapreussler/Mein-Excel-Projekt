@@ -16,7 +16,7 @@ Public Sub AktualisiereDatenstand()
         With ws.Cells(M_STAND_ROW, M_STAND_COL)
             .value = Now
         End With
-        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     Else
         Debug.Print "Fehler: Tabellenblatt '" & WS_MITGLIEDER & "' nicht gefunden."
     End If
@@ -68,7 +68,7 @@ Public Sub Fuelle_MemberIDs_Wenn_Fehlend()
     
 CleanUp:
     Application.ScreenUpdating = True
-    If wasProtected Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    If wasProtected Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     Exit Sub
     
 ErrorHandler:
@@ -134,7 +134,7 @@ Public Sub ApplyMitgliederDropdowns()
     
     Debug.Print "[ApplyMitgliederDropdowns] Alle DropDowns gesetzt."
 
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     
     Debug.Print "[ApplyMitgliederDropdowns] Fertig."
     Exit Sub
@@ -142,7 +142,7 @@ ErrorHandler:
     Debug.Print "[ApplyMitgliederDropdowns] FEHLER: " & Err.Number & " - " & Err.Description
     If Not ws Is Nothing Then
         On Error Resume Next
-        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
         On Error GoTo 0
     End If
 End Sub
@@ -204,13 +204,13 @@ Public Sub Sortiere_Mitgliederliste_Nach_Parzelle()
     
 CleanUp:
     If Not ws Is Nothing Then
-        If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     End If
     Exit Sub
 
 ErrorHandler:
     If Not ws Is Nothing Then
-        If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+        If wasProtected Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     End If
     MsgBox "FEHLER BEIM SORTIEREN: " & Err.Description, vbCritical
     Resume CleanUp
@@ -303,7 +303,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     
     wsH.Cells(nextRow, H_COL_AUST_DATUM).NumberFormat = "dd.mm.yyyy"
     wsH.Cells(nextRow, H_COL_SYSTEMZEIT).NumberFormat = "dd.mm.yyyy hh:mm:ss"
-    wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
 
     ' --- 2. MITGLIEDERLISTE AKTUALISIEREN ---
     wsM.Unprotect PASSWORD:=PASSWORD
@@ -312,7 +312,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
         ' === SICHERHEITSCHECK 2: NewParzelleNr darf nicht "Verein" sein ===
         If Trim(NewParzelleNr) = PARZELLE_VEREIN Then
             MsgBox "FEHLER: Austretende Mitglieder d" & ChrW(252) & "rfen nicht zur Verein-Parzelle wechseln!", vbCritical
-            wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+            wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
             GoTo CleanUp
         End If
         
@@ -322,7 +322,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
         ' === SICHERHEITSCHECK 3: Stelle sicher, dass wir nicht die Verein-Parzelle antasten ===
         If Trim(wsM.Cells(selectedRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
             MsgBox "FEHLER: Die Verein-Parzelle kann nicht aufgel" & ChrW(246) & "st werden!", vbCritical
-            wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+            wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
             GoTo CleanUp
         End If
         
@@ -334,7 +334,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     End If
     
     Call AktualisiereDatenstand
-    wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     
     ' === NEU v5.3: EntityKey-Tabelle aktualisieren (EX-Prefix) ===
     Call mod_EntityKey_Manager.AktualisiereEntityKeyBeiAustritt(OldMemberID)
@@ -363,15 +363,15 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     Exit Sub
     
 CleanUp:
-    If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    If Not wsH Is Nothing Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
+    If Not wsH Is Nothing Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     Application.ScreenUpdating = True
     Application.EnableEvents = True
     Exit Sub
     
 ErrorHandler:
-    If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    If Not wsH Is Nothing Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    If Not wsM Is Nothing Then wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
+    If Not wsH Is Nothing Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     MsgBox "FEHLER BEI DER DATENVERARBEITUNG: " & Err.Description, vbCritical
     Application.ScreenUpdating = True
     Application.EnableEvents = True
@@ -428,6 +428,8 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False
     
 End Function
+
+
 
 
 

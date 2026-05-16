@@ -23,7 +23,8 @@ Private Const REG_SCHRIFT_INAKTIV As Long = 0          ' Schwarz
 Private Const REG_SHAPE_PREFIX As String = "regMonat_"
 
 ' Zeile/Spalte fuer Shape-Platzierung
-Private Const REG_TOP_ROW As Long = 3    ' Zeile 3 (Zeile 1-2 = Navigation)
+' Layout: Zeile 1 = Home-Button, Zeile 2 = Monats-Register, Zeile 3 = Header
+Private Const REG_TOP_ROW As Long = 2
 Private Const REG_HEIGHT As Double = 22
 Private Const REG_WIDTH As Double = 72
 Private Const REG_SPACING As Double = 2
@@ -57,6 +58,14 @@ Public Sub ErstelleMonatsRegister()
     ' Blattschutz temporaer entfernen
     On Error Resume Next
     wsUeb.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+
+    ' Zeilenhoehen fuer das Layout sicherstellen
+    ' Zeile 1: Home-Button (Hoehe 30)
+    ' Zeile 2: Monats-Register-Shapes (Hoehe 26 = REG_HEIGHT 22 + 4 Rand)
+    On Error Resume Next
+    wsUeb.Rows(1).RowHeight = 30
+    wsUeb.Rows(2).RowHeight = 26
     On Error GoTo 0
 
     ' Alte Register-Shapes entfernen
@@ -125,9 +134,9 @@ Public Sub ErstelleMonatsRegister()
         leftPos = leftPos + REG_WIDTH + REG_SPACING
     Next m
 
-    ' Blattschutz wieder aktivieren
+    ' Blattschutz wieder aktivieren (mit Filter- und Sortierfreigabe)
     On Error Resume Next
-    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     On Error GoTo 0
 
 End Sub
@@ -197,9 +206,9 @@ Public Sub FilterUebersichtNachMonat(ByVal monatIndex As Long)
     ' v1.1: Zebra auf sichtbare Zeilen neu anwenden
     Call WendeZebraAufSichtbareZeilenAn(wsUeb, UEBERSICHT_START_ROW, lastRow)
 
-    ' Blattschutz wieder aktivieren
+    ' Blattschutz wieder aktivieren (mit Filter- und Sortierfreigabe)
     On Error Resume Next
-    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     On Error GoTo 0
 
     Application.ScreenUpdating = True
@@ -237,9 +246,8 @@ Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
                            wsUeb.Cells(r, c).Interior.color <> RGB(196, 225, 196) Then
                             wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                         End If
-                    ElseIf c = UEB_COL_SUMME_IST Then
-                        wsUeb.Cells(r, c).Interior.color = FARBE_SUMME_ZEBRA
                     Else
+                        ' Alle uebrigen Spalten inkl. Summe Ist (I): einheitliches Zebra
                         wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                     End If
                 Next c
@@ -253,9 +261,8 @@ Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
                            wsUeb.Cells(r, c).Interior.color <> RGB(196, 225, 196) Then
                             wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                         End If
-                    ElseIf c = UEB_COL_SUMME_IST Then
-                        wsUeb.Cells(r, c).Interior.color = FARBE_SUMME
                     Else
+                        ' Alle uebrigen Spalten inkl. Summe Ist (I): einheitlich weiss
                         wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                     End If
                 Next c
@@ -300,10 +307,12 @@ Public Sub EntferneMonatsRegister()
     Next dName
 
     On Error Resume Next
-    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     On Error GoTo 0
 
 End Sub
+
+
 
 
 

@@ -147,7 +147,13 @@ Public Sub SetzeHomeButtonsAufAllenBlaettern()
             If Application.WorksheetFunction.CountA(ws.Rows(1)) = 0 Then
                 ws.Unprotect PASSWORD:=PASSWORD
                 ws.Rows(1).RowHeight = 30
-                ws.Rows(2).RowHeight = 3
+                ' Auf der Uebersicht liegt in Zeile 2 die Monats-Register-Leiste,
+                ' deshalb braucht sie dort mehr Platz als der schmale Spacer (3) auf den anderen Blaettern.
+                If ws.Name = WS_UEBERSICHT() Then
+                    ws.Rows(2).RowHeight = 26
+                Else
+                    ws.Rows(2).RowHeight = 3
+                End If
                 ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
             End If
             On Error GoTo 0
@@ -304,7 +310,12 @@ Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
     ' Eingefuegte Zeilen bereinigen
     ws.Range("A1:AZ2").Clear
     ws.Rows(1).RowHeight = 30
-    ws.Rows(2).RowHeight = 3
+    ' Auf der Uebersicht liegt in Zeile 2 die Monats-Register-Leiste -> mehr Hoehe
+    If ws.Name = WS_UEBERSICHT() Then
+        ws.Rows(2).RowHeight = 26
+    Else
+        ws.Rows(2).RowHeight = 3
+    End If
     
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
@@ -312,10 +323,6 @@ Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
     
     Debug.Print "[Navigation] Navigationszeilen eingefuegt auf: " & ws.Name
 End Sub
-
-
-
-
 
 
 

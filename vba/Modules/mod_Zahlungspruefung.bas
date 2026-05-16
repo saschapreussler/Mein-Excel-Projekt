@@ -265,14 +265,19 @@ NextZahlRow:
         Else
             ' Keine Zahlung -> ROT, aber nur wenn Faelligkeit schon erreicht
             If Date >= sollDatum Then
-                status = "ROT"
-                If nachlauf > 0 And Date <= sollDatum + nachlauf Then
+                If HatMitbezahltInParzelleZP(entityKey, entityIBAN, kategorie, monat, jahr, _
+                                             erwarteterMonat, istMonatlich, wsBK, bemerkung) Then
                     status = "GELB"
-                    bemerkung = "Noch offen (Frist bis " & Format(sollDatum + nachlauf, "dd.mm.yyyy") & ")"
                 Else
-                    If saeumnisGebuehr > 0 And Date > sollDatum + nachlauf Then
-                        bemerkung = "S" & ChrW(228) & "umnis: " & _
-                                    Format(saeumnisGebuehr, "#,##0.00") & " " & ChrW(8364)
+                    status = "ROT"
+                    If nachlauf > 0 And Date <= sollDatum + nachlauf Then
+                        status = "GELB"
+                        bemerkung = "Noch offen (Frist bis " & Format(sollDatum + nachlauf, "dd.mm.yyyy") & ")"
+                    Else
+                        If saeumnisGebuehr > 0 And Date > sollDatum + nachlauf Then
+                            bemerkung = "S" & ChrW(228) & "umnis: " & _
+                                        Format(saeumnisGebuehr, "#,##0.00") & " " & ChrW(8364)
+                        End If
                     End If
                 End If
             Else
@@ -287,7 +292,12 @@ NextZahlRow:
             status = "GR" & ChrW(220) & "N"
         Else
             If Date >= sollDatum Then
-                status = "ROT"
+                If HatMitbezahltInParzelleZP(entityKey, entityIBAN, kategorie, monat, jahr, _
+                                             erwarteterMonat, istMonatlich, wsBK, bemerkung) Then
+                    status = "GELB"
+                Else
+                    status = "ROT"
+                End If
             Else
                 status = "GELB"
                 bemerkung = "F" & ChrW(228) & "llig am " & Format(sollDatum, "dd.mm.yyyy")
@@ -316,6 +326,127 @@ NextZahlRow:
 ErrorHandler:
     PruefeZahlungen = "ROT|Fehler:" & Err.Description
     
+End Function
+
+
+' ===============================================================
+' Hilfsfunktion: Wenn derselbe Betrag ueber ein anderes Konto der
+' gleichen Parzelle eingegangen ist, keine Saeumnis erzeugen.
+' ===============================================================
+Private Function HatMitbezahltInParzelleZP(ByVal entityKey As String, _
+                                           ByVal entityIBAN As String, _
+                                           ByVal kategorie As String, _
+                                           ByVal monat As Long, _
+                                           ByVal jahr As Long, _
+                                           ByVal erwarteterMonat As String, _
+                                           ByVal istMonatlich As Boolean, _
+                                           ByVal wsBK As Worksheet, _
+                                           ByRef outBemerkung As String) As Boolean
+    On Error GoTo Ende
+    HatMitbezahltInParzelleZP = False
+    outBemerkung = ""
+    
+    Dim wsDaten As Worksheet
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    If wsDaten Is Nothing Then Exit Function
+    
+    Dim zielParzelle As String
+    zielParzelle = ""
+    
+    Dim r As Long
+    Dim lastMapRow As Long
+    lastMapRow = wsDaten.Cells(wsDaten.Rows.count, DATA_MAP_COL_ENTITYKEY).End(xlUp).Row
+    If lastMapRow < DATA_START_ROW Then Exit Function
+    
+    For r = DATA_START_ROW To lastMapRow
+        If StrComp(Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_ENTITYKEY).value)), entityKey, vbTextCompare) = 0 Then
+            zielParzelle = Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_PARZELLE).value))
+            Exit For
+        End If
+    Next r
+    If zielParzelle = "" Then Exit Function
+    
+    Dim dictIbanZuName As Object
+    Set dictIbanZuName = CreateObject("Scripting.Dictionary")
+    
+    Dim ib As String
+    Dim ek As String
+    Dim parz As String
+    Dim nameKonto As String
+    
+    For r = DATA_START_ROW To lastMapRow
+        parz = Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_PARZELLE).value))
+        If StrComp(parz, zielParzelle, vbTextCompare) <> 0 Then GoTo NextMap
+        
+        ek = Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_ENTITYKEY).value))
+        If StrComp(ek, entityKey, vbTextCompare) = 0 Then GoTo NextMap
+        
+        ib = Replace(Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_IBAN).value)), " ", "")
+        If ib = "" Then GoTo NextMap
+        If StrComp(ib, entityIBAN, vbTextCompare) = 0 Then GoTo NextMap
+        
+        If Not dictIbanZuName.Exists(ib) Then
+            nameKonto = Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_KTONAME).value))
+            dictIbanZuName.Add ib, nameKonto
+        End If
+NextMap:
+    Next r
+    
+    If dictIbanZuName.count = 0 Then Exit Function
+    
+    Dim lastBKRow As Long
+    lastBKRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    
+    Dim zahlDatum As Date
+    Dim monatPeriode As String
+    Dim monatPasst As Boolean
+    Dim zahlKat As String
+    Dim ibanZeile As String
+    Dim partnerName As String
+    
+    For r = BK_START_ROW To lastBKRow
+        If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo NextBK
+        zahlDatum = wsBK.Cells(r, BK_COL_DATUM).value
+        
+        If Year(zahlDatum) <> jahr Then
+            If Not (monat = 1 And Month(zahlDatum) = 12 And Year(zahlDatum) = jahr - 1) Then GoTo NextBK
+        End If
+        
+        monatPeriode = Trim(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
+        monatPasst = False
+        If istMonatlich Then
+            monatPasst = (StrComp(monatPeriode, erwarteterMonat, vbTextCompare) = 0)
+        Else
+            If monatPeriode = erwarteterMonat Then
+                monatPasst = True
+            ElseIf InStr(1, monatPeriode, kategorie, vbTextCompare) > 0 Then
+                monatPasst = True
+            ElseIf monatPeriode = "" Then
+                monatPasst = (Month(zahlDatum) = monat)
+            End If
+        End If
+        If Not monatPasst Then GoTo NextBK
+        
+        zahlKat = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
+        If StrComp(zahlKat, kategorie, vbTextCompare) <> 0 Then GoTo NextBK
+        
+        ibanZeile = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
+        If Not dictIbanZuName.Exists(ibanZeile) Then GoTo NextBK
+        
+        If Abs(CDbl(val(CStr(wsBK.Cells(r, BK_COL_BETRAG).value)))) <= 0 Then GoTo NextBK
+        
+        partnerName = Trim(CStr(dictIbanZuName(ibanZeile)))
+        If partnerName <> "" Then
+            outBemerkung = "Mitbezahlt durch: " & partnerName
+        Else
+            outBemerkung = "Mitbezahlt durch Gemeinschaftskonto"
+        End If
+        HatMitbezahltInParzelleZP = True
+        Exit Function
+NextBK:
+    Next r
+
+Ende:
 End Function
 
 
@@ -707,6 +838,8 @@ Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
     HoleDezemberVorauszahlungZP = summe
     
 End Function
+
+
 
 
 

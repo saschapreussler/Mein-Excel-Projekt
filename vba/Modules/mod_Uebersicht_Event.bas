@@ -12,8 +12,9 @@ Option Explicit
 ' ***************************************************************
 
 ' Konstanten (identisch mit mod_Uebersicht_Generator)
-Private Const UEBERSICHT_START_ROW As Long = 6
-Private Const UEBERSICHT_HEADER_ROW As Long = 5
+' Layout: Zeile 1 = Home-Button, Zeile 2 = Monats-Register, Zeile 3 = Header, ab Zeile 4 = Daten
+Private Const UEBERSICHT_START_ROW As Long = 4
+Private Const UEBERSICHT_HEADER_ROW As Long = 3
 Private Const UEB_COL_PARZELLE As Long = 1
 Private Const UEB_COL_MITGLIED As Long = 2
 Private Const UEB_COL_MONAT As Long = 3
@@ -164,7 +165,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     
     ' Blattschutz wieder aktivieren
     On Error Resume Next
-    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     On Error GoTo 0
     
     Application.EnableEvents = True
@@ -173,7 +174,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
 ErrorHandler:
     Application.EnableEvents = True
     On Error Resume Next
-    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     On Error GoTo 0
     Debug.Print "[" & ChrW(220) & "bersicht Event] FEHLER: " & Err.Description
     
@@ -394,7 +395,7 @@ Private Sub VerarbeiteIstAenderung(ByVal Target As Range)
     g_SnapAdresse = ""
     
     On Error Resume Next
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     On Error GoTo 0
     Application.EnableEvents = True
     Exit Sub
@@ -402,14 +403,10 @@ Private Sub VerarbeiteIstAenderung(ByVal Target As Range)
 ErrorHandler:
     Application.EnableEvents = True
     On Error Resume Next
-    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     On Error GoTo 0
     Debug.Print "[" & ChrW(220) & "bersicht IST] FEHLER: " & Err.Description
 End Sub
-
-
-
-
 
 
 

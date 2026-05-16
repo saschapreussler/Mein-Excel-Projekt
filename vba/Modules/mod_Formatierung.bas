@@ -151,7 +151,7 @@ Public Sub StelleAutoFilterBereit()
         
         ' Blatt mit AllowFiltering schuetzen
         On Error Resume Next
-        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
         Err.Clear
         On Error GoTo 0
         
@@ -568,6 +568,8 @@ ErrorHandler:
     End If
     
 End Sub
+
+
 
 
 
