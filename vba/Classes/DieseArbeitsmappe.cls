@@ -105,6 +105,11 @@ Private Sub Workbook_Open()
     Call mod_Formatierung.StelleAutoFilterBereit
     On Error GoTo 0
     
+    ' v8.0: Standard-Zeilenhoehen auf Hauptblaettern setzen
+    On Error Resume Next
+    Call mod_Zeilenhoehen.FixiereStandardZeilenhoehen
+    On Error GoTo 0
+    
 End Sub
 
 Private Sub Workbook_NewSheet(ByVal Sh As Object)
@@ -117,8 +122,12 @@ End Sub
 
 ' ===============================================================
 ' SheetActivate: Gitternetzlinien je Blatt korrekt setzen
-' Startmen?, Finanz-?bersicht und Dashboard ohne Gitternetz,
-' alle anderen Bl?tter (BK, VK, Strom, Wasser, ?bersicht etc.) MIT Gitternetz
+' Startmenue, Finanz-Übersicht und Dashboard ohne Gitternetz,
+' alle anderen Blätter (BK, VK, Strom, Wasser, Übersicht etc.) MIT Gitternetz
+'
+' v8.0: Startmenue + Dashboard zusätzlich im Vollbildmodus (kein
+'       Ribbon, keine Spalten-/Zeilennummern, keine Formelleiste).
+'       Alle anderen Blätter im normalen Anzeigemodus.
 ' ===============================================================
 Private Sub Workbook_SheetActivate(ByVal Sh As Object)
     On Error Resume Next
@@ -126,15 +135,62 @@ Private Sub Workbook_SheetActivate(ByVal Sh As Object)
     shName = Sh.Name
     
     Dim ohneGitter As Boolean
+    Dim vollbild As Boolean
     ohneGitter = False
+    vollbild = False
     
     Select Case shName
-        Case WS_STARTMENUE(), WS_FINANZ_UEBERSICHT(), "Dashboard Mitgliederzahlungen"
+        Case WS_STARTMENUE(), "Dashboard Mitgliederzahlungen"
             ohneGitter = True
+            vollbild = True
+        Case WS_FINANZ_UEBERSICHT()
+            ohneGitter = True
+            vollbild = False
     End Select
     
     If ActiveWindow Is Nothing Then Exit Sub
     ActiveWindow.DisplayGridlines = Not ohneGitter
+    
+    ' Vollbildmodus + Header/Formelleiste umschalten
+    Call mod_Vollbild.SetzeVollbildModus(vollbild)
+End Sub
+
+
+
+' ===============================================================
+' v8.0: Defensiver Cleanup beim Schliessen
+' Verhindert, dass Excel nach dem Schliessen weiter "haengt", indem
+' alle Application-States neutralisiert werden (Vollbild, Calculation,
+' ScreenUpdating, EnableEvents, DisplayAlerts, Cursor, Ribbon).
+' ===============================================================
+Private Sub Workbook_BeforeClose(Cancel As Boolean)
+    On Error Resume Next
+    Call mod_Vollbild.SetzeVollbildModus(False)
+    
+    Application.DisplayFullScreen = False
+    Application.ScreenUpdating = True
+    Application.EnableEvents = True
+    Application.DisplayAlerts = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.Cursor = xlDefault
+    Application.StatusBar = False
+    
+    If Not ActiveWindow Is Nothing Then
+        ActiveWindow.DisplayHeadings = True
+        ActiveWindow.DisplayGridlines = True
+    End If
+End Sub
+
+
+' ===============================================================
+' v8.0: Vor Speichern - Vollbildmodus deaktivieren, damit beim
+' naechsten Oeffnen keine inkonsistente Anzeige gespeichert wird.
+' ===============================================================
+Private Sub Workbook_BeforeSave(ByVal SaveAsUI As Boolean, Cancel As Boolean)
+    On Error Resume Next
+    ' Nichts erzwingen waehrend Save - nur sicherstellen, dass Events laufen
+    Application.EnableEvents = True
+    Application.ScreenUpdating = True
 End Sub
 
 

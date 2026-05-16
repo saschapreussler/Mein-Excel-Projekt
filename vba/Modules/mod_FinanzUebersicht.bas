@@ -26,7 +26,14 @@ Private Const CLR_SUM_BG As Long = 14408667     ' RGB(219, 223, 219)
 Private Const CLR_VK As Long = 7168108          ' RGB(108, 117, 109)
 
 Private Const FILTER_DD_NAME As String = "dd_MonatFilter_FU"
+Private Const FILTER_BTN_NAME As String = "btn_FilterErweitert_FU"
 Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung"
+
+' v8.0: Erweiterte Filter (Modul-State, persistent waehrend Session)
+Private m_FilterKat As String       ' Kategorie (leer = alle)
+Private m_FilterName As String      ' Mitglied/Parzelle - Teilstring-Match in BK-Spalte Empfaenger/Bemerkung
+Private m_FilterDatVon As Date      ' 0 = kein Filter
+Private m_FilterDatBis As Date      ' 0 = kein Filter
 
 
 ' ===============================================================
@@ -46,6 +53,11 @@ Public Sub ErstelleFinanzUebersicht()
     
     Call EntferneAlleObjekte(ws)
     Call BaueFinanzUebersicht(ws, 0)
+    
+    ' v8.0: Home-Button setzen (wurde von EntferneAlleObjekte geloescht)
+    On Error Resume Next
+    Call mod_Navigation.ErstelleHomeButton(ws)
+    On Error GoTo 0
     
     ws.Cells.Locked = True
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
@@ -144,16 +156,16 @@ Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Lon
         End If
     Next wnd
     
-    ' Spaltenbreiten
+    ' Spaltenbreiten - v8.0: alle Geld-Spalten breit genug (kein ##### mehr)
     ws.Columns("A").ColumnWidth = 2
     ws.Columns("B").ColumnWidth = 4
-    ws.Columns("C").ColumnWidth = 30
-    ws.Columns("D").ColumnWidth = 16
-    ws.Columns("E").ColumnWidth = 10
+    ws.Columns("C").ColumnWidth = 32
+    ws.Columns("D").ColumnWidth = 18
+    ws.Columns("E").ColumnWidth = 14
     ws.Columns("F").ColumnWidth = 4
-    ws.Columns("G").ColumnWidth = 16
-    ws.Columns("H").ColumnWidth = 16
-    ws.Columns("I").ColumnWidth = 10
+    ws.Columns("G").ColumnWidth = 18
+    ws.Columns("H").ColumnWidth = 18
+    ws.Columns("I").ColumnWidth = 18
     ws.Columns("J").ColumnWidth = 4
     ws.Columns("K").ColumnWidth = 2
     
@@ -180,11 +192,24 @@ Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Lon
         filterText = Format$(DateSerial(2000, monatFilter, 1), "MMMM")
     End If
     
+    ' v8.0: Erweiterte Filter im Banner anzeigen
+    Dim filterInfo As String
+    filterInfo = "Abrechnungsjahr " & IIf(abrJahr > 0, CStr(abrJahr), "---") & _
+                 "  |  Monat: " & filterText
+    If m_FilterKat <> "" Then filterInfo = filterInfo & "  |  Kat: " & m_FilterKat
+    If m_FilterName <> "" Then filterInfo = filterInfo & "  |  Name: " & m_FilterName
+    If m_FilterDatVon > 0 Or m_FilterDatBis > 0 Then
+        filterInfo = filterInfo & "  |  Zeitraum: " & _
+            IIf(m_FilterDatVon > 0, Format$(m_FilterDatVon, "DD.MM.YYYY"), "...") & " " & _
+            ChrW(8211) & " " & _
+            IIf(m_FilterDatBis > 0, Format$(m_FilterDatBis, "DD.MM.YYYY"), "...")
+    End If
+    
     With ws.Range("B4:F4")
         .Merge
-        .value = "Abrechnungsjahr " & IIf(abrJahr > 0, CStr(abrJahr), "---") & "  |  Filter:"
+        .value = filterInfo
         .Font.Size = 10
-        .Font.color = RGB(200, 200, 200)
+        .Font.color = RGB(220, 220, 220)
         .Interior.color = CLR_HEADER
         .HorizontalAlignment = xlLeft
         .VerticalAlignment = xlCenter
@@ -259,24 +284,28 @@ Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Lon
     End If
     
     ' KPI-Karten schreiben
-    ws.Rows(8).RowHeight = 42
-    ws.Rows(9).RowHeight = 16
+    ' v8.0: Vereinskasse als gleichgewichtige KPI-Karte (statt unscheinbarer Zusatzinfo).
+    '       Saldo wird als kleinere Zusatzinfo unter den Karten dargestellt.
+    ws.Rows(8).RowHeight = 48
+    ws.Rows(9).RowHeight = 18
     
     Call SchreibeKPI(ws, "C", sumEinn, "Einnahmen", RGB(39, 174, 96))
     Call SchreibeKPI(ws, "E", sumAusg, "Ausgaben", RGB(231, 76, 60))
-    Call SchreibeKPI(ws, "G", sumEinn - sumAusg, "Saldo", RGB(41, 128, 185))
-    Call SchreibeKPI(ws, "I", kontostand, "Kontostand", RGB(142, 68, 173))
+    Call SchreibeKPI(ws, "G", kontostand, "Bankkonto", RGB(142, 68, 173))
+    Call SchreibeKPI(ws, "I", vkSaldo, "Vereinskasse", RGB(46, 134, 121))
     
-    ws.Rows(10).RowHeight = 10
+    ws.Rows(10).RowHeight = 14
     
-    ' VK-Saldo als kleine Zusatzinfo
-    With ws.Range("G10:I10")
+    ' Saldo (Einnahmen - Ausgaben) als kleine Zusatzinfo zentral darunter
+    With ws.Range("C10:I10")
         .Merge
-        .value = "Vereinskasse: " & Format$(vkSaldo, "#,##0.00") & " " & ChrW(8364)
-        .Font.Size = 8
-        .Font.color = RGB(120, 120, 120)
+        .value = "Saldo (Einnahmen " & ChrW(8722) & " Ausgaben): " & _
+                 Format$(sumEinn - sumAusg, "#,##0.00") & " " & ChrW(8364)
+        .Font.Size = 9
+        .Font.Bold = True
+        .Font.color = RGB(41, 128, 185)
         .Interior.color = CLR_LIGHT_BG
-        .HorizontalAlignment = xlRight
+        .HorizontalAlignment = xlCenter
     End With
     
     ' --- 5. Einnahmen-Tabelle ---
@@ -285,9 +314,10 @@ Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Lon
     ws.Rows(curRow).RowHeight = 10
     curRow = curRow + 1
     
+    ' v8.0: Pfeil nach UNTEN (in den Verein hinein) = Einnahmen
     With ws.Range("B" & curRow & ":I" & curRow)
         .Merge
-        .value = ChrW(9650) & "  EINNAHMEN"
+        .value = ChrW(8595) & "  EINNAHMEN"
         .Font.Size = 11
         .Font.Bold = True
         .Font.color = CLR_WHITE
@@ -354,9 +384,10 @@ Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Lon
     ws.Rows(curRow).RowHeight = 10
     curRow = curRow + 1
     
+    ' v8.0: Pfeil nach OBEN (vom Verein weg) = Ausgaben
     With ws.Range("B" & curRow & ":I" & curRow)
         .Merge
-        .value = ChrW(9660) & "  AUSGABEN"
+        .value = ChrW(8593) & "  AUSGABEN"
         .Font.Size = 11
         .Font.Bold = True
         .Font.color = CLR_WHITE
@@ -547,9 +578,30 @@ Private Sub SammleDaten(ByRef dictEinn As Object, _
             End If
         End If
         
+        ' v8.0: Zeitraum-Filter (von / bis)
+        If (m_FilterDatVon > 0) Or (m_FilterDatBis > 0) Then
+            If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo nextRow
+            Dim rDat As Date
+            rDat = CDate(wsBK.Cells(r, BK_COL_DATUM).value)
+            If m_FilterDatVon > 0 And rDat < m_FilterDatVon Then GoTo nextRow
+            If m_FilterDatBis > 0 And rDat > m_FilterDatBis Then GoTo nextRow
+        End If
+        
         Dim kategorie As String
         kategorie = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
         If kategorie = "" Then GoTo nextRow
+        
+        ' v8.0: Kategorie-Filter (exakter Match, case-insensitiv)
+        If m_FilterKat <> "" Then
+            If StrComp(kategorie, m_FilterKat, vbTextCompare) <> 0 Then GoTo nextRow
+        End If
+        
+        ' v8.0: Mitglied/Parzelle-Filter (Teilstring-Match in Bemerkung-Spalte)
+        If m_FilterName <> "" Then
+            Dim bem As String
+            bem = CStr(wsBK.Cells(r, BK_COL_BEMERKUNG).value)
+            If InStr(1, bem, m_FilterName, vbTextCompare) = 0 Then GoTo nextRow
+        End If
         
         ' Nur gueltige Kategorien aus Daten!J verwenden
         If dictGueltig.count > 1 And Not dictGueltig.Exists(kategorie) Then GoTo nextRow
@@ -785,7 +837,7 @@ End Sub
 
 
 ' ===============================================================
-' FILTER-DROPDOWN
+' FILTER-DROPDOWN (Monat) + Erweiterter Filter-Button (v8.0)
 ' ===============================================================
 Private Sub ErstelleFilterDropDown(ByVal ws As Worksheet, ByVal aktuellerMonat As Long)
     Dim ddLeft As Double
@@ -817,11 +869,160 @@ Private Sub ErstelleFilterDropDown(ByVal ws As Worksheet, ByVal aktuellerMonat A
         .OnAction = "'mod_FinanzUebersicht.MonatFilterChanged'"
     End With
     
+    ' v8.0: Erweiterter-Filter-Button (rechts daneben)
+    On Error Resume Next
+    Dim btn As Button
+    Set btn = ws.Buttons.Add(ddLeft + 116, ddTop, 140, 18)
+    With btn
+        .Name = FILTER_BTN_NAME
+        .Caption = ChrW(9776) & " Erweiterte Filter ..."
+        .OnAction = "'mod_FinanzUebersicht.OeffneFilterDialog'"
+        .Font.Size = 9
+    End With
+    
+    ' v8.0: "Filter zuruecksetzen" Button
+    Dim btnReset As Button
+    Set btnReset = ws.Buttons.Add(ddLeft + 260, ddTop, 110, 18)
+    With btnReset
+        .Name = "btn_FilterReset_FU"
+        .Caption = ChrW(8635) & " zur" & ChrW(252) & "cksetzen"
+        .OnAction = "'mod_FinanzUebersicht.FilterZuruecksetzen'"
+        .Font.Size = 9
+    End With
+    On Error GoTo 0
+    
     Exit Sub
 
 DDErr:
     Debug.Print "[FinanzUebersicht] DropDown-Fehler: " & Err.Description
     Err.Clear
+End Sub
+
+
+' ===============================================================
+' v8.0: Erweiterte Filter via InputBox-Folge
+'   - Kategorie (exakter Name, leer = alle)
+'   - Mitglied/Parzelle (Teilstring-Match in BK-Bemerkung)
+'   - Zeitraum von / bis (Datum)
+' ===============================================================
+Public Sub OeffneFilterDialog()
+    Dim antw As Variant
+    
+    ' --- Kategorie ---
+    Dim katVorschlag As String
+    katVorschlag = m_FilterKat
+    antw = InputBox( _
+        "Kategorie filtern (exakter Name, leer = alle):" & vbLf & vbLf & _
+        "Beispiele: Pacht, Betriebskosten, Spende, ...", _
+        "Filter - Kategorie", katVorschlag)
+    If StrPtr(antw) = 0 Then Exit Sub ' Abbruch
+    m_FilterKat = Trim$(CStr(antw))
+    
+    ' --- Mitglied/Parzelle ---
+    Dim nameVorschlag As String
+    nameVorschlag = m_FilterName
+    antw = InputBox( _
+        "Mitglied oder Parzelle filtern (Teilstring-Match):" & vbLf & vbLf & _
+        "Sucht in der Bemerkung-Spalte. Leer = alle." & vbLf & _
+        "Beispiele: 'Mueller', 'Parz. 12', '0815'", _
+        "Filter - Mitglied / Parzelle", nameVorschlag)
+    If StrPtr(antw) = 0 Then Exit Sub
+    m_FilterName = Trim$(CStr(antw))
+    
+    ' --- Zeitraum von ---
+    Dim vonVorschlag As String
+    If m_FilterDatVon > 0 Then vonVorschlag = Format$(m_FilterDatVon, "DD.MM.YYYY")
+    antw = InputBox( _
+        "Zeitraum VON (Datum, leer = kein Filter):" & vbLf & vbLf & _
+        "Format: TT.MM.JJJJ", _
+        "Filter - Zeitraum VON", vonVorschlag)
+    If StrPtr(antw) = 0 Then Exit Sub
+    If Trim$(CStr(antw)) = "" Then
+        m_FilterDatVon = 0
+    Else
+        On Error Resume Next
+        m_FilterDatVon = CDate(antw)
+        If Err.Number <> 0 Then
+            MsgBox "Ung" & ChrW(252) & "ltiges Datum: " & antw, vbExclamation
+            Err.Clear
+            Exit Sub
+        End If
+        On Error GoTo 0
+    End If
+    
+    ' --- Zeitraum bis ---
+    Dim bisVorschlag As String
+    If m_FilterDatBis > 0 Then bisVorschlag = Format$(m_FilterDatBis, "DD.MM.YYYY")
+    antw = InputBox( _
+        "Zeitraum BIS (Datum, leer = kein Filter):" & vbLf & vbLf & _
+        "Format: TT.MM.JJJJ", _
+        "Filter - Zeitraum BIS", bisVorschlag)
+    If StrPtr(antw) = 0 Then Exit Sub
+    If Trim$(CStr(antw)) = "" Then
+        m_FilterDatBis = 0
+    Else
+        On Error Resume Next
+        m_FilterDatBis = CDate(antw)
+        If Err.Number <> 0 Then
+            MsgBox "Ung" & ChrW(252) & "ltiges Datum: " & antw, vbExclamation
+            Err.Clear
+            Exit Sub
+        End If
+        On Error GoTo 0
+    End If
+    
+    ' Neu aufbauen mit aktuellem Monatsfilter
+    Call NeuAufbauMitAktuellemMonat
+End Sub
+
+
+' ===============================================================
+' v8.0: Alle erweiterten Filter zuruecksetzen + neu aufbauen
+' ===============================================================
+Public Sub FilterZuruecksetzen()
+    m_FilterKat = ""
+    m_FilterName = ""
+    m_FilterDatVon = 0
+    m_FilterDatBis = 0
+    Call NeuAufbauMitAktuellemMonat
+End Sub
+
+
+' ===============================================================
+' v8.0: Helper - aktuellen Monatsfilter aus DropDown lesen und Blatt neu aufbauen
+' ===============================================================
+Private Sub NeuAufbauMitAktuellemMonat()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_FINANZ_UEBERSICHT())
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Sub
+    
+    Dim monatWert As Long
+    monatWert = 0
+    On Error Resume Next
+    monatWert = CLng(ws.Range("A4").value)
+    On Error GoTo 0
+    
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    
+    Call EntferneAlleObjekte(ws)
+    Call BaueFinanzUebersicht(ws, monatWert)
+    
+    On Error Resume Next
+    Call mod_Navigation.ErstelleHomeButton(ws)
+    On Error GoTo 0
+    
+    ws.Cells.Locked = True
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    
+    Application.EnableEvents = True
+    Application.ScreenUpdating = True
 End Sub
 
 
@@ -853,6 +1054,11 @@ Public Sub MonatFilterChanged()
     
     Call EntferneAlleObjekte(ws)
     Call BaueFinanzUebersicht(ws, monatWert)
+    
+    ' v8.0: Home-Button nach Filter-Reload erneut setzen
+    On Error Resume Next
+    Call mod_Navigation.ErstelleHomeButton(ws)
+    On Error GoTo 0
     
     ws.Cells.Locked = True
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
@@ -951,6 +1157,8 @@ ChartErr:
     Debug.Print "[FinanzUebersicht] Diagramm-Fehler: " & Err.Description
     Err.Clear
 End Sub
+
+
 
 
 

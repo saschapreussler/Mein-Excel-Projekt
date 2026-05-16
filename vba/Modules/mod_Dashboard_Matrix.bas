@@ -764,7 +764,8 @@ End Function
 '  FAELLIGKEIT PRUEFEN
 ' ============================================================
 Public Function IstKatImMonatFaellig(ByRef kat As UebKategorie, _
-                                       ByVal monat As Long) As Boolean    If kat.SollMonate <> "" Then
+                                       ByVal monat As Long) As Boolean
+    If kat.SollMonate <> "" Then
         IstKatImMonatFaellig = mod_KategorieEngine_Zeitraum.IstMonatInListe(monat, kat.SollMonate)
         Exit Function
     End If

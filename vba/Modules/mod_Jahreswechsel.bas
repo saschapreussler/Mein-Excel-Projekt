@@ -8,6 +8,11 @@ Attribute VB_Name = "mod_Jahreswechsel"
 '==================================================================
 Option Explicit
 
+' Lokale Konstante - UEBERSICHT_START_ROW ist in mod_Uebersicht_Generator
+' als Private Const deklariert und daher hier nicht sichtbar.
+' Wert muss mit mod_Uebersicht_Generator / mod_Uebersicht_Filter uebereinstimmen.
+Private Const UEBERSICHT_START_ROW As Long = 4
+
 
 Public Sub StarteNeuesJahr()
 
@@ -270,3 +275,5 @@ Private Sub SetzeAbrechnungsjahr(ByVal jahr As Long)
         On Error GoTo 0
     End If
 End Sub
+
+
