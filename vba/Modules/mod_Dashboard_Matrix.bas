@@ -339,7 +339,7 @@ NextEKDash:
                     If Not sollDict Is Nothing Then
                         Dim uKey As String
                         uKey = CStr(parzellen(p).parzNr) & "|" & kategorie
-                        If sollDict.Exists(uKey) Then
+                        If sollDict.exists(uKey) Then
                             mSoll = CDbl(sollDict(uKey))
                             If mIst >= mSoll - 0.01 Then
                                 mBestStatus = statusGruen
@@ -1004,6 +1004,8 @@ Public Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

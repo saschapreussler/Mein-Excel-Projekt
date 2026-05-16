@@ -71,7 +71,7 @@ Public Sub FormatiereBlattBankkonto()
             For r = DATA_START_ROW To lastRowKat
                 katName = Trim(CStr(wsDaten.Cells(r, DATA_CAT_COL_KATEGORIE).value))
                 If katName <> "" Then
-                    If Not dictAlleKat.Exists(katName) Then
+                    If Not dictAlleKat.exists(katName) Then
                         dictAlleKat.Add katName, katName
                     End If
                 End If
@@ -177,6 +177,8 @@ Public Function NamedRangeExists(ByVal rangeName As String) As Boolean
     End If
     On Error GoTo 0
 End Function
+
+
 
 
 

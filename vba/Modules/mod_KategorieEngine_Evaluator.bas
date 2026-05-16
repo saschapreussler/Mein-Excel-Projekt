@@ -286,7 +286,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                 score = score + zeitBonus
             End If
 
-            If Not hitCategories.Exists(category) Then
+            If Not hitCategories.exists(category) Then
                 hitCategories.Add category, score
             Else
                 If score > CLng(hitCategories(category)) Then
@@ -421,6 +421,8 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         End Select
     End With
 End Sub
+
+
 
 
 

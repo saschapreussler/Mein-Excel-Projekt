@@ -45,7 +45,7 @@ Public Sub SetzeDropDowns(ByVal ws As Worksheet)
     For r = ES_START_ROW To lastRow
         tmpKat = Trim(CStr(ws.Cells(r, ES_COL_KATEGORIE).value))
         If tmpKat <> "" Then
-            If Not verwendete.Exists(tmpKat) Then
+            If Not verwendete.exists(tmpKat) Then
                 verwendete.Add tmpKat, r
             End If
         End If
@@ -58,7 +58,7 @@ Public Sub SetzeDropDowns(ByVal ws As Worksheet)
     
     Dim k As Variant
     For Each k In alleKategorien.keys
-        If Not verwendete.Exists(CStr(k)) Then
+        If Not verwendete.exists(CStr(k)) Then
             verfuegbar.Add CStr(k), True
         End If
     Next k
@@ -291,7 +291,7 @@ Public Function HoleAlleKategorien() As Object
     For r = DATA_START_ROW To lastRow
         kat = Trim(CStr(wsDaten.Cells(r, DATA_CAT_COL_KATEGORIE).value))
         If kat <> "" Then
-            If Not dict.Exists(kat) Then
+            If Not dict.exists(kat) Then
                 dict.Add kat, True
             End If
         End If
@@ -311,6 +311,8 @@ Private Function LetzteZeile(ByVal ws As Worksheet) As Long
     If lr < ES_START_ROW Then lr = ES_START_ROW - 1
     LetzteZeile = lr
 End Function
+
+
 
 
 

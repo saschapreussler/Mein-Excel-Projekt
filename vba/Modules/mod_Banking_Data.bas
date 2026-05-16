@@ -186,7 +186,7 @@ Public Sub Importiere_Kontoauszug()
         If IsDate(wsTemp.Cells(lRowScan, CSV_COL_BUCHUNGSDATUM).value) Then
             Dim scanJahr As String
             scanJahr = CStr(Year(CDate(wsTemp.Cells(lRowScan, CSV_COL_BUCHUNGSDATUM).value)))
-            If jahrDict.Exists(scanJahr) Then
+            If jahrDict.exists(scanJahr) Then
                 jahrDict(scanJahr) = jahrDict(scanJahr) + 1
             Else
                 jahrDict.Add scanJahr, 1
@@ -295,7 +295,7 @@ Public Sub Importiere_Kontoauszug()
         
         sKey = Format(dDatum, "YYYYMMDD") & "|" & dBetrag & "|" & sIBAN & "|" & sVZ
 
-        If dictUmsaetze.Exists(sKey) Then
+        If dictUmsaetze.exists(sKey) Then
             rowsIgnoredDupe = rowsIgnoredDupe + 1
             GoTo NextRowImport
         End If
@@ -681,6 +681,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 

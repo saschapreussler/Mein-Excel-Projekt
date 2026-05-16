@@ -379,7 +379,7 @@ Public Sub GruppiereParzellen(ByVal mitglieder As Collection, _
         Dim pKey As String
         pKey = CStr(pNr)
         
-        If Not dict.Exists(pKey) Then
+        If Not dict.exists(pKey) Then
             tempCount = tempCount + 1
             tempArr(tempCount).parzNr = pNr
             tempArr(tempCount).mitgliedNamen = m("Name")
@@ -431,7 +431,7 @@ Public Sub GruppiereParzellen(ByVal mitglieder As Collection, _
     idx = 1
     Dim p As Long
     For p = 1 To 14
-        If dict.Exists(CStr(p)) Then
+        If dict.exists(CStr(p)) Then
             parzellen(idx) = tempArr(dict(CStr(p)))
             idx = idx + 1
         End If
@@ -737,6 +737,8 @@ Private Sub ErgaenzeParzellennamen(ByRef parzellen() As ParzelleInfo, _
     Next mlM
     
 End Sub
+
+
 
 
 

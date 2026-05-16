@@ -14,26 +14,26 @@ Option Explicit
 '              - Neue: Import nach ANSI-Konvertierung
 '        .cls  Klassen-Module:
 '              - Dokument-Module (Type=100): CodeModule-Ersetzung
-'              - Regul?re Klassen: CodeModule-Ersetzung (in-place)
+'              - Reguläre Klassen: CodeModule-Ersetzung (in-place)
 '              - Neue Klassen: Import nach ANSI-Konvertierung
-'        .frm  UserForms: L?schen + Neu-Import (inkl. .frx)
+'        .frm  UserForms: Löschen + Neu-Import (inkl. .frx)
 '
 '        STRATEGIE (v3.0 - "CodeModule first"):
 '        1. BEREINIGUNG: Doubletten entfernen (mod_XYZ1,
 '           mod_XYZ2 usw.), die durch fehlgeschlagene
 '           Remove+Import-Zyklen entstanden sind.
-'        2. IMPORT: F?r bestehende Module wird der Code
+'        2. IMPORT: Für bestehende Module wird der Code
 '           direkt im CodeModule ?berschrieben (DeleteLines +
-'           AddFromString). Kein Remove n?tig, daher kein
-'           "Zugriff verweigert". Nur f?r NEUE Module wird
+'           AddFromString). Kein Remove nötig, daher kein
+'           "Zugriff verweigert". Nur für NEUE Module wird
 '           VBComponents.Import nach ANSI-Konvertierung
 '           verwendet.
 '
 '        ENCODING:
 '        Dateien aus dem Repo (VS Code) sind UTF-8 kodiert.
-'        VBA erwartet f?r den Import ANSI (Windows-1252).
+'        VBA erwartet für den Import ANSI (Windows-1252).
 '        Dieses Modul konvertiert automatisch UTF-8 ? ANSI,
-'        damit Umlaute (?, ?, ?, ?) korrekt ?bernommen werden.
+'        damit Umlaute (ä, ö, ü, ß) korrekt übernommen werden.
 '
 ' HINWEIS: Dieses Modul und mod_VBA_Export werden beim Import
 '          ?bersprungen, um sich nicht selbst zu ?berschreiben.
@@ -501,13 +501,13 @@ Private Sub BereinigeDoubletten(fso As Object, vbProj As Object, _
         If vbComp.Type = 100 Then GoTo NaechsteKomponente
         
         ' Wenn der Name ein bekannter Repo-Name ist -> kein Doublette
-        If repoNamen.Exists(compName) Then GoTo NaechsteKomponente
+        If repoNamen.exists(compName) Then GoTo NaechsteKomponente
         
         ' Pruefen ob der Name = Basisname + Ziffern ist
         basisName = EntferneNachgestellteZiffern(compName)
         
         ' Wenn Basisname anders UND Basisname existiert im Repo -> Doublette!
-        If basisName <> compName And repoNamen.Exists(basisName) Then
+        If basisName <> compName And repoNamen.exists(basisName) Then
             zuEntfernen.Add vbComp
         End If
         

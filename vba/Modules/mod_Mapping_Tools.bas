@@ -130,12 +130,12 @@ Public Function FuzzyMemberSearch(ByVal nameToSearch As String, ByVal wsMembers 
             End If
             
             ' Alle Matches speichern, damit wir sp?ter nur die besten aggregieren k?nnen
-            If Not dictAllMatches.Exists(matchFoundName) Then
+            If Not dictAllMatches.exists(matchFoundName) Then
                 dictAllMatches.Add matchFoundName, currentMatchStatus
             End If
             
             ' Parzelle(n) zum Mitglied hinzuf?gen (f?r Spalte W)
-            If dictParzellenMap.Exists(matchFoundName) Then
+            If dictParzellenMap.exists(matchFoundName) Then
                  ' Wenn bereits ein Eintrag existiert, Parzelle mit Komma/vbLf anh?ngen
                 If InStr(dictParzellenMap.item(matchFoundName), parzelle) = 0 Then
                     dictParzellenMap.item(matchFoundName) = dictParzellenMap.item(matchFoundName) & vbLf & parzelle
@@ -173,20 +173,20 @@ EndSearch:
         If dictAllMatches.item(memberName) = bestMatchStatus Then
             
             ' Nur einzigartige Namen in V sammeln
-            If Not listUniqueNames.Exists(memberName) Then
+            If Not listUniqueNames.exists(memberName) Then
                 If finalZuordnung <> "" Then finalZuordnung = finalZuordnung & vbLf
                 finalZuordnung = finalZuordnung & memberName
                 listUniqueNames.Add memberName, True
             End If
             
             ' Parzellen f?r W sammeln (aus dem Parzellen-Dictionary)
-            If dictParzellenMap.Exists(memberName) Then
+            If dictParzellenMap.exists(memberName) Then
                  Dim parts() As String
                  parts = Split(dictParzellenMap.item(memberName), vbLf)
                  
                  Dim part As Variant
                  For Each part In parts
-                      If Not listUniqueParzellen.Exists(part) Then
+                      If Not listUniqueParzellen.exists(part) Then
                           If finalParzellen <> "" Then finalParzellen = finalParzellen & vbLf
                           finalParzellen = finalParzellen & part
                           listUniqueParzellen.Add part, True
@@ -202,6 +202,8 @@ EndSearch:
     FuzzyMemberSearch = finalZuordnung
     
 End Function
+
+
 
 
 

@@ -250,9 +250,9 @@ Private Sub AktualisierKategorieListen()
         If kat = "" Then GoTo NextListRow
         
         If ea = "E" Then
-            If Not dictE.Exists(kat) Then dictE.Add kat, True
+            If Not dictE.exists(kat) Then dictE.Add kat, True
         ElseIf ea = "A" Then
-            If Not dictA.Exists(kat) Then dictA.Add kat, True
+            If Not dictA.exists(kat) Then dictA.Add kat, True
         End If
 NextListRow:
     Next r
@@ -511,6 +511,8 @@ Private Function HatManuelleKategorie(ByVal wsBK As Worksheet, _
     HatManuelleKategorie = True
     
 End Function
+
+
 
 
 

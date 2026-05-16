@@ -556,12 +556,12 @@ Private Sub SammleDaten(ByRef dictEinn As Object, _
             Dim katName As String
             katName = Trim(CStr(wsDaten.Cells(rD, DATA_CAT_COL_KATEGORIE).value))
             If katName <> "" Then
-                If Not dictGueltig.Exists(katName) Then dictGueltig.Add katName, True
+                If Not dictGueltig.exists(katName) Then dictGueltig.Add katName, True
             End If
         Next rD
     End If
     ' Sammelzahlung immer erlauben
-    If Not dictGueltig.Exists(KAT_SAMMELZAHLUNG) Then dictGueltig.Add KAT_SAMMELZAHLUNG, True
+    If Not dictGueltig.exists(KAT_SAMMELZAHLUNG) Then dictGueltig.Add KAT_SAMMELZAHLUNG, True
     
     Dim lastRow As Long
     lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
@@ -604,7 +604,7 @@ Private Sub SammleDaten(ByRef dictEinn As Object, _
         End If
         
         ' Nur gueltige Kategorien aus Daten!J verwenden
-        If dictGueltig.count > 1 And Not dictGueltig.Exists(kategorie) Then GoTo nextRow
+        If dictGueltig.count > 1 And Not dictGueltig.exists(kategorie) Then GoTo nextRow
         
         Dim betrag As Double
         betrag = 0
@@ -619,10 +619,10 @@ Private Sub SammleDaten(ByRef dictEinn As Object, _
         Else
             ' Normaler Eintrag: Betrag der Kategorie zuordnen
             If betrag > 0 Then
-                If Not dictEinn.Exists(kategorie) Then dictEinn.Add kategorie, 0
+                If Not dictEinn.exists(kategorie) Then dictEinn.Add kategorie, 0
                 dictEinn(kategorie) = dictEinn(kategorie) + betrag
             Else
-                If Not dictAusg.Exists(kategorie) Then dictAusg.Add kategorie, 0
+                If Not dictAusg.exists(kategorie) Then dictAusg.Add kategorie, 0
                 dictAusg(kategorie) = dictAusg(kategorie) + Abs(betrag)
             End If
         End If
@@ -650,10 +650,10 @@ Private Sub VerteileSammelzahlung(ByVal wsBK As Worksheet, _
     If Left(UCase(bemerkung), 7) <> "SAMMEL:" Then
         ' Kein SAMMEL-Format -> Gesamtbetrag als "Sammelzahlung" buchen
         If gesamtBetrag > 0 Then
-            If Not dictEinn.Exists(KAT_SAMMELZAHLUNG) Then dictEinn.Add KAT_SAMMELZAHLUNG, 0
+            If Not dictEinn.exists(KAT_SAMMELZAHLUNG) Then dictEinn.Add KAT_SAMMELZAHLUNG, 0
             dictEinn(KAT_SAMMELZAHLUNG) = dictEinn(KAT_SAMMELZAHLUNG) + gesamtBetrag
         ElseIf gesamtBetrag < 0 Then
-            If Not dictAusg.Exists(KAT_SAMMELZAHLUNG) Then dictAusg.Add KAT_SAMMELZAHLUNG, 0
+            If Not dictAusg.exists(KAT_SAMMELZAHLUNG) Then dictAusg.Add KAT_SAMMELZAHLUNG, 0
             dictAusg(KAT_SAMMELZAHLUNG) = dictAusg(KAT_SAMMELZAHLUNG) + Abs(gesamtBetrag)
         End If
         Exit Sub
@@ -711,10 +711,10 @@ Private Sub VerteileSammelzahlung(ByVal wsBK As Worksheet, _
                 
                 ' Richtung (Einnahme/Ausgabe) vom Gesamtbetrag ableiten
                 If gesamtBetrag > 0 Then
-                    If Not dictEinn.Exists(teilKat) Then dictEinn.Add teilKat, 0
+                    If Not dictEinn.exists(teilKat) Then dictEinn.Add teilKat, 0
                     dictEinn(teilKat) = dictEinn(teilKat) + teilBetrag
                 Else
-                    If Not dictAusg.Exists(teilKat) Then dictAusg.Add teilKat, 0
+                    If Not dictAusg.exists(teilKat) Then dictAusg.Add teilKat, 0
                     dictAusg(teilKat) = dictAusg(teilKat) + teilBetrag
                 End If
             End If
@@ -725,10 +725,10 @@ NextZeile:
     ' Falls Parsing fehlgeschlagen: Gesamtbetrag als "Sammelzahlung"
     If Not hatTeilbetraege Then
         If gesamtBetrag > 0 Then
-            If Not dictEinn.Exists(KAT_SAMMELZAHLUNG) Then dictEinn.Add KAT_SAMMELZAHLUNG, 0
+            If Not dictEinn.exists(KAT_SAMMELZAHLUNG) Then dictEinn.Add KAT_SAMMELZAHLUNG, 0
             dictEinn(KAT_SAMMELZAHLUNG) = dictEinn(KAT_SAMMELZAHLUNG) + gesamtBetrag
         ElseIf gesamtBetrag < 0 Then
-            If Not dictAusg.Exists(KAT_SAMMELZAHLUNG) Then dictAusg.Add KAT_SAMMELZAHLUNG, 0
+            If Not dictAusg.exists(KAT_SAMMELZAHLUNG) Then dictAusg.Add KAT_SAMMELZAHLUNG, 0
             dictAusg(KAT_SAMMELZAHLUNG) = dictAusg(KAT_SAMMELZAHLUNG) + Abs(gesamtBetrag)
         End If
     End If
@@ -1157,6 +1157,8 @@ ChartErr:
     Debug.Print "[FinanzUebersicht] Diagramm-Fehler: " & Err.Description
     Err.Clear
 End Sub
+
+
 
 
 

@@ -67,6 +67,7 @@ Attribute VB_Exposed = False
 
 
 
+
 Option Explicit
 
 Private m_SelectedOption As Integer
@@ -273,7 +274,7 @@ Private Sub FuelleNachpaechterComboBox()
                         Trim(ws.Cells(lRow, M_COL_VORNAME).value)
             
             ' Nur hinzufügen wenn Name noch nicht in der Liste ist
-            If Not dictNamen.Exists(fullName) Then
+            If Not dictNamen.exists(fullName) Then
                 dictNamen.Add fullName, True
                 Me.cbo_Nachpaechter.AddItem fullName
             End If

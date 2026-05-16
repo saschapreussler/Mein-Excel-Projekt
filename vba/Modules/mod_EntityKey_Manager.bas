@@ -94,7 +94,7 @@ Public Sub ImportiereIBANsAusBankkonto()
         For r = EK_START_ROW To lastRowD
             currentIBAN = mod_EntityKey_Normalize.NormalisiereIBAN(wsD.Cells(r, EK_COL_IBAN).value)
             If currentIBAN <> "" Then
-                If Not dictExisting.Exists(currentIBAN) Then
+                If Not dictExisting.exists(currentIBAN) Then
                     dictExisting.Add currentIBAN, r
                 End If
             End If
@@ -112,7 +112,7 @@ Public Sub ImportiereIBANsAusBankkonto()
             currentKontoName = mod_EntityKey_Normalize.EntferneMehrfacheLeerzeichen(Trim(CStr(wsBK.Cells(r, BK_COL_NAME).value)))
             
             If currentIBAN <> "" Then
-                If Not dictIBANs.Exists(currentIBAN) Then
+                If Not dictIBANs.exists(currentIBAN) Then
                     dictIBANs.Add currentIBAN, currentKontoName
                     Dim dictNames As Object
                     Set dictNames = CreateObject("Scripting.Dictionary")
@@ -124,7 +124,7 @@ Public Sub ImportiereIBANsAusBankkonto()
                     If currentKontoName <> "" Then
                         Dim nameKey As String
                         nameKey = UCase(Trim(currentKontoName))
-                        If Not dictKontonamen(currentIBAN).Exists(nameKey) Then
+                        If Not dictKontonamen(currentIBAN).exists(nameKey) Then
                             If Not mod_EntityKey_Kontoname.IstKontonameRedundant(dictKontonamen(currentIBAN), currentKontoName) Then
                                 dictKontonamen(currentIBAN).Add nameKey, currentKontoName
                             End If
@@ -139,7 +139,7 @@ Public Sub ImportiereIBANsAusBankkonto()
     If lastRowD >= EK_START_ROW Then
         For r = EK_START_ROW To lastRowD
             currentIBAN = mod_EntityKey_Normalize.NormalisiereIBAN(wsD.Cells(r, EK_COL_IBAN).value)
-            If currentIBAN <> "" And dictKontonamen.Exists(currentIBAN) Then
+            If currentIBAN <> "" And dictKontonamen.exists(currentIBAN) Then
                 Dim bereinigteNamen As Object
                 Set bereinigteNamen = mod_EntityKey_Kontoname.BereinigeKontonamen(dictKontonamen(currentIBAN))
                 Dim allNames As String
@@ -161,7 +161,7 @@ Public Sub ImportiereIBANsAusBankkonto()
     For Each ibanKey In dictIBANs.keys
         currentIBAN = CStr(ibanKey)
         
-        If Not dictExisting.Exists(currentIBAN) Then
+        If Not dictExisting.exists(currentIBAN) Then
             Dim bereinigt As Object
             Set bereinigt = mod_EntityKey_Kontoname.BereinigeKontonamen(dictKontonamen(currentIBAN))
             Dim kontoNamenGesamt As String
@@ -450,7 +450,7 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
     For i = 1 To mitgliederExakt.count
         mitgliedInfo = mitgliederExakt(i)
         If mitgliedInfo(6) = False Then
-            If Not uniqueMemberIDs.Exists(CStr(mitgliedInfo(0))) Then
+            If Not uniqueMemberIDs.exists(CStr(mitgliedInfo(0))) Then
                 uniqueMemberIDs.Add CStr(mitgliedInfo(0)), CStr(mitgliedInfo(0))
             End If
         End If
@@ -492,7 +492,7 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
         For i = 1 To mitgliederExakt.count
             mitgliedInfo = mitgliederExakt(i)
             If mitgliedInfo(6) = False Then
-                If Not bereitsHinzu.Exists(CStr(mitgliedInfo(0))) Then
+                If Not bereitsHinzu.exists(CStr(mitgliedInfo(0))) Then
                     bereitsHinzu.Add CStr(mitgliedInfo(0)), True
                     
                     If outZuordnung <> "" Then outZuordnung = outZuordnung & vbLf
@@ -632,6 +632,8 @@ ErrorHandler:
     wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Debug.Print "FEHLER in AktualisiereEntityKeyBeiAustritt: " & Err.Description
 End Sub
+
+
 
 
 

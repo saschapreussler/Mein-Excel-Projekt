@@ -382,8 +382,10 @@ Private Sub VerarbeiteIstAenderung(ByVal Target As Range)
         ws.Cells(zeile, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
         
         Dim bem As String
-        bem = "manuell ge" & ChrW(228) & "ndert, Zahlungsdatum " & Format(zahlDatum, "dd.mm.yyyy")
-        ws.Cells(zeile, UEB_COL_BEMERKUNG).value = bem
+        Dim neuBem As String
+        bem = Trim(CStr(ws.Cells(zeile, UEB_COL_BEMERKUNG).value))
+        neuBem = "manuell ge" & ChrW(228) & "ndert, Zahlungsdatum " & Format(zahlDatum, "dd.mm.yyyy")
+        ws.Cells(zeile, UEB_COL_BEMERKUNG).value = FuegeBemerkungEinmalHinzu(bem, neuBem)
         
         ' Dashboard updaten
         On Error Resume Next
@@ -407,6 +409,42 @@ ErrorHandler:
     On Error GoTo 0
     Debug.Print "[" & ChrW(220) & "bersicht IST] FEHLER: " & Err.Description
 End Sub
+
+
+' ===============================================================
+' Fuegt einen Bemerkungsteil nur einmal hinzu (case-insensitive).
+' ===============================================================
+Private Function FuegeBemerkungEinmalHinzu(ByVal basis As String, _
+                                           ByVal neuTeil As String) As String
+    Dim res As String
+    res = Trim(basis)
+    neuTeil = Trim(neuTeil)
+
+    If neuTeil = "" Then
+        FuegeBemerkungEinmalHinzu = res
+        Exit Function
+    End If
+
+    If res = "" Then
+        FuegeBemerkungEinmalHinzu = neuTeil
+        Exit Function
+    End If
+
+    Dim teile() As String
+    teile = Split(res, " | ")
+
+    Dim i As Long
+    For i = LBound(teile) To UBound(teile)
+        If StrComp(Trim(teile(i)), neuTeil, vbTextCompare) = 0 Then
+            FuegeBemerkungEinmalHinzu = res
+            Exit Function
+        End If
+    Next i
+
+    FuegeBemerkungEinmalHinzu = res & " | " & neuTeil
+End Function
+
+
 
 
 

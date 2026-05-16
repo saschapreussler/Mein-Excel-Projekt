@@ -92,7 +92,7 @@ Public Sub DebugDropDownLogik()
             Next ci
             msg = msg & " [ASC: " & Trim(ascDump) & "]" & vbLf
             
-            If Not verwendete.Exists(kat) Then
+            If Not verwendete.exists(kat) Then
                 verwendete.Add kat, r
             End If
         Else
@@ -106,7 +106,7 @@ Public Sub DebugDropDownLogik()
     verfuegbar.CompareMode = vbTextCompare
     
     For Each k In alleKat.keys
-        If Not verwendete.Exists(CStr(k)) Then
+        If Not verwendete.exists(CStr(k)) Then
             verfuegbar.Add CStr(k), True
         Else
             msg = msg & "  ENTFERNT (bereits verwendet): """ & CStr(k) & """" & vbLf
@@ -287,6 +287,8 @@ Public Sub DebugSetzeDropDownsUndPruefe()
     MsgBox msg, vbInformation, "Debug SetzeDropDowns Ergebnis"
     
 End Sub
+
+
 
 
 

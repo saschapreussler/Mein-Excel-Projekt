@@ -438,7 +438,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     For Each tmpM In mitglieder
         Dim mbKey As String
         mbKey = CStr(tmpM("Parzelle")) & "|" & tmpM("EntityKey")
-        If Not mbMultiplier.Exists(mbKey) Then
+        If Not mbMultiplier.exists(mbKey) Then
             mbMultiplier(mbKey) = 1
         Else
             mbMultiplier(mbKey) = mbMultiplier(mbKey) + 1
@@ -537,7 +537,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) <> 0 Then
                     Dim parzKatKey As String
                     parzKatKey = CStr(parzelleWert) & "|" & monat & "|" & kategorie
-                    If geschriebeneParzKat.Exists(parzKatKey) Then
+                    If geschriebeneParzKat.exists(parzKatKey) Then
                         GoTo NextKat
                     End If
                 End If
@@ -665,7 +665,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                     Dim mbLookup As String
                     mbLookup = CStr(parzelleWert) & "|" & entityKey
-                    If mbMultiplier.Exists(mbLookup) Then
+                    If mbMultiplier.exists(mbLookup) Then
                         mbFaktor = CLng(mbMultiplier(mbLookup))
                     End If
                 End If
@@ -795,13 +795,13 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 ' v5.0: Kumulierten Ist-Betrag tracken
                 Dim sumKey As String
                 sumKey = CStr(parzelleWert) & "|" & kategorie
-                If summeIstDict.Exists(sumKey) Then
+                If summeIstDict.exists(sumKey) Then
                     summeIstDict(sumKey) = summeIstDict(sumKey) + ist
                 Else
                     summeIstDict(sumKey) = ist
                 End If
                 ' Zeilennummer merken
-                If Not summeIstZeilen.Exists(sumKey) Then
+                If Not summeIstZeilen.exists(sumKey) Then
                     Set summeIstZeilen(sumKey) = New Collection
                 End If
                 summeIstZeilen(sumKey).Add rowIdx
@@ -815,18 +815,19 @@ NextMonat:
 NextMitglied:
     Next mitglied
     
-    ' v5.0: Kumulierte Ist-Summen in Spalte I schreiben
-    Dim sk As Variant
-    For Each sk In summeIstZeilen.keys
-        Dim zeilen As Collection
-        Set zeilen = summeIstZeilen(sk)
-        Dim sumWert As Double
-        sumWert = summeIstDict(sk)
-        Dim zi As Long
-        For zi = 1 To zeilen.count
-            wsUeb.Cells(zeilen(zi), UEB_COL_SUMME_IST).value = sumWert
-        Next zi
-    Next sk
+    ' Mitgliedsbeitrag pro Parzelle/Monat zusammenfassen,
+    ' wenn mehrere Mitglieder dort vollstaendig bezahlt sind.
+    Dim letzteZeileUeb As Long
+    letzteZeileUeb = rowIdx - 1
+    If letzteZeileUeb >= UEBERSICHT_START_ROW Then
+        letzteZeileUeb = KonsolidiereMitgliedsbeitragZeilen(wsUeb, letzteZeileUeb)
+        rowIdx = letzteZeileUeb + 1
+    End If
+
+    ' Summe-Ist pro Parzelle+Kategorie nach Konsolidierung neu aufbauen.
+    If rowIdx > UEBERSICHT_START_ROW Then
+        Call AktualisiereSummeIstNachKonsolidierung(wsUeb, rowIdx - 1)
+    End If
     
     ' Formatierung anwenden
     Call FormatiereUebersicht(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
@@ -860,11 +861,8 @@ NextMitglied:
     Application.EnableEvents = True
     Application.ScreenUpdating = True
     
-    ' v5.4: Vorjahr-Pruefung: wenn keine Vorjahr-Daten vorhanden sind,
-    '        dem Nutzer die Moeglichkeit geben GELB-Eintraege zu best?tigen
-    If Not stummModus And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
-        Call PruefeVorjahrGelbEintraege(wsUeb, rowIdx - 1)
-    End If
+    ' Die Vorjahr-Hinweispruefung wird gezielt beim Blattwechsel auf
+    ' die Zahlungsuebersicht gestartet (nicht direkt waehrend Generierung).
     
     Dim endTime As Double
     endTime = Timer
@@ -1190,7 +1188,7 @@ Private Function HoleManuellSollAusVormonat(ByVal gespeicherteSoll As Object, _
     Dim dictKey As String
     dictKey = parzelle & "|" & kategorie
     
-    If gespeicherteSoll.Exists(dictKey) Then
+    If gespeicherteSoll.exists(dictKey) Then
         HoleManuellSollAusVormonat = gespeicherteSoll(dictKey)
     End If
     
@@ -1234,6 +1232,223 @@ Private Function PruefePartnerMitgliedsbeitrag( _
         End If
     Next partner
     
+End Function
+
+
+' ===============================================================
+' Konsolidiert Mitgliedsbeitrag-Zeilen pro Parzelle+Monat:
+' - mehrere voll bezahlte Mitgliedszeilen -> eine Sammelzeile
+' - problematische Zeilen (offen/abweichend) bleiben einzeln bestehen
+' Rueckgabe: neue letzte Zeile
+' ===============================================================
+Private Function KonsolidiereMitgliedsbeitragZeilen(ByVal wsUeb As Worksheet, _
+                                                    ByVal lastRow As Long) As Long
+    On Error GoTo Ende
+
+    Dim dictGroups As Object
+    Set dictGroups = CreateObject("Scripting.Dictionary")
+    dictGroups.CompareMode = vbTextCompare
+
+    Dim r As Long
+    For r = UEBERSICHT_START_ROW To lastRow
+        If StrComp(Trim(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+            Dim gKey As String
+            gKey = Trim(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
+                   Trim(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value))
+            If Not dictGroups.exists(gKey) Then
+                Set dictGroups(gKey) = New Collection
+            End If
+            dictGroups(gKey).Add r
+        End If
+    Next r
+
+    If dictGroups.count = 0 Then
+        KonsolidiereMitgliedsbeitragZeilen = lastRow
+        Exit Function
+    End If
+
+    Dim keys As Variant
+    keys = dictGroups.keys
+
+    Dim i As Long, j As Long
+    For i = LBound(keys) To UBound(keys) - 1
+        For j = i + 1 To UBound(keys)
+            If CLng(dictGroups(keys(i))(dictGroups(keys(i)).count)) < CLng(dictGroups(keys(j))(dictGroups(keys(j)).count)) Then
+                Dim tmpK As Variant
+                tmpK = keys(i)
+                keys(i) = keys(j)
+                keys(j) = tmpK
+            End If
+        Next j
+    Next i
+
+    Dim deletedRows As Long
+    deletedRows = 0
+
+    For i = LBound(keys) To UBound(keys)
+        Dim rowsInGroup As Collection
+        Set rowsInGroup = dictGroups(keys(i))
+        If rowsInGroup.count < 2 Then GoTo NextGroup
+
+        Dim goodRows As New Collection
+        Dim rr As Variant
+        For Each rr In rowsInGroup
+            Dim statusTxt As String
+            statusTxt = UCase(Trim(CStr(wsUeb.Cells(CLng(rr), UEB_COL_STATUS).value)))
+            If Left(statusTxt, 2) = "GR" Then
+                goodRows.Add CLng(rr)
+            End If
+        Next rr
+
+        If goodRows.count < 2 Then GoTo NextGroup
+
+        Dim keepRow As Long
+        keepRow = CLng(goodRows(1))
+
+        Dim namen As String
+        Dim gesSoll As Double
+        Dim bemGes As String
+        namen = ""
+        gesSoll = 0
+        bemGes = ""
+
+        For Each rr In goodRows
+            Dim rowN As Long
+            rowN = CLng(rr)
+            namen = SammleNamenEinmal(namen, CStr(wsUeb.Cells(rowN, UEB_COL_MITGLIED).value))
+            gesSoll = gesSoll + CDbl(val(CStr(wsUeb.Cells(rowN, UEB_COL_SOLL).value)))
+            bemGes = FuegeTeiltextEinmalHinzu(bemGes, CStr(wsUeb.Cells(rowN, UEB_COL_BEMERKUNG).value), " | ")
+        Next rr
+
+        wsUeb.Cells(keepRow, UEB_COL_MITGLIED).value = namen
+        wsUeb.Cells(keepRow, UEB_COL_SOLL).value = gesSoll
+        wsUeb.Cells(keepRow, UEB_COL_IST).value = gesSoll
+        wsUeb.Cells(keepRow, UEB_COL_STATUS).value = m_STATUS_GRUEN
+        wsUeb.Cells(keepRow, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
+        wsUeb.Cells(keepRow, UEB_COL_BEMERKUNG).value = bemGes
+        wsUeb.Cells(keepRow, UEB_COL_MITGLIED).WrapText = True
+
+        For j = goodRows.count To 2 Step -1
+            wsUeb.Rows(CLng(goodRows(j))).Delete
+            deletedRows = deletedRows + 1
+        Next j
+
+NextGroup:
+    Next i
+
+    KonsolidiereMitgliedsbeitragZeilen = lastRow - deletedRows
+    Exit Function
+
+Ende:
+    KonsolidiereMitgliedsbeitragZeilen = lastRow
+End Function
+
+
+' ===============================================================
+' Baut Spalte I (Summe Ist) fuer alle sichtbaren Uebersichtszeilen neu
+' auf, damit konsolidierte Mitgliedsbeitragszeilen korrekte Summen tragen.
+' ===============================================================
+Private Sub AktualisiereSummeIstNachKonsolidierung(ByVal wsUeb As Worksheet, _
+                                                   ByVal lastRow As Long)
+    On Error GoTo Ende
+
+    Dim sums As Object
+    Set sums = CreateObject("Scripting.Dictionary")
+    sums.CompareMode = vbTextCompare
+
+    Dim r As Long
+    For r = UEBERSICHT_START_ROW To lastRow
+        Dim key As String
+        key = Trim(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
+              Trim(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value))
+        If key <> "|" Then
+            If Not sums.exists(key) Then sums.Add key, 0#
+            sums(key) = CDbl(sums(key)) + CDbl(val(CStr(wsUeb.Cells(r, UEB_COL_IST).value)))
+        End If
+    Next r
+
+    For r = UEBERSICHT_START_ROW To lastRow
+        key = Trim(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
+              Trim(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value))
+        If sums.exists(key) Then
+            wsUeb.Cells(r, UEB_COL_SUMME_IST).value = CDbl(sums(key))
+        Else
+            wsUeb.Cells(r, UEB_COL_SUMME_IST).ClearContents
+        End If
+    Next r
+
+Ende:
+End Sub
+
+
+' ===============================================================
+' Fuegt Namen (mehrzeilig) ohne Duplikate zusammen.
+' ===============================================================
+Private Function SammleNamenEinmal(ByVal basis As String, ByVal neu As String) As String
+    Dim out As String
+    out = basis
+
+    Dim lines() As String
+    lines = Split(neu, vbLf)
+
+    Dim i As Long
+    For i = LBound(lines) To UBound(lines)
+        Dim n As String
+        n = Trim(lines(i))
+        If n <> "" Then
+            out = FuegeTeiltextEinmalHinzu(out, n, vbLf)
+        End If
+    Next i
+
+    SammleNamenEinmal = out
+End Function
+
+
+' ===============================================================
+' Fuegt einen Textteil mit Trennzeichen nur hinzu, wenn nicht schon
+' enthalten (case-insensitive).
+' ===============================================================
+Private Function FuegeTeiltextEinmalHinzu(ByVal basis As String, _
+                                          ByVal neu As String, _
+                                          ByVal trenner As String) As String
+    Dim res As String
+    res = Trim(basis)
+
+    Dim items() As String
+    items = Split(neu, trenner)
+
+    Dim i As Long
+    For i = LBound(items) To UBound(items)
+        Dim part As String
+        part = Trim(items(i))
+        If part = "" Then GoTo NextPart
+
+        Dim exists As Boolean
+        exists = False
+
+        If res <> "" Then
+            Dim cur() As String
+            cur = Split(res, trenner)
+            Dim j As Long
+            For j = LBound(cur) To UBound(cur)
+                If StrComp(Trim(cur(j)), part, vbTextCompare) = 0 Then
+                    exists = True
+                    Exit For
+                End If
+            Next j
+        End If
+
+        If Not exists Then
+            If res = "" Then
+                res = part
+            Else
+                res = res & trenner & part
+            End If
+        End If
+NextPart:
+    Next i
+
+    FuegeTeiltextEinmalHinzu = res
 End Function
 
 
@@ -1338,19 +1553,58 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
         aktBem = Trim(aktBem)
         
         If vjAntwort = vbYes Then
-            ' -> GRUEN
-            wsUeb.Cells(r, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
-            wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
-            
-            Dim gruenBem As String
-            gruenBem = "Im Vorjahr bezahlt (Nutzer best" & ChrW(228) & "tigt)"
-            If aktBem <> "" Then
-                wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = aktBem & " | " & gruenBem
-            Else
-                wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = gruenBem
+            Dim defaultDatum As String
+            defaultDatum = "15.12." & CStr(HoleJahrAusMonatstext(wsUeb.Cells(r, UEB_COL_MONAT).value) - 1)
+
+            Dim inDatum As String
+            inDatum = InputBox("Bitte Datum der Vorjahrzahlung eingeben (TT.MM.JJJJ):", _
+                               "Vorjahrzahlung - Datum", defaultDatum)
+            If LenB(Trim(inDatum)) = 0 Then GoTo NextPos
+
+            Dim zahlDatum As Date
+            On Error Resume Next
+            zahlDatum = CDate(Trim(inDatum))
+            If Err.Number <> 0 Then
+                Err.Clear
+                On Error GoTo 0
+                MsgBox "Ung" & ChrW(252) & "ltiges Datum. Position bleibt unver" & ChrW(228) & "ndert.", vbExclamation
+                GoTo NextPos
             End If
-            
-            bestaetigtGruen = bestaetigtGruen + 1
+            On Error GoTo 0
+
+            Dim sollWert As Double
+            sollWert = CDbl(val(CStr(wsUeb.Cells(r, UEB_COL_SOLL).value)))
+
+            Dim inBetrag As String
+            inBetrag = InputBox("Bitte H" & ChrW(246) & "he der Vorjahrzahlung eingeben:", _
+                                "Vorjahrzahlung - Betrag", Format(sollWert, "0.00"))
+            If LenB(Trim(inBetrag)) = 0 Then GoTo NextPos
+
+            Dim zahlBetrag As Double
+            zahlBetrag = CDbl(val(Replace(Trim(inBetrag), ",", ".")))
+            If zahlBetrag <= 0 Then
+                MsgBox "Ung" & ChrW(252) & "ltiger Betrag. Position bleibt unver" & ChrW(228) & "ndert.", vbExclamation
+                GoTo NextPos
+            End If
+
+            wsUeb.Cells(r, UEB_COL_IST).value = zahlBetrag
+
+            Dim confBem As String
+            confBem = "Manuell best" & ChrW(228) & "tigt: Vorjahrzahlung am " & _
+                      Format(zahlDatum, "dd.mm.yyyy") & " in H" & ChrW(246) & "he von " & _
+                      Format(zahlBetrag, "#,##0.00") & " " & ChrW(8364)
+
+            If Abs(zahlBetrag - sollWert) < 0.01 Then
+                wsUeb.Cells(r, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
+                wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
+                bestaetigtGruen = bestaetigtGruen + 1
+            Else
+                wsUeb.Cells(r, UEB_COL_STATUS).value = "GELB"
+                wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GELB
+                confBem = confBem & " (abweichend vom Soll " & Format(sollWert, "#,##0.00") & " " & ChrW(8364) & ")"
+            End If
+
+            wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = FuegeTeiltextEinmalHinzu(aktBem, confBem, " | ")
             
         Else  ' vbNo
             ' -> ROT
@@ -1367,6 +1621,7 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
             
             bestaetigtRot = bestaetigtRot + 1
         End If
+NextPos:
     Next i
     
     On Error Resume Next
@@ -1387,6 +1642,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     End If
     
 End Sub
+
+
 
 
 

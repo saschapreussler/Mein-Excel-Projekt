@@ -49,7 +49,7 @@ Public Sub LadeKategorienAusEinstellungen(ByRef kategorien() As UebKategorie, _
     For r = ES_START_ROW To lastRow
         katName = Trim(CStr(wsEinst.Cells(r, ES_COL_KATEGORIE).value))
         If katName <> "" Then
-            If Not dict.Exists(katName) Then
+            If Not dict.exists(katName) Then
                 dict.Add katName, r  ' Merke Zeilennummer fuer spaeteres Lesen
             End If
         End If
@@ -180,7 +180,7 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                 mlFunktion = Trim(CStr(wsML.Cells(rML, M_COL_FUNKTION).value))
                 If mlFunktion <> "" Then
                     ' Nur den ersten Eintrag pro EntityKey verwenden
-                    If Not funktionsCache.Exists(mlEntityKey) Then
+                    If Not funktionsCache.exists(mlEntityKey) Then
                         funktionsCache.Add mlEntityKey, mlFunktion
                     End If
                 End If
@@ -208,7 +208,7 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         ' Falls in Mitgliederliste Spalte O eine Aenderung erfolgte
         ' (z.B. "Ehrenmitglied"), wird die Role hier korrekt abgeleitet,
         ' auch wenn Spalte W auf dem Daten-Blatt noch den alten Wert hat.
-        If funktionsCache.Exists(entityKey) Then
+        If funktionsCache.exists(entityKey) Then
             Dim liveRole As String
             liveRole = UCase(mod_EntityKey_Classifier.ErmittleEntityRoleVonFunktion( _
                        funktionsCache(entityKey)))
@@ -252,7 +252,7 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                     Dim kombiKey As String
                     kombiKey = entityKey & "_" & parzelleNr
                     
-                    If Not verarbeiteteKombis.Exists(kombiKey) Then
+                    If Not verarbeiteteKombis.exists(kombiKey) Then
                         verarbeiteteKombis.Add kombiKey, True
                         
                         Set dict = CreateObject("Scripting.Dictionary")
@@ -333,7 +333,7 @@ Public Function ErmittleJahrAusBankkonto() As Long
             buchDatum = CDate(zellWert)
             jahrKey = CStr(Year(buchDatum))
             
-            If jahrZaehler.Exists(jahrKey) Then
+            If jahrZaehler.exists(jahrKey) Then
                 jahrZaehler(jahrKey) = jahrZaehler(jahrKey) + 1
             Else
                 jahrZaehler.Add jahrKey, 1
@@ -815,6 +815,8 @@ NextMR:
     ZaehleAktiveMitgliederGesamt = cnt
     
 End Function
+
+
 
 
 

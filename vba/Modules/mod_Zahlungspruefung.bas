@@ -103,7 +103,7 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     ' 1. IBAN zum EntityKey aufloesen (ueber Daten!R+S)
     entityIBAN = ""
     If Not m_EntityIBANCacheZP Is Nothing Then
-        If m_EntityIBANCacheZP.Exists(entityKey) Then
+        If m_EntityIBANCacheZP.exists(entityKey) Then
             entityIBAN = m_EntityIBANCacheZP(entityKey)
         End If
     End If
@@ -356,7 +356,7 @@ Public Sub ZaehleZahlungenZP(ByVal entityKey As String, _
     Dim entityIBAN As String
     entityIBAN = ""
     If Not m_EntityIBANCacheZP Is Nothing Then
-        If m_EntityIBANCacheZP.Exists(entityKey) Then
+        If m_EntityIBANCacheZP.exists(entityKey) Then
             entityIBAN = m_EntityIBANCacheZP(entityKey)
         End If
     End If
@@ -571,7 +571,7 @@ Private Sub LadeEntityIBANCacheZP()
         iban = Replace(Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)), " ", "")
         
         If ek <> "" And iban <> "" Then
-            If Not m_EntityIBANCacheZP.Exists(ek) Then
+            If Not m_EntityIBANCacheZP.exists(ek) Then
                 m_EntityIBANCacheZP.Add ek, iban
             End If
         End If
@@ -829,7 +829,7 @@ Public Sub InitialisiereNachDezemberCacheZP(ByVal jahr As Long)
         Dim cacheKey As String
         cacheKey = ibanWert & "|" & kategorie
         
-        If Not m_DezemberCacheZP.Exists(cacheKey) Then
+        If Not m_DezemberCacheZP.exists(cacheKey) Then
             Set col = New Collection
             m_DezemberCacheZP.Add cacheKey, col
         Else
@@ -858,7 +858,7 @@ Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
     
     entityIBAN = ""
     If Not m_EntityIBANCacheZP Is Nothing Then
-        If m_EntityIBANCacheZP.Exists(entityKey) Then
+        If m_EntityIBANCacheZP.exists(entityKey) Then
             entityIBAN = m_EntityIBANCacheZP(entityKey)
         End If
     End If
@@ -875,7 +875,7 @@ Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
         Exit Function
     End If
     
-    If Not m_DezemberCacheZP.Exists(cacheKey) Then
+    If Not m_DezemberCacheZP.exists(cacheKey) Then
         HoleDezemberVorauszahlungZP = 0
         Exit Function
     End If
@@ -890,6 +890,8 @@ Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
     HoleDezemberVorauszahlungZP = summe
     
 End Function
+
+
 
 
 

@@ -661,7 +661,7 @@ Private Sub VerarbeiteSammelzahlung(ByVal ws As Worksheet, ByVal rowBK As Long)
         If LCase(katName) Like "*sammelzahlung*" Then GoTo NextKatRow
         
         ' Nur aufnehmen wenn noch nicht vorhanden
-        If Not dictKat.Exists(katName) Then
+        If Not dictKat.exists(katName) Then
             dictKat.Add katName, katZiel
         End If
 NextKatRow:
@@ -924,6 +924,8 @@ Private Function EntferneBemerkungsZeile(ByVal bemerkung As String, _
     
     EntferneBemerkungsZeile = ergebnis
 End Function
+
+
 
 
 

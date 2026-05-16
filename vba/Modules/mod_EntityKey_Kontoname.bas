@@ -71,7 +71,7 @@ Public Function ZerlegeInWorte(ByVal Name As String) As Object
     For i = LBound(parts) To UBound(parts)
         wort = Trim(parts(i))
         If wort <> "" And wort <> "UND" And wort <> "U" Then
-            If Not dict.Exists(wort) Then
+            If Not dict.exists(wort) Then
                 dict.Add wort, True
             End If
         End If
@@ -92,7 +92,7 @@ Public Function SindWortmengenGleich(ByRef dict1 As Object, ByRef dict2 As Objec
     If dict1.count = 0 Then Exit Function
     
     For Each key In dict1.keys
-        If Not dict2.Exists(key) Then Exit Function
+        If Not dict2.exists(key) Then Exit Function
     Next key
     
     SindWortmengenGleich = True
@@ -110,7 +110,7 @@ Public Function IstTeilmenge(ByRef dictKlein As Object, ByRef dictGross As Objec
     If dictKlein.count >= dictGross.count Then Exit Function
     
     For Each key In dictKlein.keys
-        If Not dictGross.Exists(key) Then Exit Function
+        If Not dictGross.exists(key) Then Exit Function
     Next key
     
     IstTeilmenge = True
@@ -215,6 +215,7 @@ Public Function SammelKontonamen(ByRef dictNames As Object) As String
     
     SammelKontonamen = result
 End Function
+
 
 
 

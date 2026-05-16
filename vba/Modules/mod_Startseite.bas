@@ -589,7 +589,7 @@ Public Function ZaehleBelegteParzellen() As Long
         
         Dim parzNorm As String
         parzNorm = LCase(Trim(parzelle))
-        If Not dictParz.Exists(parzNorm) Then
+        If Not dictParz.exists(parzNorm) Then
             dictParz.Add parzNorm, True
         End If
         
@@ -762,6 +762,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 

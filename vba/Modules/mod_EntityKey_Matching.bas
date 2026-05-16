@@ -235,7 +235,7 @@ Public Function HoleAlleParzellen(ByVal memberID As String, _
         If Trim(wsM.Cells(r, M_COL_MEMBER_ID).value) = memberID Then
             parzelle = Trim(wsM.Cells(r, M_COL_PARZELLE).value)
             If parzelle <> "" Then
-                If Not dictParzellen.Exists(parzelle) Then
+                If Not dictParzellen.exists(parzelle) Then
                     dictParzellen.Add parzelle, True
                     If result <> "" Then result = result & ", "
                     result = result & parzelle
@@ -246,6 +246,8 @@ Public Function HoleAlleParzellen(ByVal memberID As String, _
     
     HoleAlleParzellen = result
 End Function
+
+
 
 
 

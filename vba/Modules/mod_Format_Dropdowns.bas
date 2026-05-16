@@ -40,11 +40,11 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
         
         If kategorie <> "" Then
             If einAus = "E" Then
-                If Not dictEinnahmen.Exists(kategorie) Then
+                If Not dictEinnahmen.exists(kategorie) Then
                     dictEinnahmen.Add kategorie, kategorie
                 End If
             ElseIf einAus = "A" Then
-                If Not dictAusgaben.Exists(kategorie) Then
+                If Not dictAusgaben.exists(kategorie) Then
                     dictAusgaben.Add kategorie, kategorie
                 End If
             End If
@@ -124,6 +124,8 @@ Private Sub ErstelleKategorieNamedRanges(ByRef ws As Worksheet, ByVal lastRowE A
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

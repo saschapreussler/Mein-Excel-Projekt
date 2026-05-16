@@ -94,9 +94,9 @@ Public Sub AktualisiereKategorieHilfsspalten()
         einAus = UCase(Trim(CStr(wsDaten.Cells(r, DATA_CAT_COL_EINAUS).value)))
         
         If einAus = "E" Then
-            If Not dictE.Exists(katName) Then dictE.Add katName, katName
+            If Not dictE.exists(katName) Then dictE.Add katName, katName
         ElseIf einAus = "A" Then
-            If Not dictA.Exists(katName) Then dictA.Add katName, katName
+            If Not dictA.exists(katName) Then dictA.Add katName, katName
         End If
         
 NextHilfsRow:
@@ -302,6 +302,8 @@ Private Sub EntsperreSpaltenFuerNutzer(ByVal ws As Worksheet, ByVal lastRow As L
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

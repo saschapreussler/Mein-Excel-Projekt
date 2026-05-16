@@ -293,7 +293,7 @@ Public Sub GeneriereTestCSVDateien()
             mParzelle(anzMitgl) = Trim(CStr(wsMitgl.Cells(r, M_COL_PARZELLE).value))
             mIBAN(anzMitgl) = GeneriereTestIBAN(anzMitgl)
             
-            If Not dictParzellen.Exists(mParzelle(anzMitgl)) Then
+            If Not dictParzellen.exists(mParzelle(anzMitgl)) Then
                 dictParzellen.Add mParzelle(anzMitgl), anzMitgl
             End If
         End If
@@ -389,7 +389,7 @@ Public Sub GeneriereTestCSVDateien()
                     
                     ' Parzelle-basiert: nur erster Mieter zahlt
                     If Not kIstMB(k) Then
-                        If dictParzellen.Exists(mParzelle(m)) Then
+                        If dictParzellen.exists(mParzelle(m)) Then
                             If CLng(dictParzellen(mParzelle(m))) <> m Then GoTo NaechsteKat
                         End If
                     End If
@@ -673,6 +673,8 @@ Private Sub SchreibeUTF8Datei(ByVal pfad As String, ByVal inhalt As String)
     Set utf8Stream = Nothing
     Set binStream = Nothing
 End Sub
+
+
 
 
 
