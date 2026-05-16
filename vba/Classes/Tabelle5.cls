@@ -89,8 +89,15 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     End If
     
     ' 2. Pr?fen, ob eine Netto/Brutto-relevante Zelle ge?ndert wurde (Neue Logik B7, K4:K5, M4:M5)
-    If Not Intersect(Target, Me.Range("B7,K4:K5,M4:M5")) Is Nothing Then
-        isCalculationChange = True
+    ' v8.2: Application.Union statt Comma-Range (locale-sicher)
+    Dim rngCalcCheck As Range
+    On Error Resume Next
+    Set rngCalcCheck = Application.Union(Me.Range("B7"), Me.Range("K4:K5"), Me.Range("M4:M5"))
+    On Error GoTo ErrHandler
+    If Not rngCalcCheck Is Nothing Then
+        If Not Intersect(Target, rngCalcCheck) Is Nothing Then
+            isCalculationChange = True
+        End If
     End If
     
     If Not isZaehlerChange And Not isCalculationChange Then Exit Sub
@@ -116,11 +123,22 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         
         If Not ToggleControl Is Nothing Then
             
+            ' v8.2: Union statt Comma-Range
+            Dim rngNetto As Range, rngBrutto As Range
+            On Error Resume Next
+            Set rngNetto = Application.Union(Me.Range("B7"), Me.Range("K4:K5"))
+            Set rngBrutto = Application.Union(Me.Range("B7"), Me.Range("M4:M5"))
+            On Error GoTo ErrHandler
+            
             ' A. Netto/Brutto-Werte neu berechnen (Neue Logik)
             If ToggleControl.value = True Then ' NETTO Modus
-                If Not Intersect(Target, Me.Range("B7,K4:K5")) Is Nothing Then Call RechneAlleZeilen("NETTO")
+                If Not rngNetto Is Nothing Then
+                    If Not Intersect(Target, rngNetto) Is Nothing Then Call RechneAlleZeilen("NETTO")
+                End If
             Else ' BRUTTO Modus
-                If Not Intersect(Target, Me.Range("B7,M4:M5")) Is Nothing Then Call RechneAlleZeilen("BRUTTO")
+                If Not rngBrutto Is Nothing Then
+                    If Not Intersect(Target, rngBrutto) Is Nothing Then Call RechneAlleZeilen("BRUTTO")
+                End If
             End If
             
         End If
@@ -326,50 +344,5 @@ End Sub
 Public Sub KorrigiereHistorieFarben()
     Call mod_Zaehler_Historie.FarbeHistorieEintraege
 End Sub
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

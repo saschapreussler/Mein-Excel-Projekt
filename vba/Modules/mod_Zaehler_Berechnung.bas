@@ -8,9 +8,10 @@ Option Explicit
 ' ===============================================================
 
 ' --- Konstanten (lokal dupliziert) ---
-Private Const HIST_SHEET_NAME As String = "Z?hlerhistorie"
+' v8.2: HIST_SHEET_NAME wird aus mod_Const verwendet (Public Const).
+'        Die lokale Definition mit kaputtem Umlaut ist entfernt.
 Private Const PASSWORD As String = ""
-Private Const STR_HISTORY_SEPARATOR As String = "--- Z?hlerhistorie Makro-Eintrag ---"
+Private Const STR_HISTORY_SEPARATOR As String = "--- Zaehlerhistorie Makro-Eintrag ---"
 
 Private Const COL_STAND_ANFANG As String = "B"
 Private Const COL_STAND_ENDE As String = "C"
@@ -49,14 +50,19 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     
     On Error GoTo Fehler_Handler_Berechnung
     
-    ' --- Formatierung ---
+    ' --- Formatierung (v8.2: defensiv, einzelne Bloecke gekapselt) ---
+    ' Formatierungs-Fehler (z.B. wegen verbundener Zellen) duerfen die
+    ' Berechnung NICHT abbrechen. Daher jeweils On Error Resume Next.
+    On Error Resume Next
     wsTarget.Range("10:25").RowHeight = 50
 
-    With wsTarget.Range("B10:D25, F10:I25")
-        .ShrinkToFit = True
-        .WrapText = False
-    End With
-    
+    Dim rngFormat As Range
+    Set rngFormat = Application.Union(wsTarget.Range("B10:D25"), wsTarget.Range("F10:I25"))
+    If Not rngFormat Is Nothing Then
+        rngFormat.ShrinkToFit = True
+        rngFormat.WrapText = False
+    End If
+
     With wsTarget.Range("A10:A25")
         .ShrinkToFit = False
         .WrapText = True
@@ -66,6 +72,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
         .ShrinkToFit = False
         .WrapText = True
     End With
+    On Error GoTo Fehler_Handler_Berechnung
     
     ' --- Historie laden ---
     On Error Resume Next
@@ -89,7 +96,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
         wsTarget.Rows(24).AutoFit
         Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 24)
         
-        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "K?hltruhe", 25)
+        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "K" & ChrW(252) & "hltruhe", 25)
         wsTarget.Rows(25).AutoFit
         Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 25)
         
@@ -115,13 +122,13 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     ' ==========================================================
     
     If LCase(wsTarget.Name) = "strom" Then
-        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Hauptz?hler", 28)
+        Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Hauptz" & ChrW(228) & "hler", 28)
         wsTarget.Rows(28).AutoFit
         Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 28)
     End If
     
     If LCase(wsTarget.Name) = "wasser" Then
-        Call CalculateSingleZaehler(wsTarget, wsHist, "Wasser", "Hauptz?hler", 31)
+        Call CalculateSingleZaehler(wsTarget, wsHist, "Wasser", "Hauptz" & ChrW(228) & "hler", 31)
         wsTarget.Rows(31).AutoFit
         Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 31)
     End If
@@ -133,7 +140,7 @@ Cleanup_Berechnung:
     Exit Sub
 
 Fehler_Handler_Berechnung:
-    MsgBox "Ein schwerwiegender Fehler ist w?hrend der Z?hlerberechnung aufgetreten. " & vbCrLf & _
+    MsgBox "Ein schwerwiegender Fehler ist w" & ChrW(228) & "hrend der Z" & ChrW(228) & "hlerberechnung aufgetreten." & vbCrLf & _
            "Fehler " & Err.Number & ": " & Err.Description, vbCritical, "Fehler in CalculateAllZaehlerVerbrauch"
     Resume Cleanup_Berechnung
 
@@ -171,7 +178,7 @@ Private Sub CalculateSingleZaehler( _
     Set targetCellD = wsTarget.Cells(targetRow, COL_VERBRAUCH_GESAMT)
     Set targetBemerkung = wsTarget.Cells(targetRow, COL_BEMERKUNG)
 
-    einheit = IIf(LCase(ZaehlerTyp) = "strom", "kWh", "m?")
+    einheit = IIf(LCase(ZaehlerTyp) = "strom", "kWh", "m" & ChrW(179))
     
     ' 0. Startwerte lesen
     If IsNumeric(startCell.value) And Not isEmpty(startCell.value) Then

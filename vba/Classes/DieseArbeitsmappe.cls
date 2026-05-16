@@ -122,12 +122,12 @@ End Sub
 
 ' ===============================================================
 ' SheetActivate: Gitternetzlinien je Blatt korrekt setzen
-' Startmenue, Finanz-Übersicht und Dashboard ohne Gitternetz,
-' alle anderen Blätter (BK, VK, Strom, Wasser, Übersicht etc.) MIT Gitternetz
+' Startmenue, Finanz- bersicht und Dashboard ohne Gitternetz,
+' alle anderen Bl tter (BK, VK, Strom, Wasser,  bersicht etc.) MIT Gitternetz
 '
-' v8.0: Startmenue + Dashboard zusätzlich im Vollbildmodus (kein
+' v8.0: Startmenue + Dashboard zus tzlich im Vollbildmodus (kein
 '       Ribbon, keine Spalten-/Zeilennummern, keine Formelleiste).
-'       Alle anderen Blätter im normalen Anzeigemodus.
+'       Alle anderen Bl tter im normalen Anzeigemodus.
 ' ===============================================================
 Private Sub Workbook_SheetActivate(ByVal Sh As Object)
     On Error Resume Next
@@ -158,27 +158,51 @@ End Sub
 
 
 ' ===============================================================
-' v8.0: Defensiver Cleanup beim Schliessen
-' Verhindert, dass Excel nach dem Schliessen weiter "haengt", indem
-' alle Application-States neutralisiert werden (Vollbild, Calculation,
-' ScreenUpdating, EnableEvents, DisplayAlerts, Cursor, Ribbon).
+' v8.1: Defensiver Cleanup beim Schliessen
+' Verhindert, dass Excel nach dem Schliessen "haengt", indem
+' ALS ERSTES alle Events deaktiviert werden, damit waehrend des
+' Teardowns keine SheetActivate / SheetChange / Worksheet_Calculate
+' Handler mehr feuern. Anschliessend werden Clipboard, offene
+' UserForms und Application-States neutralisiert.
+'
+' Wichtig: ActiveWindow-Properties (DisplayHeadings/Gridlines) werden
+' NICHT mehr beruehrt - das kann SheetActivate-Kaskaden ausloesen.
+' Excel stellt den korrekten Anzeigezustand beim naechsten Oeffnen
+' via Workbook_Open + Workbook_SheetActivate wieder her.
 ' ===============================================================
 Private Sub Workbook_BeforeClose(Cancel As Boolean)
     On Error Resume Next
-    Call mod_Vollbild.SetzeVollbildModus(False)
     
-    Application.DisplayFullScreen = False
-    Application.ScreenUpdating = True
-    Application.EnableEvents = True
+    ' (1) GANZ ZUERST: Events aus - keine Reentrancy mehr ab hier
+    Application.EnableEvents = False
+    
+    ' (2) Laufende Berechnungen / Bildschirm einfrieren
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
     Application.DisplayAlerts = True
-    Application.Calculation = xlCalculationAutomatic
     Application.Cursor = xlDefault
     Application.StatusBar = False
+    Application.CutCopyMode = False    ' Clipboard freigeben
     
-    If Not ActiveWindow Is Nothing Then
-        ActiveWindow.DisplayHeadings = True
-        ActiveWindow.DisplayGridlines = True
-    End If
+    ' (3) Vollbildmodus deaktivieren (vor allem fuer naechstes Oeffnen)
+    Call mod_Vollbild.SetzeVollbildModus(False)
+    Application.DisplayFullScreen = False
+    Application.DisplayFormulaBar = True
+    Application.DisplayStatusBar = True
+    
+    ' (4) Alle UserForms entladen (haengen sonst im Speicher)
+    Dim frm As Object
+    For Each frm In VBA.UserForms
+        Unload frm
+    Next frm
+    
+    ' (5) Calculation wieder auf Automatic - schadet Schliessen nicht
+    '     und sorgt fuer sauberen State falls "Abbrechen" gedrueckt wird
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    
+    ' Events bleiben absichtlich AUS - Workbook_Open reaktiviert sie
+    ' beim naechsten Start (siehe Workbook_Open Zeile 1).
 End Sub
 
 
@@ -234,49 +258,4 @@ Private Sub Workbook_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Ra
         Call mod_Uebersicht_Event.MerkeAktuellenUebersichtZustand(Target)
     End If
 End Sub
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
