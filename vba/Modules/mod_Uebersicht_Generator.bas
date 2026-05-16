@@ -1453,6 +1453,40 @@ End Function
 
 
 ' ===============================================================
+' Extrahiert das Jahr aus einem Monatstext wie "Januar 2026".
+' Fallback: Abrechnungsjahr aus Einstellungen, sonst Systemjahr.
+' ===============================================================
+Private Function HoleJahrAusMonatstext(ByVal monatText As String) As Long
+    HoleJahrAusMonatstext = 0
+
+    Dim txt As String
+    txt = Trim(CStr(monatText))
+
+    If txt <> "" Then
+        Dim teile() As String
+        teile = Split(txt, " ")
+
+        Dim i As Long
+        For i = UBound(teile) To LBound(teile) Step -1
+            Dim t As String
+            t = Trim(teile(i))
+            If Len(t) = 4 And IsNumeric(t) Then
+                Dim y As Long
+                y = CLng(t)
+                If y >= 2000 And y <= 2100 Then
+                    HoleJahrAusMonatstext = y
+                    Exit Function
+                End If
+            End If
+        Next i
+    End If
+
+    HoleJahrAusMonatstext = HoleAbrechnungsjahr()
+    If HoleJahrAusMonatstext <= 0 Then HoleJahrAusMonatstext = Year(Date)
+End Function
+
+
+' ===============================================================
 ' v5.4: VORJAHR-GELB-PRUEFUNG
 ' Scannt die Zahlungsuebersicht nach GELB-Eintraegen im Januar
 ' wo "Keine Vorjahr-Daten" in der Bemerkung steht.
@@ -1642,6 +1676,8 @@ NextPos:
     End If
     
 End Sub
+
+
 
 
 

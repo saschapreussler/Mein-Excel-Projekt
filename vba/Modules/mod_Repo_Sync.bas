@@ -36,7 +36,7 @@ Option Explicit
 '        damit Umlaute (ä, ö, ü, ß) korrekt übernommen werden.
 '
 ' HINWEIS: Dieses Modul und mod_VBA_Export werden beim Import
-'          ?bersprungen, um sich nicht selbst zu ?berschreiben.
+'          übersprungen, um sich nicht selbst zu überschreiben.
 ' ***************************************************************
 
 ' ===============================================================
