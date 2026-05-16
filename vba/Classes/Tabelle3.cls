@@ -17,7 +17,6 @@ Option Explicit
 ' ===============================================================
 Private m_AlterWertH As String
 Private m_AlterWertI As String
-Private m_HinweisBeimAktivierenGezogen As Boolean
 
 Private Sub btn_CSVimport_Click()
     ' Ruft die Hauptprozedur im Standardmodul mod_Datenpflege auf
@@ -61,15 +60,19 @@ Private Sub Worksheet_Activate()
 
     Call mod_Banking_Report.Initialize_ImportReport_ListBox
 
-    ' Beim ersten Oeffnen der Zahlungsuebersicht pro Sitzung die
-    ' Uebersicht neu aufbauen, damit Januar-Fehlbetragspruefung
-    ' und Rueckfrage zu Vorjahrzahlungen sofort erscheinen.
-    If Not m_HinweisBeimAktivierenGezogen Then
-        m_HinweisBeimAktivierenGezogen = True
-        On Error Resume Next
-        Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=False)
-        On Error GoTo 0
+    ' Hinweispruefung beim Oeffnen: Januar-Fehlbetraege ohne Vorjahrdaten.
+    On Error Resume Next
+    Call mod_Uebersicht_Generator.PruefeVorjahrHinweisBeimOeffnen
+    On Error GoTo 0
+
+    ' Fenster fixieren: Zeilen 1-3 bleiben stehen, ab Zeile 4 scrollbar.
+    On Error Resume Next
+    If Not ActiveWindow Is Nothing Then
+        ActiveWindow.SplitColumn = 0
+        ActiveWindow.SplitRow = 3
+        ActiveWindow.FreezePanes = True
     End If
+    On Error GoTo 0
 End Sub
 
 Private Sub cbo_RechnungsMonat_Change()
@@ -921,6 +924,8 @@ Private Function EntferneBemerkungsZeile(ByVal bemerkung As String, _
     
     EntferneBemerkungsZeile = ergebnis
 End Function
+
+
 
 
 

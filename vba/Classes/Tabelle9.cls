@@ -188,7 +188,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                     
                     ' v3.0: ?bersicht nach Kategorie-?nderung aktualisieren
                     On Error Resume Next
-                    Call mod_Uebersicht_Generator.GeneriereUebersicht(Year(Date), stummModus:=True)
+                    Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
                     Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
                     On Error GoTo 0
                     
@@ -214,7 +214,7 @@ NurFormatieren:
     
     ' v3.0: ?bersicht nach Einstellungs-?nderung automatisch aktualisieren
     On Error Resume Next
-    Call mod_Uebersicht_Generator.GeneriereUebersicht(Year(Date), stummModus:=True)
+    Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
     Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
     On Error GoTo 0
     
@@ -299,6 +299,8 @@ CfgExit:
     Application.EnableEvents = True
     If Err.Number <> 0 Then Err.Clear
 End Sub
+
+
 
 
 

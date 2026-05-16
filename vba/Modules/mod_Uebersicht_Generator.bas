@@ -842,6 +842,14 @@ NextMitglied:
     ' Einstellungen-Cache freigeben
     Call mod_Zahlungspruefung.EntladeEinstellungenCacheZP
     
+    ' F und H muessen immer manuell editierbar bleiben (auch bei Schutz).
+    On Error Resume Next
+    wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_IST), _
+                wsUeb.Cells(wsUeb.Rows.count, UEB_COL_IST)).Locked = False
+    wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_BEMERKUNG), _
+                wsUeb.Cells(wsUeb.Rows.count, UEB_COL_BEMERKUNG)).Locked = False
+    On Error GoTo ErrorHandler
+
     ' Blatt sch?tzen (Soll-Zellen ohne festen Betrag bleiben editierbar)
     ' AllowFiltering: Nutzer kann AutoFilter ohne Blattschutz-Aufhebung verwenden
     On Error Resume Next
@@ -898,6 +906,32 @@ ErrorHandler:
                Err.Description, vbCritical, "Fehler"
     End If
     
+End Sub
+
+
+' ===============================================================
+' Beim Oeffnen der Zahlungsuebersicht Hinweisdialog zu Januar-Positionen
+' anzeigen, wenn Vorjahrdaten nicht verfuegbar sind.
+' Keine komplette Neugenerierung des Blattes.
+' ===============================================================
+Public Sub PruefeVorjahrHinweisBeimOeffnen()
+    On Error GoTo Ende
+
+    If mod_Uebersicht_Daten.HatVorjahrDaten() Then Exit Sub
+
+    Dim wsUeb As Worksheet
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo Ende
+    If wsUeb Is Nothing Then Exit Sub
+
+    Dim lastRow As Long
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
+    If lastRow < UEBERSICHT_START_ROW Then Exit Sub
+
+    Call PruefeVorjahrGelbEintraege(wsUeb, lastRow)
+
+Ende:
 End Sub
 
 
@@ -1353,6 +1387,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     End If
     
 End Sub
+
+
 
 
 

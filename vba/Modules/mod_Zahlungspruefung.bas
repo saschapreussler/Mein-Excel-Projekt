@@ -412,7 +412,9 @@ Public Sub ZaehleZahlungenZP(ByVal entityKey As String, _
 
         If Not monatPasstZP Then GoTo nextRow
 
-        If StrComp(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), entityIBAN, vbTextCompare) <> 0 Then GoTo nextRow
+        Dim ibanZeileZP As String
+        ibanZeileZP = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
+        If StrComp(ibanZeileZP, entityIBAN, vbTextCompare) <> 0 Then GoTo nextRow
         If StrComp(Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)), kategorie, vbTextCompare) <> 0 Then GoTo nextRow
 
         anzahlTreffer = anzahlTreffer + 1
@@ -483,7 +485,9 @@ Private Function HatMitbezahltInParzelleZP(ByVal entityKey As String, _
         Call ZaehleZahlungenZP(ek, kategorie, monat, jahr, partnerCount, partnerSumme)
         If partnerCount = 1 And partnerSumme >= soll * 2 - 0.01 Then
             partnerName = Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_KTONAME).value))
-            If partnerName <> "" Then
+            If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                outBemerkung = ""
+            ElseIf partnerName <> "" Then
                 outBemerkung = "Mitbezahlt durch: " & partnerName
             Else
                 outBemerkung = "Mitbezahlt durch Gemeinschaftskonto"
@@ -886,6 +890,8 @@ Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
     HoleDezemberVorauszahlungZP = summe
     
 End Function
+
+
 
 
 
