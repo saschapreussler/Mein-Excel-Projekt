@@ -1,0 +1,179 @@
+﻿Gefundene Dateien:        82
+Woerterbuch-Paare:        293
+DRY-RUN -- keine Datei wird geschrieben
+
+============================================================
+ Ergebnis: 435 Ersetzungen in 32 Dateien
+============================================================
+
+File                                      Replacements
+----                                      ------------
+Classes\Tabelle3.cls                                67
+Modules\mod_Uebersicht_Generator.bas                35
+Modules\mod_Testing.bas                             33
+Modules\mod_Banking_Data.bas                        31
+Modules\mod_KategorieEngine_Pipeline.bas            28
+Modules\mod_KategorieEngine_Evaluator.bas           23
+Classes\Tabelle5.cls                                23
+Classes\Tabelle9.cls                                21
+Modules\mod_Repo_Sync.bas                           21
+Modules\mod_Hilfsfunktionen.bas                     17
+Modules\mod_Mitglieder_Logik.bas                    16
+Modules\mod_Const.bas                               12
+Modules\mod_Mapping_Tools.bas                       11
+Classes\Tabelle7.cls                                11
+Modules\mod_Zahlungspruefung.bas                    10
+Modules\mod_ZaehlerLogik.bas                         9
+Modules\mod_KategorieEngine_Zeitraum.bas             9
+Classes\Tabelle6.cls                                 9
+Modules\mod_Banking_Report.bas                       8
+Modules\mod_Einstellungen_Debug.bas                  7
+Modules\mod_BetragsZuordnung.bas                     5
+Modules\mod_KategorieZiel.bas                        5
+Modules\mod_Mitglieder_UI.bas                        4
+Modules\mod_Einstellungen_DropDowns.bas              4
+Modules\mod_Einstellungen.bas                        4
+Modules\mod_Zaehler_Berechnung.bas                   3
+Modules\mod_Banking_Format.bas                       3
+Modules\mod_Zaehler_Historie.bas                     2
+Modules\mod_ZP_DropDowns.bas                         1
+Modules\mod_ZP_Sammelzuordnung.bas                   1
+Modules\mod_KategorieEngine_Normalize.bas            1
+Modules\mod_KategorieEngine_Scoring.bas              1
+
+
+
+Verbleibende '?' in Woertern -- vollstaendige Woerter, sortiert nach Haeufigkeit:
+  -> Gesamt 235 verschiedene Woerter mit '?' in 39 Dateien
+
+
+Wort               Vorkommen
+----               ---------
+f?r                       90
+pr?fen                    38
+Pr?fe                     21
+l?schen                   20
+GR?N                      20
+?nderung                  19
+ge?ndert                  18
+PR?FUNG                   15
+enth?lt                   13
+Pr?ft                     13
+?bersicht                 11
+gef?llt                   10
+Z?hler                    10
+R?ckgabe                   9
+S?umnis                    9
+?ber                       9
+Z?HLERWECHSEL              8
+K?rzel                     7
+j?hrlich                   7
+?berschrieben              7
+Fortfahren?                6
+vollst?ndig                6
+W?rter                     6
+gesch?tzt                  6
+F?lligkeit                 6
+tats?chlich                5
+Datens?tze                 5
+n?chste                    5
+bef?llt                    5
+ausgef?hrt                 5
+?bersichtsblatt            5
+gel?scht                   5
+?berspringen               5
+Eintr?ge                   5
+Betr?ge                    5
+Geb?hr                     5
+?berschreiben              4
+anh?ngen                   4
+abh?ngig                   4
+TEMPOR?RE                  4
+tempor?ren                 4
+Nachp?chter                4
+L?nge                      4
+Bl?tter                    4
+ausl?sen                   4
+best?tigt                  3
+Kategorie?                 3
+Z?hlerhistorie             3
+Regul?re                   3
+?ffnen                     3
+Hellgr?n                   3
+F?hrt                      3
+Z?hlerstand                3
+Hauptz?hler                3
+L?sche                     3
+?bersprungen               3
+Betragseingabe?            3
+zur?ckgesetzt              3
+bef?llen                   3
+zur?ck                     3
+Pr?fungen                  3
+P?chter                    3
+zur?cksetzen               2
+p?nktlich                  2
+Zellf?rbungen              2
+hinzuf?gen                 2
+Sammelzahlung?             2
+gef?rbt                    2
+fallunabh?ngige            2
+Geb?hren                   2
+hinzugef?gt                2
+Zeitfensterpr?fung         2
+?berspringe                2
+uebernehmen?               2
+F?llen                     2
+sch?tzen                   2
+ben?tigt                   2
+W?hrung                    2
+k?nnen                     2
+wei?                       2
+
+
+
+Pro Datei:
+
+Datei                                     Resterst
+-----                                     --------
+Classes\Tabelle3.cls                            95
+Modules\mod_Testing.bas                         56
+Modules\mod_Uebersicht_Generator.bas            52
+Modules\mod_Banking_Data.bas                    45
+Modules\mod_Mitglieder_Logik.bas                42
+Modules\mod_KategorieEngine_Pipeline.bas        42
+Modules\mod_Repo_Sync.bas                       39
+Classes\Tabelle5.cls                            39
+Modules\mod_KategorieEngine_Evaluator.bas       32
+Modules\mod_KategorieEngine_Zeitraum.bas        28
+Classes\Tabelle9.cls                            27
+Modules\mod_Const.bas                           23
+Modules\mod_Mapping_Tools.bas                   22
+Modules\mod_ZaehlerLogik.bas                    22
+Modules\mod_Hilfsfunktionen.bas                 22
+Classes\Tabelle7.cls                            16
+Modules\mod_KategorieEngine_Scoring.bas         14
+Modules\mod_Zaehler_Berechnung.bas              13
+Modules\mod_Einstellungen_Debug.bas             13
+Modules\mod_Zahlungspruefung.bas                11
+Modules\mod_Banking_Report.bas                  11
+Classes\Tabelle6.cls                            11
+Modules\mod_Einstellungen.bas                    8
+Modules\mod_Zaehler_Historie.bas                 7
+Modules\mod_Uebersicht_Event.bas                 6
+Modules\mod_BetragsZuordnung.bas                 6
+Modules\mod_Banking_Format.bas                   5
+Modules\mod_Einstellungen_DropDowns.bas          5
+Modules\mod_KategorieZiel.bas                    5
+Modules\mod_Diagnose.bas                         4
+Modules\mod_Mitglieder_UI.bas                    4
+Modules\mod_TestReset.bas                        3
+Modules\mod_ZP_DropDowns.bas                     2
+Modules\mod_Jahreswechsel.bas                    2
+Modules\mod_ZP_Sammelzuordnung.bas               2
+Modules\mod_Uebersicht_Dashboard.bas             1
+Modules\mod_FinanzUebersicht.bas                 1
+Modules\mod_EntityKey_UI.bas                     1
+Modules\mod_KategorieEngine_Normalize.bas        1
+
+
