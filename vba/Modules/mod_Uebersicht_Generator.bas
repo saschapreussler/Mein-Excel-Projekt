@@ -857,6 +857,26 @@ NextMitglied:
     wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     On Error GoTo ErrorHandler
     
+    ' SICHERHEITSNETZ: Format nochmals nach Schutz/Filter/Register erzwingen,
+    ' falls eines der Zwischenschritte (AutoFilter / ErstelleMonatsRegister)
+    ' das Zahlenformat oder die Ausrichtung ueberschrieben hat.
+    On Error Resume Next
+    If rowIdx - 1 >= UEBERSICHT_START_ROW Then
+        wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_SOLL), _
+                    wsUeb.Cells(rowIdx - 1, UEB_COL_SOLL)).NumberFormat = "#,##0.00 " & ChrW(8364)
+        wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_IST), _
+                    wsUeb.Cells(rowIdx - 1, UEB_COL_IST)).NumberFormat = "#,##0.00 " & ChrW(8364)
+        wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_SUMME_IST), _
+                    wsUeb.Cells(rowIdx - 1, UEB_COL_SUMME_IST)).NumberFormat = "#,##0.00 " & ChrW(8364)
+        wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_PARZELLE), _
+                    wsUeb.Cells(rowIdx - 1, UEB_COL_PARZELLE)).HorizontalAlignment = xlCenter
+        wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_STATUS), _
+                    wsUeb.Cells(rowIdx - 1, UEB_COL_STATUS)).HorizontalAlignment = xlCenter
+        Debug.Print "[" & ChrW(220) & "bersicht] Sicherheitsnetz-Formatierung gesetzt (Zeilen " & _
+                    UEBERSICHT_START_ROW & ".." & (rowIdx - 1) & ")"
+    End If
+    On Error GoTo ErrorHandler
+    
     Application.Calculation = xlCalculationAutomatic
     Application.EnableEvents = True
     Application.ScreenUpdating = True
@@ -1026,7 +1046,14 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     Dim r As Long
     Dim rngTable As Range
     
-    If endRow < startRow Then Exit Sub
+    Debug.Print "[" & ChrW(220) & "bersicht] FormatiereUebersicht START: " & _
+                "startRow=" & startRow & " endRow=" & endRow & _
+                " ProtectContents=" & wsUeb.ProtectContents
+    
+    If endRow < startRow Then
+        Debug.Print "[" & ChrW(220) & "bersicht] FormatiereUebersicht ABBRUCH: endRow < startRow"
+        Exit Sub
+    End If
     
     Set rngTable = wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_PARZELLE), _
                                 wsUeb.Cells(endRow, UEB_COL_SUMME_IST))
@@ -1093,25 +1120,50 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
         wsUeb.Columns(colAutoFit).ColumnWidth = wsUeb.Columns(colAutoFit).ColumnWidth + 2
     Next colAutoFit
     
-    ' Deutsches Zahlenformat mit Euro-Zeichen (Spalte E + F)
+    ' Deutsches Zahlenformat mit Euro-Zeichen (Spalte E + F + I)
+    ' Defensiv: einzeln + mit Fehlerunterdrueckung, plus Diagnose
+    On Error Resume Next
+    Err.Clear
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_SOLL), _
                 wsUeb.Cells(endRow, UEB_COL_SOLL)).NumberFormat = "#,##0.00 " & ChrW(8364)
+    If Err.Number <> 0 Then
+        Debug.Print "[" & ChrW(220) & "bersicht] FEHLER NumberFormat SOLL: " & Err.Number & " - " & Err.Description
+        Err.Clear
+    End If
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_IST), _
                 wsUeb.Cells(endRow, UEB_COL_IST)).NumberFormat = "#,##0.00 " & ChrW(8364)
+    If Err.Number <> 0 Then
+        Debug.Print "[" & ChrW(220) & "bersicht] FEHLER NumberFormat IST: " & Err.Number & " - " & Err.Description
+        Err.Clear
+    End If
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_SUMME_IST), _
                 wsUeb.Cells(endRow, UEB_COL_SUMME_IST)).NumberFormat = "#,##0.00 " & ChrW(8364)
+    If Err.Number <> 0 Then
+        Debug.Print "[" & ChrW(220) & "bersicht] FEHLER NumberFormat SUMME_IST: " & Err.Number & " - " & Err.Description
+        Err.Clear
+    End If
     
     ' Ausrichtung
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_PARZELLE), _
                 wsUeb.Cells(endRow, UEB_COL_PARZELLE)).HorizontalAlignment = xlCenter
+    If Err.Number <> 0 Then
+        Debug.Print "[" & ChrW(220) & "bersicht] FEHLER Alignment PARZELLE: " & Err.Number & " - " & Err.Description
+        Err.Clear
+    End If
     ' Spalte C (Monat) linksbuendig
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_MONAT), _
                 wsUeb.Cells(endRow, UEB_COL_MONAT)).HorizontalAlignment = xlLeft
+    Err.Clear
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), _
                 wsUeb.Cells(endRow, UEB_COL_STATUS)).HorizontalAlignment = xlCenter
+    Err.Clear
     
     ' Vertikale Zentrierung
     rngTable.VerticalAlignment = xlCenter
+    Err.Clear
+    On Error GoTo 0
+    
+    Debug.Print "[" & ChrW(220) & "bersicht] FormatiereUebersicht ENDE OK"
     
 End Sub
 
@@ -1278,7 +1330,7 @@ Private Function KonsolidiereMitgliedsbeitragZeilen(ByVal wsUeb As Worksheet, _
         Dim rowsInGroup As Collection
         Set rowsInGroup = dictGroups(keys(i))
 
-        ' 1. Alle GRÜNEN Zeilen sammeln (bezahlt)
+        ' 1. Alle GR?NEN Zeilen sammeln (bezahlt)
         Dim paidRows As New Collection
         ' 2. Alle GELBEN/anderen Zeilen sammeln (unbezahlt/abweichend)
         Dim unpaidRows As New Collection
@@ -1293,7 +1345,7 @@ Private Function KonsolidiereMitgliedsbeitragZeilen(ByVal wsUeb As Worksheet, _
             End If
         Next rr
 
-        ' --- GRÜNE Zeilen zusammenfassen (wie Daten!U, Zeilenumbruch) ---
+        ' --- GR?NE Zeilen zusammenfassen (wie Daten!U, Zeilenumbruch) ---
         If paidRows.count > 1 Then
             Dim keepRow As Long
             keepRow = CLng(paidRows(1))
@@ -1317,7 +1369,7 @@ Private Function KonsolidiereMitgliedsbeitragZeilen(ByVal wsUeb As Worksheet, _
             wsUeb.Cells(keepRow, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
             wsUeb.Cells(keepRow, UEB_COL_BEMERKUNG).value = bemGes
             wsUeb.Cells(keepRow, UEB_COL_MITGLIED).WrapText = True
-            ' Alle weiteren paidRows löschen (außer keepRow)
+            ' Alle weiteren paidRows l?schen (au?er keepRow)
             Dim j As Long
             For j = paidRows.count To 2 Step -1
                 wsUeb.Rows(CLng(paidRows(j))).Delete
@@ -1325,7 +1377,7 @@ Private Function KonsolidiereMitgliedsbeitragZeilen(ByVal wsUeb As Worksheet, _
             Next j
         End If
         ' --- GELBE/andere Zeilen bleiben immer einzeln bestehen ---
-        ' (keine Änderung nötig, sie werden nicht zusammengefasst)
+        ' (keine ?nderung n?tig, sie werden nicht zusammengefasst)
     Next i
 
     KonsolidiereMitgliedsbeitragZeilen = lastRow - deletedRows
@@ -1668,6 +1720,8 @@ NextPos:
     End If
     
 End Sub
+
+
 
 
 

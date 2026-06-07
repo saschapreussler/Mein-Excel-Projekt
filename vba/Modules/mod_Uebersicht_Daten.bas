@@ -284,6 +284,11 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                         dict.Add "Austritt", austritt
                         
                         col.Add dict
+                        Debug.Print "[" & ChrW(220) & "bersicht] Mitglied geladen: " & _
+                                    "Parz=" & parzelleNr & " | EK=" & entityKey & _
+                                    " | Name=" & Replace(zuordnung, vbLf, " / ") & _
+                                    " | Role=" & roleWert & _
+                                    " | Daten!Zeile=" & r & " | V=""" & parzelleWert & """"
                     End If
                 End If
             End If
@@ -815,6 +820,8 @@ NextMR:
     ZaehleAktiveMitgliederGesamt = cnt
     
 End Function
+
+
 
 
 

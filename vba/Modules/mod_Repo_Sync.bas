@@ -46,7 +46,7 @@ Private Const REPO_PATH_CLASSES As String = "C:\Users\DELL Latitude 7490\Desktop
 Private Const REPO_PATH_USERFORMS As String = "C:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\UserForms\"
 Private Const REPO_PATH_MODULES As String = "C:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\Modules\"
 
-' Tempor?rer Unterordner f?r ANSI-konvertierte Dateien
+' Temporärer Unterordner f?r ANSI-konvertierte Dateien
 Private Const TEMP_SUBFOLDER As String = "VBA_Repo_Sync_Temp"
 
 
