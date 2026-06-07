@@ -3,44 +3,44 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
-' VERSION: 4.6 - 15.03.2026
-' ZWECK: Generiert ?bersichtsblatt (Variante 2: Lange Tabelle)
+' VERSION: 5.0 - 07.06.2026
+' ZWECK: Generiert Übersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - Kategorien DYNAMISCH aus Einstellungen-Blatt (Spalte B)
-'        - Zeigt Soll/Ist/Status f?r jede Kombination
+'        - Zeigt Soll/Ist/Status für jede Kombination
 '        - Behandelt SHARE-Keys (Gemeinschaftskonten) korrekt
 '        - Bei Kategorien OHNE festen Soll-Betrag:
 '          Soll-Zelle bleibt leer + hell-gelb + editierbar
-'          Nur Zahlungstermin-Pr?fung (p?nktlich / S?umnis)
-'        - S?umnis-Geb?hren werden in Bemerkung angezeigt
+'          Nur Zahlungstermin-Prüfung (pünktlich / Säumnis)
+'        - Säumnis-Gebühren werden in Bemerkung angezeigt
 ' FIX v1.1: InitialisiereNachDezemberCache -> InitialisiereNachDezemberCacheZP
-' FIX v1.2: Val() statt CDbl() f?r systemunabh?ngiges Parsen
-' FIX v1.3: "Typen unvertr?glich" behoben (Variant, StrComp, etc.)
+' FIX v1.2: Val() statt CDbl() für systemunabhängiges Parsen
+' FIX v1.3: "Typen unverträglich" behoben (Variant, StrComp, etc.)
 ' FIX v1.4: ChrW() in Const nicht erlaubt -> Private Variablen
 ' NEU v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
 '           - Keine hart kodierten Kategorienamen mehr
 '           - Soll-Betrag 0 -> Zelle leer + hell-gelb + editierbar
-'           - Zahlungstermin-Pr?fung auch ohne Soll-Betrag
-'           - S?umnis-Geb?hren in Bemerkung
+'           - Zahlungstermin-Prüfung auch ohne Soll-Betrag
+'           - Säumnis-Gebühren in Bemerkung
 ' NEU v3.0: HoleAktiveMitglieder liest jetzt aus Daten-Blatt
 '           (EntityKey-Tabelle R-W) statt aus Mitgliederliste
 '           - SHARE-Keys: Parzelle "2, 5" wird aufgeteilt
-'           - stummModus f?r automatische Aufrufe (keine MsgBox)
+'           - stummModus für automatische Aufrufe (keine MsgBox)
 '           - Trigger: Bankkonto H/I + Einstellungen -> auto-Update
-' NEU v4.0: Monatsweise Bef?llung der ?bersicht
+' NEU v4.0: Monatsweise Befüllung der Übersicht
 '           - Nur Monate mit importierten CSV-Daten werden angezeigt
 '           - ErmittleImportierteMonate() scannt Bankkonto Spalte A
 '           - Eintrag erscheint nur wenn:
-'             a) Zahlung vorhanden (Ist > 0) -> GR?N/GELB
+'             a) Zahlung vorhanden (Ist > 0) -> GRÜN/GELB
 '             b) Frist abgelaufen + keine Zahlung -> ROT
 '           - Einheitliches Datumsformat: "Januar 2026"
-' NEU v4.1: F?lligkeit-basierte Kategoriefilterung
-'           - Kategorien erscheinen nur im F?lligkeitsmonat
+' NEU v4.1: Fälligkeit-basierte Kategoriefilterung
+'           - Kategorien erscheinen nur im Fälligkeitsmonat
 '             (nicht mehr in allen 12 Monaten)
-'           - F?lligkeit aus Daten Spalte O (Kategorie-Tabelle)
+'           - Fälligkeit aus Daten Spalte O (Kategorie-Tabelle)
 '           - Vorjahr-Speicher (Daten Spalten CA-CF):
-'             Okt-Dez Zahlungen des Vorjahres f?r Jan-M?rz Zuordnung
-'           - Spalte C linksb?ndig, Format "M?rz 2025"
+'             Okt-Dez Zahlungen des Vorjahres für Jan-März Zuordnung
+'           - Spalte C linksbündig, Format "März 2025"
 '           - PruefeZahlungen: flexibler Perioden-Vergleich
 ' SPLIT v4.2: Datenquellen + Vorjahr-Speicher ausgelagert nach
 '             mod_Uebersicht_Daten (LadeKategorienAusEinstellungen,
@@ -71,6 +71,12 @@ Option Explicit
 '           - Januar-Schutz: Wenn keine Vorjahr-Daten vorhanden,
 '             wird ROT auf GELB herabgestuft statt falsche Saeumnis
 '             (Dezember-Zahlung des Vorjahres koennte fehlen)
+' NEU v5.0: - Keine Buendelung mehr! Jedes Mitglied / jede Parzelle
+'             bekommt fuer jeden Monat / jede Kategorie eine eigene Zeile.
+'             KonsolidiereMitgliedsbeitragZeilen entfernt.
+'           - FormatiereUebersicht laeuft erst NACH AutoFilter / MonatsRegister
+'             / Lock, damit NumberFormat (Euro) und Ausrichtung (Spalte A
+'             zentriert) garantiert greifen.
 ' ***************************************************************
 
 ' ===============================================================
@@ -79,14 +85,14 @@ Option Explicit
 Private Const UEBERSICHT_START_ROW As Long = 4
 Private Const UEBERSICHT_HEADER_ROW As Long = 3
 
-' Spalten im ?bersichtsblatt
+' Spalten im Übersichtsblatt
 Private Const UEB_COL_PARZELLE As Long = 1      ' A - Parzelle
 Private Const UEB_COL_MITGLIED As Long = 2      ' B - Mitglied
 Private Const UEB_COL_MONAT As Long = 3         ' C - Monat
 Private Const UEB_COL_KATEGORIE As Long = 4     ' D - Kategorie
 Private Const UEB_COL_SOLL As Long = 5          ' E - Soll
 Private Const UEB_COL_IST As Long = 6           ' F - Ist
-Private Const UEB_COL_STATUS As Long = 7        ' G - Status (GR?N/GELB/ROT)
+Private Const UEB_COL_STATUS As Long = 7        ' G - Status (GRÜN/GELB/ROT)
 Private Const UEB_COL_BEMERKUNG As Long = 8     ' H - Bemerkung
 Private Const UEB_COL_SUMME_IST As Long = 9     ' I - Summe Ist (kumuliert)
 
@@ -99,13 +105,13 @@ Private Const AMPEL_GRUEN As Long = 12968900    ' RGB(196, 225, 196)
 Private Const AMPEL_GELB As Long = 10086143     ' RGB(255, 235, 156)
 Private Const AMPEL_ROT As Long = 9871103       ' RGB(255, 199, 206)
 
-' Hell-gelb f?r "bitte manuell bef?llen" (Soll-Betrag variabel)
+' Hell-gelb für "bitte manuell befüllen" (Soll-Betrag variabel)
 Private Const FARBE_HELLGELB_MANUELL As Long = 10092543  ' RGB(255, 255, 153)
 
 ' Zebra-Farbe (identisch mit Bankkonto / EntityKey-Tabelle)
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
 
-' Status-String f?r GR?N (Encoding-sicher, wird in Init gesetzt)
+' Status-String für GRÜN (Encoding-sicher, wird in Init gesetzt)
 Private m_STATUS_GRUEN As String
 Private m_StatusInitialisiert As Boolean
 
@@ -114,7 +120,7 @@ Private m_IsGenerating As Boolean
 
 
 ' ===============================================================
-' Type f?r eine dynamische Kategorie aus Einstellungen
+' Type für eine dynamische Kategorie aus Einstellungen
 ' ===============================================================
 Public Type UebKategorie
     Name As String
@@ -150,9 +156,9 @@ End Function
 
 
 ' ===============================================================
-' HAUPTFUNKTION: Generiert komplettes ?bersichtsblatt
+' HAUPTFUNKTION: Generiert komplettes Übersichtsblatt
 ' v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
-' v3.0: stummModus f?r automatische Aufrufe (ohne MsgBox)
+' v3.0: stummModus für automatische Aufrufe (ohne MsgBox)
 ' ===============================================================
 Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                                 Optional ByVal stummModus As Boolean = False)
@@ -322,7 +328,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     wsUeb.Range(wsUeb.Cells(1, 1), wsUeb.Cells(UEBERSICHT_START_ROW - 1, UEB_COL_SUMME_IST)).ClearContents
     wsUeb.Range(wsUeb.Cells(1, 1), wsUeb.Cells(UEBERSICHT_START_ROW - 1, UEB_COL_SUMME_IST)).Interior.ColorIndex = xlNone
     
-    ' Alten Inhalt l?schen (ab Zeile 4, inkl. Spalte I)
+    ' Alten Inhalt löschen (ab Zeile 4, inkl. Spalte I)
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
                 wsUeb.Cells(wsUeb.Rows.count, UEB_COL_SUMME_IST)).ClearContents
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
@@ -339,10 +345,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' Einstellungen-Cache laden (Performance)
     Call mod_Zahlungspruefung.LadeEinstellungenCacheZP
     
-    ' Dezember-Cache initialisieren (f?r Vorauszahlungen)
+    ' Dezember-Cache initialisieren (für Vorauszahlungen)
     Call mod_Zahlungspruefung.InitialisiereNachDezemberCacheZP(jahr)
     
-    ' v4.0: Vorjahr-Speicher bef?llen (Okt-Dez Vorjahr)
+    ' v4.0: Vorjahr-Speicher befüllen (Okt-Dez Vorjahr)
     Call mod_Uebersicht_Daten.BefuelleVorjahrSpeicher(jahr - 1)
     
     ' v4.0: Vorjahr-Speicher automatisch loeschen (ab August)
@@ -723,7 +729,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
                 
                 ' =============================================
-                ' v2.0: Bemerkung mit S?umnis-Info
+                ' v2.0: Bemerkung mit Säumnis-Info
                 ' =============================================
                 Dim bemerkung As String
                 bemerkung = ""
@@ -733,7 +739,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     bemerkung = teile(3)
                 End If
                 
-                ' S?umnis-Geb?hr anh?ngen wenn Status ROT und Geb?hr definiert
+                ' Säumnis-Gebühr anhängen wenn Status ROT und Gebühr definiert
                 If StrComp(status, "ROT", vbTextCompare) = 0 Then
                     If kategorien(k).saeumnisGebuehr > 0 Then
                         Dim saeumnisText As String
@@ -814,23 +820,15 @@ NextMonat:
         Next monat
 NextMitglied:
     Next mitglied
-    
-    ' Mitgliedsbeitrag pro Parzelle/Monat zusammenfassen,
-    ' wenn mehrere Mitglieder dort vollstaendig bezahlt sind.
-    Dim letzteZeileUeb As Long
-    letzteZeileUeb = rowIdx - 1
-    If letzteZeileUeb >= UEBERSICHT_START_ROW Then
-        letzteZeileUeb = KonsolidiereMitgliedsbeitragZeilen(wsUeb, letzteZeileUeb)
-        rowIdx = letzteZeileUeb + 1
-    End If
 
-    ' Summe-Ist pro Parzelle+Kategorie nach Konsolidierung neu aufbauen.
+    ' v5.0: Mitgliedsbeitrag NICHT mehr gebuendelt -- jede(s) Mitglied/Parzelle
+    ' bekommt eine eigene Zeile, auch wenn mehrere auf derselben Parzelle bezahlt
+    ' haben. Die Konsolidierungslogik wurde entfernt.
+
+    ' Summe-Ist pro Parzelle+Kategorie befuellen (Spalte I).
     If rowIdx > UEBERSICHT_START_ROW Then
-        Call AktualisiereSummeIstNachKonsolidierung(wsUeb, rowIdx - 1)
+        Call BefuelleSummeIstSpalte(wsUeb, rowIdx - 1)
     End If
-    
-    ' Formatierung anwenden
-    Call FormatiereUebersicht(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
     
     ' v4.4: AutoFilter auf Header-Zeile aktivieren (Dropdown-Pfeile immer sichtbar)
     If wsUeb.AutoFilterMode Then wsUeb.AutoFilterMode = False
@@ -851,30 +849,14 @@ NextMitglied:
                 wsUeb.Cells(wsUeb.Rows.count, UEB_COL_BEMERKUNG)).Locked = False
     On Error GoTo ErrorHandler
 
-    ' Blatt sch?tzen (Soll-Zellen ohne festen Betrag bleiben editierbar)
+    ' v5.0: Formatierung NACH AutoFilter/MonatsRegister/Locked, aber VOR Protect,
+    ' damit nichts NumberFormat / HorizontalAlignment / AutoFit ueberschreibt.
+    Call FormatiereUebersicht(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
+
+    ' Blatt schützen (Soll-Zellen ohne festen Betrag bleiben editierbar)
     ' AllowFiltering: Nutzer kann AutoFilter ohne Blattschutz-Aufhebung verwenden
     On Error Resume Next
     wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
-    On Error GoTo ErrorHandler
-    
-    ' SICHERHEITSNETZ: Format nochmals nach Schutz/Filter/Register erzwingen,
-    ' falls eines der Zwischenschritte (AutoFilter / ErstelleMonatsRegister)
-    ' das Zahlenformat oder die Ausrichtung ueberschrieben hat.
-    On Error Resume Next
-    If rowIdx - 1 >= UEBERSICHT_START_ROW Then
-        wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_SOLL), _
-                    wsUeb.Cells(rowIdx - 1, UEB_COL_SOLL)).NumberFormat = "#,##0.00 " & ChrW(8364)
-        wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_IST), _
-                    wsUeb.Cells(rowIdx - 1, UEB_COL_IST)).NumberFormat = "#,##0.00 " & ChrW(8364)
-        wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_SUMME_IST), _
-                    wsUeb.Cells(rowIdx - 1, UEB_COL_SUMME_IST)).NumberFormat = "#,##0.00 " & ChrW(8364)
-        wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_PARZELLE), _
-                    wsUeb.Cells(rowIdx - 1, UEB_COL_PARZELLE)).HorizontalAlignment = xlCenter
-        wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_STATUS), _
-                    wsUeb.Cells(rowIdx - 1, UEB_COL_STATUS)).HorizontalAlignment = xlCenter
-        Debug.Print "[" & ChrW(220) & "bersicht] Sicherheitsnetz-Formatierung gesetzt (Zeilen " & _
-                    UEBERSICHT_START_ROW & ".." & (rowIdx - 1) & ")"
-    End If
     On Error GoTo ErrorHandler
     
     Application.Calculation = xlCalculationAutomatic
@@ -954,7 +936,7 @@ End Sub
 
 
 ' ===============================================================
-' v4.0: Pr?ft ob eine Kategorie in einem bestimmten Monat f?llig ist
+' v4.0: Prüft ob eine Kategorie in einem bestimmten Monat fällig ist
 ' Kombiniert SollMonate (Einstellungen Spalte E) mit Faelligkeit
 ' (Daten Spalte O).
 ' - monatlich: SollMonate oder alle Monate
@@ -997,7 +979,7 @@ End Function
 
 
 ' ===============================================================
-' Header im ?bersichtsblatt setzen
+' Header im Übersichtsblatt setzen
 ' ===============================================================
 Private Sub SetzeUebersichtHeader(ByVal wsUeb As Worksheet)
     
@@ -1037,7 +1019,7 @@ End Sub
 
 
 ' ===============================================================
-' Formatierung des ?bersichtsblatts
+' Formatierung des Übersichtsblatts
 ' ===============================================================
 Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                                    ByVal startRow As Long, _
@@ -1046,14 +1028,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     Dim r As Long
     Dim rngTable As Range
     
-    Debug.Print "[" & ChrW(220) & "bersicht] FormatiereUebersicht START: " & _
-                "startRow=" & startRow & " endRow=" & endRow & _
-                " ProtectContents=" & wsUeb.ProtectContents
-    
-    If endRow < startRow Then
-        Debug.Print "[" & ChrW(220) & "bersicht] FormatiereUebersicht ABBRUCH: endRow < startRow"
-        Exit Sub
-    End If
+    If endRow < startRow Then Exit Sub
     
     Set rngTable = wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_PARZELLE), _
                                 wsUeb.Cells(endRow, UEB_COL_SUMME_IST))
@@ -1288,112 +1263,11 @@ End Function
 
 
 ' ===============================================================
-' Konsolidiert Mitgliedsbeitrag-Zeilen pro Parzelle+Monat:
-' - mehrere voll bezahlte Mitgliedszeilen -> eine Sammelzeile
-' - problematische Zeilen (offen/abweichend) bleiben einzeln bestehen
-' Rueckgabe: neue letzte Zeile
+' Baut Spalte I (Summe Ist) pro Parzelle+Kategorie auf.
+' Wird einmal am Ende der Generierung aufgerufen.
 ' ===============================================================
-Private Function KonsolidiereMitgliedsbeitragZeilen(ByVal wsUeb As Worksheet, _
-                                                    ByVal lastRow As Long) As Long
-
-    On Error GoTo Ende
-
-    Dim dictGroups As Object
-    Set dictGroups = CreateObject("Scripting.Dictionary")
-    dictGroups.CompareMode = vbTextCompare
-
-    Dim r As Long
-    For r = UEBERSICHT_START_ROW To lastRow
-        If StrComp(Trim(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), "Mitgliedsbeitrag", vbTextCompare) = 0 Then
-            Dim gKey As String
-            gKey = Trim(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & Trim(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value))
-            If Not dictGroups.exists(gKey) Then
-                Set dictGroups(gKey) = New Collection
-            End If
-            dictGroups(gKey).Add r
-        End If
-    Next r
-
-    If dictGroups.count = 0 Then
-        KonsolidiereMitgliedsbeitragZeilen = lastRow
-        Exit Function
-    End If
-
-    Dim keys As Variant
-    keys = dictGroups.keys
-
-    Dim deletedRows As Long
-    deletedRows = 0
-
-    Dim i As Long
-    For i = LBound(keys) To UBound(keys)
-        Dim rowsInGroup As Collection
-        Set rowsInGroup = dictGroups(keys(i))
-
-        ' 1. Alle GR?NEN Zeilen sammeln (bezahlt)
-        Dim paidRows As New Collection
-        ' 2. Alle GELBEN/anderen Zeilen sammeln (unbezahlt/abweichend)
-        Dim unpaidRows As New Collection
-        Dim rr As Variant
-        For Each rr In rowsInGroup
-            Dim statusTxt As String
-            statusTxt = UCase(Trim(CStr(wsUeb.Cells(CLng(rr), UEB_COL_STATUS).value)))
-            If Left(statusTxt, 2) = "GR" Then
-                paidRows.Add CLng(rr)
-            Else
-                unpaidRows.Add CLng(rr)
-            End If
-        Next rr
-
-        ' --- GR?NE Zeilen zusammenfassen (wie Daten!U, Zeilenumbruch) ---
-        If paidRows.count > 1 Then
-            Dim keepRow As Long
-            keepRow = CLng(paidRows(1))
-            Dim namen As String
-            Dim gesSoll As Double
-            Dim bemGes As String
-            namen = ""
-            gesSoll = 0
-            bemGes = ""
-            Dim rowN As Long
-            For Each rr In paidRows
-                rowN = CLng(rr)
-                namen = SammleNamenEinmal(namen, CStr(wsUeb.Cells(rowN, UEB_COL_MITGLIED).value))
-                gesSoll = gesSoll + CDbl(val(CStr(wsUeb.Cells(rowN, UEB_COL_SOLL).value)))
-                bemGes = FuegeTeiltextEinmalHinzu(bemGes, CStr(wsUeb.Cells(rowN, UEB_COL_BEMERKUNG).value), " | ")
-            Next rr
-            wsUeb.Cells(keepRow, UEB_COL_MITGLIED).value = namen
-            wsUeb.Cells(keepRow, UEB_COL_SOLL).value = gesSoll
-            wsUeb.Cells(keepRow, UEB_COL_IST).value = gesSoll
-            wsUeb.Cells(keepRow, UEB_COL_STATUS).value = m_STATUS_GRUEN
-            wsUeb.Cells(keepRow, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
-            wsUeb.Cells(keepRow, UEB_COL_BEMERKUNG).value = bemGes
-            wsUeb.Cells(keepRow, UEB_COL_MITGLIED).WrapText = True
-            ' Alle weiteren paidRows l?schen (au?er keepRow)
-            Dim j As Long
-            For j = paidRows.count To 2 Step -1
-                wsUeb.Rows(CLng(paidRows(j))).Delete
-                deletedRows = deletedRows + 1
-            Next j
-        End If
-        ' --- GELBE/andere Zeilen bleiben immer einzeln bestehen ---
-        ' (keine ?nderung n?tig, sie werden nicht zusammengefasst)
-    Next i
-
-    KonsolidiereMitgliedsbeitragZeilen = lastRow - deletedRows
-    Exit Function
-
-Ende:
-    KonsolidiereMitgliedsbeitragZeilen = lastRow
-End Function
-
-
-' ===============================================================
-' Baut Spalte I (Summe Ist) fuer alle sichtbaren Uebersichtszeilen neu
-' auf, damit konsolidierte Mitgliedsbeitragszeilen korrekte Summen tragen.
-' ===============================================================
-Private Sub AktualisiereSummeIstNachKonsolidierung(ByVal wsUeb As Worksheet, _
-                                                   ByVal lastRow As Long)
+Private Sub BefuelleSummeIstSpalte(ByVal wsUeb As Worksheet, _
+                                   ByVal lastRow As Long)
     On Error GoTo Ende
 
     Dim sums As Object
@@ -1423,29 +1297,6 @@ Private Sub AktualisiereSummeIstNachKonsolidierung(ByVal wsUeb As Worksheet, _
 
 Ende:
 End Sub
-
-
-' ===============================================================
-' Fuegt Namen (mehrzeilig) ohne Duplikate zusammen.
-' ===============================================================
-Private Function SammleNamenEinmal(ByVal basis As String, ByVal neu As String) As String
-    Dim out As String
-    out = basis
-
-    Dim lines() As String
-    lines = Split(neu, vbLf)
-
-    Dim i As Long
-    For i = LBound(lines) To UBound(lines)
-        Dim n As String
-        n = Trim(lines(i))
-        If n <> "" Then
-            out = FuegeTeiltextEinmalHinzu(out, n, vbLf)
-        End If
-    Next i
-
-    SammleNamenEinmal = out
-End Function
 
 
 ' ===============================================================
@@ -1720,6 +1571,8 @@ NextPos:
     End If
     
 End Sub
+
+
 
 
 

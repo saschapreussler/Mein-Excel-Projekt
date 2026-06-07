@@ -4,20 +4,20 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Banking_Data (ORCHESTRATOR)
 ' VERSION: 5.0 - Modularisiert
-' ?NDERUNG v5.0:
+' ÄNDERUNG v5.0:
 '   - Formatierung ausgelagert nach mod_Banking_Format
 '   - Import-Report ausgelagert nach mod_Banking_Report
-'   - Dieses Modul: Import-Logik, Pr?fungen, L?sch-/Aktualisierung
-' ?NDERUNG v4.0:
+'   - Dieses Modul: Import-Logik, Prüfungen, Lösch-/Aktualisierung
+' ÄNDERUNG v4.0:
 '   - NEU: Schritt 7 in Importiere_Kontoauszug:
-'     ?bersicht generieren nach CSV-Import (nur bei neuen Daten)
+'     Übersicht generieren nach CSV-Import (nur bei neuen Daten)
 '     Aufruf: mod_Uebersicht_Generator.GeneriereUebersicht
-' ?NDERUNG v3.9:
+' ÄNDERUNG v3.9:
 '   - Setze_Monat_Periode ENTFERNT (verschoben nach
 '     mod_Zahlungspruefung.SetzeMonatPeriode)
 '   - HoleFaelligkeitFuerKategorie ENTFERNT (verschoben nach
 '     mod_Zahlungspruefung.HoleFaelligkeitFuerKategorie)
-'   - Aufruf in Importiere_Kontoauszug ge?ndert auf
+'   - Aufruf in Importiere_Kontoauszug geändert auf
 '     mod_Zahlungspruefung.SetzeMonatPeriode
 ' ===============================================================
 
@@ -113,7 +113,7 @@ Public Sub Importiere_Kontoauszug()
     Set wsTemp = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.count))
     If Err.Number <> 0 Then
         MsgBox "Fehler beim Erstellen des Temp-Blatts: " & Err.Description & vbCrLf & vbCrLf & _
-           "Bitte pr?fen Sie ob die Arbeitsmappe gesch?tzt ist.", vbCritical
+           "Bitte prüfen Sie ob die Arbeitsmappe geschützt ist.", vbCritical
         Err.Clear
         Application.DisplayAlerts = True
         Application.ScreenUpdating = True
@@ -176,7 +176,7 @@ Public Sub Importiere_Kontoauszug()
     Dim jahrF1Import As Long
     jahrF1Import = HoleAbrechnungsjahr()
     
-    ' H?ufigstes Jahr in CSV ermitteln
+    ' Häufigstes Jahr in CSV ermitteln
     Dim jahrCSV As Long
     Dim jahrDict As Object
     Set jahrDict = CreateObject("Scripting.Dictionary")
@@ -374,11 +374,11 @@ ImportAbschluss:
     Err.Clear
     On Error GoTo 0
     
-    ' 7. ?bersicht IMMER aktualisieren (fasst ALLE vorhandenen Daten zusammen)
-    '    v4.0: NEU - ?bersichtsblatt nach jedem Import generieren
+    ' 7. Übersicht IMMER aktualisieren (fasst ALLE vorhandenen Daten zusammen)
+    '    v4.0: NEU - Übersichtsblatt nach jedem Import generieren
     '    v4.1: stummModus=True da Import bereits eigene Erfolgsmeldung zeigt
     '    v4.2: On Error Resume Next ENTFERNT - GeneriereUebersicht hat eigenen ErrorHandler
-    '    v4.3: Bedingung rowsProcessed>0 ENTFERNT - ?bersicht zeigt ALLE Daten,
+    '    v4.3: Bedingung rowsProcessed>0 ENTFERNT - Übersicht zeigt ALLE Daten,
     '          nicht nur neu importierte. Auch bei 100% Duplikaten aktualisieren!
     Debug.Print "[Import] Starte " & ChrW(220) & "bersicht-Generierung..."
     Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
@@ -394,7 +394,7 @@ ImportAbschluss:
     wsZiel.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
     
-    ' 8. Formeln wiederherstellen (k?nnten durch Import/Sort ?berschrieben sein)
+    ' 8. Formeln wiederherstellen (könnten durch Import/Sort überschrieben sein)
     Call mod_Banking_Format.StelleFormelnWiederHer(wsZiel)
     
     wsZiel.Activate
@@ -404,7 +404,7 @@ ImportAbschluss:
     Application.EnableEvents = True
     
     ' ============================================================
-    ' ERWEITERTE MsgBox mit vollst?ndigen Import-Details
+    ' ERWEITERTE MsgBox mit vollständigen Import-Details
     ' ============================================================
     Dim msgIcon As VbMsgBoxStyle
     Dim msgTitle As String
@@ -429,7 +429,7 @@ ImportAbschluss:
     
     msgText = "CSV-Import Ergebnis:" & vbCrLf & _
               String(30, "=") & vbCrLf & vbCrLf & _
-              "Datens?tze in CSV:" & vbTab & rowsTotalInFile & vbCrLf & _
+              "Datensätze in CSV:" & vbTab & rowsTotalInFile & vbCrLf & _
               "Importiert:" & vbTab & vbTab & rowsProcessed & " / " & rowsTotalInFile & vbCrLf & _
               "Duplikate:" & vbTab & vbTab & rowsIgnoredDupe & vbCrLf & _
               "Fehler:" & vbTab & vbTab & vbTab & rowsFailedImport & vbCrLf & vbCrLf
@@ -437,19 +437,19 @@ ImportAbschluss:
     If rowsFailedImport > 0 Then
         msgText = msgText & "ACHTUNG: " & rowsFailedImport & " Zeilen konnten nicht verarbeitet werden!"
     ElseIf rowsProcessed = 0 And rowsIgnoredDupe > 0 Then
-        msgText = msgText & "Alle Eintr?ge waren bereits in der Datenbank vorhanden."
+        msgText = msgText & "Alle Einträge waren bereits in der Datenbank vorhanden."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe = 0 Then
-        msgText = msgText & "Alle Datens?tze wurden erfolgreich importiert."
+        msgText = msgText & "Alle Datensätze wurden erfolgreich importiert."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe > 0 Then
-        msgText = msgText & rowsProcessed & " neue Datens?tze importiert," & vbCrLf & _
-                  rowsIgnoredDupe & " Duplikate ?bersprungen."
+        msgText = msgText & rowsProcessed & " neue Datensätze importiert," & vbCrLf & _
+                  rowsIgnoredDupe & " Duplikate übersprungen."
     End If
     
     MsgBox msgText, msgIcon, msgTitle
     
     ' ============================================================
-    ' ENTITYKEY-PR?FUNG: Spalte W (EntityRole) vollst?ndig?
-    ' Nur pr?fen wenn tats?chlich neue Datens?tze importiert wurden
+    ' ENTITYKEY-PRÜFUNG: Spalte W (EntityRole) vollständig?
+    ' Nur prüfen wenn tatsächlich neue Datensätze importiert wurden
     ' ============================================================
     If rowsProcessed > 0 Then
         Call PruefeUnvollstaendigeEntityKeys
@@ -467,10 +467,10 @@ End Sub
 
 
 ' ===============================================================
-' 1b. ENTITYKEY-PR?FUNG NACH IMPORT
-'     Pr?ft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
-'     eine vollst?ndige Zuordnung in Spalte W (EntityRole) haben.
-'     Bei fehlenden Eintr?gen: MsgBox mit Angebot zur Navigation.
+' 1b. ENTITYKEY-PRÜFUNG NACH IMPORT
+'     Prüft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
+'     eine vollständige Zuordnung in Spalte W (EntityRole) haben.
+'     Bei fehlenden Einträgen: MsgBox mit Angebot zur Navigation.
 ' ===============================================================
 Private Sub PruefeUnvollstaendigeEntityKeys()
     
@@ -494,7 +494,7 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
     ibanOhneRole = ""
     
     For r = EK_START_ROW To lastRow
-        ' Nur Zeilen pr?fen die eine IBAN haben
+        ' Nur Zeilen prüfen die eine IBAN haben
         If Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)) <> "" Then
             ' Spalte W (EntityRole) leer?
             If Trim(CStr(wsDaten.Cells(r, EK_COL_ROLE).value)) = "" Then
@@ -503,7 +503,7 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
                 ' Erste leere Zeile merken
                 If ersteLeereZeile = 0 Then ersteLeereZeile = r
                 
-                ' Maximal 5 IBANs f?r die Anzeige sammeln
+                ' Maximal 5 IBANs für die Anzeige sammeln
                 If anzahlOhneRole <= 5 Then
                     Dim kontoname As String
                     kontoname = Trim(CStr(wsDaten.Cells(r, EK_COL_KONTONAME).value))
@@ -519,7 +519,7 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
         End If
     Next r
     
-    ' Keine fehlenden Eintr?ge -> nichts tun
+    ' Keine fehlenden Einträge -> nichts tun
     If anzahlOhneRole = 0 Then Exit Sub
     
     ' MsgBox zusammenbauen
@@ -535,14 +535,14 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
     hinweis = hinweis & vbCrLf & vbCrLf & _
               "Ohne diese Zuordnung kann die Kategorie-Engine die Buchungen " & _
               "nicht korrekt verarbeiten." & vbCrLf & vbCrLf & _
-              "M?chten Sie die fehlenden Angaben jetzt vervollst?ndigen?"
+              "Möchten Sie die fehlenden Angaben jetzt vervollständigen?"
     
     Dim antwort As VbMsgBoxResult
     antwort = MsgBox(hinweis, vbYesNo + vbExclamation, _
-                     "Unvollst?ndige IBAN-Zuordnungen")
+                     "Unvollständige IBAN-Zuordnungen")
     
     If antwort = vbYes Then
-        ' Zum Daten-Blatt wechseln und erste leere Zelle in Spalte W anw?hlen
+        ' Zum Daten-Blatt wechseln und erste leere Zelle in Spalte W anwählen
         wsDaten.Activate
         
         On Error Resume Next
@@ -558,7 +558,7 @@ End Sub
 
 
 ' ===============================================================
-' 8b. Alle Bankkontozeilen l?schen
+' 8b. Alle Bankkontozeilen löschen
 ' ===============================================================
 Public Sub LoescheAlleBankkontoZeilen()
     
@@ -568,8 +568,8 @@ Public Sub LoescheAlleBankkontoZeilen()
     Dim antwort As VbMsgBoxResult
     Dim eventsWaren As Boolean
     
-    antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden gel?scht!" & vbCrLf & vbCrLf & _
-                     "Fortfahren?", vbYesNo + vbCritical, "Alle Daten l?schen?")
+    antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden gelöscht!" & vbCrLf & vbCrLf & _
+                     "Fortfahren?", vbYesNo + vbCritical, "Alle Daten löschen?")
     
     If antwort <> vbYes Then Exit Sub
     
@@ -586,7 +586,7 @@ Public Sub LoescheAlleBankkontoZeilen()
         ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 26)).Interior.ColorIndex = xlNone
     End If
     
-    ' Formeln wiederherstellen (wurden durch ClearContents gel?scht)
+    ' Formeln wiederherstellen (wurden durch ClearContents gelöscht)
     Call mod_Banking_Format.StelleFormelnWiederHer(ws)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -608,7 +608,7 @@ Public Sub LoescheAlleBankkontoZeilen()
     
     Call mod_Banking_Report.Initialize_ImportReport_ListBox
     
-    MsgBox "Alle Daten wurden gel?scht.", vbInformation
+    MsgBox "Alle Daten wurden gelöscht.", vbInformation
     
 End Sub
 
@@ -681,6 +681,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 

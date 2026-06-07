@@ -17,7 +17,7 @@ Public Function NormalizeText(ByVal inputText As String) As String
     txt = LCase(Trim(inputText))
     If txt = "" Then NormalizeText = "": Exit Function
 
-    ' Umlaute ersetzen (f?r Matching-Normalisierung)
+    ' Umlaute ersetzen (für Matching-Normalisierung)
     txt = Replace(txt, ChrW(228), "ae")  ' ?
     txt = Replace(txt, ChrW(246), "oe")  ' ?
     txt = Replace(txt, ChrW(252), "ue")  ' ?
@@ -57,6 +57,8 @@ Public Function NormalizeText(ByVal inputText As String) As String
 
     NormalizeText = Trim(txt)
 End Function
+
+
 
 
 

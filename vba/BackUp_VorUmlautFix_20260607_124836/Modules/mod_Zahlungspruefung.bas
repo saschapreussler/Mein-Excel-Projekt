@@ -1,0 +1,1007 @@
+Attribute VB_Name = "mod_Zahlungspruefung"
+Option Explicit
+
+' ***************************************************************
+' MODUL: mod_Zahlungspruefung (Orchestrator)
+' VERSION: 3.3 - 15.03.2026
+' ZWECK: Zahlungspruefung fuer Mitgliederliste + Einstellungen
+'        - Prueft Zahlungseingaenge gegen Soll-Werte
+'        - Behandelt Dezember-Vorauszahlungen
+'        - Cache-Verwaltung (Einstellungen, IBAN, Dezember)
+' AUSGELAGERT:
+'   - mod_ZP_DropDowns: SetzeBankkontoDropDowns, Kategorie-/Monat-
+'     DropDowns, Hilfsspalten AF/AG, Spaltenentsperrung
+'   - mod_ZP_Sammelzuordnung: Sammelueberweisungen, manuelle
+'     Monatszuordnung
+'   - mod_ZP_Periode: SetzeMonatPeriode, HoleFaelligkeitFuerKategorie
+' FIX v3.1: PruefeZahlungen nutzt jetzt Spalte I (Monat/Periode)
+'           statt Month(Buchungsdatum) f?r Monats-Zuordnung
+' NEU v3.2: Frist-/Toleranzpr?fung mit Vorlauf/Nachlauf aus
+'           Einstellungen (Spalte G/H). S?umnishinweis in Bemerkung.
+' ***************************************************************
+
+' ===============================================================
+' CACHE FUER EINSTELLUNGEN (Performance-Optimierung)
+' ===============================================================
+Private Type EinstellungsRegelZP
+    kategorie As String
+    SollBetrag As Double
+    SollTag As Long
+    SollMonate As String           ' z.B. "03, 06, 09"
+    StichtagFix As String          ' z.B. "15.03"
+    VorlaufTage As Long
+    NachlaufTage As Long
+    saeumnisGebuehr As Double
+End Type
+
+Private m_EinstellungenCacheZP() As EinstellungsRegelZP
+Private m_EinstellungenGeladenZP As Boolean
+
+' ===============================================================
+' IBAN-CACHE: EntityKey -> IBAN (aus Daten!R+S)
+' ===============================================================
+Private m_EntityIBANCacheZP As Object   ' Dictionary: EntityKey -> IBAN
+Private m_EntityIBANCacheGeladenZP As Boolean
+
+' ===============================================================
+' DEZEMBER-CACHE (fuer Vorauszahlungen)
+' Struktur: Schluessel = IBAN|Kategorie, Wert = Collection von Betraegen
+' ===============================================================
+Private m_DezemberCacheZP As Object
+
+' ===============================================================
+' AMPELFARBEN (Konsistenz mit KategorieEngine)
+' ===============================================================
+Private Const AMPEL_GRUEN As Long = 12968900
+Private Const AMPEL_GELB As Long = 10086143
+Private Const AMPEL_ROT As Long = 9871103
+
+
+' ===============================================================
+' HAUPTFUNKTION: Prueft ALLE Zahlungen eines Mitglieds/einer Kategorie
+' Wird von mod_Uebersicht_Generator aufgerufen
+'
+' Rueckgabe: "STATUS|Soll:XX.XX|Ist:XX.XX" oder
+'            "STATUS|Soll:XX.XX|Ist:XX.XX|Bemerkungstext"
+'           Dezimaltrenner im Rueckgabewert ist IMMER Punkt (.)
+'
+' v3.2: Frist-/Toleranzpruefung:
+'   - Vorlauf (Spalte G) und Nachlauf (Spalte H) aus Einstellungen
+'   - F?lligkeitsdatum wird berechnet (BerechneSollDatumZP)
+'   - Zahlung innerhalb [F?lligkeit - Vorlauf, F?lligkeit + Nachlauf] = p?nktlich
+'   - Zahlung eingegangen aber NACH F?lligkeit + Nachlauf = GELB + S?umnis
+'   - Keine Zahlung = ROT
+' ===============================================================
+Public Function PruefeZahlungen(ByVal entityKey As String, _
+                                 ByVal kategorie As String, _
+                                 ByVal monat As Long, _
+                                 ByVal jahr As Long) As String
+    
+    On Error GoTo ErrorHandler
+    
+    Dim wsBK As Worksheet
+    Dim soll As Double
+    Dim ist As Double
+    Dim status As String
+    Dim r As Long
+    Dim lastRow As Long
+    Dim zahlDatum As Date
+    Dim zahlBetrag As Double
+    Dim zahlKat As String
+    Dim ibanZeile As String
+    Dim entityIBAN As String
+    Dim bemerkung As String
+    
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    
+    ' Einstellungen-Cache laden (falls noch nicht geschehen)
+    If Not m_EinstellungenGeladenZP Then Call LadeEinstellungenCacheZP
+    
+    ' IBAN-Cache laden (falls noch nicht geschehen)
+    If Not m_EntityIBANCacheGeladenZP Then Call LadeEntityIBANCacheZP
+    
+    ' 1. IBAN zum EntityKey aufloesen (ueber Daten!R+S)
+    entityIBAN = ""
+    If Not m_EntityIBANCacheZP Is Nothing Then
+        If m_EntityIBANCacheZP.exists(entityKey) Then
+            entityIBAN = m_EntityIBANCacheZP(entityKey)
+        End If
+    End If
+    
+    If entityIBAN = "" Then
+        PruefeZahlungen = "GELB|Soll:0.00|Ist:0.00|Keine IBAN zum EntityKey"
+        Exit Function
+    End If
+    
+    ' 2. Soll-Wert aus Einstellungen holen
+    soll = HoleSollBetragZP(kategorie)
+    
+    ' v2.0 FIX: NICHT mehr abbrechen bei soll=0!
+    ' Bei variablem Betrag (soll=0) wird trotzdem geprueft ob Zahlung da ist.
+    
+    ' 3. Ist-Wert aus Bankkonto ermitteln
+    '    v3.1: Monat-Matching jetzt ueber Spalte I (Monat/Periode)
+    '          statt ueber Month(Buchungsdatum), da Spalte I bereits
+    '          die korrekte Monats-Zuordnung enthaelt (inkl. Vorlauf/Nachlauf)
+    ist = 0
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    
+    ' Erwarteter Monatname (z.B. "Januar", "Februar", ...)
+    Dim erwarteterMonat As String
+    erwarteterMonat = MonthName(monat)
+    
+    ' v4.0: Faelligkeit der Kategorie ermitteln (fuer nicht-monatliche Perioden)
+    Dim wsDaten As Worksheet
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo ErrorHandler
+    
+    Dim katFaelligkeit As String
+    katFaelligkeit = ""
+    If Not wsDaten Is Nothing Then
+        katFaelligkeit = mod_ZP_Periode.HoleFaelligkeitFuerKategorie(wsDaten, kategorie)
+    End If
+    
+    ' v4.0: Fuer nicht-monatliche Kategorien den Perioden-String bestimmen
+    ' der in Spalte I stehen koennte (z.B. "Endabrechnung 2025", "Q1 2025")
+    Dim istMonatlich As Boolean
+    istMonatlich = (katFaelligkeit = "" Or katFaelligkeit = "monatlich")
+    
+    ' v3.2: Fruehestes Zahlungsdatum merken (fuer Fristpruefung)
+    Dim fruehestesZahlDatum As Date
+    Dim hatZahlung As Boolean
+    hatZahlung = False
+    
+    For r = BK_START_ROW To lastRow
+        ' Datum pruefen (muss vorhanden sein fuer Jahr-Check)
+        If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo NextZahlRow
+        zahlDatum = wsBK.Cells(r, BK_COL_DATUM).value
+        
+        ' Jahr pruefen ueber Buchungsdatum
+        If Year(zahlDatum) <> jahr Then
+            ' Dezember-Sonderfall: Vorauszahlung Dezember Vorjahr fuer Januar
+            If monat = 1 And Month(zahlDatum) = 12 And Year(zahlDatum) = jahr - 1 Then
+                ' Vorauszahlung aus Dezember des Vorjahres -> zulaessig
+            Else
+                GoTo NextZahlRow
+            End If
+        End If
+        
+        ' Monat pruefen ueber Spalte I (Monat/Periode)
+        Dim monatPeriode As String
+        monatPeriode = Trim(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
+        
+        ' v4.0: Flexibler Perioden-Vergleich
+        Dim monatPasstZP As Boolean
+        monatPasstZP = False
+        
+        If istMonatlich Then
+            ' Monatlich: exakter Vergleich mit MonthName
+            monatPasstZP = (StrComp(monatPeriode, erwarteterMonat, vbTextCompare) = 0)
+        Else
+            ' Nicht-monatlich: Spalte I kann verschiedene Formate haben:
+            ' "Endabrechnung 2025", "Q1 2025", "H1 2025",
+            ' "jaehrlich", "Kategoriename Jahr" etc.
+            ' -> Pruefen ob Monat/Periode den Kategorienamen enthaelt
+            '    UND ob das Buchungsdatum im richtigen Zeitfenster liegt
+            If monatPeriode = erwarteterMonat Then
+                ' Direkt-Match (unwahrscheinlich bei nicht-monatlich, aber sicher)
+                monatPasstZP = True
+            ElseIf InStr(1, monatPeriode, kategorie, vbTextCompare) > 0 Then
+                ' Spalte I enthaelt den Kategorienamen (z.B. "Endabrechnung 2025")
+                monatPasstZP = True
+            ElseIf monatPeriode = "" Then
+                ' Spalte I leer -> Fallback auf Buchungsmonat
+                If Month(zahlDatum) = monat Then monatPasstZP = True
+            End If
+        End If
+        
+        If Not monatPasstZP Then GoTo NextZahlRow
+        
+        ' IBAN pruefen (Spalte D = BK_COL_IBAN)
+        ibanZeile = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
+        If StrComp(ibanZeile, entityIBAN, vbTextCompare) <> 0 Then GoTo NextZahlRow
+        
+        ' Kategorie pruefen (Spalte H = BK_COL_KATEGORIE)
+        zahlKat = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
+        If StrComp(zahlKat, kategorie, vbTextCompare) <> 0 Then GoTo NextZahlRow
+        
+        ' Betrag addieren (Spalte B = BK_COL_BETRAG)
+        zahlBetrag = wsBK.Cells(r, BK_COL_BETRAG).value
+        ist = ist + Abs(zahlBetrag)
+        
+        ' v3.2: Fruehestes Zahlungsdatum merken
+        If Not hatZahlung Then
+            fruehestesZahlDatum = zahlDatum
+            hatZahlung = True
+        ElseIf zahlDatum < fruehestesZahlDatum Then
+            fruehestesZahlDatum = zahlDatum
+        End If
+        
+NextZahlRow:
+    Next r
+    
+    ' 4. Status ermitteln (GRUEN/GELB/ROT)
+    '    v3.2: Mit Frist-/Toleranzpruefung
+    bemerkung = ""
+    
+    ' Faelligkeitsdatum und Toleranzen aus Einstellungen holen
+    Dim sollDatum As Date
+    Dim vorlauf As Long
+    Dim nachlauf As Long
+    Dim saeumnisGebuehr As Double
+    sollDatum = BerechneSollDatumZP(kategorie, monat, jahr)
+    Call HoleToleranzZP(kategorie, vorlauf, nachlauf, saeumnisGebuehr)
+    
+    If soll > 0 Then
+        ' Fester Soll-Betrag vorhanden: Betrags-Vergleich + Fristpruefung
+        If ist >= soll Then
+            ' Betrag ausreichend -> Fristpruefung
+            If hatZahlung And (vorlauf > 0 Or nachlauf > 0) Then
+                Dim fristEnde As Date
+                fristEnde = sollDatum + nachlauf
+                
+                If fruehestesZahlDatum > fristEnde Then
+                    ' Zahlung NACH Frist -> GELB + Saeumnis
+                    status = "GELB"
+                    bemerkung = "Versp" & ChrW(228) & "tet (" & Format(fruehestesZahlDatum, "dd.mm.yyyy") & _
+                                ", Frist: " & Format(fristEnde, "dd.mm.yyyy") & ")"
+                    If saeumnisGebuehr > 0 Then
+                        bemerkung = bemerkung & " | S" & ChrW(228) & "umnis: " & _
+                                    Format(saeumnisGebuehr, "#,##0.00") & " " & ChrW(8364)
+                    End If
+                Else
+                    ' Zahlung fristgerecht
+                    status = "GR" & ChrW(220) & "N"
+                End If
+            Else
+                ' Keine Toleranz definiert oder keine Zahlung mit Datum
+                status = "GR" & ChrW(220) & "N"
+            End If
+        ElseIf ist > 0 Then
+            status = "GELB"
+            bemerkung = "Teilzahlung (Soll: " & Format(soll, "#,##0.00") & _
+                        ", Ist: " & Format(ist, "#,##0.00") & ")"
+        Else
+            ' Keine Zahlung -> ROT, aber nur wenn Faelligkeit schon erreicht
+            If Date >= sollDatum Then
+                If HatMitbezahltInParzelleZP(entityKey, entityIBAN, kategorie, monat, jahr, soll, _
+                                             erwarteterMonat, istMonatlich, wsBK, bemerkung) Then
+                    status = "GELB"
+                Else
+                    status = "ROT"
+                    If nachlauf > 0 And Date <= sollDatum + nachlauf Then
+                        status = "GELB"
+                        bemerkung = "Noch offen (Frist bis " & Format(sollDatum + nachlauf, "dd.mm.yyyy") & ")"
+                    Else
+                        If saeumnisGebuehr > 0 And Date > sollDatum + nachlauf Then
+                            bemerkung = "S" & ChrW(228) & "umnis: " & _
+                                        Format(saeumnisGebuehr, "#,##0.00") & " " & ChrW(8364)
+                        End If
+                    End If
+                End If
+            Else
+                ' Faelligkeit noch nicht erreicht -> GELB (ausstehend)
+                status = "GELB"
+                bemerkung = "F" & ChrW(228) & "llig am " & Format(sollDatum, "dd.mm.yyyy")
+            End If
+        End If
+    Else
+        ' Kein fester Soll-Betrag (variabel): nur Eingangs-Pruefung
+        If ist > 0 Then
+            status = "GR" & ChrW(220) & "N"
+        Else
+            If Date >= sollDatum Then
+                If HatMitbezahltInParzelleZP(entityKey, entityIBAN, kategorie, monat, jahr, soll, _
+                                             erwarteterMonat, istMonatlich, wsBK, bemerkung) Then
+                    status = "GELB"
+                Else
+                    status = "ROT"
+                End If
+            Else
+                status = "GELB"
+                bemerkung = "F" & ChrW(228) & "llig am " & Format(sollDatum, "dd.mm.yyyy")
+            End If
+        End If
+    End If
+    
+    ' v4.4: Zahlungsdatum immer in Bemerkung aufnehmen
+    If hatZahlung Then
+        Dim zahlDatumText As String
+        zahlDatumText = "Zahlung am " & Format(fruehestesZahlDatum, "dd.mm.yyyy")
+        If bemerkung = "" Then
+            bemerkung = zahlDatumText
+        Else
+            bemerkung = zahlDatumText & " | " & bemerkung
+        End If
+    End If
+    
+    ' 5. Ergebnis formatieren (IMMER Punkt als Dezimaltrenner!)
+    PruefeZahlungen = status & "|Soll:" & FormatDezimalPunkt(soll) & "|Ist:" & FormatDezimalPunkt(ist)
+    If bemerkung <> "" Then
+        PruefeZahlungen = PruefeZahlungen & "|" & bemerkung
+    End If
+    Exit Function
+    
+ErrorHandler:
+    PruefeZahlungen = "ROT|Fehler:" & Err.Description
+    
+End Function
+
+
+' ===============================================================
+' Zaehlt passende Zahlungen fuer einen EntityKey/Kategorie/Monat.
+' Hilft dabei, Gemeinschaftskonto-Zahlungen nur dann zuzuordnen,
+' wenn nicht gleichzeitig weitere separate Zahlungen derselben
+' Person fuer denselben Zeitraum vorliegen.
+' ===============================================================
+Public Sub ZaehleZahlungenZP(ByVal entityKey As String, _
+                             ByVal kategorie As String, _
+                             ByVal monat As Long, _
+                             ByVal jahr As Long, _
+                             ByRef anzahlTreffer As Long, _
+                             ByRef summeIst As Double)
+
+    On Error GoTo Fehler
+
+    Dim wsBK As Worksheet
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+
+    anzahlTreffer = 0
+    summeIst = 0
+
+    If Not m_EinstellungenGeladenZP Then Call LadeEinstellungenCacheZP
+    If Not m_EntityIBANCacheGeladenZP Then Call LadeEntityIBANCacheZP
+
+    Dim entityIBAN As String
+    entityIBAN = ""
+    If Not m_EntityIBANCacheZP Is Nothing Then
+        If m_EntityIBANCacheZP.exists(entityKey) Then
+            entityIBAN = m_EntityIBANCacheZP(entityKey)
+        End If
+    End If
+
+    If entityIBAN = "" Then Exit Sub
+
+    Dim erwarteterMonat As String
+    erwarteterMonat = MonthName(monat)
+
+    Dim wsDaten As Worksheet
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo Fehler
+
+    Dim katFaelligkeit As String
+    katFaelligkeit = ""
+    If Not wsDaten Is Nothing Then
+        katFaelligkeit = mod_ZP_Periode.HoleFaelligkeitFuerKategorie(wsDaten, kategorie)
+    End If
+
+    Dim istMonatlich As Boolean
+    istMonatlich = (katFaelligkeit = "" Or katFaelligkeit = "monatlich")
+
+    Dim lastRow As Long
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+
+    Dim r As Long
+    For r = BK_START_ROW To lastRow
+        Dim zahlDatum As Date
+        If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo nextRow
+        zahlDatum = wsBK.Cells(r, BK_COL_DATUM).value
+
+        If Year(zahlDatum) <> jahr Then
+            If Not (monat = 1 And Month(zahlDatum) = 12 And Year(zahlDatum) = jahr - 1) Then GoTo nextRow
+        End If
+
+        Dim monatPeriode As String
+        monatPeriode = Trim(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
+
+        Dim monatPasstZP As Boolean
+        monatPasstZP = False
+        If istMonatlich Then
+            monatPasstZP = (StrComp(monatPeriode, erwarteterMonat, vbTextCompare) = 0)
+        Else
+            If monatPeriode = erwarteterMonat Then
+                monatPasstZP = True
+            ElseIf InStr(1, monatPeriode, kategorie, vbTextCompare) > 0 Then
+                monatPasstZP = True
+            ElseIf monatPeriode = "" Then
+                monatPasstZP = (Month(zahlDatum) = monat)
+            End If
+        End If
+
+        If Not monatPasstZP Then GoTo nextRow
+
+        Dim ibanZeileZP As String
+        ibanZeileZP = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
+        If StrComp(ibanZeileZP, entityIBAN, vbTextCompare) <> 0 Then GoTo nextRow
+        If StrComp(Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)), kategorie, vbTextCompare) <> 0 Then GoTo nextRow
+
+        anzahlTreffer = anzahlTreffer + 1
+        summeIst = summeIst + Abs(CDbl(val(CStr(wsBK.Cells(r, BK_COL_BETRAG).value))))
+
+nextRow:
+    Next r
+
+    Exit Sub
+
+Fehler:
+    anzahlTreffer = 0
+    summeIst = 0
+End Sub
+
+
+' ===============================================================
+' Hilfsfunktion: Wenn derselbe Betrag ueber ein anderes Konto der
+' gleichen Parzelle eingegangen ist, keine Saeumnis erzeugen.
+' ===============================================================
+Private Function HatMitbezahltInParzelleZP(ByVal entityKey As String, _
+                                           ByVal entityIBAN As String, _
+                                           ByVal kategorie As String, _
+                                           ByVal monat As Long, _
+                                           ByVal jahr As Long, _
+                                           ByVal soll As Double, _
+                                           ByVal erwarteterMonat As String, _
+                                           ByVal istMonatlich As Boolean, _
+                                           ByVal wsBK As Worksheet, _
+                                           ByRef outBemerkung As String) As Boolean
+    On Error GoTo Ende
+    HatMitbezahltInParzelleZP = False
+    outBemerkung = ""
+    
+    Dim wsDaten As Worksheet
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    If wsDaten Is Nothing Then Exit Function
+    
+    Dim zielParzelle As String
+    zielParzelle = ""
+    
+    Dim r As Long
+    Dim lastMapRow As Long
+    lastMapRow = wsDaten.Cells(wsDaten.Rows.count, DATA_MAP_COL_ENTITYKEY).End(xlUp).Row
+    If lastMapRow < DATA_START_ROW Then Exit Function
+    
+    For r = DATA_START_ROW To lastMapRow
+        If StrComp(Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_ENTITYKEY).value)), entityKey, vbTextCompare) = 0 Then
+            zielParzelle = Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_PARZELLE).value))
+            Exit For
+        End If
+    Next r
+    If zielParzelle = "" Then Exit Function
+    
+    Dim partnerCount As Long
+    Dim partnerSumme As Double
+    Dim ek As String
+    Dim parz As String
+    Dim partnerName As String
+
+    For r = DATA_START_ROW To lastMapRow
+        parz = Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_PARZELLE).value))
+        If StrComp(parz, zielParzelle, vbTextCompare) <> 0 Then GoTo NextMap
+
+        ek = Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_ENTITYKEY).value))
+        If StrComp(ek, entityKey, vbTextCompare) = 0 Then GoTo NextMap
+
+        Call ZaehleZahlungenZP(ek, kategorie, monat, jahr, partnerCount, partnerSumme)
+        If partnerCount = 1 And partnerSumme >= soll * 2 - 0.01 Then
+            partnerName = Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_KTONAME).value))
+            If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                outBemerkung = ""
+            ElseIf partnerName <> "" Then
+                outBemerkung = "Mitbezahlt durch: " & partnerName
+            Else
+                outBemerkung = "Mitbezahlt durch Gemeinschaftskonto"
+            End If
+            HatMitbezahltInParzelleZP = True
+            Exit Function
+        End If
+NextMap:
+    Next r
+
+Ende:
+End Function
+
+
+' ===============================================================
+' HILFSFUNKTION: Double -> String mit Punkt als Dezimaltrenner
+' ===============================================================
+Private Function FormatDezimalPunkt(ByVal wert As Double) As String
+    Dim s As String
+    s = Format(wert, "0.00")
+    s = Replace(s, ",", ".")
+    FormatDezimalPunkt = s
+End Function
+
+
+' ===============================================================
+' Holt Vorlauf/Nachlauf/S?umnis-Geb?hr aus dem Einstellungen-Cache
+' fuer eine bestimmte Kategorie
+' ===============================================================
+Public Sub HoleToleranzZP(ByVal kategorie As String, _
+                            ByRef vorlauf As Long, _
+                            ByRef nachlauf As Long, _
+                            ByRef saeumnisGebuehr As Double)
+    
+    Dim i As Long
+    vorlauf = 0
+    nachlauf = 0
+    saeumnisGebuehr = 0
+    
+    If Not m_EinstellungenGeladenZP Then Exit Sub
+    
+    On Error Resume Next
+    For i = LBound(m_EinstellungenCacheZP) To UBound(m_EinstellungenCacheZP)
+        If StrComp(m_EinstellungenCacheZP(i).kategorie, kategorie, vbTextCompare) = 0 Then
+            vorlauf = m_EinstellungenCacheZP(i).VorlaufTage
+            nachlauf = m_EinstellungenCacheZP(i).NachlaufTage
+            saeumnisGebuehr = m_EinstellungenCacheZP(i).saeumnisGebuehr
+            Exit Sub
+        End If
+    Next i
+    On Error GoTo 0
+    
+End Sub
+
+
+' ===============================================================
+' IBAN-CACHE: Laedt EntityKey -> IBAN Zuordnung aus Daten!R+S
+' ===============================================================
+Private Sub LadeEntityIBANCacheZP()
+    
+    Dim wsDaten As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim ek As String
+    Dim iban As String
+    
+    Set m_EntityIBANCacheZP = CreateObject("Scripting.Dictionary")
+    m_EntityIBANCacheGeladenZP = False
+    
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    
+    If wsDaten Is Nothing Then Exit Sub
+    
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, EK_COL_ENTITYKEY).End(xlUp).Row
+    If lastRow < EK_START_ROW Then Exit Sub
+    
+    For r = EK_START_ROW To lastRow
+        ek = Trim(CStr(wsDaten.Cells(r, EK_COL_ENTITYKEY).value))
+        iban = Replace(Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)), " ", "")
+        
+        If ek <> "" And iban <> "" Then
+            If Not m_EntityIBANCacheZP.exists(ek) Then
+                m_EntityIBANCacheZP.Add ek, iban
+            End If
+        End If
+    Next r
+    
+    m_EntityIBANCacheGeladenZP = True
+    
+End Sub
+
+
+' ===============================================================
+' IBAN-CACHE: Freigeben
+' ===============================================================
+Private Sub EntladeEntityIBANCacheZP()
+    
+    Set m_EntityIBANCacheZP = Nothing
+    m_EntityIBANCacheGeladenZP = False
+    
+End Sub
+
+
+' ===============================================================
+' Soll-Betrag aus Einstellungen holen (mit Cache)
+' ===============================================================
+Private Function HoleSollBetragZP(ByVal kategorie As String) As Double
+    
+    Dim i As Long
+    
+    If Not m_EinstellungenGeladenZP Then Call LadeEinstellungenCacheZP
+    
+    On Error Resume Next
+    For i = LBound(m_EinstellungenCacheZP) To UBound(m_EinstellungenCacheZP)
+        If StrComp(m_EinstellungenCacheZP(i).kategorie, kategorie, vbTextCompare) = 0 Then
+            HoleSollBetragZP = m_EinstellungenCacheZP(i).SollBetrag
+            Exit Function
+        End If
+    Next i
+    On Error GoTo 0
+    
+    HoleSollBetragZP = 0
+    
+End Function
+
+
+' ===============================================================
+' Soll-Datum berechnen (mit Spalte D/E vs F Logik)
+' ===============================================================
+Public Function BerechneSollDatumZP(ByVal kategorie As String, _
+                                      ByVal monat As Long, _
+                                      ByVal jahr As Long) As Date
+    
+    Dim i As Long
+    Dim regel As EinstellungsRegelZP
+    Dim tag As Long
+    Dim istMonatGueltig As Boolean
+    
+    If Not m_EinstellungenGeladenZP Then Call LadeEinstellungenCacheZP
+    
+    ' 1. Regel finden
+    For i = LBound(m_EinstellungenCacheZP) To UBound(m_EinstellungenCacheZP)
+        If StrComp(m_EinstellungenCacheZP(i).kategorie, kategorie, vbTextCompare) = 0 Then
+            regel = m_EinstellungenCacheZP(i)
+            Exit For
+        End If
+    Next i
+    
+    If regel.kategorie = "" Then
+        BerechneSollDatumZP = DateSerial(jahr, monat, 1)
+        Exit Function
+    End If
+    
+    ' 2. Pruefen: Spalte F (Stichtag Fix) hat Vorrang
+    If regel.StichtagFix <> "" Then
+        Dim teile() As String
+        teile = Split(regel.StichtagFix, ".")
+        If UBound(teile) >= 1 Then
+            tag = CLng(teile(0))
+            Dim fixMonat As Long
+            fixMonat = CLng(teile(1))
+            If fixMonat = monat Then
+                BerechneSollDatumZP = DateSerial(jahr, monat, tag)
+            Else
+                BerechneSollDatumZP = DateSerial(jahr, monat, 1)
+            End If
+            Exit Function
+        End If
+    End If
+    
+    ' 3. Spalte D/E verwenden (SollTag + SollMonate)
+    istMonatGueltig = False
+    If regel.SollMonate <> "" Then
+        Dim monate() As String
+        monate = Split(regel.SollMonate, ",")
+        Dim m As Long
+        For m = LBound(monate) To UBound(monate)
+            If IsNumeric(Trim(monate(m))) Then
+                If CLng(Trim(monate(m))) = monat Then
+                    istMonatGueltig = True
+                    Exit For
+                End If
+            End If
+        Next m
+    Else
+        istMonatGueltig = True
+    End If
+    
+    If Not istMonatGueltig Then
+        BerechneSollDatumZP = DateSerial(jahr, monat, 1)
+        Exit Function
+    End If
+    
+    tag = regel.SollTag
+    If tag = 0 Then tag = 1
+    If tag > 28 Then
+        BerechneSollDatumZP = DateSerial(jahr, monat + 1, 0)
+    Else
+        BerechneSollDatumZP = DateSerial(jahr, monat, tag)
+    End If
+    
+End Function
+
+
+' ===============================================================
+' Einstellungen-Cache laden (Performance-Optimierung)
+' ===============================================================
+Public Sub LadeEinstellungenCacheZP()
+    
+    Dim wsEinst As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim idx As Long
+    
+    On Error Resume Next
+    Set wsEinst = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    
+    If wsEinst Is Nothing Then
+        m_EinstellungenGeladenZP = False
+        Exit Sub
+    End If
+    
+    lastRow = wsEinst.Cells(wsEinst.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
+    If lastRow < ES_START_ROW Then
+        m_EinstellungenGeladenZP = False
+        Exit Sub
+    End If
+    
+    ReDim m_EinstellungenCacheZP(0 To lastRow - ES_START_ROW)
+    idx = 0
+    
+    For r = ES_START_ROW To lastRow
+        Dim kat As String
+        kat = Trim(CStr(wsEinst.Cells(r, ES_COL_KATEGORIE).value))
+        If kat = "" Then GoTo NextEinstRow
+        
+        With m_EinstellungenCacheZP(idx)
+            .kategorie = kat
+            
+            If IsNumeric(wsEinst.Cells(r, ES_COL_SOLL_BETRAG).value) Then
+                .SollBetrag = CDbl(wsEinst.Cells(r, ES_COL_SOLL_BETRAG).value)
+            Else
+                .SollBetrag = 0
+            End If
+            
+            If IsNumeric(wsEinst.Cells(r, ES_COL_SOLL_TAG).value) Then
+                .SollTag = CLng(wsEinst.Cells(r, ES_COL_SOLL_TAG).value)
+            Else
+                .SollTag = 0
+            End If
+            
+            .SollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
+            .StichtagFix = Trim(CStr(wsEinst.Cells(r, ES_COL_STICHTAG_FIX).value))
+            
+            If IsNumeric(wsEinst.Cells(r, ES_COL_VORLAUF).value) Then
+                .VorlaufTage = CLng(wsEinst.Cells(r, ES_COL_VORLAUF).value)
+            Else
+                .VorlaufTage = 0
+            End If
+            
+            If IsNumeric(wsEinst.Cells(r, ES_COL_NACHLAUF).value) Then
+                .NachlaufTage = CLng(wsEinst.Cells(r, ES_COL_NACHLAUF).value)
+            Else
+                .NachlaufTage = 0
+            End If
+            
+            If IsNumeric(wsEinst.Cells(r, ES_COL_SAEUMNIS).value) Then
+                .saeumnisGebuehr = CDbl(wsEinst.Cells(r, ES_COL_SAEUMNIS).value)
+            Else
+                .saeumnisGebuehr = 0
+            End If
+        End With
+        
+        idx = idx + 1
+        
+NextEinstRow:
+    Next r
+    
+    If idx > 0 Then
+        ReDim Preserve m_EinstellungenCacheZP(0 To idx - 1)
+        m_EinstellungenGeladenZP = True
+    Else
+        m_EinstellungenGeladenZP = False
+    End If
+    
+End Sub
+
+
+' ===============================================================
+' Einstellungen-Cache freigeben (Speicher sparen)
+' ===============================================================
+Public Sub EntladeEinstellungenCacheZP()
+    
+    Erase m_EinstellungenCacheZP
+    m_EinstellungenGeladenZP = False
+    
+    Call EntladeEntityIBANCacheZP
+    
+End Sub
+
+
+' ===============================================================
+' DEZEMBER-VORAUSZAHLUNGEN: Cache initialisieren
+' ===============================================================
+Public Sub InitialisiereNachDezemberCacheZP(ByVal jahr As Long)
+    
+    Dim wsBK As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim zahlDatum As Date
+    Dim zahlBetrag As Double
+    Dim ibanWert As String
+    Dim kategorie As String
+    Dim col As Collection
+    
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    Set m_DezemberCacheZP = CreateObject("Scripting.Dictionary")
+    
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    
+    For r = BK_START_ROW To lastRow
+        If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo NextDezRow
+        zahlDatum = wsBK.Cells(r, BK_COL_DATUM).value
+        
+        If Year(zahlDatum) <> jahr - 1 Then GoTo NextDezRow
+        If Month(zahlDatum) <> 12 Then GoTo NextDezRow
+        
+        ibanWert = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
+        If ibanWert = "" Then GoTo NextDezRow
+        
+        kategorie = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
+        If kategorie = "" Then GoTo NextDezRow
+        
+        zahlBetrag = Abs(wsBK.Cells(r, BK_COL_BETRAG).value)
+        
+        Dim cacheKey As String
+        cacheKey = ibanWert & "|" & kategorie
+        
+        If Not m_DezemberCacheZP.exists(cacheKey) Then
+            Set col = New Collection
+            m_DezemberCacheZP.Add cacheKey, col
+        Else
+            Set col = m_DezemberCacheZP(cacheKey)
+        End If
+        
+        col.Add zahlBetrag
+        
+NextDezRow:
+    Next r
+    
+End Sub
+
+
+' ===============================================================
+' DEZEMBER-VORAUSZAHLUNGEN: Betrag aus Cache holen
+' ===============================================================
+Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
+                                             ByVal kategorie As String) As Double
+    
+    Dim cacheKey As String
+    Dim col As Collection
+    Dim summe As Double
+    Dim v As Variant
+    Dim entityIBAN As String
+    
+    entityIBAN = ""
+    If Not m_EntityIBANCacheZP Is Nothing Then
+        If m_EntityIBANCacheZP.exists(entityKey) Then
+            entityIBAN = m_EntityIBANCacheZP(entityKey)
+        End If
+    End If
+    
+    If entityIBAN = "" Then
+        HoleDezemberVorauszahlungZP = 0
+        Exit Function
+    End If
+    
+    cacheKey = entityIBAN & "|" & kategorie
+    
+    If m_DezemberCacheZP Is Nothing Then
+        HoleDezemberVorauszahlungZP = 0
+        Exit Function
+    End If
+    
+    If Not m_DezemberCacheZP.exists(cacheKey) Then
+        HoleDezemberVorauszahlungZP = 0
+        Exit Function
+    End If
+    
+    Set col = m_DezemberCacheZP(cacheKey)
+    summe = 0
+    
+    For Each v In col
+        summe = summe + CDbl(v)
+    Next v
+    
+    HoleDezemberVorauszahlungZP = summe
+    
+End Function
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

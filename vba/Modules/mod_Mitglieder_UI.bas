@@ -72,7 +72,7 @@ CleanUp:
     Exit Sub
     
 ErrorHandler:
-    MsgBox "Fehler beim F?llen der MemberIDs: " & Err.Description, vbCritical
+    MsgBox "Fehler beim Füllen der MemberIDs: " & Err.Description, vbCritical
     Resume CleanUp
 End Sub
 
@@ -157,8 +157,8 @@ Private Sub ApplyDropdown(ByVal targetRange As Range, ByVal sourceFormula As Str
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertWarning, Operator:=xlBetween, Formula1:=sourceFormula
         .IgnoreBlank = allowBlanks
         .InCellDropdown = True
-        .ErrorTitle = "Ung?ltiger Wert"
-        .ErrorMessage = "Bitte w?hlen Sie einen Wert aus der Liste."
+        .ErrorTitle = "Ungültiger Wert"
+        .ErrorMessage = "Bitte wählen Sie einen Wert aus der Liste."
     End With
 End Sub
 
@@ -283,7 +283,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ' === SICHERHEITSCHECK 1: selectedRow darf nicht die Verein-Parzelle sein ===
     If selectedRow >= M_START_ROW Then
         If Trim(wsM.Cells(selectedRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
-            MsgBox "FEHLER: Die Verein-Parzelle darf nicht ge?ndert werden!", vbCritical
+            MsgBox "FEHLER: Die Verein-Parzelle darf nicht geändert werden!", vbCritical
             GoTo CleanUp
         End If
     End If
@@ -428,6 +428,8 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False
     
 End Function
+
+
 
 
 
