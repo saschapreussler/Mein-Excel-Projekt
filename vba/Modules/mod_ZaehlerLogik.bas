@@ -4,7 +4,7 @@ Option Explicit
 ' ==========================================================
 ' MODUL: mod_ZaehlerLogik (ORCHESTRATOR)
 ' VERSION: 2.0 - Modularisiert
-' ÄNDERUNG v2.0:
+' ?NDERUNG v2.0:
 '   - Berechnung ausgelagert nach mod_Zaehler_Berechnung
 '   - Historie ausgelagert nach mod_Zaehler_Historie
 '   - Dieses Modul: Konstanten, Hilfsfunktionen, Initialisierung, KPIs
@@ -14,10 +14,10 @@ Option Explicit
 ' KONSTANTEN & VARIABLEN
 ' ==========================================================
 Public IsZaehlerLogicRunning As Boolean
-Private Const HIST_SHEET_NAME As String = "Zählerhistorie"
+Private Const HIST_SHEET_NAME As String = "Z?hlerhistorie"
 Private Const HIST_TABLE_NAME As String = "Tabelle_Zaehlerhistorie"
 Private Const PASSWORD As String = ""
-Private Const STR_HISTORY_SEPARATOR As String = "--- Zählerhistorie Makro-Eintrag ---"
+Private Const STR_HISTORY_SEPARATOR As String = "--- Z?hlerhistorie Makro-Eintrag ---"
 
 Private Const COL_STAND_ANFANG As String = "B"
 Private Const COL_STAND_ENDE As String = "C"
@@ -44,10 +44,10 @@ Private Const RGB_HEADER_BG As Long = 13619148
 
 
 ' ==========================================================
-' 0. HILFSFUNKTIONEN (Public für Sub-Module)
+' 0. HILFSFUNKTIONEN (Public f?r Sub-Module)
 ' ==========================================================
 
-' Zeilenhöhe auf Minimum sicherstellen
+' Zeilenh?he auf Minimum sicherstellen
 Public Sub EnsureMinRowHeight(ws As Worksheet, targetRow As Long)
     Const MIN_HEIGHT As Double = 50
     On Error Resume Next
@@ -57,7 +57,7 @@ Public Sub EnsureMinRowHeight(ws As Worksheet, targetRow As Long)
     On Error GoTo 0
 End Sub
 
-' Hole Namen für Parzelle
+' Hole Namen f?r Parzelle
 Public Function HoleNamenFuerParzelle(ws As Worksheet, suchParzelle As String, maxZ As Long) As String
     Dim r As Long
     Dim sTemp As String
@@ -84,9 +84,9 @@ Public Function GetTargetRow(ByVal ZaehlerName As String, ByVal Medium As String
     Select Case ZaehlerName
         Case "Clubwagen"
             GetTargetRow = 24
-        Case "Kühltruhe"
+        Case "K?hltruhe"
             GetTargetRow = 25
-        Case "Hauptzähler"
+        Case "Hauptz?hler"
             GetTargetRow = IIf(Medium = "Strom", 28, 31)
         Case Else
             If Left(ZaehlerName, 8) = "Parzelle" Then
@@ -136,7 +136,7 @@ Sub ErzeugeParzellenUebersicht()
     Dim nameGefunden As String
     
     Set wsQuelle = ThisWorkbook.Worksheets("Mitgliederliste")
-    Set wsZiel = ThisWorkbook.Worksheets("Übersicht")
+    Set wsZiel = ThisWorkbook.Worksheets("?bersicht")
     
     On Error Resume Next
     wsZiel.Unprotect
@@ -250,7 +250,7 @@ Sub AktualisiereZaehlerTabellenSpalteA()
         
         LaengeParzelleTitel = Len(strParzelleTitel)
 
-        ' A. Verarbeitung für Strom
+        ' A. Verarbeitung f?r Strom
         With wsStrom.Cells(zielZeileStrom, "A")
             .value = GesamtText
             .WrapText = True
@@ -270,7 +270,7 @@ Sub AktualisiereZaehlerTabellenSpalteA()
             End If
         End With
 
-        ' B. Verarbeitung für Wasser
+        ' B. Verarbeitung f?r Wasser
         With wsWasser.Cells(zielZeileWasser, "A")
             .value = GesamtText
             .WrapText = True
@@ -299,7 +299,7 @@ Sub AktualisiereZaehlerTabellenSpalteA()
     
 End Sub
 
-' HISTORIE PRÜFUNG & ERSTELLUNG
+' HISTORIE PR?FUNG & ERSTELLUNG
 Public Sub PruefeUndErstelleZaehlerhistorie()
     Dim ws As Worksheet
     Dim foundSheet As Boolean
@@ -329,12 +329,12 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
         ws.Range("A1:K1").value = Array( _
             "lfd. Nr. (ID)", _
             "Datum (Wechsel)", _
-            "Parzelle/Zähler", _
+            "Parzelle/Z?hler", _
             "Medium", _
-            "Zähler-Nr. (ID) alt", _
-            "Zählerstand (alt) aus der letzten Ablesung", _
+            "Z?hler-Nr. (ID) alt", _
+            "Z?hlerstand (alt) aus der letzten Ablesung", _
             "Stand alt (Ende)", _
-            "Zähler-Nr. (ID) neu", _
+            "Z?hler-Nr. (ID) neu", _
             "Stand neu (Start)", _
             "Verbrauch", _
             "Bemerkungen")
@@ -395,9 +395,9 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
                 lo.Resize ws.Range("A1:K" & lo.Range.Rows.count)
             End If
             
-            ws.Range("E1").value = "Zähler-Nr. (ID) alt"
-            ws.Range("F1").value = "Zählerstand (alt) aus der letzten Ablesung"
-            ws.Range("H1").value = "Zähler-Nr. (ID) neu"
+            ws.Range("E1").value = "Z?hler-Nr. (ID) alt"
+            ws.Range("F1").value = "Z?hlerstand (alt) aus der letzten Ablesung"
+            ws.Range("H1").value = "Z?hler-Nr. (ID) neu"
             ws.Range("K1").value = "Bemerkungen"
             ws.Range("J1").value = "Verbrauch"
             
@@ -428,7 +428,7 @@ End Sub
 
 
 ' ==========================================================
-' ZÄHLERWECHSEL-FORMULAR START
+' Z?HLERWECHSEL-FORMULAR START
 ' ==========================================================
 Public Sub Start_Zaehlerwechsel(ByVal Medium As String)
     On Error GoTo ErrHandler
@@ -446,7 +446,7 @@ End Sub
 
 
 ' ==========================================================
-' DATUM PRÜFUNG
+' DATUM PR?FUNG
 ' ==========================================================
 Public Function PlausiDatum(datString As String) As Boolean
     On Error GoTo ErrHandler
@@ -471,7 +471,7 @@ End Function
 
 
 ' ==========================================================
-' 4. KENNZAHLEN FÜR STARTSEITE
+' 4. KENNZAHLEN F?R STARTSEITE
 ' ==========================================================
 Sub Ermittle_Kennzahlen_Mitgliederliste()
 
@@ -551,6 +551,8 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
     wsStart.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True
     
 End Sub
+
+
 
 
 

@@ -540,62 +540,115 @@ End Sub
 ' ===============================================================
 
 Public Function ZaehleMitglieder() As Long
-    ' Einheitliche Logik wie im Dashboard verwenden
-    ZaehleMitglieder = mod_Uebersicht_Daten.ZaehleAktiveMitgliederGesamt()
+    ' Zaehlt distinkte Personen (Vorname + Nachname dedupliziert).
+    ' Quelle: Mitgliederliste, ohne KGA-/Systemzeilen und ohne ehemalige
+    ' Mitglieder. Wer mehrfach auftaucht (z.B. mit zwei Parzellen), wird
+    ' nur einmal gezaehlt.
+    Dim wsMitgl As Worksheet
+    On Error Resume Next
+    Set wsMitgl = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    On Error GoTo 0
+    If wsMitgl Is Nothing Then
+        ZaehleMitglieder = 0
+        Exit Function
+    End If
+
+    Dim lastRow As Long
+    lastRow = wsMitgl.Cells(wsMitgl.Rows.count, M_COL_NACHNAME).End(xlUp).Row
+    If lastRow < M_START_ROW Then
+        ZaehleMitglieder = 0
+        Exit Function
+    End If
+
+    Dim dictPers As Object
+    Set dictPers = CreateObject("Scripting.Dictionary")
+    dictPers.CompareMode = 1  ' vbTextCompare = case-insensitive
+
+    Dim r As Long
+    For r = M_START_ROW To lastRow
+        Dim vn As String, nn As String
+        vn = Trim(CStr(wsMitgl.Cells(r, M_COL_VORNAME).value))
+        nn = Trim(CStr(wsMitgl.Cells(r, M_COL_NACHNAME).value))
+        If vn = "" And nn = "" Then GoTo nextRow
+
+        Dim anrede As String
+        anrede = Trim(CStr(wsMitgl.Cells(r, M_COL_ANREDE).value))
+        If StrComp(anrede, ANREDE_KGA, vbTextCompare) = 0 Then GoTo nextRow
+
+        Dim funktion As String
+        funktion = Trim(CStr(wsMitgl.Cells(r, M_COL_FUNKTION).value))
+        If StrComp(funktion, AUSTRITT_STATUS, vbTextCompare) = 0 Then GoTo nextRow
+
+        Dim key As String
+        key = LCase(vn) & "|" & LCase(nn)
+        If Not dictPers.exists(key) Then dictPers.Add key, True
+nextRow:
+    Next r
+
+    ZaehleMitglieder = dictPers.count
+    Set dictPers = Nothing
 End Function
 
 
 Public Function ZaehleBelegteParzellen() As Long
+    ' Quelle 1: Einstellungen!C14 (Zelle, in der die Anzahl der
+    ' verpachteten Parzellen gepflegt wird). Wenn dort kein gueltiger
+    ' Zahlenwert steht, faellt die Funktion auf die Mitgliederliste
+    ' zurueck und zaehlt distinkte Parzellen (ohne "Verein" und KGA).
+
+    ' --- Quelle 1: Einstellungen!C14 -------------------------------
+    Dim wsCfg As Worksheet
+    On Error Resume Next
+    Set wsCfg = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+
+    If Not wsCfg Is Nothing Then
+        Dim cfgWert As Variant
+        cfgWert = wsCfg.Cells(ES_CFG_PARZELLEN_ROW, ES_CFG_VALUE_COL).value
+        If IsNumeric(cfgWert) Then
+            If CLng(cfgWert) > 0 Then
+                ZaehleBelegteParzellen = CLng(cfgWert)
+                Exit Function
+            End If
+        End If
+    End If
+
+    ' --- Quelle 2: Fallback aus Mitgliederliste --------------------
     Dim wsMitgl As Worksheet
-    Dim r As Long
-    Dim lastRow As Long
-    Dim dictParz As Object
-    
     On Error Resume Next
     Set wsMitgl = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     On Error GoTo 0
-    
     If wsMitgl Is Nothing Then
         ZaehleBelegteParzellen = 0
         Exit Function
     End If
-    
+
+    Dim dictParz As Object
     Set dictParz = CreateObject("Scripting.Dictionary")
+    Dim lastRow As Long
     lastRow = wsMitgl.Cells(wsMitgl.Rows.count, M_COL_PARZELLE).End(xlUp).Row
-    
+
+    Dim r As Long
     For r = M_START_ROW To lastRow
         Dim parzelle As String
-        Dim pAnfang As Variant
-        Dim pEnde As Variant
-        
         parzelle = Trim(CStr(wsMitgl.Cells(r, M_COL_PARZELLE).value))
-        pAnfang = wsMitgl.Cells(r, M_COL_PACHTANFANG).value
-        pEnde = wsMitgl.Cells(r, M_COL_PACHTENDE).value
-        
         If parzelle = "" Then GoTo NextParzelle
-        If parzelle = PARZELLE_VEREIN Then GoTo NextParzelle
-        
-        If Not IsDate(pAnfang) Then
-            If Not IsNumeric(pAnfang) Then GoTo NextParzelle
-        End If
-        
-        If IsDate(pEnde) Then
-            If CDate(pEnde) < Date Then GoTo NextParzelle
-        End If
-        
+        If StrComp(parzelle, PARZELLE_VEREIN, vbTextCompare) = 0 Then GoTo NextParzelle
+
         Dim anredeP As String
         anredeP = Trim(CStr(wsMitgl.Cells(r, M_COL_ANREDE).value))
-        If anredeP = ANREDE_KGA Then GoTo NextParzelle
-        
+        If StrComp(anredeP, ANREDE_KGA, vbTextCompare) = 0 Then GoTo NextParzelle
+
+        Dim funktionP As String
+        funktionP = Trim(CStr(wsMitgl.Cells(r, M_COL_FUNKTION).value))
+        If StrComp(funktionP, AUSTRITT_STATUS, vbTextCompare) = 0 Then GoTo NextParzelle
+
         Dim parzNorm As String
-        parzNorm = LCase(Trim(parzelle))
-        If Not dictParz.exists(parzNorm) Then
-            dictParz.Add parzNorm, True
-        End If
-        
+        parzNorm = LCase(parzelle)
+        If Not dictParz.exists(parzNorm) Then dictParz.Add parzNorm, True
 NextParzelle:
     Next r
-    
+
     ZaehleBelegteParzellen = dictParz.count
     Set dictParz = Nothing
 End Function
@@ -762,6 +815,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 
