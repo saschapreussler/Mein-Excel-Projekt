@@ -4,33 +4,33 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Banking_Report
 ' Ausgelagert aus mod_Banking_Data
-' Enth?lt: Import Report ListBox (ActiveX) Verwaltung
+' Enthält: Import Report ListBox (ActiveX) Verwaltung
 '          Protokoll-Speicher (Daten!Y500), Farbcodierung
 ' ===============================================================
 
-' Farb-Konstanten f?r ListBox-Hintergrund (OLE_COLOR / BGR)
-Private Const LB_COLOR_GRUEN As Long = &HC0FFC0     ' hellgr?n
+' Farb-Konstanten für ListBox-Hintergrund (OLE_COLOR / BGR)
+Private Const LB_COLOR_GRUEN As Long = &HC0FFC0     ' hellgrün
 Private Const LB_COLOR_GELB As Long = &HC0FFFF      ' hellgelb
 Private Const LB_COLOR_ROT As Long = &HC0C0FF       ' hellrot
-Private Const LB_COLOR_WEISS As Long = &HFFFFFF     ' wei?
+Private Const LB_COLOR_WEISS As Long = &HFFFFFF     ' weiß
 
-' Trennzeichen f?r Serialisierung in Zelle Y500
+' Trennzeichen für Serialisierung in Zelle Y500
 Private Const PROTO_SEP As String = "||"
 
 ' Protokoll-Speicher: Zelle Y500 auf dem Daten-Blatt
 Private Const PROTO_ZEILE As Long = 500
 Private Const PROTO_SPALTE As Long = 25              ' Spalte Y
 
-' Maximale Anzahl Import-Bl?cke im Speicher (je 5 Zeilen)
+' Maximale Anzahl Import-Blöcke im Speicher (je 5 Zeilen)
 Private Const MAX_BLOECKE As Long = 100
 ' 100 x 5 = 500 Zeilen maximal
 Private Const MAX_ZEILEN As Long = 500
 
 
 ' ---------------------------------------------------------------
-' Initialize: Liest Y500, bef?llt ActiveX ListBox,
+' Initialize: Liest Y500, befällt ActiveX ListBox,
 '     setzt Hintergrundfarbe.
-'     Aufruf: Workbook_Open, Worksheet_Activate, nach L?schen
+'     Aufruf: Workbook_Open, Worksheet_Activate, nach Löschen
 ' ---------------------------------------------------------------
 Public Sub Initialize_ImportReport_ListBox()
     
@@ -82,15 +82,13 @@ Public Sub Initialize_ImportReport_ListBox()
 
     Call SchreibeReportNachH8(wsBK, reportText, reportFarbe)
     
-    ' Blattschutz wiederherstellen
-    On Error Resume Next
-    wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    On Error GoTo 0
+    ' Blattschutz wiederherstellen (mit AllowFiltering fuer Zeile 29)
+    Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsBK)
     
 End Sub
 
 ' ---------------------------------------------------------------
-' Update: Neuen 5-Zeilen-Block OBEN einf?gen,
+' Update: Neuen 5-Zeilen-Block OBEN einfügen,
 '     in Y500 serialisiert speichern, ListBox aktualisieren.
 ' ---------------------------------------------------------------
 Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported As Long, _
@@ -123,7 +121,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     ' --- 5-Zeilen-Block zusammenbauen ---
     neuerBlock = "Import: " & Format(Now, "DD.MM.YYYY  HH:MM:SS") & _
                  PROTO_SEP & _
-                 imported & " / " & totalRows & " Datens?tze importiert" & _
+                 imported & " / " & totalRows & " Datensätze importiert" & _
                  PROTO_SEP & _
                  dupes & " Duplikate erkannt" & _
                  PROTO_SEP & _
@@ -163,7 +161,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     ' --- In Y500 speichern (eine einzige Zelle!) ---
     wsDaten.Cells(PROTO_ZEILE, PROTO_SPALTE).value = gesamt
     
-    ' --- Daten-Blatt sch?tzen ---
+    ' --- Daten-Blatt schützen ---
     On Error Resume Next
     wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
@@ -184,10 +182,8 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     Call SchreibeReportNachH8(wsBK, reportText, _
                               IIf(failed > 0, LB_COLOR_ROT, IIf(dupes > 0, LB_COLOR_GELB, LB_COLOR_GRUEN)))
     
-    ' Blattschutz wiederherstellen
-    On Error Resume Next
-    wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
-    On Error GoTo 0
+    ' Blattschutz wiederherstellen (mit AllowFiltering fuer Zeile 29)
+    Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsBK)
     
 End Sub
 
@@ -255,6 +251,8 @@ Public Function ExtrahiereZahl(ByVal text As String) As Long
     End If
     
 End Function
+
+
 
 
 

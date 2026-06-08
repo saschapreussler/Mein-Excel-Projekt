@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Zaehler_Berechnung
 ' Ausgelagert aus mod_ZaehlerLogik
-' Enth?lt: CalculateAllZaehlerVerbrauch, CalculateSingleZaehler
+' Enthält: CalculateAllZaehlerVerbrauch, CalculateSingleZaehler
 ' ===============================================================
 
 ' --- Konstanten (lokal dupliziert) ---
@@ -30,7 +30,7 @@ Private Const RGB_GEWECHSELT As Long = 4980735
 
 
 ' ==========================================================
-' HAUPTPROZEDUR: Berechnung aller Z?hler einer Seite
+' HAUPTPROZEDUR: Berechnung aller Zähler einer Seite
 ' ==========================================================
 Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     
@@ -80,7 +80,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     On Error GoTo Fehler_Handler_Berechnung
 
     ' ==========================================================
-    ' 1. PARZELLENZ?HLER & UNTERZ?HLER
+    ' 1. PARZELLENZÄHLER & UNTERZÄHLER
     ' ==========================================================
     
     If LCase(wsTarget.Name) = "strom" Then
@@ -91,7 +91,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
             Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, r + 9)
         Next r
         
-        ' STROM: Feste Z?hler
+        ' STROM: Feste Zähler
         Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Clubwagen", 24)
         wsTarget.Rows(24).AutoFit
         Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 24)
@@ -118,7 +118,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     End If
     
     ' ==========================================================
-    ' 2. HAUPTZ?HLER
+    ' 2. HAUPTZÄHLER
     ' ==========================================================
     
     If LCase(wsTarget.Name) = "strom" Then
@@ -193,7 +193,7 @@ Private Sub CalculateSingleZaehler( _
         standEndeCurrent = 0
     End If
     
-    ' 1. Vorabpr?fung (Fehler)
+    ' 1. Vorabprüfung (Fehler)
     If standEndeCurrent < standAnfangCurrent Then
         targetBemerkung.value = "FEHLER: Endstand (" & Format(standEndeCurrent, "#,##0.00") & ") < Startstand (" & Format(standAnfangCurrent, "#,##0.00") & ")."
         targetCellD.ClearContents
@@ -253,7 +253,7 @@ Private Sub CalculateSingleZaehler( _
 
 
     ' 3. BERECHNUNG UND SCHREIBEN IN D, E
-    If zyklen > 0 Then ' FALL A: Mindestens ein Z?hlerwechsel
+    If zyklen > 0 Then ' FALL A: Mindestens ein Zählerwechsel
         
         If standAnfangCurrent <> standNeuStart_last Then
             startCell.value = mod_ZaehlerLogik.CleanNumber(standNeuStart_last)
@@ -273,16 +273,16 @@ Private Sub CalculateSingleZaehler( _
         End If
         
         ' ***************************************************************
-        ' LOGIK F?R SPALTE E (BEMERKUNG BEI Z?HLERWECHSEL)
+        ' LOGIK FÜR SPALTE E (BEMERKUNG BEI ZÄHLERWECHSEL)
         ' ***************************************************************
         Dim oldBemerkung As String
         Dim newHistoryText As String
         Dim posSeparator As Long
         
-        newHistoryText = "Letzter Z?hlerwechsel am: " & Format(lastDate, "dd.mm.yyyy") & vbLf & _
+        newHistoryText = "Letzter Zählerwechsel am: " & Format(lastDate, "dd.mm.yyyy") & vbLf & _
                              "Anzahl der Wechsel: " & zyklen & vbLf & _
-                             "Gesamtverbrauch gewechselte Z?hler: " & Format(verbrauchAltHistorie_Summe, "#,##0.00") & " " & einheit & vbLf & _
-                             "Verbrauch derzeitiger Z?hler: " & Format(verbrauchNeuAktuell, "#,##0.00") & " " & einheit
+                             "Gesamtverbrauch gewechselte Zähler: " & Format(verbrauchAltHistorie_Summe, "#,##0.00") & " " & einheit & vbLf & _
+                             "Verbrauch derzeitiger Zähler: " & Format(verbrauchNeuAktuell, "#,##0.00") & " " & einheit
         
         oldBemerkung = Trim(CStr(targetBemerkung.value))
         
@@ -347,6 +347,8 @@ Private Sub CalculateSingleZaehler( _
     End If
     
 End Sub
+
+
 
 
 

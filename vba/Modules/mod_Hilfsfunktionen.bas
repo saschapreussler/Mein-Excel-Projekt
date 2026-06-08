@@ -12,7 +12,7 @@ Private Const TEMP_WS_NAME As String = "TEMP_LISTEN"
 ' PROZEDUR: AktualisiereNamedRange_MitgliederNamen
 ' Erstellt oder aktualisiert einen benannten Bereich
 ' mit den Namen aller aktiven Mitglieder.
-' WICHTIG: Das tempor?re Worksheet wird am Ende IMMER gel?scht!
+' WICHTIG: Das temporäre Worksheet wird am Ende IMMER gelöscht!
 ' **********************************************************
 Public Sub AktualisiereNamedRange_MitgliederNamen()
     
@@ -32,21 +32,21 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
     
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     
-    ' 1. Tempor?res Arbeitsblatt erstellen/finden
+    ' 1. Temporäres Arbeitsblatt erstellen/finden
     On Error Resume Next
     Set wsTemp = ThisWorkbook.Worksheets(TEMP_WS_NAME)
     On Error GoTo ErrorHandler
     
     If wsTemp Is Nothing Then
-        ' Deaktiviere DisplayAlerts um Warnungen zu unterdr?cken
+        ' Deaktiviere DisplayAlerts um Warnungen zu unterdrücken
         Application.DisplayAlerts = False
         Set wsTemp = ThisWorkbook.Worksheets.Add(After:=wsM)
         wsTemp.Name = TEMP_WS_NAME
-        ' Verstecke das Worksheet (optional, f?r zus?tzliche Sicherheit)
+        ' Verstecke das Worksheet (optional, für zusätzliche Sicherheit)
         wsTemp.Visible = xlSheetVeryHidden
         Application.DisplayAlerts = True
     Else
-        ' Vorherige Daten l?schen
+        ' Vorherige Daten löschen
         wsTemp.Cells.Clear
     End If
     
@@ -72,7 +72,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
         
         For i = LBound(copyCols) To UBound(copyCols)
             wsM.Columns(copyCols(i)).SpecialCells(xlCellTypeVisible).Copy
-            ' F?gen Sie in die tempor?re Tabelle in Spalten A, B, C ein
+            ' Fügen Sie in die temporäre Tabelle in Spalten A, B, C ein
             wsTemp.Cells(tempRow, i + 1).PasteSpecial xlPasteValues
         Next i
         
@@ -82,7 +82,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
         ' 3. Kombinierte Namen-Liste erstellen (Nachname, Vorname)
         tempRow = wsTemp.Cells(wsTemp.Rows.count, 1).End(xlUp).Row
         
-        If tempRow > 1 Then ' Zeile 1 enth?lt die Header/Erste Zeile des kopierten Bereichs
+        If tempRow > 1 Then ' Zeile 1 enthält die Header/Erste Zeile des kopierten Bereichs
             For i = 2 To tempRow
                 ' Spalte D: Nachname, Vorname (wird im Dropdown angezeigt)
                 wsTemp.Cells(i, 4).value = wsTemp.Cells(i, 1).value & ", " & wsTemp.Cells(i, 2).value
@@ -91,7 +91,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
             ' 4. Benannten Bereich erstellen/aktualisieren (Spalte D, ab Zeile 2)
             Set rngTarget = wsTemp.Range(wsTemp.Cells(2, 4), wsTemp.Cells(tempRow, 4))
             
-            ' Bestehenden benannten Bereich l?schen
+            ' Bestehenden benannten Bereich löschen
             On Error Resume Next
             ThisWorkbook.Names("rng_MitgliederNamen").Delete
             On Error GoTo ErrorHandler
@@ -101,7 +101,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
         End If
     End If
     
-    ' *** WICHTIG: Tempor?res Worksheet IMMER l?schen! ***
+    ' *** WICHTIG: Temporäres Worksheet IMMER löschen! ***
     Call LoescheTempWorksheet
     
 CleanUp:
@@ -114,7 +114,7 @@ CleanUp:
     
 ErrorHandler:
     MsgBox "Fehler in AktualisiereNamedRange_MitgliederNamen: " & Err.Description, vbCritical
-    ' Versuche trotz Fehler das Temp-Worksheet zu l?schen
+    ' Versuche trotz Fehler das Temp-Worksheet zu löschen
     Call LoescheTempWorksheet
     Resume CleanUp
 
@@ -122,7 +122,7 @@ End Sub
 
 ' **********************************************************
 ' PROZEDUR: LoescheTempWorksheet
-' L?scht das tempor?re Worksheet sicher
+' Löscht das temporäre Worksheet sicher
 ' **********************************************************
 Private Sub LoescheTempWorksheet()
     Dim wsTemp As Worksheet
@@ -141,8 +141,8 @@ End Sub
 
 ' **********************************************************
 ' PROZEDUR: BereinigeTempWorksheets
-' ?ffentliche Prozedur zum Bereinigen aller tempor?ren Worksheets
-' Kann manuell oder beim ?ffnen der Arbeitsmappe aufgerufen werden
+' öffentliche Prozedur zum Bereinigen aller temporären Worksheets
+' Kann manuell oder beim Öffnen der Arbeitsmappe aufgerufen werden
 ' **********************************************************
 Public Sub BereinigeTempWorksheets()
     Dim ws As Worksheet
@@ -158,7 +158,7 @@ Public Sub BereinigeTempWorksheets()
         End If
     Next ws
     
-    ' L?sche gesammelte Worksheets
+    ' Lösche gesammelte Worksheets
     Application.DisplayAlerts = False
     For Each tempName In wsToDelete
         On Error Resume Next
@@ -183,7 +183,7 @@ Public Sub ResetApplication()
 End Sub
 
 ' ***************************************************************
-' HILFSFUNKTION: Pr?fen, ob eine UserForm geladen ist (KORRIGIERT F?R EXCEL)
+' HILFSFUNKTION: Prüfen, ob eine UserForm geladen ist (KORRIGIERT FÜR EXCEL)
 ' ***************************************************************
 Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     
@@ -201,6 +201,8 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False ' Formular nicht gefunden
     
 End Function
+
+
 
 
 

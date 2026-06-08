@@ -93,6 +93,11 @@ Private Sub Workbook_Open()
         Call mod_Banking_Format.StelleFormelnWiederHer(wsBK)
     End If
     On Error GoTo 0
+
+    ' v7.3: AutoFilter auf Bankkonto-Header (Zeile 29) aktivieren
+    On Error Resume Next
+    Call mod_Banking_Format.Aktiviere_BankkontoFilter
+    On Error GoTo 0
     
     ' v6.0: Startseite als erstes Blatt anzeigen
     On Error Resume Next
@@ -258,6 +263,7 @@ Private Sub Workbook_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Ra
         Call mod_Uebersicht_Event.MerkeAktuellenUebersichtZustand(Target)
     End If
 End Sub
+
 
 
 

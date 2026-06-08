@@ -4,43 +4,43 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
 ' VERSION: 5.0 - 07.06.2026
-' ZWECK: Generiert ?bersichtsblatt (Variante 2: Lange Tabelle)
+' ZWECK: Generiert Übersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - Kategorien DYNAMISCH aus Einstellungen-Blatt (Spalte B)
-'        - Zeigt Soll/Ist/Status f?r jede Kombination
+'        - Zeigt Soll/Ist/Status für jede Kombination
 '        - Behandelt SHARE-Keys (Gemeinschaftskonten) korrekt
 '        - Bei Kategorien OHNE festen Soll-Betrag:
 '          Soll-Zelle bleibt leer + hell-gelb + editierbar
-'          Nur Zahlungstermin-Pr?fung (p?nktlich / S?umnis)
-'        - S?umnis-Geb?hren werden in Bemerkung angezeigt
+'          Nur Zahlungstermin-Prüfung (pünktlich / Säumnis)
+'        - Säumnis-Gebühren werden in Bemerkung angezeigt
 ' FIX v1.1: InitialisiereNachDezemberCache -> InitialisiereNachDezemberCacheZP
-' FIX v1.2: Val() statt CDbl() f?r systemunabh?ngiges Parsen
-' FIX v1.3: "Typen unvertr?glich" behoben (Variant, StrComp, etc.)
+' FIX v1.2: Val() statt CDbl() für systemunabhängiges Parsen
+' FIX v1.3: "Typen unverträglich" behoben (Variant, StrComp, etc.)
 ' FIX v1.4: ChrW() in Const nicht erlaubt -> Private Variablen
 ' NEU v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
 '           - Keine hart kodierten Kategorienamen mehr
 '           - Soll-Betrag 0 -> Zelle leer + hell-gelb + editierbar
-'           - Zahlungstermin-Pr?fung auch ohne Soll-Betrag
-'           - S?umnis-Geb?hren in Bemerkung
+'           - Zahlungstermin-Prüfung auch ohne Soll-Betrag
+'           - Säumnis-Gebühren in Bemerkung
 ' NEU v3.0: HoleAktiveMitglieder liest jetzt aus Daten-Blatt
 '           (EntityKey-Tabelle R-W) statt aus Mitgliederliste
 '           - SHARE-Keys: Parzelle "2, 5" wird aufgeteilt
-'           - stummModus f?r automatische Aufrufe (keine MsgBox)
+'           - stummModus für automatische Aufrufe (keine MsgBox)
 '           - Trigger: Bankkonto H/I + Einstellungen -> auto-Update
-' NEU v4.0: Monatsweise Bef?llung der ?bersicht
+' NEU v4.0: Monatsweise Befüllung der Übersicht
 '           - Nur Monate mit importierten CSV-Daten werden angezeigt
 '           - ErmittleImportierteMonate() scannt Bankkonto Spalte A
 '           - Eintrag erscheint nur wenn:
-'             a) Zahlung vorhanden (Ist > 0) -> GR?N/GELB
+'             a) Zahlung vorhanden (Ist > 0) -> GRÜN/GELB
 '             b) Frist abgelaufen + keine Zahlung -> ROT
 '           - Einheitliches Datumsformat: "Januar 2026"
-' NEU v4.1: F?lligkeit-basierte Kategoriefilterung
-'           - Kategorien erscheinen nur im F?lligkeitsmonat
+' NEU v4.1: Fälligkeit-basierte Kategoriefilterung
+'           - Kategorien erscheinen nur im Fälligkeitsmonat
 '             (nicht mehr in allen 12 Monaten)
-'           - F?lligkeit aus Daten Spalte O (Kategorie-Tabelle)
+'           - Fälligkeit aus Daten Spalte O (Kategorie-Tabelle)
 '           - Vorjahr-Speicher (Daten Spalten CA-CF):
-'             Okt-Dez Zahlungen des Vorjahres f?r Jan-M?rz Zuordnung
-'           - Spalte C linksb?ndig, Format "M?rz 2025"
+'             Okt-Dez Zahlungen des Vorjahres für Jan-März Zuordnung
+'           - Spalte C linksbündig, Format "März 2025"
 '           - PruefeZahlungen: flexibler Perioden-Vergleich
 ' SPLIT v4.2: Datenquellen + Vorjahr-Speicher ausgelagert nach
 '             mod_Uebersicht_Daten (LadeKategorienAusEinstellungen,
@@ -85,14 +85,14 @@ Option Explicit
 Private Const UEBERSICHT_START_ROW As Long = 4
 Private Const UEBERSICHT_HEADER_ROW As Long = 3
 
-' Spalten im ?bersichtsblatt
+' Spalten im Übersichtsblatt
 Private Const UEB_COL_PARZELLE As Long = 1      ' A - Parzelle
 Private Const UEB_COL_MITGLIED As Long = 2      ' B - Mitglied
 Private Const UEB_COL_MONAT As Long = 3         ' C - Monat
 Private Const UEB_COL_KATEGORIE As Long = 4     ' D - Kategorie
 Private Const UEB_COL_SOLL As Long = 5          ' E - Soll
 Private Const UEB_COL_IST As Long = 6           ' F - Ist
-Private Const UEB_COL_STATUS As Long = 7        ' G - Status (GR?N/GELB/ROT)
+Private Const UEB_COL_STATUS As Long = 7        ' G - Status (GRÜN/GELB/ROT)
 Private Const UEB_COL_BEMERKUNG As Long = 8     ' H - Bemerkung
 Private Const UEB_COL_SUMME_IST As Long = 9     ' I - Summe Ist (kumuliert)
 
@@ -105,13 +105,13 @@ Private Const AMPEL_GRUEN As Long = 12968900    ' RGB(196, 225, 196)
 Private Const AMPEL_GELB As Long = 10086143     ' RGB(255, 235, 156)
 Private Const AMPEL_ROT As Long = 9871103       ' RGB(255, 199, 206)
 
-' Hell-gelb f?r "bitte manuell bef?llen" (Soll-Betrag variabel)
+' Hell-gelb für "bitte manuell befüllen" (Soll-Betrag variabel)
 Private Const FARBE_HELLGELB_MANUELL As Long = 10092543  ' RGB(255, 255, 153)
 
 ' Zebra-Farbe (identisch mit Bankkonto / EntityKey-Tabelle)
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
 
-' Status-String f?r GR?N (Encoding-sicher, wird in Init gesetzt)
+' Status-String für GRÜN (Encoding-sicher, wird in Init gesetzt)
 Private m_STATUS_GRUEN As String
 Private m_StatusInitialisiert As Boolean
 
@@ -120,7 +120,7 @@ Private m_IsGenerating As Boolean
 
 
 ' ===============================================================
-' Type f?r eine dynamische Kategorie aus Einstellungen
+' Type für eine dynamische Kategorie aus Einstellungen
 ' ===============================================================
 Public Type UebKategorie
     Name As String
@@ -156,9 +156,9 @@ End Function
 
 
 ' ===============================================================
-' HAUPTFUNKTION: Generiert komplettes ?bersichtsblatt
+' HAUPTFUNKTION: Generiert komplettes Übersichtsblatt
 ' v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
-' v3.0: stummModus f?r automatische Aufrufe (ohne MsgBox)
+' v3.0: stummModus für automatische Aufrufe (ohne MsgBox)
 ' ===============================================================
 Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                                 Optional ByVal stummModus As Boolean = False)
@@ -328,7 +328,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     wsUeb.Range(wsUeb.Cells(1, 1), wsUeb.Cells(UEBERSICHT_START_ROW - 1, UEB_COL_SUMME_IST)).ClearContents
     wsUeb.Range(wsUeb.Cells(1, 1), wsUeb.Cells(UEBERSICHT_START_ROW - 1, UEB_COL_SUMME_IST)).Interior.ColorIndex = xlNone
     
-    ' Alten Inhalt l?schen (ab Zeile 4, inkl. Spalte I)
+    ' Alten Inhalt löschen (ab Zeile 4, inkl. Spalte I)
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
                 wsUeb.Cells(wsUeb.Rows.count, UEB_COL_SUMME_IST)).ClearContents
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
@@ -345,10 +345,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' Einstellungen-Cache laden (Performance)
     Call mod_Zahlungspruefung.LadeEinstellungenCacheZP
     
-    ' Dezember-Cache initialisieren (f?r Vorauszahlungen)
+    ' Dezember-Cache initialisieren (für Vorauszahlungen)
     Call mod_Zahlungspruefung.InitialisiereNachDezemberCacheZP(jahr)
     
-    ' v4.0: Vorjahr-Speicher bef?llen (Okt-Dez Vorjahr)
+    ' v4.0: Vorjahr-Speicher befüllen (Okt-Dez Vorjahr)
     Call mod_Uebersicht_Daten.BefuelleVorjahrSpeicher(jahr - 1)
     
     ' v4.0: Vorjahr-Speicher automatisch loeschen (ab August)
@@ -729,7 +729,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
                 
                 ' =============================================
-                ' v2.0: Bemerkung mit S?umnis-Info
+                ' v2.0: Bemerkung mit Säumnis-Info
                 ' =============================================
                 Dim bemerkung As String
                 bemerkung = ""
@@ -739,7 +739,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     bemerkung = teile(3)
                 End If
                 
-                ' S?umnis-Geb?hr anh?ngen wenn Status ROT und Geb?hr definiert
+                ' Säumnis-Gebühr anhängen wenn Status ROT und Gebühr definiert
                 If StrComp(status, "ROT", vbTextCompare) = 0 Then
                     If kategorien(k).saeumnisGebuehr > 0 Then
                         Dim saeumnisText As String
@@ -853,7 +853,7 @@ NextMitglied:
     ' damit nichts NumberFormat / HorizontalAlignment / AutoFit ueberschreibt.
     Call FormatiereUebersicht(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
 
-    ' Blatt sch?tzen (Soll-Zellen ohne festen Betrag bleiben editierbar)
+    ' Blatt schützen (Soll-Zellen ohne festen Betrag bleiben editierbar)
     ' AllowFiltering: Nutzer kann AutoFilter ohne Blattschutz-Aufhebung verwenden
     On Error Resume Next
     wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
@@ -936,7 +936,7 @@ End Sub
 
 
 ' ===============================================================
-' v4.0: Pr?ft ob eine Kategorie in einem bestimmten Monat f?llig ist
+' v4.0: Prüft ob eine Kategorie in einem bestimmten Monat fällig ist
 ' Kombiniert SollMonate (Einstellungen Spalte E) mit Faelligkeit
 ' (Daten Spalte O).
 ' - monatlich: SollMonate oder alle Monate
@@ -979,7 +979,7 @@ End Function
 
 
 ' ===============================================================
-' Header im ?bersichtsblatt setzen
+' Header im Übersichtsblatt setzen
 ' ===============================================================
 Private Sub SetzeUebersichtHeader(ByVal wsUeb As Worksheet)
     
@@ -1019,7 +1019,7 @@ End Sub
 
 
 ' ===============================================================
-' Formatierung des ?bersichtsblatts
+' Formatierung des Übersichtsblatts
 ' ===============================================================
 Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                                    ByVal startRow As Long, _
@@ -1482,6 +1482,12 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
         aktBem = Trim(aktBem)
         
         If vjAntwort = vbYes Then
+            ' Soll-Betrag robust aus der Uebersichts-Zelle lesen.
+            ' (war beim Generieren bereits aus den Einstellungen gefuellt.
+            '  Val() ignoriert das deutsche Komma -> brauchen sichere Konvertierung)
+            Dim sollWert As Double
+            sollWert = LeseDoubleAusZelleVJ(wsUeb.Cells(r, UEB_COL_SOLL))
+
             Dim defaultDatum As String
             defaultDatum = "15.12." & CStr(HoleJahrAusMonatstext(wsUeb.Cells(r, UEB_COL_MONAT).value) - 1)
 
@@ -1501,16 +1507,23 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
             End If
             On Error GoTo 0
 
-            Dim sollWert As Double
-            sollWert = CDbl(val(CStr(wsUeb.Cells(r, UEB_COL_SOLL).value)))
+            ' Default-Betrag in InputBox: SOLL aus Einstellungen vorausfuellen.
+            ' Bei variabler Kategorie (Soll=0) leer lassen.
+            Dim defaultBetrag As String
+            If sollWert > 0 Then
+                defaultBetrag = Format(sollWert, "0.00")
+            Else
+                defaultBetrag = ""
+            End If
 
             Dim inBetrag As String
-            inBetrag = InputBox("Bitte H" & ChrW(246) & "he der Vorjahrzahlung eingeben:", _
-                                "Vorjahrzahlung - Betrag", Format(sollWert, "0.00"))
+            inBetrag = InputBox("Bitte H" & ChrW(246) & "he der Vorjahrzahlung eingeben:" & vbCrLf & vbCrLf & _
+                                "(SOLL aus Einstellungen ist vorausgef" & ChrW(252) & "llt)", _
+                                "Vorjahrzahlung - Betrag", defaultBetrag)
             If LenB(Trim(inBetrag)) = 0 Then GoTo NextPos
 
             Dim zahlBetrag As Double
-            zahlBetrag = CDbl(val(Replace(Trim(inBetrag), ",", ".")))
+            zahlBetrag = LeseDoubleAusStringVJ(inBetrag)
             If zahlBetrag <= 0 Then
                 MsgBox "Ung" & ChrW(252) & "ltiger Betrag. Position bleibt unver" & ChrW(228) & "ndert.", vbExclamation
                 GoTo NextPos
@@ -1518,12 +1531,28 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
 
             wsUeb.Cells(r, UEB_COL_IST).value = zahlBetrag
 
+            ' Bestehende Saeumnis-/Verspaetet-/Faellig-/Noch-offen-Hinweise
+            ' aus der Bemerkung entfernen - die manuelle Bestaetigung
+            ' widerlegt sie (Zahlung war ja fristgerecht im Vorjahr).
+            aktBem = EntferneNegativHinweiseVJ(aktBem)
+
             Dim confBem As String
             confBem = "Manuell best" & ChrW(228) & "tigt: Vorjahrzahlung am " & _
                       Format(zahlDatum, "dd.mm.yyyy") & " in H" & ChrW(246) & "he von " & _
                       Format(zahlBetrag, "#,##0.00") & " " & ChrW(8364)
 
-            If Abs(zahlBetrag - sollWert) < 0.01 Then
+            ' Status-Entscheidung:
+            '  - Variable Kategorie (Soll=0): jede Zahlung gilt als GRUEN
+            '  - Fester Soll: Betragsgleichheit innerhalb 1 Cent -> GRUEN
+            '  - sonst GELB mit Abweichungs-Hinweis
+            Dim istGruen As Boolean
+            If sollWert <= 0 Then
+                istGruen = True
+            Else
+                istGruen = (Abs(zahlBetrag - sollWert) < 0.01)
+            End If
+
+            If istGruen Then
                 wsUeb.Cells(r, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
                 wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
                 bestaetigtGruen = bestaetigtGruen + 1
@@ -1571,6 +1600,95 @@ NextPos:
     End If
     
 End Sub
+
+
+' ===============================================================
+' Helper fuer Vorjahr-Dialog: liest einen Geldbetrag robust aus
+' einer Zelle. CDbl() verarbeitet Currency/Double direkt korrekt;
+' Strings werden ueber LeseDoubleAusStringVJ konvertiert.
+' ===============================================================
+Private Function LeseDoubleAusZelleVJ(ByVal c As Range) As Double
+    Dim v As Variant
+    v = c.value
+    If IsNumeric(v) Then
+        LeseDoubleAusZelleVJ = CDbl(v)
+    Else
+        LeseDoubleAusZelleVJ = LeseDoubleAusStringVJ(CStr(v))
+    End If
+End Function
+
+
+' Liest einen Geldbetrag aus einem String. Akzeptiert deutsches
+' (12,50) und englisches (12.50) Dezimalformat sowie Euro-Zeichen.
+Private Function LeseDoubleAusStringVJ(ByVal s As String) As Double
+    Dim t As String
+    t = Trim(s)
+    If t = "" Then Exit Function
+
+    ' Einheiten/Symbole entfernen
+    t = Replace(t, ChrW(8364), "")           ' Euro-Zeichen
+    t = Replace(t, "EUR", "", , , vbTextCompare)
+    t = Replace(t, ChrW(160), "")            ' geschuetztes Leerzeichen
+    t = Trim(t)
+
+    On Error Resume Next
+    ' Erst CDbl mit Original (nutzt System-Locale = DE: Komma=Dezimal)
+    LeseDoubleAusStringVJ = CDbl(t)
+    If Err.Number <> 0 Then
+        Err.Clear
+        ' Fallback: Punkt als Dezimaltrenner -> Komma
+        LeseDoubleAusStringVJ = CDbl(Replace(t, ".", ","))
+        If Err.Number <> 0 Then
+            Err.Clear
+            LeseDoubleAusStringVJ = 0
+        End If
+    End If
+    On Error GoTo 0
+End Function
+
+
+' Entfernt Saeumnis-/Verspaetet-/Faellig-/Noch-offen-Hinweise aus
+' einer mit " | " separierten Bemerkung. Wird verwendet, wenn der
+' Nutzer manuell bestaetigt, dass die Zahlung fristgerecht im
+' Vorjahr erfolgte - dann sind diese Hinweise widerlegt.
+Private Function EntferneNegativHinweiseVJ(ByVal bem As String) As String
+    If Trim(bem) = "" Then Exit Function
+
+    Dim teile() As String
+    teile = Split(bem, " | ")
+
+    Dim ergebnis As String
+    Dim i As Long
+    Dim t As String
+    For i = LBound(teile) To UBound(teile)
+        t = Trim(teile(i))
+        If t = "" Then GoTo NextTeil
+
+        ' Saeumnis (mit Umlaut oder ASCII)
+        If InStr(1, t, "S" & ChrW(228) & "umnis", vbTextCompare) > 0 Then GoTo NextTeil
+        If InStr(1, t, "Saeumnis", vbTextCompare) > 0 Then GoTo NextTeil
+        ' Verspaetet
+        If InStr(1, t, "Versp" & ChrW(228) & "tet", vbTextCompare) > 0 Then GoTo NextTeil
+        If InStr(1, t, "Verspaetet", vbTextCompare) > 0 Then GoTo NextTeil
+        ' Noch offen / Faellig am - werden durch manuelle Bestaetigung obsolet
+        If InStr(1, t, "Noch offen", vbTextCompare) > 0 Then GoTo NextTeil
+        If InStr(1, t, "F" & ChrW(228) & "llig am", vbTextCompare) > 0 Then GoTo NextTeil
+        If InStr(1, t, "Faellig am", vbTextCompare) > 0 Then GoTo NextTeil
+        ' Teilzahlung-Hinweis
+        If InStr(1, t, "Teilzahlung", vbTextCompare) > 0 Then GoTo NextTeil
+
+        If ergebnis = "" Then
+            ergebnis = t
+        Else
+            ergebnis = ergebnis & " | " & t
+        End If
+NextTeil:
+    Next i
+
+    EntferneNegativHinweiseVJ = ergebnis
+End Function
+
+
 
 
 
