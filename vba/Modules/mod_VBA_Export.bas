@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_VBA_Export"
+ï»¿Attribute VB_Name = "mod_VBA_Export"
 Option Explicit
 
 ' ***************************************************************
@@ -8,7 +8,7 @@ Option Explicit
 ' ***************************************************************
 
 ' ===============================================================
-' ZIELORDNER FÜR EXPORT
+' ZIELORDNER Ffuer EXPORT
 ' ===============================================================
 Private Const EXPORT_PATH_CLASSES As String = "C:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\Classes\"
 Private Const EXPORT_PATH_USERFORMS As String = "C:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\UserForms\"
@@ -33,20 +33,20 @@ Public Sub ExportiereAlleVBAKomponenten()
     
     On Error GoTo ErrorHandler
     
-    ' Prüfe ob Zugriff auf VBA-Projekt erlaubt ist
+    ' Pruefe ob Zugriff auf VBA-Projekt erlaubt ist
     On Error Resume Next
     Set vbProj = ThisWorkbook.VBProject
     If Err.Number <> 0 Then
         MsgBox "FEHLER: Zugriff auf VBA-Projekt nicht erlaubt!" & vbCrLf & vbCrLf & _
                "Bitte aktivieren Sie in Excel:" & vbCrLf & _
-               "Datei > Optionen > Trust Center > Einstellungen für das Trust Center" & vbCrLf & _
+               "Datei > Optionen > Trust Center > Einstellungen ffuer das Trust Center" & vbCrLf & _
                "> Makroeinstellungen > 'Zugriff auf das VBA-Projektobjektmodell vertrauen'", _
                vbCritical, "Zugriff verweigert"
         Exit Sub
     End If
     On Error GoTo ErrorHandler
     
-    ' Prüfe ob Zielordner existieren
+    ' Pruefe ob Zielordner existieren
     If Not OrdnerExistiert(EXPORT_PATH_CLASSES) Then
         errors = errors & "Ordner nicht gefunden: " & EXPORT_PATH_CLASSES & vbCrLf
     End If
@@ -62,7 +62,7 @@ Public Sub ExportiereAlleVBAKomponenten()
         Exit Sub
     End If
     
-    ' Zähler initialisieren
+    ' Zaehler initialisieren
     countModules = 0
     countClasses = 0
     countForms = 0
@@ -119,7 +119,7 @@ Public Sub ExportiereAlleVBAKomponenten()
                 On Error GoTo ErrorHandler
                 
             Case 100 ' vbext_ct_Document - Dokument/Arbeitsblatt (.cls)
-                ' Arbeitsblätter und ThisWorkbook als Klassen exportieren
+                ' ArbeitsBlaetter und ThisWorkbook als Klassen exportieren
                 exportPath = EXPORT_PATH_CLASSES
                 extension = ".cls"
                 
@@ -149,7 +149,7 @@ Public Sub ExportiereAlleVBAKomponenten()
     msg = msg & "  UserForms: " & countForms & " -> " & EXPORT_PATH_USERFORMS & vbCrLf
     
     If countSkipped > 0 Then
-        msg = msg & vbCrLf & "Übersprungen: " & countSkipped
+        msg = msg & vbCrLf & "uebersprungen: " & countSkipped
     End If
     
     If errors <> "" Then
@@ -169,7 +169,7 @@ ErrorHandler:
 End Sub
 
 ' ===============================================================
-' HILFSFUNKTION: Prüft ob Ordner existiert
+' HILFSFUNKTION: prueft ob Ordner existiert
 ' ===============================================================
 Private Function OrdnerExistiert(ByVal pfad As String) As Boolean
     On Error Resume Next

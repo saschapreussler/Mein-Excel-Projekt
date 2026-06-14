@@ -1,4 +1,4 @@
-VERSION 1.0 CLASS
+ï»¿VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
@@ -13,16 +13,16 @@ Option Explicit
 ' EVENTS
 ' ==========================================================
 
-' Wird bei jedem Wechsel auf das Blatt ausgeführt
+' Wird bei jedem Wechsel auf das Blatt ausgefuehrt
 Private Sub Worksheet_Activate()
     ' Zwangsberechnung beim Aktivieren des Blattes
     Call UpdateWasserblatt
 End Sub
 
-' Wird bei jeder Änderung einer Zelle auf dem Blatt ausgeführt
+' Wird bei jeder Aenderung einer Zelle auf dem Blatt ausgefuehrt
 Private Sub Worksheet_Change(ByVal Target As Range)
-    ' Relevant: Stand Anfang (B) und Stand Ende (C) für Parzellen (Z. 10-23) und Hauptzähler (Z. 29)
-    ' Wir prüfen den gesamten relevanten Bereich für Wasser: B10:C29
+    ' Relevant: Stand Anfang (B) und Stand Ende (C) ffuer Parzellen (Z. 10-23) und HauptZaehler (Z. 29)
+    ' Wir Pruefen den gesamten relevanten Bereich ffuer Wasser: B10:C29
     If Not Intersect(Target, Me.Range("B12:C31")) Is Nothing Then
         Application.EnableEvents = False
         Call UpdateWasserblatt
@@ -31,7 +31,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 End Sub
 
 ' ==========================================================
-' ZÄHLERWECHSEL STARTEN (KORRIGIERT: Direkter Aufruf der UserForm)
+' ZaehlerWECHSEL STARTEN (KORRIGIERT: Direkter Aufruf der UserForm)
 ' ==========================================================
 Private Sub btn_neuerZaehler_Wasser_Click()
     On Error GoTo ErrHandler
@@ -46,7 +46,7 @@ Private Sub btn_neuerZaehler_Wasser_Click()
     Exit Sub
     
 ErrHandler:
-    MsgBox "Fehler beim Öffnen des Zählerwechsel-Formulars: " & Err.Description & vbLf & _
+    MsgBox "Fehler beim oeffnen des Zaehlerwechsel-Formulars: " & Err.Description & vbLf & _
            "Stellen Sie sicher, dass das UserForm den Code-Namen 'frm_Zaehlerwechsel' hat.", vbExclamation
 End Sub
 
@@ -58,7 +58,7 @@ Public Sub UpdateWasserblatt()
     
     Application.ScreenUpdating = False
     
-    ' Führt Berechnung und Formatierung durch (in mod_Zaehler_Berechnung)
+    ' Fuehrt Berechnung und Formatierung durch (in mod_Zaehler_Berechnung)
     Call mod_Zaehler_Berechnung.CalculateAllZaehlerVerbrauch(Me)
     
     Application.ScreenUpdating = True

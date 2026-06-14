@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Vereinskasse_Filter"
+﻿Attribute VB_Name = "mod_Vereinskasse_Filter"
 Option Explicit
 
 ' ===============================================================
@@ -234,8 +234,102 @@ Public Sub SetzeVereinskasseFormeln(ByVal wsVK As Worksheet)
 End Sub
 
 
+' ===============================================================
+' 4. AUTOFILTER B26:T26 PERMANENT AKTIVIEREN
+' ---------------------------------------------------------------
+' Setzt AutoFilter dauerhaft auf den Bereich B26:T<lastRow>,
+' damit der Nutzer in jeder Spalte filtern und sortieren kann
+' auch wenn das Blatt geschuetzt ist.
+'
+' WICHTIG: Die Zelle A26 ist bewusst leer (kein Spaltentitel).
+'          AutoFilter wuerde mit einer leeren ersten Header-Zelle
+'          fehlschlagen, deshalb startet der Bereich bei Spalte B.
+'
+' Wird von Workbook_Open NACH Aktiviere_BankkontoFilter aufgerufen.
+' ===============================================================
+Public Sub Aktiviere_VereinskasseFilter()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim filterRange As Range
+    Dim hdrCell As Range
+    Dim c As Long
+    Const VK_FIRST_FILTER_COL As Long = 2   ' B
+    Const VK_LAST_FILTER_COL As Long = 20   ' T
 
+    Set ws = Nothing
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_VEREINSKASSE)
+    On Error GoTo 0
+    If ws Is Nothing Then
+        Debug.Print "[Aktiviere_VereinskasseFilter] Blatt '" & WS_VEREINSKASSE & "' nicht gefunden"
+        Exit Sub
+    End If
 
+    ' 1) Blattschutz auf (hart)
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    Err.Clear
+    On Error GoTo 0
+
+    ' 2) Merged Cells im Header-Bereich aufloesen
+    On Error Resume Next
+    ws.Range(ws.Cells(VK_HEADER_ROW, VK_FIRST_FILTER_COL), _
+             ws.Cells(VK_HEADER_ROW, VK_LAST_FILTER_COL)).UnMerge
+    Err.Clear
+    On Error GoTo 0
+
+    ' 3) Sicherstellen dass jede Header-Zelle B26..T26 einen Wert hat.
+    '    AutoFilter braucht in jeder Spalte einen nicht-leeren Header.
+    For c = VK_FIRST_FILTER_COL To VK_LAST_FILTER_COL
+        Set hdrCell = ws.Cells(VK_HEADER_ROW, c)
+        If LenB(Trim(CStr(hdrCell.value))) = 0 Then
+            hdrCell.value = "Spalte " & Chr(64 + c)
+        End If
+    Next c
+
+    ' 4) Header-Zellen entsperren (sonst kein Klick auf Filter-Pfeil bei Blattschutz)
+    ws.Range(ws.Cells(VK_HEADER_ROW, VK_FIRST_FILTER_COL), _
+             ws.Cells(VK_HEADER_ROW, VK_LAST_FILTER_COL)).Locked = False
+
+    ' 5) Letzte Datenzeile ermitteln (Spalte B = Datum)
+    lastRow = ws.Cells(ws.Rows.count, VK_COL_DATUM).End(xlUp).Row
+    If lastRow < VK_HEADER_ROW Then lastRow = VK_HEADER_ROW + 1
+
+    ' 6) Bestehenden Filter HART entfernen
+    On Error Resume Next
+    If ws.FilterMode Then ws.ShowAllData
+    If ws.AutoFilterMode Then ws.AutoFilterMode = False
+    Err.Clear
+    On Error GoTo 0
+
+    ' 7) Neuen AutoFilter setzen (B26:T<lastRow>) - A bleibt aussen vor
+    Set filterRange = ws.Range(ws.Cells(VK_HEADER_ROW, VK_FIRST_FILTER_COL), _
+                                ws.Cells(lastRow, VK_LAST_FILTER_COL))
+
+    On Error Resume Next
+    filterRange.AutoFilter
+    If Err.Number <> 0 Then
+        Debug.Print "[Aktiviere_VereinskasseFilter] AutoFilter-Fehler: " & Err.Description
+        Err.Clear
+    End If
+    On Error GoTo 0
+
+    ' 8) Diagnose
+    If ws.AutoFilterMode Then
+        Debug.Print "[Aktiviere_VereinskasseFilter] OK: AutoFilter aktiv auf Zeile " & _
+                    VK_HEADER_ROW & " (Bereich B" & VK_HEADER_ROW & ":T" & lastRow & ")"
+    Else
+        Debug.Print "[Aktiviere_VereinskasseFilter] WARNUNG: AutoFilterMode=False nach AutoFilter-Call!"
+    End If
+
+    ' 9) Schutz wieder aktivieren mit Filter-/Sortier-Rechten
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, _
+               UserInterfaceOnly:=True, _
+               AllowFiltering:=True, _
+               AllowSorting:=True
+    On Error GoTo 0
+End Sub
 
 
 

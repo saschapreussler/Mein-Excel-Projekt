@@ -1,4 +1,4 @@
-VERSION 5.00
+ï»¿VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frm_Mitgliederverwaltung 
    Caption         =   "Mitgliederverwaltung"
    ClientHeight    =   9720.001
@@ -140,7 +140,7 @@ Public Sub OeffneMitgliedsDetails()
         .lbl_Email.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 12)
         .lbl_Funktion.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 13)
         
-        ' Fülle auch die Pachtbeginn und Pachtende Labels
+        ' FÃ¼lle auch die Pachtbeginn und Pachtende Labels
         If Me.lst_Mitgliederliste.ColumnCount > 14 Then
             .lbl_Pachtbeginn.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 14)
         Else
@@ -167,7 +167,7 @@ Public Sub OeffneMitgliedsDetails()
         .txt_Email.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 12)
         .cbo_Funktion.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 13)
         
-        ' Fülle auch die Pachtbeginn und Pachtende TextBoxen
+        ' FÃ¼lle auch die Pachtbeginn und Pachtende TextBoxen
         If Me.lst_Mitgliederliste.ColumnCount > 14 Then
             .txt_Pachtbeginn.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 14)
         Else

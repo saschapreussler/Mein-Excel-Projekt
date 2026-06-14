@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Zeilenhoehen"
+﻿Attribute VB_Name = "mod_Zeilenhoehen"
 Option Explicit
 
 ' ===============================================================

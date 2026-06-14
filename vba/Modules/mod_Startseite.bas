@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Startseite"
+﻿Attribute VB_Name = "mod_Startseite"
 Option Explicit
 
 ' ===============================================================
@@ -652,6 +652,55 @@ NextParzelle:
     ZaehleBelegteParzellen = dictParz.count
     Set dictParz = Nothing
 End Function
+
+
+' ===============================================================
+' AktualisiereParzellenAnzeigen
+' ---------------------------------------------------------------
+' Schreibt die aktuelle Anzahl belegter Parzellen
+' (Quelle: ZaehleBelegteParzellen, identisch zu Startseite /
+' Einstellungen / Uebersicht / Mitgliederliste) in:
+'   - Tabellenblatt "Strom":  Zelle B6
+'   - Tabellenblatt "Wasser": Zelle A4
+'
+' Hebt vorhandenen Blattschutz auf, schreibt den Wert,
+' und stellt den Schutz wieder her.
+'
+' Wird aufgerufen von:
+'   - Workbook_Open (DieseArbeitsmappe)
+'   - Worksheet_Change der Mitgliederliste (Tabelle7)
+'   - Worksheet_Activate Strom / Wasser
+' ===============================================================
+Public Sub AktualisiereParzellenAnzeigen()
+    Dim anzahl As Long
+    anzahl = ZaehleBelegteParzellen()
+
+    Call SchreibeParzellenZelleSicher("Strom", "B6", anzahl)
+    Call SchreibeParzellenZelleSicher("Wasser", "A4", anzahl)
+End Sub
+
+
+Private Sub SchreibeParzellenZelleSicher(ByVal blattName As String, _
+                                          ByVal zellAdresse As String, _
+                                          ByVal wert As Long)
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(blattName)
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Sub
+
+    Dim warGeschuetzt As Boolean
+    warGeschuetzt = ws.ProtectContents
+
+    On Error Resume Next
+    If warGeschuetzt Then ws.Unprotect PASSWORD:=PASSWORD
+    ws.Range(zellAdresse).value = wert
+    If warGeschuetzt Then ws.Protect PASSWORD:=PASSWORD, _
+                                     UserInterfaceOnly:=True, _
+                                     AllowFiltering:=True, _
+                                     AllowSorting:=True
+    On Error GoTo 0
+End Sub
 
 
 Private Function HoleVereinsname() As String

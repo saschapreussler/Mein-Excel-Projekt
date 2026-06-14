@@ -1,10 +1,10 @@
-Attribute VB_Name = "mod_ZP_DropDowns"
+ï»¿Attribute VB_Name = "mod_ZP_DropDowns"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_ZP_DropDowns
 ' Ausgelagert aus mod_Zahlungspruefung
-' Enthält: DropDown-Logik für Bankkonto-Blatt (Spalte H + I),
+' enthaelt: DropDown-Logik ffuer Bankkonto-Blatt (Spalte H + I),
 '          Hilfsspalten AF/AG, Spaltenentsperrung
 ' ===============================================================
 

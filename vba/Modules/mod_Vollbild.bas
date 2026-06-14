@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Vollbild"
+﻿Attribute VB_Name = "mod_Vollbild"
 Option Explicit
 
 ' ===============================================================

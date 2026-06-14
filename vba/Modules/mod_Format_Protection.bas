@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Format_Protection"
+﻿Attribute VB_Name = "mod_Format_Protection"
 Option Explicit
 
 ' ***************************************************************

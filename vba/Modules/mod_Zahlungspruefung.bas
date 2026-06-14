@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Zahlungspruefung"
+ï»¿Attribute VB_Name = "mod_Zahlungspruefung"
 Option Explicit
 
 ' ***************************************************************
@@ -15,9 +15,9 @@ Option Explicit
 '     Monatszuordnung
 '   - mod_ZP_Periode: SetzeMonatPeriode, HoleFaelligkeitFuerKategorie
 ' FIX v3.1: PruefeZahlungen nutzt jetzt Spalte I (Monat/Periode)
-'           statt Month(Buchungsdatum) für Monats-Zuordnung
-' NEU v3.2: Frist-/Toleranzprüfung mit Vorlauf/Nachlauf aus
-'           Einstellungen (Spalte G/H). Säumnishinweis in Bemerkung.
+'           statt Month(Buchungsdatum) ffuer Monats-Zuordnung
+' NEU v3.2: Frist-/ToleranzPruefung mit Vorlauf/Nachlauf aus
+'           Einstellungen (Spalte G/H). Saeumnishinweis in Bemerkung.
 ' ***************************************************************
 
 ' ===============================================================
@@ -67,9 +67,9 @@ Private Const AMPEL_ROT As Long = 9871103
 '
 ' v3.2: Frist-/Toleranzpruefung:
 '   - Vorlauf (Spalte G) und Nachlauf (Spalte H) aus Einstellungen
-'   - Fälligkeitsdatum wird berechnet (BerechneSollDatumZP)
-'   - Zahlung innerhalb [Fälligkeit - Vorlauf, Fälligkeit + Nachlauf] = pünktlich
-'   - Zahlung eingegangen aber NACH Fälligkeit + Nachlauf = GELB + Säumnis
+'   - Fuelligkeitsdatum wird berechnet (BerechneSollDatumZP)
+'   - Zahlung innerhalb [Fuelligkeit - Vorlauf, Fuelligkeit + Nachlauf] = puenktlich
+'   - Zahlung eingegangen aber NACH Fuelligkeit + Nachlauf = GELB + Saeumnis
 '   - Keine Zahlung = ROT
 ' ===============================================================
 Public Function PruefeZahlungen(ByVal entityKey As String, _
@@ -514,7 +514,7 @@ End Function
 
 
 ' ===============================================================
-' Holt Vorlauf/Nachlauf/Säumnis-Gebühr aus dem Einstellungen-Cache
+' Holt Vorlauf/Nachlauf/Saeumnis-Gebuehr aus dem Einstellungen-Cache
 ' fuer eine bestimmte Kategorie
 ' ===============================================================
 Public Sub HoleToleranzZP(ByVal kategorie As String, _

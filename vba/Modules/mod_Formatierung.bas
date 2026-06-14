@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Formatierung"
+﻿Attribute VB_Name = "mod_Formatierung"
 Option Explicit
 
 ' ***************************************************************
@@ -573,8 +573,131 @@ ErrorHandler:
 End Sub
 
 
+' ===============================================================
+' FormatiereMitgliederlisteKomplett
+' ---------------------------------------------------------------
+' Sorgt fuer ein durchgehend konsistentes Layout der
+' Mitgliederliste, immer wenn sich Daten aendern. Wird gerufen von:
+'   - Workbook_Open
+'   - Worksheet_Change auf Mitgliederliste (Tabelle7)
+'   - mod_Mitglieder_UI nach Speichern / Loeschen / Sortieren
+'
+' Setzt:
+'   - Vertikale + horizontale Zentrierung im Datenbereich
+'   - Duenne durchgaengige Rahmen (innen + aussen)
+'   - Zebra-Streifen (weiss / hellgrau alternierend)
+'   - AutoFit auf Datenspalten + sinnvolle Mindestbreite
+'   - Datumsformat fuer Geburtstag / Pacht-Spalten
+'
+' Wird intern stets unter ScreenUpdating=False und EnableEvents=False
+' ausgefuehrt, damit es keine Reentrancy in Worksheet_Change gibt.
+' ===============================================================
+Public Sub FormatiereMitgliederlisteKomplett()
 
+    Dim wsM As Worksheet
+    Dim lastRow As Long
+    Dim lastCol As Long
+    Dim r As Long
+    Dim datenBereich As Range
+    Dim headerBereich As Range
+    Dim warEnableEvents As Boolean
+    Dim warScreenUpdating As Boolean
 
+    On Error GoTo CleanExit
+
+    Set wsM = Nothing
+    On Error Resume Next
+    Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    On Error GoTo CleanExit
+    If wsM Is Nothing Then Exit Sub
+
+    warEnableEvents = Application.EnableEvents
+    warScreenUpdating = Application.ScreenUpdating
+    Application.EnableEvents = False
+    Application.ScreenUpdating = False
+
+    On Error Resume Next
+    wsM.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo CleanExit
+
+    ' Letzte belegte Datenzeile + Spalte ermitteln
+    lastRow = wsM.Cells(wsM.Rows.count, M_COL_NACHNAME).End(xlUp).Row
+    If lastRow < M_START_ROW Then lastRow = M_START_ROW
+    lastCol = M_COL_FUNKTION   ' bis Spalte O (15) - alles dahinter ist Verwaltungs-/Versteckt-Bereich
+
+    Set headerBereich = wsM.Range(wsM.Cells(M_HEADER_ROW, 1), _
+                                   wsM.Cells(M_HEADER_ROW, lastCol))
+    Set datenBereich = wsM.Range(wsM.Cells(M_START_ROW, 1), _
+                                  wsM.Cells(lastRow, lastCol))
+
+    ' Ausrichtung: zentriert horizontal + vertikal
+    datenBereich.HorizontalAlignment = xlCenter
+    datenBereich.VerticalAlignment = xlCenter
+    headerBereich.HorizontalAlignment = xlCenter
+    headerBereich.VerticalAlignment = xlCenter
+
+    ' Rahmen entfernen, dann neu setzen (innen + aussen, duenn, schwarz)
+    Dim rngGesamt As Range
+    Set rngGesamt = wsM.Range(wsM.Cells(M_HEADER_ROW, 1), _
+                               wsM.Cells(lastRow, lastCol))
+    rngGesamt.Borders.LineStyle = xlNone
+
+    Dim borderIds As Variant
+    borderIds = Array(xlEdgeLeft, xlEdgeTop, xlEdgeBottom, xlEdgeRight, _
+                      xlInsideVertical, xlInsideHorizontal)
+    Dim i As Long
+    For i = LBound(borderIds) To UBound(borderIds)
+        With rngGesamt.Borders(borderIds(i))
+            .LineStyle = xlContinuous
+            .Weight = xlThin
+            .Color = RGB(150, 150, 150)
+        End With
+    Next i
+
+    ' Zebra-Streifen: ungerade Datenzeile = weiss, gerade = hellgrau
+    For r = M_START_ROW To lastRow
+        Dim rowRange As Range
+        Set rowRange = wsM.Range(wsM.Cells(r, 1), wsM.Cells(r, lastCol))
+        If ((r - M_START_ROW) Mod 2) = 0 Then
+            rowRange.Interior.Color = RGB(255, 255, 255)
+        Else
+            rowRange.Interior.Color = RGB(242, 242, 242)
+        End If
+    Next r
+
+    ' Datumsformate
+    On Error Resume Next
+    wsM.Range(wsM.Cells(M_START_ROW, M_COL_GEBURTSTAG), _
+              wsM.Cells(lastRow, M_COL_GEBURTSTAG)).NumberFormat = "DD.MM.YYYY"
+    wsM.Range(wsM.Cells(M_START_ROW, M_COL_PACHTANFANG), _
+              wsM.Cells(lastRow, M_COL_PACHTENDE)).NumberFormat = "DD.MM.YYYY"
+    On Error GoTo CleanExit
+
+    ' Spaltenbreiten: AutoFit, dann sinnvolle Mindestbreite
+    Dim c As Long
+    wsM.Range(wsM.Cells(M_HEADER_ROW, 1), wsM.Cells(lastRow, lastCol)) _
+        .Columns.AutoFit
+    For c = 1 To lastCol
+        If wsM.Columns(c).ColumnWidth < 8 Then
+            wsM.Columns(c).ColumnWidth = 8
+        End If
+    Next c
+
+    ' Zeilenhoehe AutoFit
+    On Error Resume Next
+    wsM.Rows(M_HEADER_ROW & ":" & lastRow).AutoFit
+    On Error GoTo CleanExit
+
+CleanExit:
+    On Error Resume Next
+    wsM.Protect PASSWORD:=PASSWORD, _
+                UserInterfaceOnly:=True, _
+                AllowFiltering:=True, _
+                AllowSorting:=True
+    Application.EnableEvents = warEnableEvents
+    Application.ScreenUpdating = warScreenUpdating
+    On Error GoTo 0
+End Sub
 
 
 

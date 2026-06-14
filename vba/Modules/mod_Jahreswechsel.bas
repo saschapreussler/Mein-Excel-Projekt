@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Jahreswechsel"
+﻿Attribute VB_Name = "mod_Jahreswechsel"
 '==================================================================
 '  PUNKT 13: Neues Kalenderjahr starten
 '  - Erstellt eine Archiv-Kopie der aktuellen Mappe

@@ -1,14 +1,14 @@
-Attribute VB_Name = "mod_Zaehler_Historie"
+ï»¿Attribute VB_Name = "mod_Zaehler_Historie"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Zaehler_Historie
 ' Ausgelagert aus mod_ZaehlerLogik
-' Enthält: SchreibeHistorie, FarbeHistorieEintraege
+' enthaelt: SchreibeHistorie, FarbeHistorieEintraege
 ' ===============================================================
 
 ' --- Konstanten (lokal dupliziert) ---
-Private Const HIST_SHEET_NAME As String = "Zählerhistorie"
+Private Const HIST_SHEET_NAME As String = "Zaehlerhistorie"
 Private Const HIST_TABLE_NAME As String = "Tabelle_Zaehlerhistorie"
 Private Const PASSWORD As String = ""
 
@@ -53,7 +53,7 @@ Public Sub SchreibeHistorie( _
     Dim wasTargetProtected As Boolean, wasHistoryProtected As Boolean
     Dim AltEnde_Geprueft As Double, neuStart_Geprueft As Double
     
-    ' I. WERTE PRÜFEN & RUNDEN
+    ' I. WERTE PruefeN & RUNDEN
     If AltEnde = Int(AltEnde) Then AltEnde_Geprueft = AltEnde Else AltEnde_Geprueft = Round(AltEnde, 4)
     If neuStart = Int(neuStart) Then neuStart_Geprueft = neuStart Else neuStart_Geprueft = Round(neuStart, 4)
     
@@ -101,7 +101,7 @@ Public Sub SchreibeHistorie( _
         On Error GoTo Fehler_Handler
     End If
     
-    ' 2. Lese den Startstand des ALTEN Zählers
+    ' 2. Lese den Startstand des ALTEN Zaehlers
     If targetRow > 0 And Not wsTarget Is Nothing Then
         If IsNumeric(wsTarget.Cells(targetRow, COL_STAND_ANFANG).value) Then
             standAnfangAlt = CDbl(wsTarget.Cells(targetRow, COL_STAND_ANFANG).value)
@@ -151,7 +151,7 @@ Public Sub SchreibeHistorie( _
         
     End If
     
-    ' 5. Farben für Historie setzen & Update-Call
+    ' 5. Farben ffuer Historie setzen & Update-Call
     Select Case Medium
         Case "Strom"
             lngColor = RGB_STROM
@@ -196,7 +196,7 @@ Fehler_Handler:
 End Sub
 
 ' ==========================================================
-' FÜRBT HISTORIEN-EINTRÄGE
+' FAERBT HISTORIEN-Eintraege
 ' ==========================================================
 Public Sub FarbeHistorieEintraege()
     Dim ws As Worksheet

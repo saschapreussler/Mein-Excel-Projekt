@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Format_Spalten"
+﻿Attribute VB_Name = "mod_Format_Spalten"
 Option Explicit
 
 ' ***************************************************************

@@ -1,4 +1,4 @@
-VERSION 1.0 CLASS
+ï»¿VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
@@ -96,7 +96,7 @@ Private Sub Workbook_Open()
 
     ' v7.3 (alt): Aktiviere_BankkontoFilter wurde hier aufgerufen,
     '             aber StelleAutoFilterBereit weiter unten hat ihn
-    '             wieder überschrieben. -> Aufruf nach unten verschoben.
+    '             wieder ueberschrieben. -> Aufruf nach unten verschoben.
     
     ' v6.0: Startseite als erstes Blatt anzeigen
     On Error Resume Next
@@ -119,13 +119,25 @@ Private Sub Workbook_Open()
     On Error Resume Next
     Call mod_Banking_Format.Aktiviere_BankkontoFilter
     On Error GoTo 0
-    
+
+    ' v8.2: Vereinskasse-AutoFilter B26:T26 (A26 bleibt bewusst leer)
+    On Error Resume Next
+    Call mod_Vereinskasse_Filter.Aktiviere_VereinskasseFilter
+    On Error GoTo 0
+
+    ' v8.2: Aktuelle Parzellen-Anzahl in Strom!B6 und Wasser!A4
+    On Error Resume Next
+    Call mod_Startseite.AktualisiereParzellenAnzeigen
+    On Error GoTo 0
+
+    ' v8.2: Mitgliederliste durchgaengig formatieren
+    On Error Resume Next
+    Call mod_Formatierung.FormatiereMitgliederlisteKomplett
+    On Error GoTo 0
+
 End Sub
 
 Private Sub Workbook_NewSheet(ByVal Sh As Object)
-    ' Neues Blatt automatisch vertikal zentrieren
-    On Error Resume Next
-    Call mod_Formatierung.FormatiereNeuesBlatt(Sh)
     On Error GoTo 0
 End Sub
 

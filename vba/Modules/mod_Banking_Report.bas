@@ -1,36 +1,36 @@
-Attribute VB_Name = "mod_Banking_Report"
+ï»¿Attribute VB_Name = "mod_Banking_Report"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Report
 ' Ausgelagert aus mod_Banking_Data
-' Enthält: Import Report ListBox (ActiveX) Verwaltung
+' enthaelt: Import Report ListBox (ActiveX) Verwaltung
 '          Protokoll-Speicher (Daten!Y500), Farbcodierung
 ' ===============================================================
 
-' Farb-Konstanten für ListBox-Hintergrund (OLE_COLOR / BGR)
-Private Const LB_COLOR_GRUEN As Long = &HC0FFC0     ' hellgrün
+' Farb-Konstanten ffuer ListBox-Hintergrund (OLE_COLOR / BGR)
+Private Const LB_COLOR_GRUEN As Long = &HC0FFC0     ' hellgruen
 Private Const LB_COLOR_GELB As Long = &HC0FFFF      ' hellgelb
 Private Const LB_COLOR_ROT As Long = &HC0C0FF       ' hellrot
-Private Const LB_COLOR_WEISS As Long = &HFFFFFF     ' weiß
+Private Const LB_COLOR_WEISS As Long = &HFFFFFF     ' weiss
 
-' Trennzeichen für Serialisierung in Zelle Y500
+' Trennzeichen ffuer Serialisierung in Zelle Y500
 Private Const PROTO_SEP As String = "||"
 
 ' Protokoll-Speicher: Zelle Y500 auf dem Daten-Blatt
 Private Const PROTO_ZEILE As Long = 500
 Private Const PROTO_SPALTE As Long = 25              ' Spalte Y
 
-' Maximale Anzahl Import-Blöcke im Speicher (je 5 Zeilen)
+' Maximale Anzahl Import-Bloecke im Speicher (je 5 Zeilen)
 Private Const MAX_BLOECKE As Long = 100
 ' 100 x 5 = 500 Zeilen maximal
 Private Const MAX_ZEILEN As Long = 500
 
 
 ' ---------------------------------------------------------------
-' Initialize: Liest Y500, befällt ActiveX ListBox,
+' Initialize: Liest Y500, beFuellt ActiveX ListBox,
 '     setzt Hintergrundfarbe.
-'     Aufruf: Workbook_Open, Worksheet_Activate, nach Löschen
+'     Aufruf: Workbook_Open, Worksheet_Activate, nach Loeschen
 ' ---------------------------------------------------------------
 Public Sub Initialize_ImportReport_ListBox()
     
@@ -88,7 +88,7 @@ Public Sub Initialize_ImportReport_ListBox()
 End Sub
 
 ' ---------------------------------------------------------------
-' Update: Neuen 5-Zeilen-Block OBEN einfügen,
+' Update: Neuen 5-Zeilen-Block OBEN einfuegen,
 '     in Y500 serialisiert speichern, ListBox aktualisieren.
 ' ---------------------------------------------------------------
 Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported As Long, _
@@ -121,7 +121,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     ' --- 5-Zeilen-Block zusammenbauen ---
     neuerBlock = "Import: " & Format(Now, "DD.MM.YYYY  HH:MM:SS") & _
                  PROTO_SEP & _
-                 imported & " / " & totalRows & " Datensätze importiert" & _
+                 imported & " / " & totalRows & " Datensaetze importiert" & _
                  PROTO_SEP & _
                  dupes & " Duplikate erkannt" & _
                  PROTO_SEP & _
@@ -161,7 +161,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     ' --- In Y500 speichern (eine einzige Zelle!) ---
     wsDaten.Cells(PROTO_ZEILE, PROTO_SPALTE).value = gesamt
     
-    ' --- Daten-Blatt schützen ---
+    ' --- Daten-Blatt schuetzen ---
     On Error Resume Next
     wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0

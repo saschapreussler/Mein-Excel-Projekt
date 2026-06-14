@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_EntityKey_Manager"
+﻿Attribute VB_Name = "mod_EntityKey_Manager"
 Option Explicit
 
 ' ***************************************************************

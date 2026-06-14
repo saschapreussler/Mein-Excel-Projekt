@@ -1,10 +1,10 @@
-Attribute VB_Name = "mod_ZP_Sammelzuordnung"
+ï»¿Attribute VB_Name = "mod_ZP_Sammelzuordnung"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_ZP_Sammelzuordnung
 ' Ausgelagert aus mod_Zahlungspruefung
-' Enthält: Sammelüberweisungen erkennen + manuelle Monatszuordnung
+' enthaelt: Sammelueberweisungen erkennen + manuelle Monatszuordnung
 ' ===============================================================
 
 

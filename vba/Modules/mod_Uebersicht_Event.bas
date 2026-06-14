@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Uebersicht_Event"
+﻿Attribute VB_Name = "mod_Uebersicht_Event"
 Option Explicit
 
 ' ***************************************************************

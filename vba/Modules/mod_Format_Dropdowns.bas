@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Format_Dropdowns"
+﻿Attribute VB_Name = "mod_Format_Dropdowns"
 Option Explicit
 
 ' ***************************************************************

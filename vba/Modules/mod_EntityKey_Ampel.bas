@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_EntityKey_Ampel"
+﻿Attribute VB_Name = "mod_EntityKey_Ampel"
 Option Explicit
 
 ' ***************************************************************

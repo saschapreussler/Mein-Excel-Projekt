@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_EntityKey_Classifier"
+﻿Attribute VB_Name = "mod_EntityKey_Classifier"
 Option Explicit
 
 ' ***************************************************************

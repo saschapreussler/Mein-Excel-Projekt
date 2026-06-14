@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_KategorieEngine_Evaluator"
+ï»¿Attribute VB_Name = "mod_KategorieEngine_Evaluator"
 Option Explicit
 
 ' =====================================================
@@ -15,18 +15,18 @@ Option Explicit
 '     ErmittleMonatPeriode, IstMonatInListe
 ' =====================================================
 
-' Mindest-Score-Differenz für sichere Zuordnung
+' Mindest-Score-Differenz ffuer sichere Zuordnung
 Private Const SCORE_DOMINANZ_SCHWELLE As Long = 20
 
-' Kategorie für echte Mehrdeutigkeit (nur programmatisch!)
+' Kategorie ffuer echte Mehrdeutigkeit (nur programmatisch!)
 Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung (mehrere Positionen) Mitglied"
 
-' Farbe für "Folgemonat manuell bestätigt" (hell-grün)
+' Farbe ffuer "Folgemonat manuell bestaetigt" (hell-gruen)
 Private Const FARBE_HELLGRUEN As Long = 12968900  ' RGB(196, 225, 196) -> &HC4E1C4 -> Long
 
 
 ' -----------------------------
-' EntityInfo über IBAN bestimmen (kombiniert: Role + Parzelle)
+' EntityInfo ueber IBAN bestimmen (kombiniert: Role + Parzelle)
 ' -----------------------------
 Private Sub GetEntityInfoByIBAN(ByVal strIBAN As String, _
                                  ByRef outRole As String, _
@@ -129,23 +129,23 @@ End Function
 ' =====================================================
 ' Hauptfunktion: Kategorie evaluieren (v9.3)
 ' Braucht KEINEN Named Range! Liest Regeln direkt vom
-' Daten-Blatt über DATA_CAT_COL_* Konstanten.
+' Daten-Blatt ueber DATA_CAT_COL_* Konstanten.
 ' Scoring-Logik aus v7.0 wiederhergestellt.
-' v9.3: WordCountBonus + erhöhter Prio-Bonus
+' v9.3: WordCountBonus + erhoehter Prio-Bonus
 ' =====================================================
 Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                                       ByVal rowBK As Long, _
                                       ByVal wsData As Worksheet, _
                                       ByVal lastRuleRow As Long)
 
-    ' Bereits kategorisiert? überspringen
+    ' Bereits kategorisiert? ueberspringen
     If Trim(wsBK.Cells(rowBK, BK_COL_KATEGORIE).value) <> "" Then Exit Sub
 
     Dim ctx As Object
     Set ctx = BuildKategorieContext(wsBK, rowBK)
 
     ' ================================
-    ' PHASE 0: SONDERREGEL FÜR 0-EURO-BETRÄGE
+    ' PHASE 0: SONDERREGEL Ffuer 0-EURO-Betraege
     ' ================================
     If ctx("IsNullBetrag") And ctx("IsEntgeltabschluss") Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
@@ -154,7 +154,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         Exit Sub
     End If
 
-    ' 0-Euro ohne Sonderregel -> überspringen
+    ' 0-Euro ohne Sonderregel -> ueberspringen
     If ctx("IsNullBetrag") Then Exit Sub
 
     Dim normText As String
@@ -165,7 +165,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     ' PHASE 1: HARTE SONDERREGELN
     ' ================================
     
-    ' 1a) Entgeltabschluss (Bankgebühren)
+    ' 1a) Entgeltabschluss (BankGebuehren)
     If ctx("IsEntgeltabschluss") And ctx("IsAusgabe") Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
                        "Entgeltabschluss (Kontof" & ChrW(252) & "hrung)", "GRUEN"
@@ -190,7 +190,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     bestPriority = 999
     bestCategory = ""
 
-    ' Dictionary: Kategorie -> Score (höchster Score je Kategorie)
+    ' Dictionary: Kategorie -> Score (hoechster Score je Kategorie)
     Dim hitCategories As Object
     Set hitCategories = CreateObject("Scripting.Dictionary")
 
@@ -203,7 +203,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         Dim prio As Long
         Dim faelligkeit As String
 
-        ' Spalten über Konstanten lesen
+        ' Spalten ueber Konstanten lesen
         category = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KATEGORIE).value))    ' J
         einAus = UCase(Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_EINAUS).value)))   ' K
         keyword = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KEYWORD).value))        ' L
@@ -242,22 +242,22 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
             Dim score As Long
             score = 100
             
-            ' Prioritätsbonus (niedrigere Prio = höherer Bonus)
-            ' v9.3: Faktor 8 statt 5 für stärkere Differenzierung
+            ' Prioritaetsbonus (niedrigere Prio = hoeherer Bonus)
+            ' v9.3: Faktor 8 statt 5 ffuer staerkere Differenzierung
             score = score + (10 - prio) * 8
             
-            ' EntityRole bekannt = höhere Konfidenz (+20 wie in v7.0)
+            ' EntityRole bekannt = hoehere Konfidenz (+20 wie in v7.0)
             If ctx("EntityRole") <> "" Then
                 score = score + 20
             End If
             
-            ' Einnahme/Ausgabe stimmt exakt überein
+            ' Einnahme/Ausgabe stimmt exakt ueberein
             If (einAus = "E" And ctx("IsEinnahme")) Or _
                (einAus = "A" And ctx("IsAusgabe")) Then
                 score = score + 15
             End If
             
-            ' Keyword-Länge als Qualitätsfaktor
+            ' Keyword-Laenge als Qualitaetsfaktor
             Dim kwLen As Long
             kwLen = Len(normKeyword)
             If kwLen >= 12 Then
@@ -268,18 +268,18 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                 score = score + 5
             End If
             
-            ' ExactMatchBonus (v8.0: +10 wenn Keyword zusammenhängend im Text)
+            ' ExactMatchBonus (v8.0: +10 wenn Keyword zusammenhaengend im Text)
             score = score + ExactMatchBonus(normText, normKeyword)
             
-            ' WordCountBonus (v9.3: Anzahl Wörter im Keyword * 5)
+            ' WordCountBonus (v9.3: Anzahl Woerter im Keyword * 5)
             score = score + WordCountBonus(normKeyword)
             
-             ' Betragsvalidierung über Einstellungen
+             ' Betragsvalidierung ueber Einstellungen
             Dim betragBonus As Long
             betragBonus = PruefeBetragGegenEinstellungen(category, ctx("AbsAmount"))
             score = score + betragBonus
             
-             ' Zeitfenstervalidierung über Einstellungen
+             ' Zeitfenstervalidierung ueber Einstellungen
             If IsDate(ctx("Datum")) Then
                 Dim zeitBonus As Long
                 zeitBonus = PruefeZeitfenster(category, CDate(ctx("Datum")), faelligkeit)
@@ -342,7 +342,7 @@ NextRule:
             If katNr < hitCategories.count Then
                 bemerkung = bemerkung & katNr & ") " & CStr(katKey) & vbLf
             Else
-                ' Letzte Kategorie: KEIN abschließendes vbLf
+                ' Letzte Kategorie: KEIN abschliessendes vbLf
                 bemerkung = bemerkung & katNr & ") " & CStr(katKey)
             End If
         Next katKey
@@ -356,7 +356,7 @@ NextRule:
         Exit Sub
     End If
 
-    ' Genau 1 Treffer = sicher GRÜN
+    ' Genau 1 Treffer = sicher gruen
     If bestCategory <> "" Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRUEN"
         Exit Sub
@@ -365,7 +365,7 @@ NextRule:
     ' Kein Treffer = ROT
     If ctx("EntityRole") = "" Then
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-        "Keine Kategorie gefunden. IBAN nicht zugeordnet - bitte Entity-Mapping prüfen!"
+        "Keine Kategorie gefunden. IBAN nicht zugeordnet - bitte Entity-Mapping Pruefen!"
     Else
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
             "Keine passende Kategorie gefunden (EntityRole: " & ctx("EntityRole") & ")"
@@ -376,7 +376,7 @@ End Sub
 
 
 ' =====================================================
-' Betragsspalten entsperren für manuelle Eingabe
+' Betragsspalten entsperren ffuer manuelle Eingabe
 ' =====================================================
 Private Sub EntsperreBetragsspalten(ByVal wsBK As Worksheet, _
                                     ByVal rowBK As Long, _

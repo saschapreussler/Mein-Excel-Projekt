@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Mitglieder_UI"
+ï»¿Attribute VB_Name = "mod_Mitglieder_UI"
 Option Explicit
 
 ' ***************************************************************
@@ -72,7 +72,7 @@ CleanUp:
     Exit Sub
     
 ErrorHandler:
-    MsgBox "Fehler beim Füllen der MemberIDs: " & Err.Description, vbCritical
+    MsgBox "Fehler beim Fuellen der MemberIDs: " & Err.Description, vbCritical
     Resume CleanUp
 End Sub
 
@@ -157,8 +157,8 @@ Private Sub ApplyDropdown(ByVal targetRange As Range, ByVal sourceFormula As Str
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertWarning, Operator:=xlBetween, Formula1:=sourceFormula
         .IgnoreBlank = allowBlanks
         .InCellDropdown = True
-        .ErrorTitle = "Ungültiger Wert"
-        .ErrorMessage = "Bitte wählen Sie einen Wert aus der Liste."
+        .ErrorTitle = "ungueltiger Wert"
+        .ErrorMessage = "Bitte waehlen Sie einen Wert aus der Liste."
     End With
 End Sub
 
@@ -283,7 +283,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ' === SICHERHEITSCHECK 1: selectedRow darf nicht die Verein-Parzelle sein ===
     If selectedRow >= M_START_ROW Then
         If Trim(wsM.Cells(selectedRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
-            MsgBox "FEHLER: Die Verein-Parzelle darf nicht geändert werden!", vbCritical
+            MsgBox "FEHLER: Die Verein-Parzelle darf nicht geaendert werden!", vbCritical
             GoTo CleanUp
         End If
     End If

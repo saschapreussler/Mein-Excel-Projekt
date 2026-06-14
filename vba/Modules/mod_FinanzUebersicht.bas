@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_FinanzUebersicht"
+﻿Attribute VB_Name = "mod_FinanzUebersicht"
 Option Explicit
 
 ' ===============================================================

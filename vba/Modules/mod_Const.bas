@@ -1,15 +1,15 @@
-Attribute VB_Name = "mod_Const"
+ï»¿Attribute VB_Name = "mod_Const"
 Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Const
-' ZWECK: Zentrale Konstanten für das gesamte Projekt
+' ZWECK: Zentrale Konstanten ffuer das gesamte Projekt
 ' VERSION: 2.8 - 11.02.2026
-' ÄNDERUNG v2.8: WS_UEBERSICHT von "Uebersicht" auf "Übersicht"
-'                geändert (Tabellenblatt heißt "Übersicht")
-' ÄNDERUNG v2.7: ES_COL_SOLL_MONATE hinzugefügt (Spalte E),
+' Aenderung v2.8: WS_UEBERSICHT von "Uebersicht" auf "Uebersicht"
+'                geaendert (Tabellenblatt heisst "Uebersicht")
+' Aenderung v2.7: ES_COL_SOLL_MONATE hinzugefuegt (Spalte E),
 '           alle folgenden ES-Spalten +1 verschoben,
-'           ES_COL_END von 8 auf 9 geändert
+'           ES_COL_END von 8 auf 9 geaendert
 ' ***************************************************************
 
 ' ===============================================================
@@ -20,7 +20,7 @@ Public Const WS_DATEN As String = "Daten"
 Public Const WS_MITGLIEDER As String = "Mitgliederliste"
 ' ENCODING-SICHER: WS_UEBERSICHT als Function statt Const,
 ' weil ChrW() in Const-Deklarationen nicht erlaubt ist.
-' Wird durch den Repo-Sync sonst zu "Übersicht" korrumpiert.
+' Wird durch den Repo-Sync sonst zu "Uebersicht" korrumpiert.
 ' Siehe Function WS_UEBERSICHT() am Ende dieses Moduls.
 Public Const WS_MITGLIEDER_HISTORIE As String = "Mitgliederhistorie"
 Public Const WS_EINSTELLUNGEN As String = "Einstellungen"
@@ -32,7 +32,7 @@ Public Const WS_VEREINSKASSE As String = "Vereinskasse"
 Public Const RANGE_KATEGORIE_REGELN As String = "rng_KategorieRegeln"
 
 ' ===============================================================
-' C. DATEN - TEMPORÄRE HILFSSPALTEN
+' C. DATEN - TemporaerE HILFSSPALTEN
 ' ===============================================================
 Public Const DATA_TEMP_COL_KEY As Long = 25
 Public Const DATA_TEMP_COL_NAME As Long = 26
@@ -152,14 +152,14 @@ Public Const DATA_MAP_COL_ENTITYROLE As Long = 23
 Public Const DATA_MAP_COL_DEBUG As Long = 24
 Public Const DATA_MAP_COL_LAST As Long = 24
 
-' Aliase für Kompatibilität
+' Aliase fuer Kompatibilitaet
 Public Const DATA_MAP_COL_IBAN_OLD As Long = 19
 Public Const DATA_MAP_COL_PARZ_KEY As Long = 22
 Public Const DATA_MAP_COL_NAME As Long = 21
 Public Const DATA_MAP_COL_KONTONAME As Long = 20
 
 ' ===============================================================
-' G2. ENTITYKEY-TABELLE - ALIASE FÜR mod_Formatierung
+' G2. ENTITYKEY-TABELLE - ALIASE Ffuer mod_Formatierung
 ' ===============================================================
 Public Const EK_START_ROW As Long = 4
 Public Const EK_COL_ENTITYKEY As Long = 18
@@ -171,7 +171,7 @@ Public Const EK_COL_ROLE As Long = 23
 Public Const EK_COL_DEBUG As Long = 24
 
 ' ===============================================================
-' H. DATEN - DROPDOWN-FÜLLBEREICHE (Spalten Y-AH)
+' H. DATEN - DROPDOWN-FuellBEREICHE (Spalten Y-AH)
 ' ===============================================================
 Public Const DATA_COL_IMPORT_STATUS As Long = 25
 Public Const CELL_IMPORT_PROTOKOLL As String = "Y500"
@@ -194,14 +194,14 @@ Public Const DATA_COL_AUSGABEN As Long = 33
 Public Const DATA_COL_DD_ROLE As Long = 30
 Public Const DATA_COL_DD_PARZELLE As Long = 6
 
-' Hilfsspalte BA auf Daten für Einstellungen-DropDown Fallback
+' Hilfsspalte BA auf Daten ffuer Einstellungen-DropDown Fallback
 Public Const DATA_COL_ES_HILF As Long = 53      ' Spalte BA
 
 ' ===============================================================
 ' H2. DATEN - VORJAHR-SPEICHER (Spalten CA-CF = 79-84)
 ' Cached Bankkonto-Buchungen aus Okt-Dez des Vorjahres
-' Wird beim CSV-Import automatisch befällt
-' Soll spätestens im August des Folgejahres gelöscht werden
+' Wird beim CSV-Import automatisch beFuellt
+' Soll spaetestens im August des Folgejahres geloescht werden
 ' ===============================================================
 Public Const VJ_COL_DATUM As Long = 79          ' CA - Buchungsdatum
 Public Const VJ_COL_BETRAG As Long = 80         ' CB - Betrag
@@ -223,7 +223,7 @@ Public Const CSV_COL_IBAN As Long = 13
 Public Const CSV_COL_BETRAG As Long = 15
 
 ' ===============================================================
-' J. ZÄHLERLOGIK
+' J. ZaehlerLOGIK
 ' ===============================================================
 Public Const COL_PARZELLE As Long = 1
 Public Const COL_STAND_ANFANG As Long = 2
@@ -279,7 +279,7 @@ Public Const ANREDE_KGA As String = "KGA"
 Public Const AUSTRITT_STATUS As String = "Ehemaliges Mitglied"
 
 ' ===============================================================
-' O. ERLAUBTE FUNKTIONEN FÜR PARZELLENPACHT
+' O. ERLAUBTE FUNKTIONEN Ffuer PARZELLENPACHT
 ' ===============================================================
 Public Const FUNKTION_MITGLIED_MIT_PACHT As String = "Mitglied mit Pacht"
 Public Const FUNKTION_1_VORSITZENDER As String = "1. Vorsitzende(r)"
@@ -326,7 +326,7 @@ Public Const ES_COL_SOLL_MONATE As Long = 5     ' Spalte E - Soll-Monat(e) z.B. 
 Public Const ES_COL_STICHTAG_FIX As Long = 6    ' Spalte F - Soll-Stichtag (Fix) TT.MM.
 Public Const ES_COL_VORLAUF As Long = 7         ' Spalte G - Vorlauf-Toleranz (Tage)
 Public Const ES_COL_NACHLAUF As Long = 8        ' Spalte H - Nachlauf-Toleranz (Tage)
-Public Const ES_COL_SAEUMNIS As Long = 9        ' Spalte I - Säumnis-Gebühr
+Public Const ES_COL_SAEUMNIS As Long = 9        ' Spalte I - Saeumnis-Gebuehr
 
 Public Const ES_COL_START As Long = 2           ' Erste Datenspalte (B)
 Public Const ES_COL_END As Long = 9             ' Letzte Datenspalte (I)

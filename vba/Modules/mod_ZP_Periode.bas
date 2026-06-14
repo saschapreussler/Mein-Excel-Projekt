@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_ZP_Periode"
+﻿Attribute VB_Name = "mod_ZP_Periode"
 Option Explicit
 
 ' ***************************************************************

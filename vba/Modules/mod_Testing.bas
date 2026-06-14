@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Testing"
+ï»¿Attribute VB_Name = "mod_Testing"
 Option Explicit
 
 ' ***************************************************************
@@ -173,7 +173,7 @@ Public Sub TestReset_VorCSVImport()
         ekAntwort = MsgBox("Die EntityKey-Tabelle (Daten R-X) 4 " & _
                            (ekLastRow - EK_START_ROW + 1) & " 5." & vbCrLf & vbCrLf & _
                            "EntityKey-Tabelle ebenfalls 2?" & vbCrLf & _
-                           "(Empfohlen für kompletten Neustart)", _
+                           "(Empfohlen ffuer kompletten Neustart)", _
                            vbYesNo + vbQuestion, "EntityKey-Tabelle")
         Application.ScreenUpdating = False
 
@@ -206,7 +206,7 @@ Public Sub TestReset_VorCSVImport()
     Application.EnableEvents = eventsWaren
 
     MsgBox "Test-Reset abgeschlossen." & vbCrLf & vbCrLf & _
-           "Gelöscht:" & vbCrLf & _
+           "geloescht:" & vbCrLf & _
            "  ? Bankkonto (alle 2)" & vbCrLf & _
            "  ? 4 (alle 5)" & vbCrLf & _
            "  ? Dashboard Mitgliederzahlungen" & vbCrLf & _
@@ -468,7 +468,7 @@ End Sub
 Private Sub Test_8_MitgliedAustritt()
 
     Debug.Print "TEST 8: MITGLIED AUSTRITT (manuell)"
-    Debug.Print "  1. Öffne bestehendes Mitglied"
+    Debug.Print "  1. oeffne bestehendes Mitglied"
     Debug.Print "  2. Klick 'Entfernen'"
     Debug.Print "  3. 2 'Austritt'"
     Debug.Print "  4. 1 Austrittsdatum"
@@ -536,7 +536,7 @@ End Sub
 ' ===============================================================
 ' Erzeugt monatliche CSV-Dateien im Sparkasse-Format.
 ' Liest Mitglieder und Kategorien aus der Arbeitsmappe.
-' Enthält Test-Szenarien für Vorjahr-Dezember-Zahlungen.
+' enthaelt Test-Szenarien ffuer Vorjahr-Dezember-Zahlungen.
 '
 ' CSV-Dateien: KTO_2024_01.csv bis KTO_2026_01.csv
 '   - Jede Datei 4 alle Zahlungen eines Monats
@@ -556,7 +556,7 @@ Public Sub GeneriereTestCSVDateien()
     Set shellApp = CreateObject("Shell.Application")
     Dim oFolder As Object
     Set oFolder = shellApp.BrowseForFolder(0, _
-        "Ordner für Test-CSV-Dateien 3:", 0)
+        "Ordner ffuer Test-CSV-Dateien 3:", 0)
     If oFolder Is Nothing Then
         MsgBox "Abgebrochen.", vbInformation
         Exit Sub
@@ -877,9 +877,9 @@ Public Sub TestZebraDebug()
 
     Debug.Print "=== ZEBRA DEBUG TEST ==="
 
-    ' Zeile 7 gelb färben
+    ' Zeile 7 gelb faerben
     ws.Range("A7:Q7").Interior.color = &HFFFF
-    Debug.Print "Zeile 7 gefärbt mit &H00FFFF (Gelb)"
+    Debug.Print "Zeile 7 gefaerbt mit &H00FFFF (Gelb)"
 
     Dim color As Long
     color = ws.Range("A7").Interior.color
@@ -952,9 +952,9 @@ Public Sub DebugZebraFormatierung()
     Dim testFormula As String
     testFormula = "=UND(NICHT(ISTLEER($E$6)); MOD(ZEILE()-6;2)=1)"
     Debug.Print "   Test-Formel: " & testFormula
-    Debug.Print "   Für Zeile 6: MOD(6-6;2)=1 -> MOD(0;2)=1 -> FALSE"
-    Debug.Print "   Für Zeile 7: MOD(7-6;2)=1 -> MOD(1;2)=1 -> TRUE"
-    Debug.Print "   Für Zeile 8: MOD(8-6;2)=1 -> MOD(2;2)=1 -> FALSE"
+    Debug.Print "   Ffuer Zeile 6: MOD(6-6;2)=1 -> MOD(0;2)=1 -> FALSE"
+    Debug.Print "   Ffuer Zeile 7: MOD(7-6;2)=1 -> MOD(1;2)=1 -> TRUE"
+    Debug.Print "   Ffuer Zeile 8: MOD(8-6;2)=1 -> MOD(2;2)=1 -> FALSE"
 
 End Sub
 

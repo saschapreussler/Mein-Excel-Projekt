@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_BK_KA_Nummern"
+﻿Attribute VB_Name = "mod_BK_KA_Nummern"
 Option Explicit
 
 ' ***************************************************************
