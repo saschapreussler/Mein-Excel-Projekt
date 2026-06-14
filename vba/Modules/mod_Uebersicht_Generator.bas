@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Uebersicht_Generator"
+﻿Attribute VB_Name = "mod_Uebersicht_Generator"
 Option Explicit
 
 ' ***************************************************************
@@ -1459,13 +1459,30 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
         monatText = CStr(wsUeb.Cells(r, UEB_COL_MONAT).value)
         Dim vjMitglied As String
         vjMitglied = CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)
+
+        ' Soll-Betrag jetzt vorab lesen, damit alle drei Dialoge ihn anzeigen koennen.
+        Dim sollWertVorab As Double
+        sollWertVorab = LeseDoubleAusZelleVJ(wsUeb.Cells(r, UEB_COL_SOLL))
+
+        Dim sollText As String
+        If sollWertVorab > 0 Then
+            sollText = Format(sollWertVorab, "#,##0.00") & " " & ChrW(8364)
+        Else
+            sollText = "(variabel - keine feste Vorgabe)"
+        End If
+
+        ' Gemeinsamer Info-Block fuer MsgBox + beide InputBoxen,
+        ' damit der Nutzer in JEDER Box weiss, fuer wen / was / wieviel.
+        Dim infoBlock As String
+        infoBlock = "Parzelle:    " & parzelle & vbCrLf & _
+                    "Mitglied:    " & vjMitglied & vbCrLf & _
+                    "Kategorie:   " & vjKategorie & vbCrLf & _
+                    "Monat:       " & monatText & vbCrLf & _
+                    "Soll-Betrag: " & sollText
         
         Dim vjAntwort As VbMsgBoxResult
         vjAntwort = MsgBox("Position " & i & " von " & gelbZeilen.count & ":" & vbCrLf & vbCrLf & _
-                           "Parzelle: " & parzelle & vbCrLf & _
-                           "Mitglied: " & vjMitglied & vbCrLf & _
-                           "Kategorie: " & vjKategorie & vbCrLf & _
-                           "Monat: " & monatText & vbCrLf & vbCrLf & _
+                           infoBlock & vbCrLf & vbCrLf & _
                            "Wurde diese Zahlung im Vorjahr (Okt-Dez) " & _
                            "fristgerecht bezahlt?" & vbCrLf & vbCrLf & _
                            "  Ja = " & ChrW(10004) & " GR" & ChrW(220) & "N (bezahlt)" & vbCrLf & _
@@ -1486,18 +1503,23 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
         aktBem = Trim(aktBem)
         
         If vjAntwort = vbYes Then
-            ' Soll-Betrag robust aus der Uebersichts-Zelle lesen.
-            ' (war beim Generieren bereits aus den Einstellungen gefuellt.
-            '  Val() ignoriert das deutsche Komma -> brauchen sichere Konvertierung)
+            ' Soll-Betrag wurde oben bereits gelesen.
             Dim sollWert As Double
-            sollWert = LeseDoubleAusZelleVJ(wsUeb.Cells(r, UEB_COL_SOLL))
+            sollWert = sollWertVorab
 
             Dim defaultDatum As String
             defaultDatum = "15.12." & CStr(HoleJahrAusMonatstext(wsUeb.Cells(r, UEB_COL_MONAT).value) - 1)
 
             Dim inDatum As String
-            inDatum = InputBox("Bitte Datum der Vorjahrzahlung eingeben (TT.MM.JJJJ):", _
-                               "Vorjahrzahlung - Datum", defaultDatum)
+            inDatum = InputBox("Datum der Vorjahrzahlung eingeben (TT.MM.JJJJ)" & vbCrLf & _
+                               "------------------------------------------------------------" & vbCrLf & _
+                               infoBlock & vbCrLf & _
+                               "------------------------------------------------------------" & vbCrLf & vbCrLf & _
+                               "Wann wurde die Zahlung fuer obige Position im Vorjahr" & vbCrLf & _
+                               "(Oktober bis Dezember) ueberwiesen / verbucht?" & vbCrLf & vbCrLf & _
+                               "Vorbelegt: 15.12. des Vorjahres - bitte ggf. anpassen.", _
+                               "Vorjahrzahlung - Datum (Pos. " & i & "/" & gelbZeilen.count & ")", _
+                               defaultDatum)
             If LenB(Trim(inDatum)) = 0 Then GoTo NextPos
 
             Dim zahlDatum As Date
@@ -1521,9 +1543,18 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
             End If
 
             Dim inBetrag As String
-            inBetrag = InputBox("Bitte H" & ChrW(246) & "he der Vorjahrzahlung eingeben:" & vbCrLf & vbCrLf & _
-                                "(SOLL aus Einstellungen ist vorausgef" & ChrW(252) & "llt)", _
-                                "Vorjahrzahlung - Betrag", defaultBetrag)
+            inBetrag = InputBox("H" & ChrW(246) & "he der Vorjahrzahlung eingeben" & vbCrLf & _
+                                "------------------------------------------------------------" & vbCrLf & _
+                                infoBlock & vbCrLf & _
+                                "Datum:       " & Format(zahlDatum, "dd.mm.yyyy") & vbCrLf & _
+                                "------------------------------------------------------------" & vbCrLf & vbCrLf & _
+                                "Welcher Betrag wurde tats" & ChrW(228) & "chlich gezahlt?" & vbCrLf & vbCrLf & _
+                                IIf(sollWert > 0, _
+                                    "Vorbelegt mit dem Soll-Betrag aus den Einstellungen." & vbCrLf & _
+                                    "Bei abweichendem Betrag bitte korrigieren.", _
+                                    "Variable Kategorie - bitte den tats" & ChrW(228) & "chlich gezahlten Betrag eintragen."), _
+                                "Vorjahrzahlung - Betrag (Pos. " & i & "/" & gelbZeilen.count & ")", _
+                                defaultBetrag)
             If LenB(Trim(inBetrag)) = 0 Then GoTo NextPos
 
             Dim zahlBetrag As Double
