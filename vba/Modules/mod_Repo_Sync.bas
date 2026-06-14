@@ -14,29 +14,29 @@ Option Explicit
 '              - Neue: Import nach ANSI-Konvertierung
 '        .cls  Klassen-Module:
 '              - Dokument-Module (Type=100): CodeModule-Ersetzung
-'              - Regul?re Klassen: CodeModule-Ersetzung (in-place)
+'              - Reguläre Klassen: CodeModule-Ersetzung (in-place)
 '              - Neue Klassen: Import nach ANSI-Konvertierung
-'        .frm  UserForms: L?schen + Neu-Import (inkl. .frx)
+'        .frm  UserForms: Löschen + Neu-Import (inkl. .frx)
 '
 '        STRATEGIE (v3.0 - "CodeModule first"):
 '        1. BEREINIGUNG: Doubletten entfernen (mod_XYZ1,
 '           mod_XYZ2 usw.), die durch fehlgeschlagene
 '           Remove+Import-Zyklen entstanden sind.
-'        2. IMPORT: F?r bestehende Module wird der Code
+'        2. IMPORT: Für bestehende Module wird der Code
 '           direkt im CodeModule überschrieben (DeleteLines +
-'           AddFromString). Kein Remove n?tig, daher kein
-'           "Zugriff verweigert". Nur f?r NEUE Module wird
+'           AddFromString). Kein Remove nötig, daher kein
+'           "Zugriff verweigert". Nur für NEUE Module wird
 '           VBComponents.Import nach ANSI-Konvertierung
 '           verwendet.
 '
 '        ENCODING:
 '        Dateien aus dem Repo (VS Code) sind UTF-8 kodiert.
-'        VBA erwartet f?r den Import ANSI (Windows-1252).
+'        VBA erwartet für den Import ANSI (Windows-1252).
 '        Dieses Modul konvertiert automatisch UTF-8 ? ANSI,
 '        damit Umlaute (ä, ü, ö, ß) korrekt übernommen werden.
 '
 ' HINWEIS: Dieses Modul und mod_VBA_Export werden beim Import
-'          ?bersprungen, um sich nicht selbst zu ?berschreiben.
+'          übersprungen, um sich nicht selbst zu überschreiben.
 ' ***************************************************************
 
 ' ===============================================================
@@ -46,7 +46,7 @@ Private Const REPO_PATH_CLASSES As String = "C:\Users\DELL Latitude 7490\Desktop
 Private Const REPO_PATH_USERFORMS As String = "C:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\UserForms\"
 Private Const REPO_PATH_MODULES As String = "C:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\Modules\"
 
-' Tempor?rer Unterordner für ANSI-konvertierte Dateien
+' Temporärer Unterordner für ANSI-konvertierte Dateien
 Private Const TEMP_SUBFOLDER As String = "VBA_Repo_Sync_Temp"
 
 
