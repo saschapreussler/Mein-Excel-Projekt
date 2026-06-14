@@ -33,7 +33,7 @@ Option Explicit
 '        Dateien aus dem Repo (VS Code) sind UTF-8 kodiert.
 '        VBA erwartet f?r den Import ANSI (Windows-1252).
 '        Dieses Modul konvertiert automatisch UTF-8 ? ANSI,
-'        damit Umlaute (?, ?, ?, ?) korrekt ?bernommen werden.
+'        damit Umlaute (ä, ü, ö, ß) korrekt übernommen werden.
 '
 ' HINWEIS: Dieses Modul und mod_VBA_Export werden beim Import
 '          ?bersprungen, um sich nicht selbst zu ?berschreiben.

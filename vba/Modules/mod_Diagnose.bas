@@ -466,7 +466,7 @@ Public Sub Test_InputBox_Abrechnungsjahr()
         " (Abrechnungsjahr) tempor" & ChrW(228) & "r," & vbLf & _
         "damit die InputBox erscheint." & vbLf & vbLf & _
         "Aktueller Wert: " & ws.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL).value & vbLf & vbLf & _
-        "Fortfahren?", _
+        "1", _
         vbYesNo + vbQuestion, "Test: InputBox Abrechnungsjahr")
     
     If antwort <> vbYes Then Exit Sub
@@ -518,7 +518,7 @@ Public Sub Test_InputBox_Kontostand()
         " (Kontostand Vorjahr) tempor" & ChrW(228) & "r," & vbLf & _
         "damit die InputBox erscheint." & vbLf & vbLf & _
         "Aktueller Wert: " & ws.Cells(ES_CFG_KONTOSTAND_ROW, ES_CFG_VALUE_COL).value & vbLf & vbLf & _
-        "Fortfahren?", _
+        "1", _
         vbYesNo + vbQuestion, "Test: InputBox Kontostand")
     
     If antwort <> vbYes Then Exit Sub
@@ -567,7 +567,7 @@ Public Sub Test_InputBox_Vereinsdaten()
         " (Vereinsname) tempor" & ChrW(228) & "r," & vbLf & _
         "damit die InputBox-Kette erscheint." & vbLf & vbLf & _
         "Aktueller Wert: """ & ws.Cells(ES_CFG_VEREINSNAME_ROW, ES_CFG_VALUE_COL).value & """" & vbLf & vbLf & _
-        "Fortfahren?", _
+        "1", _
         vbYesNo + vbQuestion, "Test: InputBox Vereinsdaten")
     
     If antwort <> vbYes Then Exit Sub
@@ -784,6 +784,8 @@ Private Sub LogFEHLER(ByVal text As String)
     m_log = m_log & "  " & ChrW(10060) & " " & text & vbLf
     m_fehler = m_fehler + 1
 End Sub
+
+
 
 
 

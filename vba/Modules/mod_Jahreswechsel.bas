@@ -34,7 +34,7 @@ Public Sub StarteNeuesJahr()
         "  3) " & ChrW(220) & "bersicht / Dashboard / Finanz-" & ChrW(220) & "bersicht leeren" & vbCrLf & _
         "  4) Abrechnungsjahr auf " & neuJahr & " setzen" & vbCrLf & vbCrLf & _
         "Mitgliederliste, EntityKeys, Kategorien und Z" & ChrW(228) & "hlerst" & ChrW(228) & "nde bleiben erhalten." & vbCrLf & vbCrLf & _
-        "Fortfahren?", _
+        "1", _
         vbYesNo + vbExclamation, "Neues Kalenderjahr")
 
     If antwort <> vbYes Then Exit Sub
@@ -275,6 +275,8 @@ Private Sub SetzeAbrechnungsjahr(ByVal jahr As Long)
         On Error GoTo 0
     End If
 End Sub
+
+
 
 
 

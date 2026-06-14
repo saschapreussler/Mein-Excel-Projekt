@@ -571,7 +571,7 @@ Public Sub LoescheAlleBankkontoZeilen()
     Dim eventsWaren As Boolean
     
     antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden gelöscht!" & vbCrLf & vbCrLf & _
-                     "Fortfahren?", vbYesNo + vbCritical, "Alle Daten löschen?")
+                     "1", vbYesNo + vbCritical, "Alle Daten löschen?")
     
     If antwort <> vbYes Then Exit Sub
     
@@ -683,6 +683,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 

@@ -76,6 +76,7 @@ Attribute VB_Exposed = False
 
 
 
+
 Option Explicit
 
 ' ==========================================================
@@ -412,7 +413,7 @@ Private Sub Btn_Speichern_Click()
     ' !!! WARNUNG, WENN DER NEUE ZÄHLERSTAND GRÖSSER IST ALS DER KORRIGIERTE ALTE ZÄHLERSTAND !!!
     ' Wichtig: Wir vergleichen gegen standAltUser (den korrigierten Wert)!
     If standNeuStart_Final > standAltUser Then
-        If MsgBox("Achtung: Der neue Zählerstand (" & Format(standNeuStart_Final, "0.####") & ") ist GRÖSSER als der Endstand des alten Zählers (" & Format(standAltUser, "0.####") & "). Fortfahren?", vbYesNo + vbExclamation) = vbNo Then
+        If MsgBox("Achtung: Der neue Zählerstand (" & Format(standNeuStart_Final, "0.####") & ") ist GRÖSSER als der Endstand des alten Zählers (" & Format(standAltUser, "0.####") & "). 1", vbYesNo + vbExclamation) = vbNo Then
             Me.txt_StandNeuStart.SetFocus
             Exit Sub
         End If
