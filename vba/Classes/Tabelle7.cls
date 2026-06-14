@@ -158,10 +158,12 @@ Fehlerbehandlung:
     Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     Application.EnableEvents = True
 
-    MsgBox "Fehler bei Aenderung der Mitgliederliste." & vbCrLf & _
+    MsgBox "Fehler bei " & ChrW(196) & "nderung der Mitgliederliste." & vbCrLf & _
            "Fehler-Nr: " & Err.Number & vbCrLf & _
            "Beschreibung: " & Err.Description, vbCritical
 End Sub
+
+
 
 
 

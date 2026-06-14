@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Uebersicht_Generator"
+Attribute VB_Name = "mod_Uebersicht_Generator"
 Option Explicit
 
 ' ***************************************************************
@@ -1473,12 +1473,14 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
 
         ' Gemeinsamer Info-Block fuer MsgBox + beide InputBoxen,
         ' damit der Nutzer in JEDER Box weiss, fuer wen / was / wieviel.
+        ' vbTab nutzt die Tab-Stops der MsgBox - so stehen die Werte
+        ' auch in der proportionalen Dialogschrift sauber untereinander.
         Dim infoBlock As String
-        infoBlock = "Parzelle:    " & parzelle & vbCrLf & _
-                    "Mitglied:    " & vjMitglied & vbCrLf & _
-                    "Kategorie:   " & vjKategorie & vbCrLf & _
-                    "Monat:       " & monatText & vbCrLf & _
-                    "Soll-Betrag: " & sollText
+        infoBlock = "Parzelle:" & vbTab & vbTab & parzelle & vbCrLf & _
+                    "Mitglied:" & vbTab & vbTab & vjMitglied & vbCrLf & _
+                    "Kategorie:" & vbTab & vbTab & vjKategorie & vbCrLf & _
+                    "Monat:" & vbTab & vbTab & vbTab & monatText & vbCrLf & _
+                    "Soll-Betrag:" & vbTab & vbTab & sollText
         
         Dim vjAntwort As VbMsgBoxResult
         vjAntwort = MsgBox("Position " & i & " von " & gelbZeilen.count & ":" & vbCrLf & vbCrLf & _
@@ -1546,7 +1548,7 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
             inBetrag = InputBox("H" & ChrW(246) & "he der Vorjahrzahlung eingeben" & vbCrLf & _
                                 "------------------------------------------------------------" & vbCrLf & _
                                 infoBlock & vbCrLf & _
-                                "Datum:       " & Format(zahlDatum, "dd.mm.yyyy") & vbCrLf & _
+                                "Datum:" & vbTab & vbTab & vbTab & Format(zahlDatum, "dd.mm.yyyy") & vbCrLf & _
                                 "------------------------------------------------------------" & vbCrLf & vbCrLf & _
                                 "Welcher Betrag wurde tats" & ChrW(228) & "chlich gezahlt?" & vbCrLf & vbCrLf & _
                                 IIf(sollWert > 0, _
@@ -1730,6 +1732,8 @@ NextTeil:
 
     EntferneNegativHinweiseVJ = ergebnis
 End Function
+
+
 
 
 

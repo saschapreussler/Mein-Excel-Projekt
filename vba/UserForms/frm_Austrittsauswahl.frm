@@ -79,6 +79,7 @@ Attribute VB_Exposed = False
 
 
 
+
 Option Explicit
 
 Private m_SelectedOption As Integer
@@ -176,7 +177,7 @@ Private Sub cmd_OK_Click()
             
             If antwort = vbYes Then
                 ' Ja - Nachpaechter muss ausgewaehlt werden
-                MsgBox "Bitte waehlen Sie den Nachpaechter aus der Liste aus.", vbExclamation
+                MsgBox "Bitte w" & ChrW(228) & "hlen Sie den Nachp" & ChrW(228) & "chter aus der Liste aus.", vbExclamation
                 Me.cbo_Nachpaechter.SetFocus
                 Exit Sub
             ElseIf antwort = vbNo Then
@@ -242,7 +243,7 @@ Private Sub cmd_OK_Click()
         m_SelectedOption = 5
         m_CustomReason = Trim(Me.txt_Sonstiges.value)
     Else
-        MsgBox "Bitte waehlen Sie eine Option aus.", vbExclamation
+        MsgBox "Bitte w" & ChrW(228) & "hlen Sie eine Option aus.", vbExclamation
         Exit Sub
     End If
     

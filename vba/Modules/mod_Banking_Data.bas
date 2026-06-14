@@ -570,8 +570,8 @@ Public Sub LoescheAlleBankkontoZeilen()
     Dim antwort As VbMsgBoxResult
     Dim eventsWaren As Boolean
     
-    antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden geloescht!" & vbCrLf & vbCrLf & _
-                     "1", vbYesNo + vbCritical, "Alle Daten Loeschen?")
+    antwort = MsgBox("ACHTUNG: Alle Daten auf dem Bankkonto-Blatt werden gel" & ChrW(246) & "scht!" & vbCrLf & vbCrLf & _
+                     "M" & ChrW(246) & "chten Sie wirklich fortfahren?", vbYesNo + vbCritical, "Alle Daten l" & ChrW(246) & "schen?")
     
     If antwort <> vbYes Then Exit Sub
     
@@ -610,7 +610,7 @@ Public Sub LoescheAlleBankkontoZeilen()
     
     Call mod_Banking_Report.Initialize_ImportReport_ListBox
     
-    MsgBox "Alle Daten wurden geloescht.", vbInformation
+    MsgBox "Alle Daten wurden gel" & ChrW(246) & "scht.", vbInformation
     
 End Sub
 
@@ -683,6 +683,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 

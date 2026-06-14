@@ -79,6 +79,7 @@ Attribute VB_Exposed = False
 
 
 
+
 Option Explicit
 
 ' ==========================================================
@@ -338,13 +339,13 @@ Private Sub Btn_Speichern_Click()
     
     ' 1. PlausibilitaetsPruefungen (unveraendert)
     If Me.cmb_Parzelle.value = "" Then
-        MsgBox "Bitte waehlen Sie eine Parzelle/einen Zaehler aus.", vbExclamation
+        MsgBox "Bitte w" & ChrW(228) & "hlen Sie eine Parzelle/einen Z" & ChrW(228) & "hler aus.", vbExclamation
         Me.cmb_Parzelle.SetFocus
         Exit Sub
     End If
     
     If Not mod_ZaehlerLogik.PlausiDatum(Me.txt_Datum.text) Then
-        MsgBox "Das eingegebene Datum ist ungueltig. Bitte korrigieren. (Pruefen Sie auch das Format tt.mm.jjjj).", vbExclamation
+        MsgBox "Das eingegebene Datum ist ung" & ChrW(252) & "ltig. Bitte korrigieren. (Pr" & ChrW(252) & "fen Sie auch das Format tt.mm.jjjj).", vbExclamation
         Me.txt_Datum.SetFocus
         Exit Sub
     End If
@@ -368,7 +369,7 @@ Private Sub Btn_Speichern_Click()
     rawTextAlt = Replace(rawTextAlt, DECIMAL_SEP, Application.International(xlDecimalSeparator)) ' UI-Dezimal in VBA-Dezimal konvertieren
 
     If Not IsNumeric(rawTextAlt) Then
-         MsgBox "Der Stand Alt (Ende) ist ungueltig oder enthaelt unzulaessige Zeichen.", vbExclamation
+         MsgBox "Der Stand Alt (Ende) ist ung" & ChrW(252) & "ltig oder enth" & ChrW(228) & "lt unzul" & ChrW(228) & "ssige Zeichen.", vbExclamation
          Me.txt_StandAlt.SetFocus
          Exit Sub
     End If
@@ -392,7 +393,7 @@ Private Sub Btn_Speichern_Click()
     rawTextNeu = Replace(rawTextNeu, DECIMAL_SEP, Application.International(xlDecimalSeparator)) ' UI-Dezimal in VBA-Dezimal konvertieren
     
     If Not IsNumeric(rawTextNeu) Then
-        MsgBox "Der Stand Neu (Start) ist ungueltig oder enthaelt unzulaessige Zeichen.", vbExclamation
+        MsgBox "Der Stand Neu (Start) ist ung" & ChrW(252) & "ltig oder enth" & ChrW(228) & "lt unzul" & ChrW(228) & "ssige Zeichen.", vbExclamation
         Me.txt_StandNeuStart.SetFocus
         Exit Sub
     End If
