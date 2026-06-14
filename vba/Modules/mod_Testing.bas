@@ -30,9 +30,9 @@ Option Explicit
 '
 ' TEST-SZENARIEN (in den generierten CSVs):
 '   A: Fehlende MB-Zahlung Jan 2024 -> ROT (Nutzer verneint)
-'   B: Fehlende MB-Zahlung Jan 2024 -> GRÜN (Nutzer bestätigt)
-'   C: Fehlende Brauchwasser Jan 2024 -> GRÜN (bestätigt)
-'   D: Vorauszahlung MB Dez 2024 -> auto-GRÜN Jan 2025
+'   B: Fehlende MB-Zahlung Jan 2024 -> GR?N (Nutzer best?tigt)
+'   C: Fehlende Brauchwasser Jan 2024 -> GR?N (best?tigt)
+'   D: Vorauszahlung MB Dez 2024 -> auto-GR?N Jan 2025
 '
 Public Sub TestReset_VorCSVImport()
 
@@ -44,8 +44,8 @@ Public Sub TestReset_VorCSVImport()
     Dim antwort As VbMsgBoxResult
 
     ' --- Sicherheitsabfrage ---
-    antwort = MsgBox("Alle importierten Kontoauszüge, die Übersicht " & _
-                     "und das Import-Protokoll werden gelöscht." & vbCrLf & vbCrLf & _
+    antwort = MsgBox("Alle importierten Kontoausz?ge, die ?bersicht " & _
+                     "und das Import-Protokoll werden gel?scht." & vbCrLf & vbCrLf & _
                      "Die Einstellungen, Mitgliederliste, Kategorie- und " & _
                      "EntityKey-Tabellen bleiben erhalten." & vbCrLf & vbCrLf & _
                      "Fortfahren?", vbYesNo + vbQuestion, "Test-Reset vor CSV-Import")
@@ -79,7 +79,7 @@ Public Sub TestReset_VorCSVImport()
 
     Debug.Print "[TestReset] Bankkonto: " & _
         IIf(lastRow >= BK_START_ROW, (lastRow - BK_START_ROW + 1) & " Zeilen", "keine Daten") & _
-        " gelöscht."
+        " gel?scht."
 
     ' =============================================================
     ' 2. UEBERSICHT leeren (ab Zeile 4, Spalten A-H)
@@ -99,9 +99,9 @@ Public Sub TestReset_VorCSVImport()
 
     wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
 
-    Debug.Print "[TestReset] Übersicht: " & _
+    Debug.Print "[TestReset] ?bersicht: " & _
         IIf(lastRow >= 4, (lastRow - 3) & " Zeilen", "keine Daten") & _
-        " gelöscht."
+        " gel?scht."
 
     ' =============================================================
     ' 2a. DASHBOARD MITGLIEDERZAHLUNGEN loeschen (ganzes Blatt)
@@ -115,7 +115,7 @@ Public Sub TestReset_VorCSVImport()
         Application.DisplayAlerts = False
         wsDash.Delete
         Application.DisplayAlerts = True
-        Debug.Print "[TestReset] Dashboard Mitgliederzahlungen gelöscht."
+        Debug.Print "[TestReset] Dashboard Mitgliederzahlungen gel?scht."
     Else
         Debug.Print "[TestReset] Dashboard Mitgliederzahlungen: nicht vorhanden."
     End If
@@ -128,7 +128,7 @@ Public Sub TestReset_VorCSVImport()
 
     wsDaten.Range(CELL_IMPORT_PROTOKOLL).ClearContents
 
-    Debug.Print "[TestReset] Import-Protokoll (Y500) gelöscht."
+    Debug.Print "[TestReset] Import-Protokoll (Y500) gel?scht."
 
     ' =============================================================
     ' 4. VORJAHR-SPEICHER (optional per MsgBox)
@@ -140,9 +140,9 @@ Public Sub TestReset_VorCSVImport()
     If lastRow >= VJ_START_ROW Then
         Application.ScreenUpdating = True
         Dim vjAntwort As VbMsgBoxResult
-        vjAntwort = MsgBox("Der Vorjahr-Speicher (Daten CA-CF) enthält " & _
+        vjAntwort = MsgBox("Der Vorjahr-Speicher (Daten CA-CF) enth?lt " & _
                            (lastRow - VJ_START_ROW + 1) & " Zeilen." & vbCrLf & vbCrLf & _
-                           "Vorjahr-Speicher ebenfalls löschen?", _
+                           "Vorjahr-Speicher ebenfalls l?schen?", _
                            vbYesNo + vbQuestion, "Vorjahr-Speicher")
         Application.ScreenUpdating = False
 
@@ -151,7 +151,7 @@ Public Sub TestReset_VorCSVImport()
                           wsDaten.Cells(lastRow, VJ_COL_ENTITYKEY)).Clear
             vorjahrLoeschen = True
             Debug.Print "[TestReset] Vorjahr-Speicher: " & _
-                (lastRow - VJ_START_ROW + 1) & " Zeilen gelöscht."
+                (lastRow - VJ_START_ROW + 1) & " Zeilen gel?scht."
         Else
             Debug.Print "[TestReset] Vorjahr-Speicher: beibehalten (Benutzerauswahl)."
         End If
@@ -170,10 +170,10 @@ Public Sub TestReset_VorCSVImport()
     If ekLastRow >= EK_START_ROW Then
         Application.ScreenUpdating = True
         Dim ekAntwort As VbMsgBoxResult
-        ekAntwort = MsgBox("Die EntityKey-Tabelle (Daten R-X) enthält " & _
-                           (ekLastRow - EK_START_ROW + 1) & " Einträge." & vbCrLf & vbCrLf & _
-                           "EntityKey-Tabelle ebenfalls löschen?" & vbCrLf & _
-                           "(Empfohlen für kompletten Neustart)", _
+        ekAntwort = MsgBox("Die EntityKey-Tabelle (Daten R-X) enth?lt " & _
+                           (ekLastRow - EK_START_ROW + 1) & " Eintr?ge." & vbCrLf & vbCrLf & _
+                           "EntityKey-Tabelle ebenfalls l?schen?" & vbCrLf & _
+                           "(Empfohlen f?r kompletten Neustart)", _
                            vbYesNo + vbQuestion, "EntityKey-Tabelle")
         Application.ScreenUpdating = False
 
@@ -182,7 +182,7 @@ Public Sub TestReset_VorCSVImport()
                           wsDaten.Cells(ekLastRow, EK_COL_DEBUG)).Clear
             ekLoeschen = True
             Debug.Print "[TestReset] EntityKey-Tabelle: " & _
-                (ekLastRow - EK_START_ROW + 1) & " Einträge gelöscht."
+                (ekLastRow - EK_START_ROW + 1) & " Eintr?ge gel?scht."
         Else
             Debug.Print "[TestReset] EntityKey-Tabelle: beibehalten (Benutzerauswahl)."
         End If
@@ -206,16 +206,16 @@ Public Sub TestReset_VorCSVImport()
     Application.EnableEvents = eventsWaren
 
     MsgBox "Test-Reset abgeschlossen." & vbCrLf & vbCrLf & _
-           "Gelöscht:" & vbCrLf & _
-           "  ? Bankkonto (alle Kontoauszüge)" & vbCrLf & _
-           "  ? Übersicht (alle Einträge)" & vbCrLf & _
+           "Gel?scht:" & vbCrLf & _
+           "  ? Bankkonto (alle Kontoausz?ge)" & vbCrLf & _
+           "  ? ?bersicht (alle Eintr?ge)" & vbCrLf & _
            "  ? Dashboard Mitgliederzahlungen" & vbCrLf & _
            "  ? Import-Protokoll (Y500)" & vbCrLf & _
            "  ? Vorjahr-Speicher: " & _
-           IIf(vorjahrLoeschen, "gelöscht", "beibehalten") & vbCrLf & _
+           IIf(vorjahrLoeschen, "gel?scht", "beibehalten") & vbCrLf & _
            "  ? EntityKey-Tabelle: " & _
-           IIf(ekLoeschen, "gelöscht", "beibehalten") & vbCrLf & vbCrLf & _
-           "Nächste Schritte:" & vbCrLf & _
+           IIf(ekLoeschen, "gel?scht", "beibehalten") & vbCrLf & vbCrLf & _
+           "N?chste Schritte:" & vbCrLf & _
            "1. GeneriereTestCSVDateien aufrufen (Alt+F8)" & vbCrLf & _
            "2. Test-CSVs nacheinander importieren", _
            vbInformation, "Test-Reset"
@@ -395,7 +395,7 @@ Private Sub Test_4_VereinsParzelleIntakt()
             If vereinName <> "" Then
                 Debug.Print "  [OK] Verein-Parzelle existiert mit Daten (Zeile " & lRow & ")"
                 Debug.Print "       Name: " & vereinName
-                Debug.Print "  [OK] Verein-Parzelle ist NICHT überschrieben"
+                Debug.Print "  [OK] Verein-Parzelle ist NICHT ?berschrieben"
             Else
                 Debug.Print "  [WARNUNG] Verein-Parzelle existiert aber ist leer (Zeile " & lRow & ")"
             End If
@@ -421,7 +421,7 @@ Private Sub Test_5_BlattSchutz()
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
 
     If wsM.ProtectContents Then
-        Debug.Print "  [OK] Blatt ist geschützt"
+        Debug.Print "  [OK] Blatt ist gesch?tzt"
 
         Dim protection As protection
         Set protection = wsM.protection
@@ -434,7 +434,7 @@ Private Sub Test_5_BlattSchutz()
             End If
         End If
     Else
-        Debug.Print "  [WARNUNG] Blatt ist NICHT geschützt"
+        Debug.Print "  [WARNUNG] Blatt ist NICHT gesch?tzt"
     End If
 
     On Error GoTo 0
@@ -445,10 +445,10 @@ Private Sub Test_6_NeuesMitgliedAnlegen()
 
     Debug.Print "TEST 6: NEUES MITGLIED ANLEGEN (manuell)"
     Debug.Print "  1. Klicke 'Neues Mitglied' in frm_Mitgliederverwaltung"
-    Debug.Print "  2. Wähle Funktion 'Mitglied mit Pacht'"
+    Debug.Print "  2. W?hle Funktion 'Mitglied mit Pacht'"
     Debug.Print "  3. Gib Name + Parzelle ein"
     Debug.Print "  4. Label sollten 'Pachtbeginn' anzeigen"
-    Debug.Print "  5. Pachtbeginn mit aktuellem Datum vorbefällt?"
+    Debug.Print "  5. Pachtbeginn mit aktuellem Datum vorbef?llt?"
     Debug.Print "  6. Klick 'Anlegen'"
     Debug.Print "  NACH TEST: Berichte ob Fehler auftraten"
 
@@ -459,19 +459,19 @@ Private Sub Test_7_MitgliedBearbeiten()
     Debug.Print "TEST 7: MITGLIED BEARBEITEN (manuell)"
     Debug.Print "  1. Doppelklick auf Mitglied in der Liste"
     Debug.Print "  2. Klick 'Bearbeiten'"
-    Debug.Print "  3. ändere einen Eintrag (z.B. Telefon)"
-    Debug.Print "  4. Klick 'übernehmen'"
-    Debug.Print "  NACH TEST: Berichte ob Änderung gespeichert wurde"
+    Debug.Print "  3. ?ndere einen Eintrag (z.B. Telefon)"
+    Debug.Print "  4. Klick '?bernehmen'"
+    Debug.Print "  NACH TEST: Berichte ob ?nderung gespeichert wurde"
 
 End Sub
 
 Private Sub Test_8_MitgliedAustritt()
 
     Debug.Print "TEST 8: MITGLIED AUSTRITT (manuell)"
-    Debug.Print "  1. ?ffne bestehendes Mitglied"
+    Debug.Print "  1. Öffne bestehendes Mitglied"
     Debug.Print "  2. Klick 'Entfernen'"
-    Debug.Print "  3. Wähle 'Austritt'"
-    Debug.Print "  4. Bestätige Austrittsdatum"
+    Debug.Print "  3. W?hle 'Austritt'"
+    Debug.Print "  4. Best?tige Austrittsdatum"
     Debug.Print "  NACH TEST:"
     Debug.Print "  - Ist Mitglied aus Mitgliederliste verschwunden?"
     Debug.Print "  - Ist Eintrag in Mitgliederhistorie?"
@@ -497,7 +497,7 @@ Private Sub Test_9_MitgliederhistorieIntakt()
     lastRow = wsH.Cells(wsH.Rows.count, H_COL_NACHNAME).End(xlUp).Row
 
     If lastRow >= H_START_ROW Then
-        Debug.Print "  [OK] Mitgliederhistorie hat " & (lastRow - H_START_ROW + 1) & " Einträge"
+        Debug.Print "  [OK] Mitgliederhistorie hat " & (lastRow - H_START_ROW + 1) & " Eintr?ge"
     Else
         Debug.Print "  [INFO] Mitgliederhistorie ist leer"
     End If
@@ -515,7 +515,7 @@ End Sub
 Private Sub Test_10_ValidierungsLogik()
 
     Debug.Print "TEST 10: VALIDIERUNGSLOGIK (manuell)"
-    Debug.Print "  Folgende Szenarien prüfen:"
+    Debug.Print "  Folgende Szenarien pr?fen:"
     Debug.Print ""
     Debug.Print "  1. Mitglied ohne Pacht, keine Parzelle"
     Debug.Print "     -> Sollte erlaubt sein"
@@ -536,10 +536,10 @@ End Sub
 ' ===============================================================
 ' Erzeugt monatliche CSV-Dateien im Sparkasse-Format.
 ' Liest Mitglieder und Kategorien aus der Arbeitsmappe.
-' Enthält Test-Szenarien für Vorjahr-Dezember-Zahlungen.
+' Enth?lt Test-Szenarien f?r Vorjahr-Dezember-Zahlungen.
 '
 ' CSV-Dateien: KTO_2024_01.csv bis KTO_2026_01.csv
-'   - Jede Datei enthält alle Zahlungen eines Monats
+'   - Jede Datei enth?lt alle Zahlungen eines Monats
 '   - Format: Sparkasse (16 Spalten, Semikolon, UTF-8)
 ' ===============================================================
 
@@ -556,7 +556,7 @@ Public Sub GeneriereTestCSVDateien()
     Set shellApp = CreateObject("Shell.Application")
     Dim oFolder As Object
     Set oFolder = shellApp.BrowseForFolder(0, _
-        "Ordner für Test-CSV-Dateien wählen:", 0)
+        "Ordner f?r Test-CSV-Dateien w?hlen:", 0)
     If oFolder Is Nothing Then
         MsgBox "Abgebrochen.", vbInformation
         Exit Sub
@@ -638,7 +638,7 @@ Public Sub GeneriereTestCSVDateien()
 
     If anzKat = 0 Then
         MsgBox "Keine Kategorien in der Zahlungstermin-Tabelle gefunden." & vbCrLf & _
-               "Bitte Einstellungen prüfen.", vbExclamation
+               "Bitte Einstellungen pr?fen.", vbExclamation
         Exit Sub
     End If
 
@@ -774,11 +774,11 @@ NaechsteKat:
     szInfo = ""
     If testParz2 <> "" Then
         szInfo = szInfo & vbCrLf & "? Szenario A (ROT): Parzelle " & testParz2 & vbCrLf & _
-            "  Kein MB im Jan 2024 - Vorjahr-Dialog: Nein wählen"
+            "  Kein MB im Jan 2024 - Vorjahr-Dialog: Nein w?hlen"
     End If
     If testParz3 <> "" Then
-        szInfo = szInfo & vbCrLf & "? Szenario B (GRÜN): Parzelle " & testParz3 & vbCrLf & _
-            "  Kein MB im Jan 2024 - Vorjahr-Dialog: Ja wählen"
+        szInfo = szInfo & vbCrLf & "? Szenario B (GR?N): Parzelle " & testParz3 & vbCrLf & _
+            "  Kein MB im Jan 2024 - Vorjahr-Dialog: Ja w?hlen"
     End If
     If testParz3 <> "" And bwIdx > 0 Then
         szInfo = szInfo & vbCrLf & "? Szenario C (Brauchwasser): Parzelle " & testParz3 & vbCrLf & _
@@ -786,13 +786,13 @@ NaechsteKat:
     End If
     If testParz1 <> "" Then
         szInfo = szInfo & vbCrLf & "? Szenario D (Auto-Vorjahr): Parzelle " & testParz1 & vbCrLf & _
-            "  Vorauszahlung Dez 2024 für Jan 2025"
+            "  Vorauszahlung Dez 2024 f?r Jan 2025"
     End If
 
     MsgBox dateiZaehler & " CSV-Dateien generiert in:" & vbCrLf & _
            ordnerPfad & vbCrLf & vbCrLf & _
            "Test-Szenarien:" & szInfo & vbCrLf & vbCrLf & _
-           "Nächste Schritte:" & vbCrLf & _
+           "N?chste Schritte:" & vbCrLf & _
            "1. Abrechnungsjahr = 2024 auf Einstellungen setzen" & vbCrLf & _
            "2. CSV-Import auf Bankkonto starten" & vbCrLf & _
            "3. KTO_2024_01.csv zuerst importieren" & vbCrLf & _
@@ -844,9 +844,9 @@ Public Sub ZeigeTestStatus()
     MsgBox "=== TEST-STATUS ===" & vbCrLf & vbCrLf & _
            "Abrechnungsjahr: " & IIf(abrJahr > 0, CStr(abrJahr), "(nicht gesetzt)") & vbCrLf & _
            "Bankkonto: " & bankZeilen & " Zeilen" & vbCrLf & _
-           "Übersicht: " & uebZeilen & " Zeilen" & vbCrLf & _
+           "?bersicht: " & uebZeilen & " Zeilen" & vbCrLf & _
            "Dashboard: " & IIf(dashExistiert, "vorhanden", "nicht vorhanden") & vbCrLf & _
-           "EntityKeys: " & ekZeilen & " Einträge" & vbCrLf & _
+           "EntityKeys: " & ekZeilen & " Eintr?ge" & vbCrLf & _
            "Vorjahr-Speicher: " & vjZeilen & " Zeilen", _
            vbInformation, "Test-Status"
 
@@ -864,7 +864,7 @@ Public Sub TestClearFormats()
     Debug.Print "[Debug] Vor ClearFormats..."
     ws.Range("A6:Q27").ClearFormats
     ws.Range("A6:Q27").Interior.ColorIndex = xlNone
-    Debug.Print "[Debug] Nach ClearFormats - schau in Excel ob A6 weiß ist"
+    Debug.Print "[Debug] Nach ClearFormats - schau in Excel ob A6 wei? ist"
 
 End Sub
 
@@ -877,9 +877,9 @@ Public Sub TestZebraDebug()
 
     Debug.Print "=== ZEBRA DEBUG TEST ==="
 
-    ' Zeile 7 gelb fürben
+    ' Zeile 7 gelb f?rben
     ws.Range("A7:Q7").Interior.color = &HFFFF
-    Debug.Print "Zeile 7 gefürbt mit &H00FFFF (Gelb)"
+    Debug.Print "Zeile 7 gef?rbt mit &H00FFFF (Gelb)"
 
     Dim color As Long
     color = ws.Range("A7").Interior.color
@@ -930,7 +930,7 @@ Public Sub DebugZebraFormatierung()
     End If
     Debug.Print ""
 
-    Debug.Print "3. DIREKTE ZELLFÜRBUNGEN (A6:Q15):"
+    Debug.Print "3. DIREKTE ZELLF?RBUNGEN (A6:Q15):"
     For lRow = 6 To 15
         Dim cellColor As Long
         cellColor = ws.Range("A" & lRow).Interior.color
@@ -938,23 +938,23 @@ Public Sub DebugZebraFormatierung()
     Next lRow
     Debug.Print ""
 
-    Debug.Print "4. TEST: Füge manuelle BF hinzu..."
+    Debug.Print "4. TEST: F?ge manuelle BF hinzu..."
     On Error Resume Next
     ws.Range("B6:B8").FormatConditions.Delete
     On Error GoTo 0
 
     ws.Range("B6:B8").FormatConditions.Add Type:=xlExpression, Formula1:="=MOD(ZEILE();2)=0"
     ws.Range("B6:B8").FormatConditions(1).Interior.color = &HFF0000
-    Debug.Print "   ROT FormatCondition hinzugefügt (Zeilen 6-8, Spalte B)"
+    Debug.Print "   ROT FormatCondition hinzugef?gt (Zeilen 6-8, Spalte B)"
     Debug.Print ""
 
     Debug.Print "5. FORMEL-TEST:"
     Dim testFormula As String
     testFormula = "=UND(NICHT(ISTLEER($E$6)); MOD(ZEILE()-6;2)=1)"
     Debug.Print "   Test-Formel: " & testFormula
-    Debug.Print "   Für Zeile 6: MOD(6-6;2)=1 -> MOD(0;2)=1 -> FALSE"
-    Debug.Print "   Für Zeile 7: MOD(7-6;2)=1 -> MOD(1;2)=1 -> TRUE"
-    Debug.Print "   Für Zeile 8: MOD(8-6;2)=1 -> MOD(2;2)=1 -> FALSE"
+    Debug.Print "   F?r Zeile 6: MOD(6-6;2)=1 -> MOD(0;2)=1 -> FALSE"
+    Debug.Print "   F?r Zeile 7: MOD(7-6;2)=1 -> MOD(1;2)=1 -> TRUE"
+    Debug.Print "   F?r Zeile 8: MOD(8-6;2)=1 -> MOD(2;2)=1 -> FALSE"
 
 End Sub
 
@@ -1022,7 +1022,7 @@ Private Function MonatsName(ByVal monat As Long) As String
     Select Case monat
         Case 1: MonatsName = "Januar"
         Case 2: MonatsName = "Februar"
-        Case 3: MonatsName = "März"
+        Case 3: MonatsName = "M?rz"
         Case 4: MonatsName = "April"
         Case 5: MonatsName = "Mai"
         Case 6: MonatsName = "Juni"
@@ -1086,6 +1086,8 @@ Private Sub SchreibeUTF8Datei(ByVal pfad As String, ByVal inhalt As String)
     Set utf8Stream = Nothing
     Set binStream = Nothing
 End Sub
+
+
 
 
 

@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Banking_Format
 ' Ausgelagert aus mod_Banking_Data
-' Enth?lt: Zebra-Formatierung, Rahmen, allgemeine Formatierung,
+' Enthält: Zebra-Formatierung, Rahmen, allgemeine Formatierung,
 '          Sortierung Bankkonto, Formel-Wiederherstellung
 ' ===============================================================
 
@@ -109,13 +109,13 @@ Public Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    ' Spalte B (Betrag): W?hrung + rechtsb?ndig
+    ' Spalte B (Betrag): Währung + rechtsbündig
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), ws.Cells(lastRow, BK_COL_BETRAG))
         .NumberFormat = euroFormat
         .HorizontalAlignment = xlRight
     End With
     
-    ' Spalten M-Z: W?hrung
+    ' Spalten M-Z: Währung
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
     
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), ws.Cells(lastRow, BK_COL_BEMERKUNG))
@@ -132,7 +132,7 @@ End Sub
 ' ===============================================================
 ' AUTO-FILTER auf Bankkonto-Header (Zeile 29) aktivieren
 ' Header-Zellen werden entsperrt, damit der Anwender filtern und
-' sortieren kann auch wenn das Blatt gesch?tzt ist.
+' sortieren kann auch wenn das Blatt geschützt ist.
 ' Wird von Workbook_Open und nach CSV-Import aufgerufen.
 ' ===============================================================
 Public Sub Aktiviere_BankkontoFilter()
@@ -330,7 +330,7 @@ End Sub
 ' ===============================================================
 ' FORMEL-WIEDERHERSTELLUNG
 ' Stellt die Formeln auf dem Bankkonto-Blatt wieder her,
-' die durch ClearContents oder Import verloren gehen k?nnen.
+' die durch ClearContents oder Import verloren gehen können.
 ' Betrifft: E4, C5, E10-E16, E18-E23, E25
 ' WICHTIG: Formeln werden 1:1 als FormulaLocal gesetzt!
 ' ===============================================================
@@ -403,6 +403,8 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

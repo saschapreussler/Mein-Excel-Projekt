@@ -4,43 +4,43 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
 ' VERSION: 5.0 - 07.06.2026
-' ZWECK: Generiert ?bersichtsblatt (Variante 2: Lange Tabelle)
+' ZWECK: Generiert Übersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - Kategorien DYNAMISCH aus Einstellungen-Blatt (Spalte B)
-'        - Zeigt Soll/Ist/Status f?r jede Kombination
+'        - Zeigt Soll/Ist/Status für jede Kombination
 '        - Behandelt SHARE-Keys (Gemeinschaftskonten) korrekt
 '        - Bei Kategorien OHNE festen Soll-Betrag:
 '          Soll-Zelle bleibt leer + hell-gelb + editierbar
-'          Nur Zahlungstermin-Pr?fung (p?nktlich / S?umnis)
-'        - S?umnis-Geb?hren werden in Bemerkung angezeigt
+'          Nur Zahlungstermin-Prüfung (pünktlich / Säumnis)
+'        - Säumnis-Gebühren werden in Bemerkung angezeigt
 ' FIX v1.1: InitialisiereNachDezemberCache -> InitialisiereNachDezemberCacheZP
-' FIX v1.2: Val() statt CDbl() f?r systemunabh?ngiges Parsen
-' FIX v1.3: "Typen unvertr?glich" behoben (Variant, StrComp, etc.)
+' FIX v1.2: Val() statt CDbl() für systemunabhängiges Parsen
+' FIX v1.3: "Typen unverträglich" behoben (Variant, StrComp, etc.)
 ' FIX v1.4: ChrW() in Const nicht erlaubt -> Private Variablen
 ' NEU v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
 '           - Keine hart kodierten Kategorienamen mehr
 '           - Soll-Betrag 0 -> Zelle leer + hell-gelb + editierbar
-'           - Zahlungstermin-Pr?fung auch ohne Soll-Betrag
-'           - S?umnis-Geb?hren in Bemerkung
+'           - Zahlungstermin-Prüfung auch ohne Soll-Betrag
+'           - Säumnis-Gebühren in Bemerkung
 ' NEU v3.0: HoleAktiveMitglieder liest jetzt aus Daten-Blatt
 '           (EntityKey-Tabelle R-W) statt aus Mitgliederliste
 '           - SHARE-Keys: Parzelle "2, 5" wird aufgeteilt
-'           - stummModus f?r automatische Aufrufe (keine MsgBox)
+'           - stummModus für automatische Aufrufe (keine MsgBox)
 '           - Trigger: Bankkonto H/I + Einstellungen -> auto-Update
-' NEU v4.0: Monatsweise Bef?llung der ?bersicht
+' NEU v4.0: Monatsweise Befüllung der Übersicht
 '           - Nur Monate mit importierten CSV-Daten werden angezeigt
 '           - ErmittleImportierteMonate() scannt Bankkonto Spalte A
 '           - Eintrag erscheint nur wenn:
-'             a) Zahlung vorhanden (Ist > 0) -> GR?N/GELB
+'             a) Zahlung vorhanden (Ist > 0) -> GRÜN/GELB
 '             b) Frist abgelaufen + keine Zahlung -> ROT
 '           - Einheitliches Datumsformat: "Januar 2026"
-' NEU v4.1: F?lligkeit-basierte Kategoriefilterung
-'           - Kategorien erscheinen nur im F?lligkeitsmonat
+' NEU v4.1: Fälligkeit-basierte Kategoriefilterung
+'           - Kategorien erscheinen nur im Fälligkeitsmonat
 '             (nicht mehr in allen 12 Monaten)
-'           - F?lligkeit aus Daten Spalte O (Kategorie-Tabelle)
+'           - Fälligkeit aus Daten Spalte O (Kategorie-Tabelle)
 '           - Vorjahr-Speicher (Daten Spalten CA-CF):
-'             Okt-Dez Zahlungen des Vorjahres f?r Jan-M?rz Zuordnung
-'           - Spalte C linksb?ndig, Format "M?rz 2025"
+'             Okt-Dez Zahlungen des Vorjahres für Jan-März Zuordnung
+'           - Spalte C linksbündig, Format "März 2025"
 '           - PruefeZahlungen: flexibler Perioden-Vergleich
 ' SPLIT v4.2: Datenquellen + Vorjahr-Speicher ausgelagert nach
 '             mod_Uebersicht_Daten (LadeKategorienAusEinstellungen,
@@ -85,14 +85,14 @@ Option Explicit
 Private Const UEBERSICHT_START_ROW As Long = 4
 Private Const UEBERSICHT_HEADER_ROW As Long = 3
 
-' Spalten im ?bersichtsblatt
+' Spalten im Übersichtsblatt
 Private Const UEB_COL_PARZELLE As Long = 1      ' A - Parzelle
 Private Const UEB_COL_MITGLIED As Long = 2      ' B - Mitglied
 Private Const UEB_COL_MONAT As Long = 3         ' C - Monat
 Private Const UEB_COL_KATEGORIE As Long = 4     ' D - Kategorie
 Private Const UEB_COL_SOLL As Long = 5          ' E - Soll
 Private Const UEB_COL_IST As Long = 6           ' F - Ist
-Private Const UEB_COL_STATUS As Long = 7        ' G - Status (GR?N/GELB/ROT)
+Private Const UEB_COL_STATUS As Long = 7        ' G - Status (GRÜN/GELB/ROT)
 Private Const UEB_COL_BEMERKUNG As Long = 8     ' H - Bemerkung
 Private Const UEB_COL_SUMME_IST As Long = 9     ' I - Summe Ist (kumuliert)
 
@@ -105,13 +105,13 @@ Private Const AMPEL_GRUEN As Long = 12968900    ' RGB(196, 225, 196)
 Private Const AMPEL_GELB As Long = 10086143     ' RGB(255, 235, 156)
 Private Const AMPEL_ROT As Long = 9871103       ' RGB(255, 199, 206)
 
-' Hell-gelb f?r "bitte manuell bef?llen" (Soll-Betrag variabel)
+' Hell-gelb für "bitte manuell befüllen" (Soll-Betrag variabel)
 Private Const FARBE_HELLGELB_MANUELL As Long = 10092543  ' RGB(255, 255, 153)
 
 ' Zebra-Farbe (identisch mit Bankkonto / EntityKey-Tabelle)
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
 
-' Status-String f?r GR?N (Encoding-sicher, wird in Init gesetzt)
+' Status-String für GRÜN (Encoding-sicher, wird in Init gesetzt)
 Private m_STATUS_GRUEN As String
 Private m_StatusInitialisiert As Boolean
 
@@ -120,7 +120,7 @@ Private m_IsGenerating As Boolean
 
 
 ' ===============================================================
-' Type f?r eine dynamische Kategorie aus Einstellungen
+' Type für eine dynamische Kategorie aus Einstellungen
 ' ===============================================================
 Public Type UebKategorie
     Name As String
@@ -156,9 +156,9 @@ End Function
 
 
 ' ===============================================================
-' HAUPTFUNKTION: Generiert komplettes ?bersichtsblatt
+' HAUPTFUNKTION: Generiert komplettes Übersichtsblatt
 ' v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
-' v3.0: stummModus f?r automatische Aufrufe (ohne MsgBox)
+' v3.0: stummModus für automatische Aufrufe (ohne MsgBox)
 ' ===============================================================
 Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                                 Optional ByVal stummModus As Boolean = False)
@@ -328,7 +328,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     wsUeb.Range(wsUeb.Cells(1, 1), wsUeb.Cells(UEBERSICHT_START_ROW - 1, UEB_COL_SUMME_IST)).ClearContents
     wsUeb.Range(wsUeb.Cells(1, 1), wsUeb.Cells(UEBERSICHT_START_ROW - 1, UEB_COL_SUMME_IST)).Interior.ColorIndex = xlNone
     
-    ' Alten Inhalt l?schen (ab Zeile 4, inkl. Spalte I)
+    ' Alten Inhalt löschen (ab Zeile 4, inkl. Spalte I)
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
                 wsUeb.Cells(wsUeb.Rows.count, UEB_COL_SUMME_IST)).ClearContents
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
@@ -345,10 +345,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' Einstellungen-Cache laden (Performance)
     Call mod_Zahlungspruefung.LadeEinstellungenCacheZP
     
-    ' Dezember-Cache initialisieren (f?r Vorauszahlungen)
+    ' Dezember-Cache initialisieren (für Vorauszahlungen)
     Call mod_Zahlungspruefung.InitialisiereNachDezemberCacheZP(jahr)
     
-    ' v4.0: Vorjahr-Speicher bef?llen (Okt-Dez Vorjahr)
+    ' v4.0: Vorjahr-Speicher befüllen (Okt-Dez Vorjahr)
     Call mod_Uebersicht_Daten.BefuelleVorjahrSpeicher(jahr - 1)
     
     ' v4.0: Vorjahr-Speicher automatisch loeschen (ab August)
@@ -733,7 +733,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
                 
                 ' =============================================
-                ' v2.0: Bemerkung mit S?umnis-Info
+                ' v2.0: Bemerkung mit Säumnis-Info
                 ' =============================================
                 Dim bemerkung As String
                 bemerkung = ""
@@ -743,7 +743,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     bemerkung = teile(3)
                 End If
                 
-                ' S?umnis-Geb?hr anh?ngen wenn Status ROT und Geb?hr definiert
+                ' Säumnis-Gebühr anhängen wenn Status ROT und Gebühr definiert
                 If StrComp(status, "ROT", vbTextCompare) = 0 Then
                     If kategorien(k).saeumnisGebuehr > 0 Then
                         Dim saeumnisText As String
@@ -857,7 +857,7 @@ NextMitglied:
     ' damit nichts NumberFormat / HorizontalAlignment / AutoFit ueberschreibt.
     Call FormatiereUebersicht(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
 
-    ' Blatt sch?tzen (Soll-Zellen ohne festen Betrag bleiben editierbar)
+    ' Blatt schützen (Soll-Zellen ohne festen Betrag bleiben editierbar)
     ' AllowFiltering: Nutzer kann AutoFilter ohne Blattschutz-Aufhebung verwenden
     On Error Resume Next
     wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
@@ -940,7 +940,7 @@ End Sub
 
 
 ' ===============================================================
-' v4.0: Pr?ft ob eine Kategorie in einem bestimmten Monat f?llig ist
+' v4.0: Prüft ob eine Kategorie in einem bestimmten Monat fällig ist
 ' Kombiniert SollMonate (Einstellungen Spalte E) mit Faelligkeit
 ' (Daten Spalte O).
 ' - monatlich: SollMonate oder alle Monate
@@ -983,7 +983,7 @@ End Function
 
 
 ' ===============================================================
-' Header im ?bersichtsblatt setzen
+' Header im Übersichtsblatt setzen
 ' ===============================================================
 Private Sub SetzeUebersichtHeader(ByVal wsUeb As Worksheet)
     
@@ -1023,7 +1023,7 @@ End Sub
 
 
 ' ===============================================================
-' Formatierung des ?bersichtsblatts
+' Formatierung des Übersichtsblatts
 ' ===============================================================
 Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                                    ByVal startRow As Long, _
@@ -1699,6 +1699,8 @@ NextTeil:
 
     EntferneNegativHinweiseVJ = ergebnis
 End Function
+
+
 
 
 
