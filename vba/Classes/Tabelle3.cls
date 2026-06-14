@@ -86,6 +86,7 @@ Private Sub cbo_RechnungsMonat_Change()
     
     Const ersteDatenZeile As Long = 30
     Const ersteZeileFilterbereich As Long = 29
+    Const letzteSpalteFilterbereich As Long = 26
     
     Dim rngFilterBereich As Range
     Dim visibleCellsCount As Long
@@ -103,9 +104,9 @@ Private Sub cbo_RechnungsMonat_Change()
         .Unprotect PASSWORD:=PASSWORD
         On Error GoTo SafeExit
     
-        ' Vorherige Filter immer aufheben
+        ' Vorherige Kriterien aufheben, aber die Filter-Pfeile behalten.
         On Error Resume Next
-        If .AutoFilterMode Then .AutoFilterMode = False
+        If .FilterMode Then .ShowAllData
         On Error GoTo SafeExit
         
         If Me.cbo_RechnungsMonat.ListIndex = -1 Then GoTo SafeExit
@@ -151,7 +152,11 @@ Private Sub cbo_RechnungsMonat_Change()
             GoTo SafeExit
         End If
         
-        Set rngFilterBereich = .Range("A" & ersteZeileFilterbereich & ":A" & letzteDatenZeile)
+        Set rngFilterBereich = .Range(.Cells(ersteZeileFilterbereich, 1), _
+                                      .Cells(letzteDatenZeile, letzteSpalteFilterbereich))
+        
+        ' Basis-Filter auf dem kompletten Kopfbereich immer aktiv halten.
+        rngFilterBereich.AutoFilter
         
         .Range("C27").value = "Auszug: " & Me.cbo_RechnungsMonat.value & " " & jahr
         
@@ -184,9 +189,9 @@ Private Sub cbo_RechnungsMonat_Change()
     End With
 
 SafeExit:
-    ' Blattschutz wiederherstellen
+    ' Blattschutz wiederherstellen (inkl. Sortier-/Filterrechte)
     On Error Resume Next
-    wsBank.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    mod_Banking_Format.Schuetze_BankkontoBlatt wsBank
     On Error GoTo 0
     
     Application.EnableEvents = True
@@ -924,6 +929,8 @@ Private Function EntferneBemerkungsZeile(ByVal bemerkung As String, _
     
     EntferneBemerkungsZeile = ergebnis
 End Function
+
+
 
 
 

@@ -60,8 +60,11 @@ Public Sub StelleAutoFilterBereit()
     
     Dim cfg As Variant
     ' Array: Blattname, Header-Zeile
+    ' HINWEIS: WS_BANKKONTO bewusst NICHT hier - das macht
+    '          mod_Banking_Format.Aktiviere_BankkontoFilter dediziert
+    '          (mit Header-Entsperren + Unmerge), weil dieses Blatt
+    '          mit dem generischen Code Probleme hatte.
     cfg = Array( _
-        Array(WS_BANKKONTO, 29), _
         Array(WS_VEREINSKASSE, 26), _
         Array("Strom", 9), _
         Array("Wasser", 11), _
@@ -568,6 +571,8 @@ ErrorHandler:
     End If
     
 End Sub
+
+
 
 
 

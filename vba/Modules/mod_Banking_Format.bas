@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Banking_Format
 ' Ausgelagert aus mod_Banking_Data
-' Enthält: Zebra-Formatierung, Rahmen, allgemeine Formatierung,
+' Enth?lt: Zebra-Formatierung, Rahmen, allgemeine Formatierung,
 '          Sortierung Bankkonto, Formel-Wiederherstellung
 ' ===============================================================
 
@@ -109,13 +109,13 @@ Public Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    ' Spalte B (Betrag): Währung + rechtsbündig
+    ' Spalte B (Betrag): W?hrung + rechtsb?ndig
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), ws.Cells(lastRow, BK_COL_BETRAG))
         .NumberFormat = euroFormat
         .HorizontalAlignment = xlRight
     End With
     
-    ' Spalten M-Z: Währung
+    ' Spalten M-Z: W?hrung
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
     
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), ws.Cells(lastRow, BK_COL_BEMERKUNG))
@@ -132,43 +132,142 @@ End Sub
 ' ===============================================================
 ' AUTO-FILTER auf Bankkonto-Header (Zeile 29) aktivieren
 ' Header-Zellen werden entsperrt, damit der Anwender filtern und
-' sortieren kann auch wenn das Blatt geschützt ist.
+' sortieren kann auch wenn das Blatt gesch?tzt ist.
 ' Wird von Workbook_Open und nach CSV-Import aufgerufen.
 ' ===============================================================
 Public Sub Aktiviere_BankkontoFilter()
     Dim ws As Worksheet
     Dim lastRow As Long
     Dim filterRange As Range
+    Dim hdrCell As Range
+    Dim c As Long
 
+    Set ws = Nothing
     On Error Resume Next
     Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
     On Error GoTo 0
-    If ws Is Nothing Then Exit Sub
+    If ws Is Nothing Then
+        Debug.Print "[Aktiviere_BankkontoFilter] Blatt '" & WS_BANKKONTO & "' nicht gefunden"
+        Exit Sub
+    End If
 
+    ' 1) Blattschutz auf (hart)
     On Error Resume Next
     ws.Unprotect PASSWORD:=PASSWORD
+    Err.Clear
     On Error GoTo 0
 
-    ' Header-Zellen A29:Z29 entsperren (sonst kein Klick auf Filter-Pfeil)
+    ' 2) Merged Cells in Zeile 29 aufloesen (AutoFilter mag keine Merges in Headern)
+    On Error Resume Next
+    ws.Range(ws.Cells(BK_HEADER_ROW, 1), ws.Cells(BK_HEADER_ROW, 26)).UnMerge
+    Err.Clear
+    On Error GoTo 0
+
+    ' 3) Sicherstellen dass JEDE Header-Zelle einen Wert hat.
+    '    Excel weigert sich AutoFilter zu setzen, wenn das erste Feld leer ist.
+    Dim headerNamen As Variant
+    headerNamen = Array( _
+        "Datum", "Betrag", "Saldo", "IBAN", "Auftraggeber", _
+        "Verwendungszweck", "Buchungsart", "Kategorie", "Monat/Periode", _
+        "EntityKey", "Anmerkung", "Bemerkung", _
+        "Mitgliedsbeitrag", "Pacht", "Strom", "Wasser", "Sondernutzung", _
+        "Spenden", "Sonstiges", "Kassenbon", "BK-Nr.", "KA-Nr.", _
+        "Rueckbuchung", "Storno", "Korrektur", "Auszahlung Kasse")
+
+    For c = 1 To 26
+        Set hdrCell = ws.Cells(BK_HEADER_ROW, c)
+        If LenB(Trim(CStr(hdrCell.value))) = 0 Then
+            If c - 1 <= UBound(headerNamen) Then
+                hdrCell.value = headerNamen(c - 1)
+            Else
+                hdrCell.value = "Spalte " & c
+            End If
+        End If
+    Next c
+
+    ' 4) Header-Zellen entsperren (sonst kein Klick auf Filter-Pfeil bei Blattschutz)
     ws.Range(ws.Cells(BK_HEADER_ROW, 1), ws.Cells(BK_HEADER_ROW, 26)).Locked = False
 
+    ' 5) Datenbereich ermitteln
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
-    If lastRow < BK_HEADER_ROW Then lastRow = BK_HEADER_ROW
+    If lastRow < BK_HEADER_ROW Then lastRow = BK_HEADER_ROW + 1
 
-    ' Bestehenden Filter entfernen, damit der neue Bereich sauber sitzt
+    ' 6) Bestehenden Filter HART entfernen
     On Error Resume Next
+    If ws.FilterMode Then ws.ShowAllData
     If ws.AutoFilterMode Then ws.AutoFilterMode = False
+    Err.Clear
     On Error GoTo 0
 
+    ' 7) Neuen AutoFilter setzen
     Set filterRange = ws.Range(ws.Cells(BK_HEADER_ROW, 1), ws.Cells(lastRow, 26))
+
     On Error Resume Next
     filterRange.AutoFilter
+    If Err.Number <> 0 Then
+        Debug.Print "[Aktiviere_BankkontoFilter] AutoFilter-Fehler: " & Err.Description
+        Err.Clear
+    End If
     On Error GoTo 0
 
+    ' 8) Diagnose
+    If ws.AutoFilterMode Then
+        Debug.Print "[Aktiviere_BankkontoFilter] OK: AutoFilter aktiv auf Zeile " & _
+                    BK_HEADER_ROW & " (Bereich A" & BK_HEADER_ROW & ":Z" & lastRow & ")"
+    Else
+        Debug.Print "[Aktiviere_BankkontoFilter] WARNUNG: AutoFilterMode=False nach AutoFilter-Call!"
+    End If
+
+    ' 9) Schutz wieder aktivieren mit Filter-/Sortier-Rechten
+    On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, _
                UserInterfaceOnly:=True, _
                AllowFiltering:=True, _
                AllowSorting:=True
+    On Error GoTo 0
+End Sub
+
+
+' ===============================================================
+' Diagnose fuer Bankkonto-Filterzustand (Direktfenster).
+' Aufruf: mod_Banking_Format.Diagnose_BankkontoFilter
+' ===============================================================
+Public Sub Diagnose_BankkontoFilter()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim c As Long
+    Dim hdr As String
+    Dim leereHeader As Long
+    
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    On Error GoTo 0
+    If ws Is Nothing Then
+        Debug.Print "[Diagnose_BankkontoFilter] Blatt nicht gefunden: " & WS_BANKKONTO
+        Exit Sub
+    End If
+    
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_HEADER_ROW Then lastRow = BK_HEADER_ROW
+    
+    Debug.Print "[Diagnose_BankkontoFilter] -----------------------------"
+    Debug.Print "  Blatt:              " & ws.Name
+    Debug.Print "  ProtectContents:    " & ws.ProtectContents
+    Debug.Print "  AutoFilterMode:     " & ws.AutoFilterMode
+    Debug.Print "  FilterMode:         " & ws.FilterMode
+    Debug.Print "  ListObjects.Count:  " & ws.ListObjects.count
+    Debug.Print "  Datenbereich:       A" & BK_HEADER_ROW & ":Z" & lastRow
+    
+    leereHeader = 0
+    For c = 1 To 26
+        hdr = Trim(CStr(ws.Cells(BK_HEADER_ROW, c).value))
+        If Len(hdr) = 0 Then leereHeader = leereHeader + 1
+        If ws.Cells(BK_HEADER_ROW, c).MergeCells Then
+            Debug.Print "  Merge in Header:    " & ws.Cells(BK_HEADER_ROW, c).Address(False, False)
+        End If
+    Next c
+    Debug.Print "  Leere Headerzellen: " & leereHeader
+    Debug.Print "[Diagnose_BankkontoFilter] -----------------------------"
 End Sub
 
 
@@ -231,7 +330,7 @@ End Sub
 ' ===============================================================
 ' FORMEL-WIEDERHERSTELLUNG
 ' Stellt die Formeln auf dem Bankkonto-Blatt wieder her,
-' die durch ClearContents oder Import verloren gehen können.
+' die durch ClearContents oder Import verloren gehen k?nnen.
 ' Betrifft: E4, C5, E10-E16, E18-E23, E25
 ' WICHTIG: Formeln werden 1:1 als FormulaLocal gesetzt!
 ' ===============================================================
@@ -304,6 +403,8 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

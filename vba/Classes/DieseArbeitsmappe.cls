@@ -94,10 +94,9 @@ Private Sub Workbook_Open()
     End If
     On Error GoTo 0
 
-    ' v7.3: AutoFilter auf Bankkonto-Header (Zeile 29) aktivieren
-    On Error Resume Next
-    Call mod_Banking_Format.Aktiviere_BankkontoFilter
-    On Error GoTo 0
+    ' v7.3 (alt): Aktiviere_BankkontoFilter wurde hier aufgerufen,
+    '             aber StelleAutoFilterBereit weiter unten hat ihn
+    '             wieder überschrieben. -> Aufruf nach unten verschoben.
     
     ' v6.0: Startseite als erstes Blatt anzeigen
     On Error Resume Next
@@ -113,6 +112,12 @@ Private Sub Workbook_Open()
     ' v8.0: Standard-Zeilenhoehen auf Hauptblaettern setzen
     On Error Resume Next
     Call mod_Zeilenhoehen.FixiereStandardZeilenhoehen
+    On Error GoTo 0
+    
+    ' v7.4: Bankkonto-AutoFilter ALLERLETZT setzen, weil
+    '       StelleAutoFilterBereit ihn sonst clobbered hat.
+    On Error Resume Next
+    Call mod_Banking_Format.Aktiviere_BankkontoFilter
     On Error GoTo 0
     
 End Sub
@@ -263,6 +268,7 @@ Private Sub Workbook_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Ra
         Call mod_Uebersicht_Event.MerkeAktuellenUebersichtZustand(Target)
     End If
 End Sub
+
 
 
 
