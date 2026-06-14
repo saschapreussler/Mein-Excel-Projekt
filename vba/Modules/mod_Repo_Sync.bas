@@ -7,46 +7,46 @@ Option Explicit
 ' ZWECK: Importiert ALLE VBA-Komponenten aus dem Repository
 '        inkl. Dokument-Module (DieseArbeitsmappe, TabelleX)
 '
-'        Unterstützte Dateitypen:
+'        Unterstï¿½tzte Dateitypen:
 '        -------------------------------------------------------
 '        .bas  Standard-Module:
 '              - Existierende: CodeModule-Ersetzung (in-place)
 '              - Neue: Import nach ANSI-Konvertierung
 '        .cls  Klassen-Module:
 '              - Dokument-Module (Type=100): CodeModule-Ersetzung
-'              - Reguläre Klassen: CodeModule-Ersetzung (in-place)
+'              - Regulï¿½re Klassen: CodeModule-Ersetzung (in-place)
 '              - Neue Klassen: Import nach ANSI-Konvertierung
-'        .frm  UserForms: Löschen + Neu-Import (inkl. .frx)
+'        .frm  UserForms: Lï¿½schen + Neu-Import (inkl. .frx)
 '
 '        STRATEGIE (v3.0 - "CodeModule first"):
 '        1. BEREINIGUNG: Doubletten entfernen (mod_XYZ1,
 '           mod_XYZ2 usw.), die durch fehlgeschlagene
 '           Remove+Import-Zyklen entstanden sind.
-'        2. IMPORT: Für bestehende Module wird der Code
-'           direkt im CodeModule überschrieben (DeleteLines +
-'           AddFromString). Kein Remove nötig, daher kein
-'           "Zugriff verweigert". Nur für NEUE Module wird
+'        2. IMPORT: Fï¿½r bestehende Module wird der Code
+'           direkt im CodeModule ï¿½berschrieben (DeleteLines +
+'           AddFromString). Kein Remove nï¿½tig, daher kein
+'           "Zugriff verweigert". Nur fï¿½r NEUE Module wird
 '           VBComponents.Import nach ANSI-Konvertierung
 '           verwendet.
 '
 '        ENCODING:
 '        Dateien aus dem Repo (VS Code) sind UTF-8 kodiert.
-'        VBA erwartet für den Import ANSI (Windows-1252).
+'        VBA erwartet fï¿½r den Import ANSI (Windows-1252).
 '        Dieses Modul konvertiert automatisch UTF-8 ? ANSI,
-'        damit Umlaute (ä, ü, ö, ß) korrekt übernommen werden.
+'        damit Umlaute (ï¿½, ï¿½, ï¿½, ï¿½) korrekt ï¿½bernommen werden.
 '
 ' HINWEIS: Dieses Modul und mod_VBA_Export werden beim Import
-'          übersprungen, um sich nicht selbst zu überschreiben.
+'          ï¿½bersprungen, um sich nicht selbst zu ï¿½berschreiben.
 ' ***************************************************************
 
 ' ===============================================================
-' QUELLORDNER FÜR IMPORT (REPOSITORY)
+' QUELLORDNER Fï¿½R IMPORT (REPOSITORY)
 ' ===============================================================
 Private Const REPO_PATH_CLASSES As String = "C:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\Classes\"
 Private Const REPO_PATH_USERFORMS As String = "C:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\UserForms\"
 Private Const REPO_PATH_MODULES As String = "C:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\Modules\"
 
-' Temporärer Unterordner für ANSI-konvertierte Dateien
+' Temporï¿½rer Unterordner fï¿½r ANSI-konvertierte Dateien
 Private Const TEMP_SUBFOLDER As String = "VBA_Repo_Sync_Temp"
 
 
@@ -69,7 +69,7 @@ Public Sub SyncVBAVomRepository()
     On Error GoTo ErrorHandler
     
     ' ---------------------------------------------------------
-    ' 1. Prüfe Zugriff auf VBA-Projekt
+    ' 1. Prï¿½fe Zugriff auf VBA-Projekt
     ' ---------------------------------------------------------
     On Error Resume Next
     Set vbProj = ThisWorkbook.VBProject
@@ -86,7 +86,7 @@ Public Sub SyncVBAVomRepository()
     Set fso = CreateObject("Scripting.FileSystemObject")
     
     ' ---------------------------------------------------------
-    ' 2. Prüfe ob Quellordner existieren
+    ' 2. Prï¿½fe ob Quellordner existieren
     ' ---------------------------------------------------------
     If Not fso.FolderExists(REPO_PATH_CLASSES) Or _
        Not fso.FolderExists(REPO_PATH_USERFORMS) Or _
@@ -101,7 +101,7 @@ Public Sub SyncVBAVomRepository()
     End If
     
     ' ---------------------------------------------------------
-    ' 3. Temporären Ordner für ANSI-Konvertierung erstellen
+    ' 3. Temporï¿½ren Ordner fï¿½r ANSI-Konvertierung erstellen
     ' ---------------------------------------------------------
     tempPfad = Environ("TEMP") & "\" & TEMP_SUBFOLDER & "\"
     On Error Resume Next
@@ -111,7 +111,7 @@ Public Sub SyncVBAVomRepository()
     fso.CreateFolder tempPfad
     On Error GoTo ErrorHandler
     
-    ' Zähler initialisieren
+    ' Zï¿½hler initialisieren
     countModules = 0
     countKlassen = 0
     countForms = 0
@@ -149,7 +149,7 @@ Public Sub SyncVBAVomRepository()
     ImportiereUserForms fso, vbProj, REPO_PATH_USERFORMS, tempPfad, countForms, fehlerListe
     
     ' ---------------------------------------------------------
-    ' 7. Temporären Ordner aufräumen
+    ' 7. Temporï¿½ren Ordner aufrï¿½umen
     ' ---------------------------------------------------------
     On Error Resume Next
     If fso.FolderExists(tempPfad) Then
@@ -192,7 +192,7 @@ Public Sub SyncVBAVomRepository()
 ErrorHandler:
     Application.StatusBar = False
     
-    ' Temporären Ordner aufräumen bei Fehler
+    ' Temporï¿½ren Ordner aufrï¿½umen bei Fehler
     On Error Resume Next
     If Not fso Is Nothing Then
         Dim tmpClean As String
@@ -212,7 +212,7 @@ End Sub
 '
 ' STRATEGIE (v2.2 - "CodeModule first"):
 '   - Existierendes Modul: Code wird direkt im CodeModule
-'     überschrieben (DeleteLines + AddFromString).
+'     ï¿½berschrieben (DeleteLines + AddFromString).
 '     KEIN Remove, dadurch kein "Zugriff verweigert".
 '   - Neues Modul: ANSI-konvertierte Datei wird importiert.
 ' ===============================================================
@@ -233,7 +233,7 @@ Private Sub ImportiereStandardDateien(fso As Object, vbProj As Object, _
         If LCase(fso.GetExtensionName(file.Name)) = LCase(ext) Then
             compName = fso.GetBaseName(file.Name)
             
-            ' überspringe dieses Modul selbst und den Exporteur
+            ' ï¿½berspringe dieses Modul selbst und den Exporteur
             If compName = "mod_Repo_Sync" Or compName = "mod_VBA_Export" Then
                 GoTo NaechsteStandardDatei
             End If
@@ -248,8 +248,8 @@ Private Sub ImportiereStandardDateien(fso As Object, vbProj As Object, _
             
             If Not vbComp Is Nothing Then
                 ' -----------------------------------------------
-                ' MODUL EXISTIERT ? Code direkt Überschreiben
-                ' (kein Remove nötig, funktioniert auch zur Laufzeit)
+                ' MODUL EXISTIERT ? Code direkt ï¿½berschreiben
+                ' (kein Remove nï¿½tig, funktioniert auch zur Laufzeit)
                 ' -----------------------------------------------
                 If ErsetzeCodeInDokumentModul(vbComp, file.Path) Then
                     counter = counter + 1
@@ -291,7 +291,7 @@ End Sub
 '
 ' STRATEGIE (v2.2 - "CodeModule first"):
 '   - Dokument-Module (Type=100): CodeModule-Ersetzung (einzige Option)
-'   - Reguläre Klassen (existierend): CodeModule-Ersetzung (in-place)
+'   - Regulï¿½re Klassen (existierend): CodeModule-Ersetzung (in-place)
 '   - Neue Klassen: ANSI-konvertierte Datei wird importiert
 ' ===============================================================
 Private Sub ImportiereKlassenModule(fso As Object, vbProj As Object, _
@@ -319,8 +319,8 @@ Private Sub ImportiereKlassenModule(fso As Object, vbProj As Object, _
             
             If Not vbComp Is Nothing Then
                 ' -----------------------------------------------
-                ' KOMPONENTE EXISTIERT ? Code direkt Überschreiben
-                ' (funktioniert für Type=100 UND reguläre Klassen)
+                ' KOMPONENTE EXISTIERT ? Code direkt ï¿½berschreiben
+                ' (funktioniert fï¿½r Type=100 UND regulï¿½re Klassen)
                 ' -----------------------------------------------
                 If ErsetzeCodeInDokumentModul(vbComp, file.Path) Then
                     If vbComp.Type = 100 Then
@@ -360,7 +360,7 @@ End Sub
 ' ===============================================================
 ' Importiert UserForms (.frm + .frx) aus dem Repository
 ' Die .frm-Datei wird UTF-8 ? ANSI konvertiert.
-' Die zugehörige .frx-Datei (Binärdaten der Steuerelemente)
+' Die zugehï¿½rige .frx-Datei (Binï¿½rdaten der Steuerelemente)
 ' wird direkt in den Temp-Ordner kopiert, da VBA beim Import
 ' beide Dateien im selben Ordner erwartet.
 ' ===============================================================
@@ -382,26 +382,26 @@ Private Sub ImportiereUserForms(fso As Object, vbProj As Object, _
         If LCase(fso.GetExtensionName(file.Name)) = "frm" Then
             compName = fso.GetBaseName(file.Name)
             
-            ' überspringe diese Module
+            ' ï¿½berspringe diese Module
             If compName = "mod_Repo_Sync" Or compName = "mod_VBA_Export" Then
                 GoTo NaechsteForm
             End If
             
             On Error Resume Next
             
-            ' Bestehende UserForm löschen (falls vorhanden)
+            ' Bestehende UserForm lï¿½schen (falls vorhanden)
             Set vbComp = Nothing
             Set vbComp = vbProj.VBComponents(compName)
             If Not vbComp Is Nothing Then
                 vbProj.VBComponents.Remove vbComp
-                DoEvents  ' VBA Zeit geben, die Löschung zu verarbeiten
+                DoEvents  ' VBA Zeit geben, die Lï¿½schung zu verarbeiten
             End If
             Err.Clear
             
             ' .frm-Datei konvertieren (UTF-8 ? ANSI)
             ansiDatei = KonvertiereUTF8zuAnsi(file.Path, tempPfad & file.Name, fso)
             
-            ' .frx-Datei (Binärdaten) in den Temp-Ordner kopieren
+            ' .frx-Datei (Binï¿½rdaten) in den Temp-Ordner kopieren
             frxQuelle = fso.BuildPath(pfad, compName & ".frx")
             frxZiel = tempPfad & compName & ".frx"
             If fso.FileExists(frxQuelle) Then
@@ -560,17 +560,17 @@ End Function
 
 ' ===============================================================
 ' Ersetzt den Code in einem bestehenden VBA-Modul (in-place).
-' Funktioniert für ALLE Modultypen:
+' Funktioniert fï¿½r ALLE Modultypen:
 '   - Dokument-Module (Type=100)
 '   - Standard-Module (.bas)
-'   - Reguläre Klassen (.cls)
+'   - Regulï¿½re Klassen (.cls)
 '
 ' Liest die Datei als UTF-8, entfernt den Header
 ' (VERSION, BEGIN...END, Attribute-Zeilen) und schreibt den
 ' eigentlichen Code direkt ins bestehende CodeModule.
-' Dadurch wird kein Remove benötigt ? kein "Zugriff verweigert".
+' Dadurch wird kein Remove benï¿½tigt ? kein "Zugriff verweigert".
 '
-' Rückgabe: True bei Erfolg, False bei Fehler
+' Rï¿½ckgabe: True bei Erfolg, False bei Fehler
 ' ===============================================================
 Private Function ErsetzeCodeInDokumentModul(vbComp As Object, _
                                              dateipfad As String) As Boolean
@@ -581,13 +581,13 @@ Private Function ErsetzeCodeInDokumentModul(vbComp As Object, _
     Dim codeInhalt As String
     codeInhalt = LeseDateiOhneKlassenHeader(dateipfad)
     
-    ' Bestehenden Code komplett löschen
+    ' Bestehenden Code komplett lï¿½schen
     With vbComp.CodeModule
         If .CountOfLines > 0 Then
             .DeleteLines 1, .CountOfLines
         End If
         
-        ' Neuen Code einfügen (nur wenn Inhalt vorhanden)
+        ' Neuen Code einfï¿½gen (nur wenn Inhalt vorhanden)
         If Len(Trim(codeInhalt)) > 0 Then
             .AddFromString codeInhalt
         End If
@@ -613,8 +613,8 @@ End Function
 '   Attribute VB_PredeclaredId = ...
 '   Attribute VB_Exposed = ...
 '
-' Gibt nur den eigentlichen Code zurück (ab "Option Explicit").
-' Verwendet ADODB.Stream für korrekte UTF-8-Behandlung.
+' Gibt nur den eigentlichen Code zurï¿½ck (ab "Option Explicit").
+' Verwendet ADODB.Stream fï¿½r korrekte UTF-8-Behandlung.
 ' ===============================================================
 Private Function LeseDateiOhneKlassenHeader(dateipfad As String) As String
     
@@ -641,20 +641,20 @@ Private Function LeseDateiOhneKlassenHeader(dateipfad As String) As String
         zeilen = Split(gesamtInhalt, vbLf)
     End If
     
-    ' Header-Zeilen überspringen und erste Code-Zeile finden
+    ' Header-Zeilen ï¿½berspringen und erste Code-Zeile finden
     codeStart = -1
     For i = LBound(zeilen) To UBound(zeilen)
         Dim trimZeile As String
         trimZeile = Trim(zeilen(i))
         
-        ' Bekannte Header-Zeilen überspringen
+        ' Bekannte Header-Zeilen ï¿½berspringen
         If Left(trimZeile, 7) = "VERSION" Then GoTo WeiterSuchen
         If Left(trimZeile, 5) = "BEGIN" Then GoTo WeiterSuchen
         If trimZeile = "END" Then GoTo WeiterSuchen
         If Left(trimZeile, 8) = "MultiUse" Then GoTo WeiterSuchen
         If Left(trimZeile, 9) = "Attribute" Then GoTo WeiterSuchen
         
-        ' Leerzeilen zwischen Header und Code überspringen
+        ' Leerzeilen zwischen Header und Code ï¿½berspringen
         If trimZeile = "" And codeStart = -1 Then GoTo WeiterSuchen
         
         ' Erste echte Code-Zeile gefunden!
@@ -790,7 +790,7 @@ End Function
 '   1. Quelldatei mit Encoding-Erkennung lesen
 '   2. Inhalt mit FSO als ANSI (System-Codepage) schreiben
 '
-' Rückgabe: Pfad der ANSI-Datei, oder "" bei Fehler
+' Rï¿½ckgabe: Pfad der ANSI-Datei, oder "" bei Fehler
 ' ===============================================================
 Private Function KonvertiereUTF8zuAnsi(quellPfad As String, _
                                         zielPfad As String, _
