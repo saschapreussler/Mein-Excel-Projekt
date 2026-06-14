@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Uebersicht_Dashboard"
+Attribute VB_Name = "mod_Uebersicht_Dashboard"
 Option Explicit
 
 ' ***************************************************************
@@ -737,6 +737,8 @@ Private Sub ErgaenzeParzellennamen(ByRef parzellen() As ParzelleInfo, _
     Next mlM
     
 End Sub
+
+
 
 
 

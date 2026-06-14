@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Banking_Data"
+Attribute VB_Name = "mod_Banking_Data"
 Option Explicit
 
 ' ===============================================================
@@ -683,6 +683,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 

@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_FinanzUebersicht"
+Attribute VB_Name = "mod_FinanzUebersicht"
 Option Explicit
 
 ' ===============================================================
@@ -1157,6 +1157,8 @@ ChartErr:
     Debug.Print "[FinanzUebersicht] Diagramm-Fehler: " & Err.Description
     Err.Clear
 End Sub
+
+
 
 
 

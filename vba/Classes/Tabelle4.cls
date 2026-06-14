@@ -1,4 +1,4 @@
-﻿VERSION 1.0 CLASS
+VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
@@ -22,6 +22,15 @@ Option Explicit
 Private Sub Worksheet_Activate()
     ' ComboBox befuellen und Filter zuruecksetzen
     Call mod_Vereinskasse_Filter.BefuelleVereinskasseComboBox(Me)
+
+    ' v8.2: AutoFilter B26:T26 sicherstellen (selbstheilend).
+    ' Wird nur gesetzt, wenn er noch nicht aktiv ist - so haben
+    ' wir keine Performance-Last bei jedem Tab-Klick.
+    On Error Resume Next
+    If Not Me.AutoFilterMode Then
+        Call mod_Vereinskasse_Filter.Aktiviere_VereinskasseFilter
+    End If
+    On Error GoTo 0
 End Sub
 
 
@@ -39,6 +48,7 @@ Private Sub cbo_MonatFilter_VK_Change()
     
     Call mod_Vereinskasse_Filter.WendeVereinskasseFilterAn(Me, CStr(oleObj.Object.value))
 End Sub
+
 
 
 

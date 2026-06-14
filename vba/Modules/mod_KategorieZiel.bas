@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_KategorieZiel"
+Attribute VB_Name = "mod_KategorieZiel"
 Option Explicit
 
 ' ===============================================================
@@ -85,6 +85,8 @@ Private Function GetZielspaltenListe(ByVal einAus As String) As String
     End Select
 
 End Function
+
+
 
 
 

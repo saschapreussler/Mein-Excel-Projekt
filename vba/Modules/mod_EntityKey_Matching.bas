@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_EntityKey_Matching"
+Attribute VB_Name = "mod_EntityKey_Matching"
 Option Explicit
 
 ' ***************************************************************
@@ -246,6 +246,8 @@ Public Function HoleAlleParzellen(ByVal memberID As String, _
     
     HoleAlleParzellen = result
 End Function
+
+
 
 
 

@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_EntityKey_Classifier"
+Attribute VB_Name = "mod_EntityKey_Classifier"
 Option Explicit
 
 ' ***************************************************************
@@ -348,6 +348,8 @@ Public Function ErmittleEntityRoleVonFunktion(ByVal funktion As String) As Strin
         ErmittleEntityRoleVonFunktion = "MITGLIED MIT PACHT"
     End If
 End Function
+
+
 
 
 

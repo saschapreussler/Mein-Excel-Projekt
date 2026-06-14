@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Startseite"
+Attribute VB_Name = "mod_Startseite"
 Option Explicit
 
 ' ===============================================================
@@ -864,6 +864,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 

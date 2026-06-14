@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Zahlungspruefung"
+Attribute VB_Name = "mod_Zahlungspruefung"
 Option Explicit
 
 ' ***************************************************************
@@ -890,6 +890,8 @@ Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
     HoleDezemberVorauszahlungZP = summe
     
 End Function
+
+
 
 
 

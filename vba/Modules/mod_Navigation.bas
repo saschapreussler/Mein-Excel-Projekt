@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Navigation"
+Attribute VB_Name = "mod_Navigation"
 Option Explicit
 
 ' ===============================================================
@@ -323,6 +323,8 @@ Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
     
     Debug.Print "[Navigation] Navigationszeilen eingefuegt auf: " & ws.Name
 End Sub
+
+
 
 
 

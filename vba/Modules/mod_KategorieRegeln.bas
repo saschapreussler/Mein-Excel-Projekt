@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_KategorieRegeln"
+Attribute VB_Name = "mod_KategorieRegeln"
 Option Explicit
 
 ' ***************************************************************
@@ -84,6 +84,8 @@ Private Function FindeErsteKategorieZeile(ws As Worksheet, _
 
     FindeErsteKategorieZeile = 0
 End Function
+
+
 
 
 

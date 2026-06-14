@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Hilfsfunktionen"
+Attribute VB_Name = "mod_Hilfsfunktionen"
 Option Explicit
 
 ' **********************************************************
@@ -201,6 +201,8 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False ' Formular nicht gefunden
     
 End Function
+
+
 
 
 

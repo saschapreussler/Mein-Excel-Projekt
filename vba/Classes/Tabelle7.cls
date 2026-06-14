@@ -1,4 +1,4 @@
-﻿VERSION 1.0 CLASS
+VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
@@ -162,6 +162,8 @@ Fehlerbehandlung:
            "Fehler-Nr: " & Err.Number & vbCrLf & _
            "Beschreibung: " & Err.Description, vbCritical
 End Sub
+
+
 
 
 

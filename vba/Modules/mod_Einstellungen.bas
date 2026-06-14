@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Einstellungen"
+Attribute VB_Name = "mod_Einstellungen"
 Option Explicit
 
 ' ===============================================================
@@ -1075,6 +1075,8 @@ Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long
     Call FormatiereZahlungsterminTabelle(ws)
     
 End Sub
+
+
 
 
 

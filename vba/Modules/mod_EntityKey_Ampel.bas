@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_EntityKey_Ampel"
+Attribute VB_Name = "mod_EntityKey_Ampel"
 Option Explicit
 
 ' ***************************************************************
@@ -154,6 +154,8 @@ Public Function BerechneAmpelStatus(ByVal entityKey As String, _
     ' Default: Gelb
     BerechneAmpelStatus = 2
 End Function
+
+
 
 
 

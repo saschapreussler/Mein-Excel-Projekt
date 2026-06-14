@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Vereinskasse_Filter"
+Attribute VB_Name = "mod_Vereinskasse_Filter"
 Option Explicit
 
 ' ===============================================================
@@ -332,6 +332,46 @@ Public Sub Aktiviere_VereinskasseFilter()
 End Sub
 
 
+' ===============================================================
+' VereinskasseFilterJetzt (Top-Level-Makro)
+' ---------------------------------------------------------------
+' Convenience-Wrapper, damit Du den Vereinskasse-AutoFilter
+' jederzeit aus dem Direktfenster oder dem Makro-Dialog
+' aktivieren kannst, ohne erst den Modulnamen tippen zu muessen.
+'
+' Aufruf:
+'   - Direktfenster (Strg+G): VereinskasseFilterJetzt
+'   - Makro-Dialog  (Alt+F8): VereinskasseFilterJetzt
+'
+' Zeigt am Ende eine kurze MsgBox mit dem Ergebnis.
+' ===============================================================
+Public Sub VereinskasseFilterJetzt()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_VEREINSKASSE)
+    On Error GoTo 0
+    If ws Is Nothing Then
+        MsgBox "Blatt '" & WS_VEREINSKASSE & "' wurde nicht gefunden.", _
+               vbExclamation, "Vereinskasse-Filter"
+        Exit Sub
+    End If
+
+    Call Aktiviere_VereinskasseFilter
+
+    Dim msg As String
+    If ws.AutoFilterMode Then
+        msg = "AutoFilter ist aktiv." & vbCrLf & vbCrLf & _
+              "Bereich:        B" & VK_HEADER_ROW & ":T (variabel)" & vbCrLf & _
+              "Blattschutz:    aktiv (Filtern/Sortieren erlaubt)" & vbCrLf & _
+              "A" & VK_HEADER_ROW & ":          bewusst leer"
+        MsgBox msg, vbInformation, "Vereinskasse-Filter: OK"
+    Else
+        MsgBox "Konnte den AutoFilter nicht setzen." & vbCrLf & _
+               "Bitte im Direktfenster pruefen:" & vbCrLf & _
+               "    ?ActiveSheet.AutoFilterMode", _
+               vbCritical, "Vereinskasse-Filter: FEHLER"
+    End If
+End Sub
 
 
 

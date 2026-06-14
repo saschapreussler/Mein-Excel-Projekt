@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Banking_Report"
+Attribute VB_Name = "mod_Banking_Report"
 Option Explicit
 
 ' ===============================================================
@@ -251,6 +251,8 @@ Public Function ExtrahiereZahl(ByVal text As String) As Long
     End If
     
 End Function
+
+
 
 
 

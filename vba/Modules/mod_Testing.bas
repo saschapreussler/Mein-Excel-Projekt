@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Testing"
+Attribute VB_Name = "mod_Testing"
 Option Explicit
 
 ' ***************************************************************
@@ -1086,6 +1086,8 @@ Private Sub SchreibeUTF8Datei(ByVal pfad As String, ByVal inhalt As String)
     Set utf8Stream = Nothing
     Set binStream = Nothing
 End Sub
+
+
 
 
 

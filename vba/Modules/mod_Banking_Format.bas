@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Banking_Format"
+Attribute VB_Name = "mod_Banking_Format"
 Option Explicit
 
 ' ===============================================================
@@ -403,6 +403,8 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Format_Protection"
+Attribute VB_Name = "mod_Format_Protection"
 Option Explicit
 
 ' ***************************************************************
@@ -230,6 +230,8 @@ Public Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

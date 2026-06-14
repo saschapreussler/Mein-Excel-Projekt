@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Formatierung"
+Attribute VB_Name = "mod_Formatierung"
 Option Explicit
 
 ' ***************************************************************
@@ -650,7 +650,7 @@ Public Sub FormatiereMitgliederlisteKomplett()
         With rngGesamt.Borders(borderIds(i))
             .LineStyle = xlContinuous
             .Weight = xlThin
-            .Color = RGB(150, 150, 150)
+            .color = RGB(150, 150, 150)
         End With
     Next i
 
@@ -659,9 +659,9 @@ Public Sub FormatiereMitgliederlisteKomplett()
         Dim rowRange As Range
         Set rowRange = wsM.Range(wsM.Cells(r, 1), wsM.Cells(r, lastCol))
         If ((r - M_START_ROW) Mod 2) = 0 Then
-            rowRange.Interior.Color = RGB(255, 255, 255)
+            rowRange.Interior.color = RGB(255, 255, 255)
         Else
-            rowRange.Interior.Color = RGB(242, 242, 242)
+            rowRange.Interior.color = RGB(242, 242, 242)
         End If
     Next r
 
@@ -698,6 +698,8 @@ CleanExit:
     Application.ScreenUpdating = warScreenUpdating
     On Error GoTo 0
 End Sub
+
+
 
 
 

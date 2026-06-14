@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Uebersicht_Event"
+Attribute VB_Name = "mod_Uebersicht_Event"
 Option Explicit
 
 ' ***************************************************************
@@ -443,6 +443,8 @@ Private Function FuegeBemerkungEinmalHinzu(ByVal basis As String, _
 
     FuegeBemerkungEinmalHinzu = res & " | " & neuTeil
 End Function
+
+
 
 
 

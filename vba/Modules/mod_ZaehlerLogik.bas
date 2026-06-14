@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_ZaehlerLogik"
+Attribute VB_Name = "mod_ZaehlerLogik"
 Option Explicit
 
 ' ==========================================================
@@ -551,6 +551,8 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
     wsStart.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True
     
 End Sub
+
+
 
 
 

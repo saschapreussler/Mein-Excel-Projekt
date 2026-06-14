@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_KategorieEngine_Pipeline"
+Attribute VB_Name = "mod_KategorieEngine_Pipeline"
 Option Explicit
 
 ' ===============================================================
@@ -511,6 +511,8 @@ Private Function HatManuelleKategorie(ByVal wsBK As Worksheet, _
     HatManuelleKategorie = True
     
 End Function
+
+
 
 
 
