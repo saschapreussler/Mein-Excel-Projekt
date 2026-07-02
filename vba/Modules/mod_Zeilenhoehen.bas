@@ -3,11 +3,11 @@ Option Explicit
 
 ' ===============================================================
 ' Modul: mod_Zeilenhoehen
-' v8.0: Setzt definierte Zeilenhoehen auf den Hauptblaettern.
-'       Wird beim Workbook_Open aufgerufen, kann auch manuell ausgeloest werden.
+' v8.0: Setzt definierte Zeilenhöhen auf den Hauptblaettern.
+'       Wird beim Workbook_Open aufgerufen, kann auch manuell ausgelöst werden.
 '
 ' Spezifikation:
-'   Zahlungsuebersicht          : Zeile 2 = 35.00 (70 px)
+'   Zahlungsübersicht          : Zeile 2 = 35.00 (70 px)
 '   Dashboard Mitgliederzahlungen: Zeile 2 = 35.00, Zeile 3 = 18.50, Zeile 4 = 18.50
 '   Bankkonto                   : Zeile 2 unveraendert
 '   Vereinskasse                : Zeile 1 = 50.00, Zeile 2 = 20.00, Zeile 3 = 20.00
@@ -57,6 +57,7 @@ Private Sub SetzeZeilenhoehe(ByVal blattName As String, ByVal zeile As Long, ByV
     
     If warGeschuetzt Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
 End Sub
+
 
 
 

@@ -14,10 +14,10 @@ Option Explicit
 ' ZWECK: Automatische Formatierung bei Datenaenderungen
 ' VERSION: 4.7 - 15.03.2026
 ' FIX: OnDatenChange entfernt (war redundant mit FormatKategorieTableComplete)
-' FIX: ShrinkToFit=False + Font.Color=vbBlack fuer Spalte L
+' FIX: ShrinkToFit=False + Font.Color=vbBlack für Spalte L
 ' FIX v4.7: Sicherheits-Reset EnableEvents, robuste Fehlerbehandlung
 ' NEU: FindeKategorieZeile - Cursor bleibt nach Sort auf editierter Zeile
-' NEU: Bei Spalte W (EntityRole) Aenderung -> Bankkonto neu evaluieren
+' NEU: Bei Spalte W (EntityRole) Änderung -> Bankkonto neu evaluieren
 ' ***************************************************************
 
 Private Sub Worksheet_Change(ByVal Target As Range)
@@ -26,7 +26,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     On Error GoTo ErrorHandler
     
-    ' Nur Einzelzellen-Aenderungen verarbeiten
+    ' Nur Einzelzellen-Änderungen verarbeiten
     If Target.Cells.CountLarge > 100 Then GoTo CleanUp
     If Target.Row < 4 Then GoTo CleanUp
     
@@ -69,12 +69,12 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         ' Formatierung + Sortierung
         Call mod_Formatierung.FormatKategorieTableComplete(Me)
         
-        ' Konsistenzpruefung bei J, K oder L
+        ' Konsistenzprüfung bei J, K oder L
         If changedCol = 10 Or changedCol = 11 Or changedCol = 12 Then
             Call mod_Formatierung.OnKategorieChange(Target)
         End If
         
-        ' ShrinkToFit deaktivieren + Schriftfarbe schwarz fuer Spalte L
+        ' ShrinkToFit deaktivieren + Schriftfarbe schwarz für Spalte L
         Dim lastRowKat As Long
         lastRowKat = Me.Cells(Me.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
         If lastRowKat >= DATA_START_ROW Then
@@ -86,7 +86,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             rngKeywords.Font.color = vbBlack
         End If
         
-        ' Cursor auf die editierte Zeile zuruecksetzen (nach Sort)
+        ' Cursor auf die editierte Zeile zurücksetzen (nach Sort)
         If merkKategorie <> "" And merkKeyword <> "" Then
             Dim gefundeneZeile As Long
             gefundeneZeile = FindeKategorieZeile(merkKategorie, merkKeyword)
@@ -131,11 +131,11 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     If changedCol >= 18 And changedCol <= 24 Then
         Call mod_Formatierung.FormatEntityKeyTableComplete(Me)
         If changedCol = 23 Then
-            ' EntityRole wurde geaendert
+            ' EntityRole wurde geändert
             Call mod_EntityKey_UI.VerarbeiteManuelleRoleAenderung(Target)
             
-            ' NEU: Bankkonto-Kategorien fuer diese IBAN neu evaluieren
-            ' Nur wenn eine Role tatsaechlich gesetzt wurde (nicht geloescht)
+            ' NEU: Bankkonto-Kategorien für diese IBAN neu evaluieren
+            ' Nur wenn eine Role tatsächlich gesetzt wurde (nicht gelöscht)
             Dim neueRole As String
             neueRole = Trim(CStr(Target.value))
             If neueRole <> "" Then
@@ -168,8 +168,8 @@ End Sub
 
 ' ---------------------------------------------------------------
 ' Findet eine Kategorie-Zeile nach Sortierung anhand von
-' Kategorie + Keyword (beide muessen uebereinstimmen)
-' Gibt die Zeilennummer zurueck, oder 0 wenn nicht gefunden
+' Kategorie + Keyword (beide müssen uebereinstimmen)
+' Gibt die Zeilennummer zurück, oder 0 wenn nicht gefunden
 ' ---------------------------------------------------------------
 Private Function FindeKategorieZeile(ByVal suchKategorie As String, _
                                       ByVal suchKeyword As String) As Long
@@ -191,6 +191,8 @@ Private Function FindeKategorieZeile(ByVal suchKategorie As String, _
         End If
     Next r
 End Function
+
+
 
 
 

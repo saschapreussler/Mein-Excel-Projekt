@@ -3,7 +3,7 @@ Option Explicit
 
 ' ===============================================================
 ' Modul: mod_Vollbild
-' v8.0: Vollbildmodus fuer Startmenue + Dashboard
+' v8.0: Vollbildmodus für Startmenü + Dashboard
 '       - kein Ribbon (Menueband)
 '       - keine Zeilen-/Spaltenkoepfe
 '       - keine Bearbeitungsleiste (FormulaBar)
@@ -21,7 +21,7 @@ Public Sub SetzeVollbildModus(ByVal aktiv As Boolean)
     
     ' Idempotent: wenn schon im gewuenschten Zustand -> nichts tun
     If aktiv = m_VollbildAktiv Then
-        ' Trotzdem ActiveWindow-Headings korrekt setzen, falls jemand sie geaendert hat
+        ' Trotzdem ActiveWindow-Headings korrekt setzen, falls jemand sie geändert hat
         If Not ActiveWindow Is Nothing Then
             ActiveWindow.DisplayHeadings = Not aktiv
         End If
@@ -59,10 +59,11 @@ Public Sub SetzeVollbildModus(ByVal aktiv As Boolean)
     m_VollbildAktiv = aktiv
 End Sub
 
-' Hilfsfunktion fuer Reset (z.B. aus Workbook_BeforeClose)
+' Hilfsfunktion für Reset (z.B. aus Workbook_BeforeClose)
 Public Sub ResetVollbildState()
     m_VollbildAktiv = False
 End Sub
+
 
 
 

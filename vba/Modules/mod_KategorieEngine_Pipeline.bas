@@ -12,7 +12,7 @@ Option Explicit
 ' FIX: HatManuelleKategorie schuetzt manuelle Eingaben
 ' v5.1: Sammelzahlung-Filter in AktualisierKategorieListen
 '       entfernt - alle Kategorien aus Spalte J stehen im
-'       DropDown zur Verfuegung (inkl. Sammelzahlung)
+'       DropDown zur Verfügung (inkl. Sammelzahlung)
 ' ===============================================================
 
 ' ---------------------------------------------------------------
@@ -43,18 +43,18 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
     lastRowBK = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRowBK < BK_START_ROW Then Exit Sub
 
-    ' Kategorie-Listen auf Daten! aktualisieren (ffuer DropDowns)
+    ' Kategorie-Listen auf Daten! aktualisieren (für DropDowns)
     AktualisierKategorieListen
     
     ' Einstellungen-Cache laden (Performance)
     LadeEinstellungenCache
 
-    ' Blattschutz SELBST aufheben - nicht vom Aufrufer abhaengig!
+    ' Blattschutz SELBST aufheben - nicht vom Aufrufer abhängig!
     On Error Resume Next
     wsBK.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
 
-    ' Zustand sichern (Aufrufer koennte Events bereits deaktiviert haben)
+    ' Zustand sichern (Aufrufer könnte Events bereits deaktiviert haben)
     Dim eventsWarenPipe As Boolean
     eventsWarenPipe = Application.EnableEvents
 
@@ -82,7 +82,7 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
         End If
         On Error GoTo 0
 
-        ' Betrag nur zuordnen wenn Kategorie gruen ist
+        ' Betrag nur zuordnen wenn Kategorie grün ist
         On Error Resume Next
         If wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color = RGB(198, 239, 206) Then
             ApplyBetragsZuordnung wsBK, r
@@ -93,7 +93,7 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
         End If
         On Error GoTo 0
 
-        ' DropDown ffuer ROT und GELB setzen
+        ' DropDown für ROT und GELB setzen
         Dim katFarbe As Long
         katFarbe = wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color
         If katFarbe = RGB(255, 199, 206) Or katFarbe = RGB(255, 235, 156) Then
@@ -120,7 +120,7 @@ End Sub
 ' ---------------------------------------------------------------
 ' Re-Evaluierung ALLER nicht-manuellen Zeilen
 ' Wird aufgerufen wenn Kategorie-Regeln oder Einstellungen
-' geaendert werden. ueberspringt manuelle Eingaben.
+' geändert werden. ueberspringt manuelle Eingaben.
 ' ---------------------------------------------------------------
 Public Sub ReEvaluiereAlleNichtManuellen()
 
@@ -148,7 +148,7 @@ Public Sub ReEvaluiereAlleNichtManuellen()
     ' Einstellungen-Cache laden
     LadeEinstellungenCache
 
-    ' Zustand sichern (Aufrufer koennte Events bereits deaktiviert haben)
+    ' Zustand sichern (Aufrufer könnte Events bereits deaktiviert haben)
     Dim eventsWaren As Boolean
     eventsWaren = Application.EnableEvents
     
@@ -169,7 +169,7 @@ Public Sub ReEvaluiereAlleNichtManuellen()
         ' Manuelle Kategorie? NICHT anfassen
         If HatManuelleKategorie(wsBK, r) Then GoTo NextRowReEvalAll
         
-        ' Alte Kategorie, Bemerkung und Validierung Loeschen
+        ' Alte Kategorie, Bemerkung und Validierung Löschen
         wsBK.Cells(r, BK_COL_KATEGORIE).value = ""
         wsBK.Cells(r, BK_COL_KATEGORIE).Interior.ColorIndex = xlNone
         wsBK.Cells(r, BK_COL_KATEGORIE).Font.color = vbBlack
@@ -184,7 +184,7 @@ Public Sub ReEvaluiereAlleNichtManuellen()
         If Err.Number <> 0 Then Err.Clear
         On Error GoTo 0
 
-        ' Betrag nur zuordnen wenn gruen
+        ' Betrag nur zuordnen wenn grün
         On Error Resume Next
         If wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color = RGB(198, 239, 206) Then
             ApplyBetragsZuordnung wsBK, r
@@ -192,7 +192,7 @@ Public Sub ReEvaluiereAlleNichtManuellen()
         If Err.Number <> 0 Then Err.Clear
         On Error GoTo 0
 
-        ' DropDown ffuer ROT und GELB setzen
+        ' DropDown für ROT und GELB setzen
         Dim reEvalFarbeAll As Long
         reEvalFarbeAll = wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color
         If reEvalFarbeAll = RGB(255, 199, 206) Or reEvalFarbeAll = RGB(255, 235, 156) Then
@@ -226,7 +226,7 @@ End Sub
 ' (Eindeutige Kategorienamen, getrennt nach E und A)
 ' v5.1: Sammelzahlung wird NICHT mehr ausgefiltert!
 '       Alle Kategorien aus Spalte J stehen im DropDown
-'       zur Verfuegung - auch Sammelzahlung.
+'       zur Verfügung - auch Sammelzahlung.
 ' ===============================================================
 Private Sub AktualisierKategorieListen()
     Dim wsData As Worksheet
@@ -257,7 +257,7 @@ Private Sub AktualisierKategorieListen()
 NextListRow:
     Next r
     
-    ' Alte Listen Loeschen - Daten-Blatt kurz entsperren
+    ' Alte Listen Löschen - Daten-Blatt kurz entsperren
     On Error Resume Next
     wsData.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
@@ -293,7 +293,7 @@ End Sub
 
 
 ' ===============================================================
-' DropDown-Validierung ffuer Spalte H (Kategorie) setzen
+' DropDown-Validierung für Spalte H (Kategorie) setzen
 ' basierend auf Betrag-Vorzeichen (Einnahme/Ausgabe)
 ' ===============================================================
 Private Sub SetzeKategorieDropDown(ByVal wsBK As Worksheet, ByVal rowBK As Long)
@@ -316,10 +316,10 @@ Private Sub SetzeKategorieDropDown(ByVal wsBK As Worksheet, ByVal rowBK As Long)
     lastListRow = wsData.Cells(wsData.Rows.count, listCol).End(xlUp).Row
     If lastListRow < DATA_START_ROW Then Exit Sub
     
-    ' Zelle muss entsperrt sein ffuer Validation
+    ' Zelle muss entsperrt sein für Validation
     wsBK.Cells(rowBK, BK_COL_KATEGORIE).Locked = False
     
-    ' Alte Validierung sicher Loeschen
+    ' Alte Validierung sicher Löschen
     On Error Resume Next
     wsBK.Cells(rowBK, BK_COL_KATEGORIE).Validation.Delete
     On Error GoTo 0
@@ -350,7 +350,7 @@ End Sub
 
 
 ' ===============================================================
-' Re-Evaluierung nach EntityRole-Aenderung (ffuer eine IBAN)
+' Re-Evaluierung nach EntityRole-Änderung (für eine IBAN)
 ' ===============================================================
 Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
 
@@ -384,7 +384,7 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
     ' Einstellungen-Cache laden
     LadeEinstellungenCache
     
-    ' Zustand sichern (Aufrufer koennte Events bereits deaktiviert haben)
+    ' Zustand sichern (Aufrufer könnte Events bereits deaktiviert haben)
     Dim eventsWarenRole As Boolean
     eventsWarenRole = Application.EnableEvents
     
@@ -407,7 +407,7 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
         ' Manuelle Kategorie? NICHT anfassen
         If HatManuelleKategorie(wsBK, r) Then GoTo NextRowReEval
         
-        ' Alte Kategorie, Bemerkung und Validierung Loeschen
+        ' Alte Kategorie, Bemerkung und Validierung Löschen
         wsBK.Cells(r, BK_COL_KATEGORIE).value = ""
         wsBK.Cells(r, BK_COL_KATEGORIE).Interior.ColorIndex = xlNone
         wsBK.Cells(r, BK_COL_KATEGORIE).Font.color = vbBlack
@@ -422,7 +422,7 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
         If Err.Number <> 0 Then Err.Clear
         On Error GoTo 0
         
-        ' Betrag nur zuordnen wenn gruen
+        ' Betrag nur zuordnen wenn grün
         On Error Resume Next
         If wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color = RGB(198, 239, 206) Then
             ApplyBetragsZuordnung wsBK, r
@@ -430,7 +430,7 @@ Public Sub ReEvaluiereNachEntityRoleAenderung(ByVal geaenderteIBAN As String)
         If Err.Number <> 0 Then Err.Clear
         On Error GoTo 0
         
-        ' DropDown ffuer ROT und GELB setzen
+        ' DropDown für ROT und GELB setzen
         Dim reEvalFarbe As Long
         reEvalFarbe = wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color
         If reEvalFarbe = RGB(255, 199, 206) Or reEvalFarbe = RGB(255, 235, 156) Then
@@ -453,14 +453,14 @@ NextRowReEval:
     Application.ScreenUpdating = True
     
     If anzahlNeu > 0 Then
-        Debug.Print "Re-Evaluierung: " & anzahlNeu & " Zeilen ffuer IBAN " & Left(ibanClean, 8) & "... neu bewertet."
+        Debug.Print "Re-Evaluierung: " & anzahlNeu & " Zeilen für IBAN " & Left(ibanClean, 8) & "... neu bewertet."
     End If
     
 End Sub
 
 
 ' ===============================================================
-' prueft ob der Nutzer manuell Betraege in Spalten M-Z eingetragen hat
+' prüft ob der Nutzer manuell Beträge in Spalten M-Z eingetragen hat
 ' ===============================================================
 Private Function HatManuelleBetragseingabe(ByVal wsBK As Worksheet, _
                                             ByVal rowBK As Long) As Boolean
@@ -477,10 +477,10 @@ End Function
 
 
 ' ===============================================================
-' prueft ob der Nutzer manuell eine Kategorie gewaehlt/geaendert hat.
+' prüft ob der Nutzer manuell eine Kategorie gewählt/geändert hat.
 ' Manuelle Kategorie = Kategorie-Zelle hat einen Wert UND
-' die Zelle hat KEINE der Engine-Farben (gruen/GELB/ROT).
-' gruen-Zeilen werden ebenfalls uebersprungen, da sie bereits
+' die Zelle hat KEINE der Engine-Farben (grün/GELB/ROT).
+' grün-Zeilen werden ebenfalls übersprungen, da sie bereits
 ' erfolgreich automatisch zugeordnet wurden.
 ' ===============================================================
 Private Function HatManuelleKategorie(ByVal wsBK As Worksheet, _
@@ -496,14 +496,14 @@ Private Function HatManuelleKategorie(ByVal wsBK As Worksheet, _
     Dim katFarbe As Long
     katFarbe = wsBK.Cells(rowBK, BK_COL_KATEGORIE).Interior.color
     
-    ' gruen = erfolgreich automatisch zugeordnet -> nicht ueberschreiben
+    ' grün = erfolgreich automatisch zugeordnet -> nicht überschreiben
     If katFarbe = RGB(198, 239, 206) Then
         HatManuelleKategorie = True
         Exit Function
     End If
     
     ' ROT oder GELB = Engine hat zugeordnet aber unsicher
-    ' -> darf von der Engine bei Re-Evaluierung ueberschrieben werden
+    ' -> darf von der Engine bei Re-Evaluierung überschrieben werden
     If katFarbe = RGB(255, 199, 206) Then Exit Function  ' ROT
     If katFarbe = RGB(255, 235, 156) Then Exit Function  ' GELB
     
@@ -511,6 +511,8 @@ Private Function HatManuelleKategorie(ByVal wsBK As Worksheet, _
     HatManuelleKategorie = True
     
 End Function
+
+
 
 
 

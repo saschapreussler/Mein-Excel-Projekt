@@ -3,13 +3,13 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_EntityKey_UI
-' ZWECK: UI-Interaktion und manuelle Zuordnung fuer EntityKey-System
+' ZWECK: UI-Interaktion und manuelle Zuordnung für EntityKey-System
 ' ABGELEITET AUS: mod_EntityKey_Manager (Modularisierung)
 ' VERSION: 1.0 - 01.03.2026
 ' FUNKTIONEN:
-'   - VerarbeiteManuelleRoleAenderung: Event-Handler fuer Spalte W
-'   - SetupEntityRoleDropdown: DropDown fuer EntityRole-Spalte
-'   - SetupParzelleDropdown: DropDown fuer Parzelle-Spalte
+'   - VerarbeiteManuelleRoleAenderung: Event-Handler für Spalte W
+'   - SetupEntityRoleDropdown: DropDown für EntityRole-Spalte
+'   - SetupParzelleDropdown: DropDown für Parzelle-Spalte
 '   - FormatiereEntityKeyZeile: Kompatibilitaets-Stub
 ' ***************************************************************
 
@@ -32,7 +32,7 @@ Private Const ROLE_SHOP As String = "SHOP"
 Private Const ROLE_SONSTIGE As String = "SONSTIGE"
 
 ' ===============================================================
-' Verarbeitet manuelle Role-Aenderung in Spalte W
+' Verarbeitet manuelle Role-Änderung in Spalte W
 ' ===============================================================
 Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
     Dim wsDaten As Worksheet
@@ -268,7 +268,7 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
     wsDaten.Cells(zeile, EK_COL_ROLE).Locked = False
     wsDaten.Cells(zeile, EK_COL_DEBUG).Locked = False
     
-    ' Sortierung + Ampelfarben sofort nach manueller Aenderung
+    ' Sortierung + Ampelfarben sofort nach manueller Änderung
     Call mod_Formatierung.FormatEntityKeyTableComplete(wsDaten)
     Call mod_EntityKey_Ampel.SetzeAlleAmpelfarbenNachSortierung(wsDaten)
     
@@ -285,7 +285,7 @@ ErrorHandler:
 End Sub
 
 ' ===============================================================
-' Setzt EntityRole-Dropdown fuer eine Zeile
+' Setzt EntityRole-Dropdown für eine Zeile
 ' ===============================================================
 Public Sub SetupEntityRoleDropdown(ByRef ws As Worksheet, ByVal zeile As Long)
     Dim lastRowDD As Long
@@ -310,7 +310,7 @@ Public Sub SetupEntityRoleDropdown(ByRef ws As Worksheet, ByVal zeile As Long)
 End Sub
 
 ' ===============================================================
-' Setzt Parzellen-Dropdown fuer eine Zeile
+' Setzt Parzellen-Dropdown für eine Zeile
 ' ===============================================================
 Public Sub SetupParzelleDropdown(ByRef ws As Worksheet, ByVal zeile As Long)
     Dim lastRowParzelle As Long
@@ -342,6 +342,8 @@ End Sub
 Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long, Optional ByVal ws As Worksheet = Nothing)
     ' BEWUSST LEER
 End Sub
+
+
 
 
 

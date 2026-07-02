@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Einstellungen (Orchestrator)
 ' VERSION: 4.0 - 18.04.2026
-' ZWECK: Formatierung, Schutz/Entsperrung fuer
+' ZWECK: Formatierung, Schutz/Entsperrung für
 '        die Zahlungstermin-Tabelle auf Blatt Einstellungen
 '        (Spalten B-I, ab Zeile 21, Header Zeile 20)
 '        NEU v4.0: Konfigurationsbereich Zeilen 1-19
@@ -38,7 +38,7 @@ Public Sub MigriereEinstellungenLayout()
     On Error GoTo 0
     If ws Is Nothing Then Exit Sub
     
-    ' Pruefen ob Migration schon durchgefuehrt
+    ' Prüfen ob Migration schon durchgeführt
     If Trim(CStr(ws.Cells(ES_CFG_TITEL_ROW, ES_CFG_LABEL_COL).value)) = "Konfiguration" Then
         ' Labels und Felder-Entsperrung bei jedem Open aktualisieren
         Call AktualisiereKonfigLabels(ws)
@@ -52,16 +52,16 @@ Public Sub MigriereEinstellungenLayout()
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     
-    ' Pruefen ob altes Layout vorhanden (Header in Zeile 3 oder 5)
+    ' Prüfen ob altes Layout vorhanden (Header in Zeile 3 oder 5)
     Dim altesLayout As Boolean
     altesLayout = (InStr(1, CStr(ws.Cells(5, ES_COL_KATEGORIE).value), "Kategorie", vbTextCompare) > 0) Or _
                   (InStr(1, CStr(ws.Cells(3, ES_COL_KATEGORIE).value), "Kategorie", vbTextCompare) > 0)
     
     If altesLayout Then
-        ' 19 Zeilen oben einfuegen - verschiebt alle Daten automatisch
+        ' 19 Zeilen oben einfügen - verschiebt alle Daten automatisch
         ws.Rows("1:19").Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
         
-        ' Eingefuegte Zeilen bereinigen (keine Formatierung uebernehmen)
+        ' Eingefuegte Zeilen bereinigen (keine Formatierung übernehmen)
         ws.Range("A1:Z19").Clear
     End If
     
@@ -199,7 +199,7 @@ Public Sub SchreibeKonfigurationsBereich(Optional ByVal ws As Worksheet)
     ' --- SECTION: Vereinsadresse ---
     Call SchreibeSectionHeader(ws, ES_CFG_ADRESSE_ROW, "Vereinsadresse")
     
-    ' Vereinsname (Wert ueber C-I gemergt)
+    ' Vereinsname (Wert über C-I gemergt)
     Call SchreibeCfgLabel(ws, ES_CFG_VEREINSNAME_ROW, "Vereinsname:")
     With ws.Range(ws.Cells(ES_CFG_VEREINSNAME_ROW, ES_CFG_VALUE_COL), _
                   ws.Cells(ES_CFG_VEREINSNAME_ROW, ES_COL_END))
@@ -247,7 +247,7 @@ Public Sub SchreibeKonfigurationsBereich(Optional ByVal ws As Worksheet)
     ' --- Zahlungstermine-Header: gleiche Formatierung wie Section-Header ---
     Call SchreibeSectionHeader(ws, ES_HEADER_ROW, "Zahlungstermine")
     
-    ' AutoFit fuer alle Konfigurationszeilen
+    ' AutoFit für alle Konfigurationszeilen
     Dim cfgRow As Long
     For cfgRow = ES_CFG_ABRECHNUNGSJAHR_ROW To ES_CFG_PLZ_ORT_ROW
         ' Section-Header und Separator-Zeilen nicht anfassen
@@ -367,7 +367,7 @@ End Sub
 
 
 ' ===============================================================
-' 0d. KONTOSTAND VORJAHR: Pruefen und ggf. Nutzer fragen
+' 0d. KONTOSTAND VORJAHR: Prüfen und ggf. Nutzer fragen
 ' ===============================================================
 Public Sub PruefeKontostandVorjahr()
     Dim ws As Worksheet
@@ -441,7 +441,7 @@ Public Sub PruefeKontostandVorjahr()
         End If
     Loop Until gueltig
     
-    ' Bestaetigung anzeigen
+    ' Bestätigung anzeigen
     Dim bestaetigung As VbMsgBoxResult
     bestaetigung = MsgBox( _
         "Kontostand Vorjahr:" & vbLf & vbLf & _
@@ -466,7 +466,7 @@ End Sub
 
 
 ' ===============================================================
-' 0d2. ABRECHNUNGSJAHR: Pruefen und ggf. Nutzer fragen
+' 0d2. ABRECHNUNGSJAHR: Prüfen und ggf. Nutzer fragen
 ' ===============================================================
 Public Sub PruefeAbrechnungsjahr()
     Dim ws As Worksheet
@@ -528,7 +528,7 @@ End Sub
 
 
 ' ===============================================================
-' 0d3. VEREINSDATEN: Pruefen und ggf. Nutzer fragen
+' 0d3. VEREINSDATEN: Prüfen und ggf. Nutzer fragen
 ' ===============================================================
 Public Sub PruefeVereinsdaten()
     Dim ws As Worksheet
@@ -537,7 +537,7 @@ Public Sub PruefeVereinsdaten()
     On Error GoTo 0
     If ws Is Nothing Then Exit Sub
     
-    ' Pruefen ob Vereinsname vorhanden
+    ' Prüfen ob Vereinsname vorhanden
     Dim vereinsname As String
     vereinsname = Trim(CStr(ws.Cells(ES_CFG_VEREINSNAME_ROW, ES_CFG_VALUE_COL).value))
     
@@ -682,7 +682,7 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     
-    ' 1. Header einmalig Pruefen (nur setzen wenn leer)
+    ' 1. Header einmalig Prüfen (nur setzen wenn leer)
     Call PruefeHeader(ws)
     
     ' 2. Leerzeilen entfernen (Daten verdichten)
@@ -700,7 +700,7 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     ' 6. Zellen sperren/entsperren
     Call SperreUndEntsperre(ws)
     
-    ' 7. Spaltenbreiten (AutoFit ffuer alle Spalten)
+    ' 7. Spaltenbreiten (AutoFit für alle Spalten)
     Call SetzeSpaltenbreiten(ws)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
@@ -725,7 +725,7 @@ Private Sub PruefeHeader(ByVal ws As Worksheet)
     ws.Cells(ES_HEADER_ROW, ES_COL_STICHTAG_FIX).value = "Soll-Stichtag (Fix) TT.MM."
     ws.Cells(ES_HEADER_ROW, ES_COL_VORLAUF).value = "Vorlauf-Toleranz (Tage)"
     ws.Cells(ES_HEADER_ROW, ES_COL_NACHLAUF).value = "Nachlauf-Toleranz (Tage)"
-    ws.Cells(ES_HEADER_ROW, ES_COL_SAEUMNIS).value = "Saeumnis-Gebuehr"
+    ws.Cells(ES_HEADER_ROW, ES_COL_SAEUMNIS).value = "Säumnis-Gebühr"
     
     Dim rngHeader As Range
     Set rngHeader = ws.Range(ws.Cells(ES_HEADER_ROW, ES_COL_START), _
@@ -786,7 +786,7 @@ End Sub
 
 ' ===============================================================
 ' 3b. ALPHABETISCH SORTIEREN (Spalte B, A-Z)
-'     oeffentlich aufrufbar aus Tabelle9.cls
+'     öffentlich aufrufbar aus Tabelle9.cls
 ' ===============================================================
 Public Sub SortiereAlphabetisch(ByVal ws As Worksheet)
     
@@ -989,7 +989,7 @@ Private Sub SperreUndEntsperre(ByVal ws As Worksheet)
              ws.Cells(ES_CFG_PLZ_ORT_ROW, ES_COL_END)).Locked = False
     On Error GoTo 0
     
-    ' Zahlungstermin-Tabelle: Datenzeilen + naechste freie Zeile entsperren
+    ' Zahlungstermin-Tabelle: Datenzeilen + nächste freie Zeile entsperren
     If lastRow >= ES_START_ROW Then
         ws.Range(ws.Cells(ES_START_ROW, ES_COL_START), _
                  ws.Cells(lastRow, ES_COL_END)).Locked = False
@@ -1055,7 +1055,7 @@ End Function
 
 
 ' ===============================================================
-' 10. ZEILE Loeschen
+' 10. ZEILE Löschen
 ' ===============================================================
 Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long)
     
@@ -1075,6 +1075,8 @@ Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long
     Call FormatiereZahlungsterminTabelle(ws)
     
 End Sub
+
+
 
 
 

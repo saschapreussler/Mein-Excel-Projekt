@@ -4,8 +4,8 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Zahlungspruefung (Orchestrator)
 ' VERSION: 3.3 - 15.03.2026
-' ZWECK: Zahlungspruefung fuer Mitgliederliste + Einstellungen
-'        - Prueft Zahlungseingaenge gegen Soll-Werte
+' ZWECK: Zahlungsprüfung für Mitgliederliste + Einstellungen
+'        - Prüft Zahlungseingaenge gegen Soll-Werte
 '        - Behandelt Dezember-Vorauszahlungen
 '        - Cache-Verwaltung (Einstellungen, IBAN, Dezember)
 ' AUSGELAGERT:
@@ -15,13 +15,13 @@ Option Explicit
 '     Monatszuordnung
 '   - mod_ZP_Periode: SetzeMonatPeriode, HoleFaelligkeitFuerKategorie
 ' FIX v3.1: PruefeZahlungen nutzt jetzt Spalte I (Monat/Periode)
-'           statt Month(Buchungsdatum) ffuer Monats-Zuordnung
+'           statt Month(Buchungsdatum) für Monats-Zuordnung
 ' NEU v3.2: Frist-/ToleranzPruefung mit Vorlauf/Nachlauf aus
 '           Einstellungen (Spalte G/H). Saeumnishinweis in Bemerkung.
 ' ***************************************************************
 
 ' ===============================================================
-' CACHE FUER EINSTELLUNGEN (Performance-Optimierung)
+' CACHE FÜR EINSTELLUNGEN (Performance-Optimierung)
 ' ===============================================================
 Private Type EinstellungsRegelZP
     kategorie As String
@@ -44,8 +44,8 @@ Private m_EntityIBANCacheZP As Object   ' Dictionary: EntityKey -> IBAN
 Private m_EntityIBANCacheGeladenZP As Boolean
 
 ' ===============================================================
-' DEZEMBER-CACHE (fuer Vorauszahlungen)
-' Struktur: Schluessel = IBAN|Kategorie, Wert = Collection von Betraegen
+' DEZEMBER-CACHE (für Vorauszahlungen)
+' Struktur: Schlüssel = IBAN|Kategorie, Wert = Collection von Betraegen
 ' ===============================================================
 Private m_DezemberCacheZP As Object
 
@@ -58,18 +58,18 @@ Private Const AMPEL_ROT As Long = 9871103
 
 
 ' ===============================================================
-' HAUPTFUNKTION: Prueft ALLE Zahlungen eines Mitglieds/einer Kategorie
+' HAUPTFUNKTION: Prüft ALLE Zahlungen eines Mitglieds/einer Kategorie
 ' Wird von mod_Uebersicht_Generator aufgerufen
 '
-' Rueckgabe: "STATUS|Soll:XX.XX|Ist:XX.XX" oder
+' Rückgabe: "STATUS|Soll:XX.XX|Ist:XX.XX" oder
 '            "STATUS|Soll:XX.XX|Ist:XX.XX|Bemerkungstext"
 '           Dezimaltrenner im Rueckgabewert ist IMMER Punkt (.)
 '
 ' v3.2: Frist-/Toleranzpruefung:
 '   - Vorlauf (Spalte G) und Nachlauf (Spalte H) aus Einstellungen
 '   - Fuelligkeitsdatum wird berechnet (BerechneSollDatumZP)
-'   - Zahlung innerhalb [Fuelligkeit - Vorlauf, Fuelligkeit + Nachlauf] = puenktlich
-'   - Zahlung eingegangen aber NACH Fuelligkeit + Nachlauf = GELB + Saeumnis
+'   - Zahlung innerhalb [Fälligkeit - Vorlauf, Fälligkeit + Nachlauf] = puenktlich
+'   - Zahlung eingegangen aber NACH Fälligkeit + Nachlauf = GELB + Säumnis
 '   - Keine Zahlung = ROT
 ' ===============================================================
 Public Function PruefeZahlungen(ByVal entityKey As String, _
@@ -100,7 +100,7 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     ' IBAN-Cache laden (falls noch nicht geschehen)
     If Not m_EntityIBANCacheGeladenZP Then Call LadeEntityIBANCacheZP
     
-    ' 1. IBAN zum EntityKey aufloesen (ueber Daten!R+S)
+    ' 1. IBAN zum EntityKey aufloesen (über Daten!R+S)
     entityIBAN = ""
     If Not m_EntityIBANCacheZP Is Nothing Then
         If m_EntityIBANCacheZP.exists(entityKey) Then
@@ -117,12 +117,12 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     soll = HoleSollBetragZP(kategorie)
     
     ' v2.0 FIX: NICHT mehr abbrechen bei soll=0!
-    ' Bei variablem Betrag (soll=0) wird trotzdem geprueft ob Zahlung da ist.
+    ' Bei variablem Betrag (soll=0) wird trotzdem geprüft ob Zahlung da ist.
     
     ' 3. Ist-Wert aus Bankkonto ermitteln
-    '    v3.1: Monat-Matching jetzt ueber Spalte I (Monat/Periode)
-    '          statt ueber Month(Buchungsdatum), da Spalte I bereits
-    '          die korrekte Monats-Zuordnung enthaelt (inkl. Vorlauf/Nachlauf)
+    '    v3.1: Monat-Matching jetzt über Spalte I (Monat/Periode)
+    '          statt über Month(Buchungsdatum), da Spalte I bereits
+    '          die korrekte Monats-Zuordnung enthält (inkl. Vorlauf/Nachlauf)
     ist = 0
     lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     
@@ -130,7 +130,7 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     Dim erwarteterMonat As String
     erwarteterMonat = MonthName(monat)
     
-    ' v4.0: Faelligkeit der Kategorie ermitteln (fuer nicht-monatliche Perioden)
+    ' v4.0: Fälligkeit der Kategorie ermitteln (für nicht-monatliche Perioden)
     Dim wsDaten As Worksheet
     On Error Resume Next
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
@@ -142,24 +142,24 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
         katFaelligkeit = mod_ZP_Periode.HoleFaelligkeitFuerKategorie(wsDaten, kategorie)
     End If
     
-    ' v4.0: Fuer nicht-monatliche Kategorien den Perioden-String bestimmen
-    ' der in Spalte I stehen koennte (z.B. "Endabrechnung 2025", "Q1 2025")
+    ' v4.0: Für nicht-monatliche Kategorien den Perioden-String bestimmen
+    ' der in Spalte I stehen könnte (z.B. "Endabrechnung 2025", "Q1 2025")
     Dim istMonatlich As Boolean
     istMonatlich = (katFaelligkeit = "" Or katFaelligkeit = "monatlich")
     
-    ' v3.2: Fruehestes Zahlungsdatum merken (fuer Fristpruefung)
+    ' v3.2: Fruehestes Zahlungsdatum merken (für Fristpruefung)
     Dim fruehestesZahlDatum As Date
     Dim hatZahlung As Boolean
     hatZahlung = False
     
     For r = BK_START_ROW To lastRow
-        ' Datum pruefen (muss vorhanden sein fuer Jahr-Check)
+        ' Datum prüfen (muss vorhanden sein für Jahr-Check)
         If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo NextZahlRow
         zahlDatum = wsBK.Cells(r, BK_COL_DATUM).value
         
-        ' Jahr pruefen ueber Buchungsdatum
+        ' Jahr prüfen über Buchungsdatum
         If Year(zahlDatum) <> jahr Then
-            ' Dezember-Sonderfall: Vorauszahlung Dezember Vorjahr fuer Januar
+            ' Dezember-Sonderfall: Vorauszahlung Dezember Vorjahr für Januar
             If monat = 1 And Month(zahlDatum) = 12 And Year(zahlDatum) = jahr - 1 Then
                 ' Vorauszahlung aus Dezember des Vorjahres -> zulaessig
             Else
@@ -167,7 +167,7 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
             End If
         End If
         
-        ' Monat pruefen ueber Spalte I (Monat/Periode)
+        ' Monat prüfen über Spalte I (Monat/Periode)
         Dim monatPeriode As String
         monatPeriode = Trim(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
         
@@ -181,14 +181,14 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
         Else
             ' Nicht-monatlich: Spalte I kann verschiedene Formate haben:
             ' "Endabrechnung 2025", "Q1 2025", "H1 2025",
-            ' "jaehrlich", "Kategoriename Jahr" etc.
-            ' -> Pruefen ob Monat/Periode den Kategorienamen enthaelt
+            ' "jährlich", "Kategoriename Jahr" etc.
+            ' -> Prüfen ob Monat/Periode den Kategorienamen enthält
             '    UND ob das Buchungsdatum im richtigen Zeitfenster liegt
             If monatPeriode = erwarteterMonat Then
                 ' Direkt-Match (unwahrscheinlich bei nicht-monatlich, aber sicher)
                 monatPasstZP = True
             ElseIf InStr(1, monatPeriode, kategorie, vbTextCompare) > 0 Then
-                ' Spalte I enthaelt den Kategorienamen (z.B. "Endabrechnung 2025")
+                ' Spalte I enthält den Kategorienamen (z.B. "Endabrechnung 2025")
                 monatPasstZP = True
             ElseIf monatPeriode = "" Then
                 ' Spalte I leer -> Fallback auf Buchungsmonat
@@ -198,11 +198,11 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
         
         If Not monatPasstZP Then GoTo NextZahlRow
         
-        ' IBAN pruefen (Spalte D = BK_COL_IBAN)
+        ' IBAN prüfen (Spalte D = BK_COL_IBAN)
         ibanZeile = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
         If StrComp(ibanZeile, entityIBAN, vbTextCompare) <> 0 Then GoTo NextZahlRow
         
-        ' Kategorie pruefen (Spalte H = BK_COL_KATEGORIE)
+        ' Kategorie prüfen (Spalte H = BK_COL_KATEGORIE)
         zahlKat = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
         If StrComp(zahlKat, kategorie, vbTextCompare) <> 0 Then GoTo NextZahlRow
         
@@ -221,7 +221,7 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
 NextZahlRow:
     Next r
     
-    ' 4. Status ermitteln (GRUEN/GELB/ROT)
+    ' 4. Status ermitteln (GRÜN/GELB/ROT)
     '    v3.2: Mit Frist-/Toleranzpruefung
     bemerkung = ""
     
@@ -242,7 +242,7 @@ NextZahlRow:
                 fristEnde = sollDatum + nachlauf
                 
                 If fruehestesZahlDatum > fristEnde Then
-                    ' Zahlung NACH Frist -> GELB + Saeumnis
+                    ' Zahlung NACH Frist -> GELB + Säumnis
                     status = "GELB"
                     bemerkung = "Versp" & ChrW(228) & "tet (" & Format(fruehestesZahlDatum, "dd.mm.yyyy") & _
                                 ", Frist: " & Format(fristEnde, "dd.mm.yyyy") & ")"
@@ -263,7 +263,7 @@ NextZahlRow:
             bemerkung = "Teilzahlung (Soll: " & Format(soll, "#,##0.00") & _
                         ", Ist: " & Format(ist, "#,##0.00") & ")"
         Else
-            ' Keine Zahlung -> ROT, aber nur wenn Faelligkeit schon erreicht
+            ' Keine Zahlung -> ROT, aber nur wenn Fälligkeit schon erreicht
             If Date >= sollDatum Then
                 If HatMitbezahltInParzelleZP(entityKey, entityIBAN, kategorie, monat, jahr, soll, _
                                              erwarteterMonat, istMonatlich, wsBK, bemerkung) Then
@@ -281,13 +281,13 @@ NextZahlRow:
                     End If
                 End If
             Else
-                ' Faelligkeit noch nicht erreicht -> GELB (ausstehend)
+                ' Fälligkeit noch nicht erreicht -> GELB (ausstehend)
                 status = "GELB"
                 bemerkung = "F" & ChrW(228) & "llig am " & Format(sollDatum, "dd.mm.yyyy")
             End If
         End If
     Else
-        ' Kein fester Soll-Betrag (variabel): nur Eingangs-Pruefung
+        ' Kein fester Soll-Betrag (variabel): nur Eingangs-Prüfung
         If ist > 0 Then
             status = "GR" & ChrW(220) & "N"
         Else
@@ -330,10 +330,10 @@ End Function
 
 
 ' ===============================================================
-' Zaehlt passende Zahlungen fuer einen EntityKey/Kategorie/Monat.
+' Zaehlt passende Zahlungen für einen EntityKey/Kategorie/Monat.
 ' Hilft dabei, Gemeinschaftskonto-Zahlungen nur dann zuzuordnen,
 ' wenn nicht gleichzeitig weitere separate Zahlungen derselben
-' Person fuer denselben Zeitraum vorliegen.
+' Person für denselben Zeitraum vorliegen.
 ' ===============================================================
 Public Sub ZaehleZahlungenZP(ByVal entityKey As String, _
                              ByVal kategorie As String, _
@@ -432,8 +432,8 @@ End Sub
 
 
 ' ===============================================================
-' Hilfsfunktion: Wenn derselbe Betrag ueber ein anderes Konto der
-' gleichen Parzelle eingegangen ist, keine Saeumnis erzeugen.
+' Hilfsfunktion: Wenn derselbe Betrag über ein anderes Konto der
+' gleichen Parzelle eingegangen ist, keine Säumnis erzeugen.
 ' ===============================================================
 Private Function HatMitbezahltInParzelleZP(ByVal entityKey As String, _
                                            ByVal entityIBAN As String, _
@@ -514,8 +514,8 @@ End Function
 
 
 ' ===============================================================
-' Holt Vorlauf/Nachlauf/Saeumnis-Gebuehr aus dem Einstellungen-Cache
-' fuer eine bestimmte Kategorie
+' Holt Vorlauf/Nachlauf/Säumnis-Gebühr aus dem Einstellungen-Cache
+' für eine bestimmte Kategorie
 ' ===============================================================
 Public Sub HoleToleranzZP(ByVal kategorie As String, _
                             ByRef vorlauf As Long, _
@@ -643,7 +643,7 @@ Public Function BerechneSollDatumZP(ByVal kategorie As String, _
         Exit Function
     End If
     
-    ' 2. Pruefen: Spalte F (Stichtag Fix) hat Vorrang
+    ' 2. Prüfen: Spalte F (Stichtag Fix) hat Vorrang
     If regel.StichtagFix <> "" Then
         Dim teile() As String
         teile = Split(regel.StichtagFix, ".")
@@ -890,6 +890,8 @@ Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
     HoleDezemberVorauszahlungZP = summe
     
 End Function
+
+
 
 
 

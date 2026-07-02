@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Zaehler_Berechnung
 ' Ausgelagert aus mod_ZaehlerLogik
-' enthaelt: CalculateAllZaehlerVerbrauch, CalculateSingleZaehler
+' enthält: CalculateAllZaehlerVerbrauch, CalculateSingleZaehler
 ' ===============================================================
 
 ' --- Konstanten (lokal dupliziert) ---
@@ -273,7 +273,7 @@ Private Sub CalculateSingleZaehler( _
         End If
         
         ' ***************************************************************
-        ' LOGIK Ffuer SPALTE E (BEMERKUNG BEI ZaehlerWECHSEL)
+        ' LOGIK Für SPALTE E (BEMERKUNG BEI ZaehlerWECHSEL)
         ' ***************************************************************
         Dim oldBemerkung As String
         Dim newHistoryText As String
@@ -347,6 +347,8 @@ Private Sub CalculateSingleZaehler( _
     End If
     
 End Sub
+
+
 
 
 

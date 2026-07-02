@@ -4,14 +4,14 @@ Option Explicit
 ' =====================================================
 ' KATEGORIE-ENGINE - ZEITRAUM & EINSTELLUNGEN-CACHE
 ' Ausgelagert aus mod_KategorieEngine_Evaluator
-' enthaelt: Einstellungen-Cache, Betragsvalidierung,
+' enthält: Einstellungen-Cache, Betragsvalidierung,
 '          ZeitfensterPruefung, Periodenermittlung
 ' =====================================================
 
 
 ' =====================================================
 ' EINSTELLUNGEN-CACHE (Performance)
-' Wird einmal geladen, dann ffuer alle Zeilen verwendet
+' Wird einmal geladen, dann für alle Zeilen verwendet
 ' Spalten: B=Kategorie, C=Soll-Betrag, D=Soll-Tag,
 '          E=Soll-Monate, F=Stichtag, G=Vorlauf, H=Nachlauf
 ' =====================================================
@@ -92,7 +92,7 @@ End Sub
 
 
 ' =====================================================
-' Betragsvalidierung ueber Einstellungen (Cache-Version)
+' Betragsvalidierung über Einstellungen (Cache-Version)
 ' mit Vielfaches-Check aus v7.0
 ' =====================================================
 Public Function PruefeBetragGegenEinstellungen(ByVal category As String, _
@@ -131,7 +131,7 @@ End Function
 
 
 ' =====================================================
-' ZeitfensterPruefung (Cache-Version + Fuelligkeit + Soll-Monate)
+' ZeitfensterPruefung (Cache-Version + Fälligkeit + Soll-Monate)
 ' Prioritaeten:
 ' 1. Spalte F (Stichtag Fix) -> exaktes Datum
 ' 2. Spalte D + E (Tag + Monate) -> kombiniert
@@ -186,7 +186,7 @@ Public Function PruefeZeitfenster(ByVal category As String, _
                     PruefeZeitfenster = 20
                     Exit Function
                 End If
-                ' Stichtag hat Vorrang -> nicht weiter Pruefen
+                ' Stichtag hat Vorrang -> nicht weiter Prüfen
                 GoTo WeiterNaechsteZeile
             End If
             
@@ -194,7 +194,7 @@ Public Function PruefeZeitfenster(ByVal category As String, _
             Dim buchungsMonat As Long
             buchungsMonat = Month(buchungsDatum)
             
-            ' Pruefe ob der Buchungsmonat in den Soll-Monaten liegt
+            ' Prüfe ob der Buchungsmonat in den Soll-Monaten liegt
             Dim monatPasst As Boolean
             monatPasst = True  ' Default: alle Monate (Spalte E leer)
             
@@ -237,9 +237,9 @@ Public Function PruefeZeitfenster(ByVal category As String, _
                     End If
                 End If
                 
-                ' Vormonat-Check: Pruefe auch ob Buchung im Vorlauf des NAECHSTEn passenden Monats liegt
+                ' Vormonat-Check: Prüfe auch ob Buchung im Vorlauf des NAECHSTEn passenden Monats liegt
                 If SollMonate <> "" Then
-                    ' Pruefe ob der Folgemonat in der Liste ist
+                    ' Prüfe ob der Folgemonat in der Liste ist
                     Dim folgeMonat As Long
                     folgeMonat = buchungsMonat + 1
                     If folgeMonat > 12 Then folgeMonat = 1
@@ -286,7 +286,7 @@ End Function
 
 
 ' =====================================================
-' Hilfsfunktion: prueft ob ein Monat (1-12) in einer
+' Hilfsfunktion: prüft ob ein Monat (1-12) in einer
 ' kommaseparierten Monatsliste enthalten ist.
 ' z.B. IstMonatInListe(3, "03, 06, 09, 12") -> True
 ' PUBLIC (wird auch in mod_Zahlungspruefung benoetigt)
@@ -314,9 +314,9 @@ End Function
 ' =====================================================
 ' Monat/Periode intelligent ermitteln (v10.0)
 ' v10.0 NEU:
-'   - "jaehrlich (jahr)":       -> "[Kategoriename] [Jahr]"
-'   - "jaehrlich (jahr/folgejahr)": -> "[Kategoriename] [Jahr]/[Folgejahr]"
-'   - "jaehrlich" Fallback:     -> "jaehrlich"
+'   - "jährlich (jahr)":       -> "[Kategoriename] [Jahr]"
+'   - "jährlich (jahr/folgejahr)": -> "[Kategoriename] [Jahr]/[Folgejahr]"
+'   - "jährlich" Fallback:     -> "jährlich"
 '   - Sammelzahlung wird NICHT mit "Jahresbeitrag" beFuellt
 '   - Ultimo-5 Bemerkung ohne "Ultimo-5:" Praefix
 '   - Dynamischer Kategoriename aus Blatt "Daten" Spalte J
@@ -351,27 +351,27 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
     Dim faelligkeitLC As String
     faelligkeitLC = LCase(faelligkeit)
     
-    ' --- "jaehrlich (jahr/folgejahr)" ---
+    ' --- "jährlich (jahr/folgejahr)" ---
     ' z.B. Versicherung -> "Versicherung 2025/2026"
     If faelligkeitLC Like "*hrlich (jahr/folgejahr)*" Or _
-       faelligkeitLC Like "*jaehrlich (jahr/folgejahr)*" Or _
+       faelligkeitLC Like "*jährlich (jahr/folgejahr)*" Or _
        faelligkeitLC = "j" & ChrW(228) & "hrlich (jahr/folgejahr)" Then
         ErmittleMonatPeriode = category & " " & jahrBuchung & "/" & (jahrBuchung + 1)
         Exit Function
     End If
     
-    ' --- "jaehrlich (jahr)" ---
+    ' --- "jährlich (jahr)" ---
     ' z.B. Endabrechnung -> "Endabrechnung 2025"
     If faelligkeitLC Like "*hrlich (jahr)*" Or _
-       faelligkeitLC Like "*jaehrlich (jahr)*" Or _
+       faelligkeitLC Like "*jährlich (jahr)*" Or _
        faelligkeitLC = "j" & ChrW(228) & "hrlich (jahr)" Then
         ErmittleMonatPeriode = category & " " & jahrBuchung
         Exit Function
     End If
     
-    ' --- "jaehrlich" (Fallback) ---
+    ' --- "jährlich" (Fallback) ---
     If faelligkeitLC = "j" & ChrW(228) & "hrlich" Or _
-       faelligkeitLC = "jaehrlich" Then
+       faelligkeitLC = "jährlich" Then
         ErmittleMonatPeriode = "j" & ChrW(228) & "hrlich"
         Exit Function
     End If
@@ -421,7 +421,7 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
             vorlauf = mCacheVorlauf(idx)
             SollMonate = mCacheSollMonate(idx)
             
-            ' Pruefe zuerst festen Stichtag (Spalte F)
+            ' Prüfe zuerst festen Stichtag (Spalte F)
             If IsDate(mCacheStichtag(idx)) Then
                 Dim stichDatum As Date
                 On Error Resume Next
@@ -511,7 +511,7 @@ NaechsteLernZeile:
                     End If
                 End If
                 
-                ' v10.0: GELB-Rueckgabe OHNE "Ultimo-5:" Praefix
+                ' v10.0: GELB-Rückgabe OHNE "Ultimo-5:" Praefix
                 ErmittleMonatPeriode = "GELB|" & MonthName(monatBuchung)
                 Exit Function
                 
@@ -551,6 +551,8 @@ NaechsteLernZeile:
 FallbackMonat:
     ErmittleMonatPeriode = MonthName(monatBuchung)
 End Function
+
+
 
 
 

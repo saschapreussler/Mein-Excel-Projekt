@@ -4,7 +4,7 @@ Option Explicit
 ' ==========================================================
 ' MODUL: mod_ZaehlerLogik (ORCHESTRATOR)
 ' VERSION: 2.0 - Modularisiert
-' Aenderung v2.0:
+' Änderung v2.0:
 '   - Berechnung ausgelagert nach mod_Zaehler_Berechnung
 '   - Historie ausgelagert nach mod_Zaehler_Historie
 '   - Dieses Modul: Konstanten, Hilfsfunktionen, Initialisierung, KPIs
@@ -44,10 +44,10 @@ Private Const RGB_HEADER_BG As Long = 13619148
 
 
 ' ==========================================================
-' 0. HILFSFUNKTIONEN (Public ffuer Sub-Module)
+' 0. HILFSFUNKTIONEN (Public für Sub-Module)
 ' ==========================================================
 
-' Zeilenhoehe auf Minimum sicherstellen
+' Zeilenhöhe auf Minimum sicherstellen
 Public Sub EnsureMinRowHeight(ws As Worksheet, targetRow As Long)
     Const MIN_HEIGHT As Double = 50
     On Error Resume Next
@@ -57,7 +57,7 @@ Public Sub EnsureMinRowHeight(ws As Worksheet, targetRow As Long)
     On Error GoTo 0
 End Sub
 
-' Hole Namen ffuer Parzelle
+' Hole Namen für Parzelle
 Public Function HoleNamenFuerParzelle(ws As Worksheet, suchParzelle As String, maxZ As Long) As String
     Dim r As Long
     Dim sTemp As String
@@ -136,7 +136,7 @@ Sub ErzeugeParzellenUebersicht()
     Dim nameGefunden As String
     
     Set wsQuelle = ThisWorkbook.Worksheets("Mitgliederliste")
-    Set wsZiel = ThisWorkbook.Worksheets("Uebersicht")
+    Set wsZiel = ThisWorkbook.Worksheets("Übersicht")
     
     On Error Resume Next
     wsZiel.Unprotect
@@ -250,7 +250,7 @@ Sub AktualisiereZaehlerTabellenSpalteA()
         
         LaengeParzelleTitel = Len(strParzelleTitel)
 
-        ' A. Verarbeitung ffuer Strom
+        ' A. Verarbeitung für Strom
         With wsStrom.Cells(zielZeileStrom, "A")
             .value = GesamtText
             .WrapText = True
@@ -270,7 +270,7 @@ Sub AktualisiereZaehlerTabellenSpalteA()
             End If
         End With
 
-        ' B. Verarbeitung ffuer Wasser
+        ' B. Verarbeitung für Wasser
         With wsWasser.Cells(zielZeileWasser, "A")
             .value = GesamtText
             .WrapText = True
@@ -299,7 +299,7 @@ Sub AktualisiereZaehlerTabellenSpalteA()
     
 End Sub
 
-' HISTORIE Pruefung & ERSTELLUNG
+' HISTORIE Prüfung & ERSTELLUNG
 Public Sub PruefeUndErstelleZaehlerhistorie()
     Dim ws As Worksheet
     Dim foundSheet As Boolean
@@ -446,7 +446,7 @@ End Sub
 
 
 ' ==========================================================
-' DATUM Pruefung
+' DATUM Prüfung
 ' ==========================================================
 Public Function PlausiDatum(datString As String) As Boolean
     On Error GoTo ErrHandler
@@ -471,7 +471,7 @@ End Function
 
 
 ' ==========================================================
-' 4. KENNZAHLEN Ffuer STARTSEITE
+' 4. KENNZAHLEN Für STARTSEITE
 ' ==========================================================
 Sub Ermittle_Kennzahlen_Mitgliederliste()
 
@@ -551,6 +551,8 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
     wsStart.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True
     
 End Sub
+
+
 
 
 

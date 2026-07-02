@@ -7,7 +7,7 @@ Option Explicit
 ' ABGELEITET AUS: mod_Formatierung (Modularisierung)
 ' VERSION: 1.0 - 01.03.2026
 ' FUNKTIONEN:
-'   - EntspeerreEditierbareSpalten: Unlock/Lock Logik fuer Daten-Blatt
+'   - EntspeerreEditierbareSpalten: Unlock/Lock Logik für Daten-Blatt
 '   - BlendeDatenSpaltenAus: Hilfsspalten ausblenden
 ' ***************************************************************
 
@@ -40,7 +40,7 @@ Public Sub BlendeDatenSpaltenAus()
 End Sub
 
 ' ===============================================================
-' Entsperrt bestehende Daten + genau 1 naechste freie Zeile
+' Entsperrt bestehende Daten + genau 1 nächste freie Zeile
 ' Sperrt einen Puffer darunter
 ' Betrifft: B, D, F, H, J-P, R-X (via W), AB, AC, AD, AH
 ' ===============================================================
@@ -93,7 +93,7 @@ Public Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     ws.Range(ws.Cells(nextRow + 1, DATA_CAT_COL_START), _
              ws.Cells(lockEnd, DATA_CAT_COL_END)).Locked = True
     
-    ' DropDowns fuer die Eingabezeile
+    ' DropDowns für die Eingabezeile
     Call mod_Format_Kategorie.SetzeZielspalteDropdown(ws, nextRow, "")
     
     ' Dropdown K (E/A)
@@ -121,7 +121,7 @@ Public Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
         .ShowError = True
     End With
     
-    ' Dropdown O (Faelligkeit)
+    ' Dropdown O (Fälligkeit)
     ws.Cells(nextRow, DATA_CAT_COL_FAELLIGKEIT).Validation.Delete
     With ws.Cells(nextRow, DATA_CAT_COL_FAELLIGKEIT).Validation
         .Add Type:=xlValidateList, _
@@ -165,7 +165,7 @@ Public Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
         .ShowError = True
     End With
     
-    ' EntityRole-Dropdown und Parzellen-Dropdown fuer ALLE Zeilen
+    ' EntityRole-Dropdown und Parzellen-Dropdown für ALLE Zeilen
     Dim lastRowParzelle As Long
     lastRowParzelle = ws.Cells(ws.Rows.count, DATA_COL_DD_PARZELLE).End(xlUp).Row
     If lastRowParzelle < DATA_START_ROW Then lastRowParzelle = DATA_START_ROW
@@ -230,6 +230,8 @@ Public Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

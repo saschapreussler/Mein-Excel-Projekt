@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_FinanzUebersicht
 ' VERSION: 2.0 - 21.04.2026
-' ZWECK: Erstellt und pflegt das Blatt "Finanz-Uebersicht"
+' ZWECK: Erstellt und pflegt das Blatt "Finanz-Übersicht"
 '        - Kategorien dynamisch aus Bankkonto Spalte H
 '        - Sammelzahlungen: Aufschluesselung via Spalte L (Bemerkung)
 '        - KPIs: Einnahmen, Ausgaben, Saldo, Kontostand, VK-Saldo
@@ -29,7 +29,7 @@ Private Const FILTER_DD_NAME As String = "dd_MonatFilter_FU"
 Private Const FILTER_BTN_NAME As String = "btn_FilterErweitert_FU"
 Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung"
 
-' v8.0: Erweiterte Filter (Modul-State, persistent waehrend Session)
+' v8.0: Erweiterte Filter (Modul-State, persistent während Session)
 Private m_FilterKat As String       ' Kategorie (leer = alle)
 Private m_FilterName As String      ' Mitglied/Parzelle - Teilstring-Match in BK-Spalte Empfaenger/Bemerkung
 Private m_FilterDatVon As Date      ' 0 = kein Filter
@@ -37,7 +37,7 @@ Private m_FilterDatBis As Date      ' 0 = kein Filter
 
 
 ' ===============================================================
-' HAUPTPROZEDUR: Finanz-Uebersicht erstellen/aktualisieren
+' HAUPTPROZEDUR: Finanz-Übersicht erstellen/aktualisieren
 ' ===============================================================
 Public Sub ErstelleFinanzUebersicht()
     Dim ws As Worksheet
@@ -54,7 +54,7 @@ Public Sub ErstelleFinanzUebersicht()
     Call EntferneAlleObjekte(ws)
     Call BaueFinanzUebersicht(ws, 0)
     
-    ' v8.0: Home-Button setzen (wurde von EntferneAlleObjekte geloescht)
+    ' v8.0: Home-Button setzen (wurde von EntferneAlleObjekte gelöscht)
     On Error Resume Next
     Call mod_Navigation.ErstelleHomeButton(ws)
     On Error GoTo 0
@@ -569,7 +569,7 @@ Private Sub SammleDaten(ByRef dictEinn As Object, _
     
     Dim r As Long
     For r = BK_START_ROW To lastRow
-        ' Monatsfilter pruefen
+        ' Monatsfilter prüfen
         If monatFilter > 0 Then
             If IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then
                 If Month(CDate(wsBK.Cells(r, BK_COL_DATUM).value)) <> monatFilter Then GoTo nextRow
@@ -646,7 +646,7 @@ Private Sub VerteileSammelzahlung(ByVal wsBK As Worksheet, _
     Dim bemerkung As String
     bemerkung = Trim(CStr(wsBK.Cells(zeile, BK_COL_BEMERKUNG).value))
     
-    ' Pruefen ob Spalte L das SAMMEL:-Format enthaelt
+    ' Prüfen ob Spalte L das SAMMEL:-Format enthält
     If Left(UCase(bemerkung), 7) <> "SAMMEL:" Then
         ' Kein SAMMEL-Format -> Gesamtbetrag als "Sammelzahlung" buchen
         If gesamtBetrag > 0 Then
@@ -677,7 +677,7 @@ Private Sub VerteileSammelzahlung(ByVal wsBK As Worksheet, _
         Dim eineZeile As String
         eineZeile = Trim(zeilen(z))
         
-        ' Erste Zeile "SAMMEL:" ueberspringen
+        ' Erste Zeile "SAMMEL:" überspringen
         If UCase(eineZeile) = "SAMMEL:" Or eineZeile = "" Then GoTo NextZeile
         
         ' Format: "Kategorie: Betrag ?"
@@ -696,7 +696,7 @@ Private Sub VerteileSammelzahlung(ByVal wsBK As Worksheet, _
             betragStr = Replace(betragStr, "EUR", "")
             betragStr = Trim(betragStr)
             
-            ' Komma durch Punkt ersetzen fuer CDbl
+            ' Komma durch Punkt ersetzen für CDbl
             betragStr = Replace(betragStr, ".", "")
             betragStr = Replace(betragStr, ",", ".")
             
@@ -880,7 +880,7 @@ Private Sub ErstelleFilterDropDown(ByVal ws As Worksheet, ByVal aktuellerMonat A
         .Font.Size = 9
     End With
     
-    ' v8.0: "Filter zuruecksetzen" Button
+    ' v8.0: "Filter zurücksetzen" Button
     Dim btnReset As Button
     Set btnReset = ws.Buttons.Add(ddLeft + 260, ddTop, 110, 18)
     With btnReset
@@ -977,7 +977,7 @@ End Sub
 
 
 ' ===============================================================
-' v8.0: Alle erweiterten Filter zuruecksetzen + neu aufbauen
+' v8.0: Alle erweiterten Filter zurücksetzen + neu aufbauen
 ' ===============================================================
 Public Sub FilterZuruecksetzen()
     m_FilterKat = ""
@@ -1157,6 +1157,8 @@ ChartErr:
     Debug.Print "[FinanzUebersicht] Diagramm-Fehler: " & Err.Description
     Err.Clear
 End Sub
+
+
 
 
 

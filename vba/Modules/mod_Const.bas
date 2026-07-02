@@ -3,13 +3,13 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Const
-' ZWECK: Zentrale Konstanten ffuer das gesamte Projekt
+' ZWECK: Zentrale Konstanten für das gesamte Projekt
 ' VERSION: 2.8 - 11.02.2026
-' Aenderung v2.8: WS_UEBERSICHT von "Uebersicht" auf "Uebersicht"
-'                geaendert (Tabellenblatt heisst "Uebersicht")
-' Aenderung v2.7: ES_COL_SOLL_MONATE hinzugefuegt (Spalte E),
+' Änderung v2.8: WS_UEBERSICHT von "Übersicht" auf "Übersicht"
+'                geändert (Tabellenblatt heisst "Übersicht")
+' Änderung v2.7: ES_COL_SOLL_MONATE hinzugefuegt (Spalte E),
 '           alle folgenden ES-Spalten +1 verschoben,
-'           ES_COL_END von 8 auf 9 geaendert
+'           ES_COL_END von 8 auf 9 geändert
 ' ***************************************************************
 
 ' ===============================================================
@@ -20,7 +20,7 @@ Public Const WS_DATEN As String = "Daten"
 Public Const WS_MITGLIEDER As String = "Mitgliederliste"
 ' ENCODING-SICHER: WS_UEBERSICHT als Function statt Const,
 ' weil ChrW() in Const-Deklarationen nicht erlaubt ist.
-' Wird durch den Repo-Sync sonst zu "Uebersicht" korrumpiert.
+' Wird durch den Repo-Sync sonst zu "Übersicht" korrumpiert.
 ' Siehe Function WS_UEBERSICHT() am Ende dieses Moduls.
 Public Const WS_MITGLIEDER_HISTORIE As String = "Mitgliederhistorie"
 Public Const WS_EINSTELLUNGEN As String = "Einstellungen"
@@ -152,14 +152,14 @@ Public Const DATA_MAP_COL_ENTITYROLE As Long = 23
 Public Const DATA_MAP_COL_DEBUG As Long = 24
 Public Const DATA_MAP_COL_LAST As Long = 24
 
-' Aliase fuer Kompatibilitaet
+' Aliase für Kompatibilitaet
 Public Const DATA_MAP_COL_IBAN_OLD As Long = 19
 Public Const DATA_MAP_COL_PARZ_KEY As Long = 22
 Public Const DATA_MAP_COL_NAME As Long = 21
 Public Const DATA_MAP_COL_KONTONAME As Long = 20
 
 ' ===============================================================
-' G2. ENTITYKEY-TABELLE - ALIASE Ffuer mod_Formatierung
+' G2. ENTITYKEY-TABELLE - ALIASE Für mod_Formatierung
 ' ===============================================================
 Public Const EK_START_ROW As Long = 4
 Public Const EK_COL_ENTITYKEY As Long = 18
@@ -194,14 +194,14 @@ Public Const DATA_COL_AUSGABEN As Long = 33
 Public Const DATA_COL_DD_ROLE As Long = 30
 Public Const DATA_COL_DD_PARZELLE As Long = 6
 
-' Hilfsspalte BA auf Daten ffuer Einstellungen-DropDown Fallback
+' Hilfsspalte BA auf Daten für Einstellungen-DropDown Fallback
 Public Const DATA_COL_ES_HILF As Long = 53      ' Spalte BA
 
 ' ===============================================================
 ' H2. DATEN - VORJAHR-SPEICHER (Spalten CA-CF = 79-84)
 ' Cached Bankkonto-Buchungen aus Okt-Dez des Vorjahres
 ' Wird beim CSV-Import automatisch beFuellt
-' Soll spaetestens im August des Folgejahres geloescht werden
+' Soll spaetestens im August des Folgejahres gelöscht werden
 ' ===============================================================
 Public Const VJ_COL_DATUM As Long = 79          ' CA - Buchungsdatum
 Public Const VJ_COL_BETRAG As Long = 80         ' CB - Betrag
@@ -279,7 +279,7 @@ Public Const ANREDE_KGA As String = "KGA"
 Public Const AUSTRITT_STATUS As String = "Ehemaliges Mitglied"
 
 ' ===============================================================
-' O. ERLAUBTE FUNKTIONEN Ffuer PARZELLENPACHT
+' O. ERLAUBTE FUNKTIONEN Für PARZELLENPACHT
 ' ===============================================================
 Public Const FUNKTION_MITGLIED_MIT_PACHT As String = "Mitglied mit Pacht"
 Public Const FUNKTION_1_VORSITZENDER As String = "1. Vorsitzende(r)"
@@ -385,7 +385,7 @@ End Function
 
 ' ===============================================================
 ' ZENTRALE FUNKTION: Abrechnungsjahr aus Einstellungen lesen
-' Ersetzt alle direkten Zugriffe auf Startmenue!F1
+' Ersetzt alle direkten Zugriffe auf Startmenü!F1
 ' ===============================================================
 Public Function HoleAbrechnungsjahr() As Long
     Dim ws As Worksheet
@@ -402,6 +402,8 @@ Public Function HoleAbrechnungsjahr() As Long
         HoleAbrechnungsjahr = 0
     End If
 End Function
+
+
 
 
 

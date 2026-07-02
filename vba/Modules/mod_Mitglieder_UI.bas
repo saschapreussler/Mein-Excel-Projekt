@@ -51,7 +51,7 @@ Public Sub Fuelle_MemberIDs_Wenn_Fehlend()
     
     ' Schleife durch alle Zeilen ab M_START_ROW
     For lRow = M_START_ROW To lastRow
-        ' Pruefen, ob eine MemberID fehlt und ob der Datensatz nicht leer ist
+        ' Prüfen, ob eine MemberID fehlt und ob der Datensatz nicht leer ist
         If wsM.Cells(lRow, M_COL_MEMBER_ID).value = "" And _
            wsM.Cells(lRow, M_COL_NACHNAME).value <> "" Then
             
@@ -72,12 +72,12 @@ CleanUp:
     Exit Sub
     
 ErrorHandler:
-    MsgBox "Fehler beim Fuellen der MemberIDs: " & Err.Description, vbCritical
+    MsgBox "Fehler beim Füllen der MemberIDs: " & Err.Description, vbCritical
     Resume CleanUp
 End Sub
 
 ' ***************************************************************
-' HILFSFUNKTION: GUID erstellen (PUBLIC - fuer frm_Mitgliedsdaten zugaenglich)
+' HILFSFUNKTION: GUID erstellen (PUBLIC - für frm_Mitgliedsdaten zugaenglich)
 ' ***************************************************************
 Public Function CreateGUID_Public() As String
     
@@ -120,7 +120,7 @@ Public Sub ApplyMitgliederDropdowns()
     ' --- Spalte R (EntityKey) gesperrt halten ---
     ws.Range(ws.Cells(M_START_ROW, M_COL_ENTITY_KEY), ws.Cells(1000, M_COL_ENTITY_KEY)).Locked = True
     
-    ' --- Dynamische Quelle fuer Spalte O (Funktion) ---
+    ' --- Dynamische Quelle für Spalte O (Funktion) ---
     lastRowB = wsDaten.Cells(wsDaten.Rows.count, 2).End(xlUp).Row
     If lastRowB < DATA_START_ROW Then lastRowB = DATA_START_ROW
     funktionFormel = "=Daten!$B$" & DATA_START_ROW & ":$B$" & lastRowB
@@ -158,7 +158,7 @@ Private Sub ApplyDropdown(ByVal targetRange As Range, ByVal sourceFormula As Str
         .IgnoreBlank = allowBlanks
         .InCellDropdown = True
         .ErrorTitle = "ungueltiger Wert"
-        .ErrorMessage = "Bitte waehlen Sie einen Wert aus der Liste."
+        .ErrorMessage = "Bitte wählen Sie einen Wert aus der Liste."
     End With
 End Sub
 
@@ -283,7 +283,7 @@ Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ' === SICHERHEITSCHECK 1: selectedRow darf nicht die Verein-Parzelle sein ===
     If selectedRow >= M_START_ROW Then
         If Trim(wsM.Cells(selectedRow, M_COL_PARZELLE).value) = PARZELLE_VEREIN Then
-            MsgBox "FEHLER: Die Verein-Parzelle darf nicht geaendert werden!", vbCritical
+            MsgBox "FEHLER: Die Verein-Parzelle darf nicht geändert werden!", vbCritical
             GoTo CleanUp
         End If
     End If
@@ -404,7 +404,7 @@ Private Sub VerifikationVereinsParzelleIntakt()
             ' Falls Nachname nicht leer: Warnung (zeigt manuell uebernommene Daten an)
             If vereinRowNachname <> "" Then
                 ' Die Zeile hat Mitgliederdaten - dies sollte nicht passieren!
-                Debug.Print "WARNUNG: Verein-Parzelle-Zeile (" & vereinParzelleRow & ") enthaelt Mitgliederdaten: " & vereinRowNachname
+                Debug.Print "WARNUNG: Verein-Parzelle-Zeile (" & vereinParzelleRow & ") enthält Mitgliederdaten: " & vereinRowNachname
             End If
             Exit For
         End If
@@ -412,7 +412,7 @@ Private Sub VerifikationVereinsParzelleIntakt()
 End Sub
 
 ' ***************************************************************
-' HILFSFUNKTION: Pruefen, ob eine UserForm geladen ist
+' HILFSFUNKTION: Prüfen, ob eine UserForm geladen ist
 ' ***************************************************************
 Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     
@@ -428,6 +428,8 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False
     
 End Function
+
+
 
 
 

@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_EntityKey_Matching
-' ZWECK: Mitglieder-Suche und Namensabgleich fuer EntityKey-System
+' ZWECK: Mitglieder-Suche und Namensabgleich für EntityKey-System
 ' ABGELEITET AUS: mod_EntityKey_Manager (Modularisierung)
 ' VERSION: 1.0 - 01.03.2026
 ' FUNKTIONEN:
@@ -11,7 +11,7 @@ Option Explicit
 '   - PruefeNamensMatch: Namens-Matching (Vor-/Nachname)
 '   - IstMitgliedBereitsGefunden: Duplikatpruefung in Collection
 '   - FindeBestenTreffer: Besten Match aus Collection ermitteln
-'   - PruefeObInHistorie: Prueft ob Name in Mitgliederhistorie
+'   - PruefeObInHistorie: Prüft ob Name in Mitgliederhistorie
 '   - HoleParzelleFuerEhemaligesAusHistorie: Parzelle aus Historie
 '   - HoleAlleParzellen: Alle Parzellen einer MemberID
 ' ***************************************************************
@@ -75,7 +75,7 @@ Public Function SucheMitgliederZuKontoname(ByVal kontoname As String, _
 End Function
 
 ' ===============================================================
-' Prueft Namens-Match (0=kein, 1=nur Nachname, 2=Vor+Nachname)
+' Prüft Namens-Match (0=kein, 1=nur Nachname, 2=Vor+Nachname)
 ' ===============================================================
 Public Function PruefeNamensMatch(ByVal nachname As String, ByVal vorname As String, _
                                      ByVal kontoNameNorm As String) As Long
@@ -102,7 +102,7 @@ Public Function PruefeNamensMatch(ByVal nachname As String, ByVal vorname As Str
 End Function
 
 ' ===============================================================
-' Prueft ob MemberID bereits in Collection gefunden
+' Prüft ob MemberID bereits in Collection gefunden
 ' ===============================================================
 Public Function IstMitgliedBereitsGefunden(ByRef col As Collection, _
                                               ByVal memberID As String, _
@@ -145,7 +145,7 @@ Public Function FindeBestenTreffer(ByRef mitglieder As Collection) As Variant
 End Function
 
 ' ===============================================================
-' Prueft ob ehemaliges Mitglied in Mitgliederhistorie steht
+' Prüft ob ehemaliges Mitglied in Mitgliederhistorie steht
 ' ===============================================================
 Public Function PruefeObInHistorie(ByVal kontoname As String, ByRef wsH As Worksheet) As Boolean
     Dim r As Long
@@ -178,7 +178,7 @@ Public Function PruefeObInHistorie(ByVal kontoname As String, ByRef wsH As Works
 End Function
 
 ' ===============================================================
-' Holt Parzelle fuer ehemaliges Mitglied aus Historie
+' Holt Parzelle für ehemaliges Mitglied aus Historie
 ' ===============================================================
 Public Function HoleParzelleFuerEhemaligesAusHistorie(ByVal kontoname As String, ByRef wsH As Worksheet) As String
     Dim r As Long
@@ -211,7 +211,7 @@ Public Function HoleParzelleFuerEhemaligesAusHistorie(ByVal kontoname As String,
 End Function
 
 ' ===============================================================
-' Holt alle Parzellen fuer eine MemberID (kommagetrennt)
+' Holt alle Parzellen für eine MemberID (kommagetrennt)
 ' ===============================================================
 Public Function HoleAlleParzellen(ByVal memberID As String, _
                                     ByRef wsM As Worksheet) As String
@@ -246,6 +246,8 @@ Public Function HoleAlleParzellen(ByVal memberID As String, _
     
     HoleAlleParzellen = result
 End Function
+
+
 
 
 

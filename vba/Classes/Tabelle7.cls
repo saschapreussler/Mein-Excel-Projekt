@@ -30,7 +30,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Const ANREDE_KGA As String = "KGA"
 
     ' ------------------------------------------------------------
-    ' Pruefung & INITIALISIERUNG
+    ' Prüfung & INITIALISIERUNG
     ' ------------------------------------------------------------
     If Intersect(Target, Me.Range(RELEVANT_COLUMNS)) Is Nothing Then Exit Sub
     If Target.Row < M_START_ROW Then Exit Sub
@@ -41,7 +41,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Me.Unprotect PASSWORD:=PASSWORD
 
     ' ------------------------------------------------------------
-    ' 1. Automatische Logik (Parzelle geaendert: B -> C / B -> D)
+    ' 1. Automatische Logik (Parzelle geändert: B -> C / B -> D)
     ' ------------------------------------------------------------
     If Not Intersect(Target, Me.Columns(M_COL_PARZELLE)) Is Nothing Then
 
@@ -58,12 +58,12 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                 seite = ""
                 
                 ' NEUE LOGIK: Wenn Parzelle "Verein", setze Anrede auf "KGA" (Spalte D)
-                ' Verwendung von StrComp ffuer robuste, fallunabhaengige Pruefung
+                ' Verwendung von StrComp für robuste, fallunabhaengige Prüfung
                 If StrComp(parzelle, PARZELLE_VEREIN, vbTextCompare) = 0 Then
                     Me.Cells(rCell.Row, M_COL_ANREDE).value = ANREDE_KGA
                 End If
 
-                ' Logik zur Fuellung Spalte C (Seite)
+                ' Logik zur Füllung Spalte C (Seite)
                 If IsNumeric(parzelle) Then
                     nr = CLng(parzelle)
 
@@ -73,7 +73,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                         seite = "links"
                     End If
 
-                ' Verwendung von StrComp ffuer robuste, fallunabhaengige Pruefung
+                ' Verwendung von StrComp für robuste, fallunabhaengige Prüfung
                 ElseIf StrComp(parzelle, PARZELLE_VEREIN, vbTextCompare) = 0 Then
                     seite = "zentral"
                 End If
@@ -84,7 +84,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     End If
     
     ' ------------------------------------------------------------
-    ' 2. Logik: Austrittsdatum setzen/Loeschen (Spalte P)
+    ' 2. Logik: Austrittsdatum setzen/Löschen (Spalte P)
     ' ------------------------------------------------------------
     If Not Intersect(Target, Me.Columns(M_COL_FUNKTION)) Is Nothing Then
         
@@ -115,8 +115,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     ' ------------------------------------------------------------
     ' 3. Sortierung (AKTIVIERT)
     ' ------------------------------------------------------------
-    ' Dies sollte nur ausgefuehrt werden, wenn sich die Parzelle geaendert hat und
-    ' das Modul mod_Mitglieder_UI die Unprotect/Protect Logik enthaelt.
+    ' Dies sollte nur ausgeführt werden, wenn sich die Parzelle geändert hat und
+    ' das Modul mod_Mitglieder_UI die Unprotect/Protect Logik enthält.
     If Not Intersect(Target, Me.Columns(M_COL_PARZELLE)) Is Nothing Then
         Call mod_Mitglieder_UI.Sortiere_Mitgliederliste_Nach_Parzelle
     End If
@@ -128,7 +128,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Call mod_Mitglieder_UI.AktualisiereDatenstand
 
     ' ------------------------------------------------------------
-    ' 5. Bestehende Logiken (DEAKTIVIERT - NUR Ffuer Stabilitaet)
+    ' 5. Bestehende Logiken (DEAKTIVIERT - NUR Für Stabilitaet)
     ' ------------------------------------------------------------
     ' Diese Aufrufe bleiben auskommentiert, bis die Sortierung funktioniert
     ' und die Laufzeitfehler 424/1004 dauerhaft behoben sind.
@@ -139,7 +139,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     ' Call mod_ZaehlerLogik.AktualisiereZaehlerTabellenSpalteA
 
     ' ------------------------------------------------------------
-    ' 6. v8.2: Bei jeder Aenderung die Mitgliederliste neu formatieren
+    ' 6. v8.2: Bei jeder Änderung die Mitgliederliste neu formatieren
     '    (Rahmen, Zebra, AutoFit, Zentrierung) und die Parzellen-
     '    Anzeigen auf Strom!B6 und Wasser!A4 aktualisieren.
     ' ------------------------------------------------------------
@@ -162,6 +162,8 @@ Fehlerbehandlung:
            "Fehler-Nr: " & Err.Number & vbCrLf & _
            "Beschreibung: " & Err.Description, vbCritical
 End Sub
+
+
 
 
 

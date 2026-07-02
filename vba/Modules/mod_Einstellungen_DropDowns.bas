@@ -4,8 +4,8 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Einstellungen_DropDowns
 ' Ausgelagert aus mod_Einstellungen
-' enthaelt: SetzeDropDowns, HoleAlleKategorien
-' FIX v2.1: Hilfsspalte ffuer Fallback-DropDown = Daten!BA
+' enthält: SetzeDropDowns, HoleAlleKategorien
+' FIX v2.1: Hilfsspalte für Fallback-DropDown = Daten!BA
 ' ===============================================================
 
 
@@ -63,7 +63,7 @@ Public Sub SetzeDropDowns(ByVal ws As Worksheet)
         End If
     Next k
     
-    ' 4. Basisliste als String (ffuer leere Zeilen / NAECHSTE freie Zeile)
+    ' 4. Basisliste als String (für leere Zeilen / NÄCHSTE freie Zeile)
     Dim basisListe As String
     basisListe = ""
     If verfuegbar.count > 0 Then
@@ -311,6 +311,8 @@ Private Function LetzteZeile(ByVal ws As Worksheet) As Long
     If lr < ES_START_ROW Then lr = ES_START_ROW - 1
     LetzteZeile = lr
 End Function
+
+
 
 
 

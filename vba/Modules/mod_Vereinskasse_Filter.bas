@@ -4,9 +4,9 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Vereinskasse_Filter
 ' VERSION: 1.0 - 18.04.2026
-' ZWECK: Monatsfilter fuer Vereinskasse (analog Bankkonto)
+' ZWECK: Monatsfilter für Vereinskasse (analog Bankkonto)
 '        - ComboBox erstellen (cbo_MonatFilter_VK)
-'        - Filterlogik fuer Spalte A (Datum), Daten ab Zeile 27
+'        - Filterlogik für Spalte A (Datum), Daten ab Zeile 27
 '        - Kontostand-Formel in C24
 ' ===============================================================
 
@@ -29,8 +29,8 @@ Public Sub InitialisiereVereinskasseComboBox()
     wsVK.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
-    ' Bestehende ComboBox IMMER loeschen und neu erstellen
-    ' (damit Position-Aenderungen uebernommen werden)
+    ' Bestehende ComboBox IMMER löschen und neu erstellen
+    ' (damit Position-Änderungen übernommen werden)
     Dim oleObj As OLEObject
     
     On Error Resume Next
@@ -181,13 +181,13 @@ Public Sub WendeVereinskasseFilterAn(ByVal wsVK As Worksheet, ByVal monatsWert A
             Criteria2:="<=" & CLng(letztesDesMonats)
     End If
     
-    ' Sichtbare Daten pruefen
+    ' Sichtbare Daten prüfen
     On Error Resume Next
     visibleCellsCount = rngFilterBereich.SpecialCells(xlCellTypeVisible).count
     On Error GoTo 0
     
     If visibleCellsCount <= 1 And monatsIndex > 0 Then
-        ' Keine sichtbaren Daten - Filter zuruecksetzen
+        ' Keine sichtbaren Daten - Filter zurücksetzen
         wsVK.ShowAllData
         wsVK.Range("C24").value = "Auszug: gesamtes Jahr " & jahr & " (keine Daten f" & ChrW(252) & "r " & monatsWert & ")"
     End If
@@ -216,7 +216,7 @@ Public Sub SetzeVereinskasseFormeln(ByVal wsVK As Worksheet)
     ' C24: Kontostand laufend mit Filter
     ' Wenn kein Monatsfilter -> Kontostand Vorjahr (Einstellungen C7)
     ' Sonst: Kontostand Vorjahr + Summe aller Vereinskasse-Buchungen bis Filtermonat
-    ' Hinweis: Vereinskasse nutzt eigene Hilfszelle fuer Monatsfilter
+    ' Hinweis: Vereinskasse nutzt eigene Hilfszelle für Monatsfilter
     ' Wir verwenden dieselbe Daten!AE4 Hilfszelle wie Bankkonto
     wsVK.Range("C24").FormulaLocal = _
         "=WENN(Daten!$AE$4<=1;Einstellungen!$C$7;" & _
@@ -239,7 +239,7 @@ End Sub
 ' ---------------------------------------------------------------
 ' Setzt AutoFilter dauerhaft auf den Bereich B26:T<lastRow>,
 ' damit der Nutzer in jeder Spalte filtern und sortieren kann
-' auch wenn das Blatt geschuetzt ist.
+' auch wenn das Blatt geschützt ist.
 '
 ' WICHTIG: Die Zelle A26 ist bewusst leer (kein Spaltentitel).
 '          AutoFilter wuerde mit einer leeren ersten Header-Zelle
@@ -337,7 +337,7 @@ End Sub
 ' ---------------------------------------------------------------
 ' Convenience-Wrapper, damit Du den Vereinskasse-AutoFilter
 ' jederzeit aus dem Direktfenster oder dem Makro-Dialog
-' aktivieren kannst, ohne erst den Modulnamen tippen zu muessen.
+' aktivieren kannst, ohne erst den Modulnamen tippen zu müssen.
 '
 ' Aufruf:
 '   - Direktfenster (Strg+G): VereinskasseFilterJetzt
@@ -367,11 +367,13 @@ Public Sub VereinskasseFilterJetzt()
         MsgBox msg, vbInformation, "Vereinskasse-Filter: OK"
     Else
         MsgBox "Konnte den AutoFilter nicht setzen." & vbCrLf & _
-               "Bitte im Direktfenster pruefen:" & vbCrLf & _
+               "Bitte im Direktfenster prüfen:" & vbCrLf & _
                "    ?ActiveSheet.AutoFilterMode", _
                vbCritical, "Vereinskasse-Filter: FEHLER"
     End If
 End Sub
+
+
 
 
 
