@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_KategorieEngine_Evaluator"
+﻿Attribute VB_Name = "mod_KategorieEngine_Evaluator"
 Option Explicit
 
 ' =====================================================

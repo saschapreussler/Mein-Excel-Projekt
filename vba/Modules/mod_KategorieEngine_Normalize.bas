@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_KategorieEngine_Normalize"
+﻿Attribute VB_Name = "mod_KategorieEngine_Normalize"
 Option Explicit
 
 Public Function NormalizeBankkontoZeile(ByVal wsBK As Worksheet, _

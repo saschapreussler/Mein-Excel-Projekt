@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Zaehler_Historie"
+﻿Attribute VB_Name = "mod_Zaehler_Historie"
 Option Explicit
 
 ' ===============================================================

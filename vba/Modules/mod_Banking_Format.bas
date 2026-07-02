@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Banking_Format"
+﻿Attribute VB_Name = "mod_Banking_Format"
 Option Explicit
 
 ' ===============================================================

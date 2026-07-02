@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_KategorieZiel"
+﻿Attribute VB_Name = "mod_KategorieZiel"
 Option Explicit
 
 ' ===============================================================

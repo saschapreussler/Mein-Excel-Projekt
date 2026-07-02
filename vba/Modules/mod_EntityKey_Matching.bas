@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_EntityKey_Matching"
+﻿Attribute VB_Name = "mod_EntityKey_Matching"
 Option Explicit
 
 ' ***************************************************************

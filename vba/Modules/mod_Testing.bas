@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Testing"
+﻿Attribute VB_Name = "mod_Testing"
 Option Explicit
 
 ' ***************************************************************

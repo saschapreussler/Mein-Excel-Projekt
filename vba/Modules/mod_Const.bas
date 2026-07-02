@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Const"
+﻿Attribute VB_Name = "mod_Const"
 Option Explicit
 
 ' ***************************************************************

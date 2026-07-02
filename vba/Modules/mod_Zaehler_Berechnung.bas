@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Zaehler_Berechnung"
+﻿Attribute VB_Name = "mod_Zaehler_Berechnung"
 Option Explicit
 
 ' ===============================================================

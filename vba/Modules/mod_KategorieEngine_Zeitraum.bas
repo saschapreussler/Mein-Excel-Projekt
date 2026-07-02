@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_KategorieEngine_Zeitraum"
+﻿Attribute VB_Name = "mod_KategorieEngine_Zeitraum"
 Option Explicit
 
 ' =====================================================

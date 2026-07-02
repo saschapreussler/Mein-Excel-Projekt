@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Mitglieder_Logik"
+﻿Attribute VB_Name = "mod_Mitglieder_Logik"
 ' =============================================================================
 ' Modul:       mod_Mitglieder_Logik
 ' Beschreibung: Geschaeftslogik ffuer Mitgliederverwaltung

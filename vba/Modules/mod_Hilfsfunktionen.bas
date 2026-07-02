@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Hilfsfunktionen"
+﻿Attribute VB_Name = "mod_Hilfsfunktionen"
 Option Explicit
 
 ' **********************************************************

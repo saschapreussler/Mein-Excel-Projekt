@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Format_EntityKey"
+﻿Attribute VB_Name = "mod_Format_EntityKey"
 Option Explicit
 
 ' ***************************************************************

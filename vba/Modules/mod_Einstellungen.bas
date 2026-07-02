@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Einstellungen"
+﻿Attribute VB_Name = "mod_Einstellungen"
 Option Explicit
 
 ' ===============================================================

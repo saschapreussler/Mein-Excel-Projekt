@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_BetragsZuordnung"
+﻿Attribute VB_Name = "mod_BetragsZuordnung"
 Option Explicit
 
 ' ***************************************************************

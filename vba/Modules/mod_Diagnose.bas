@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Diagnose"
+﻿Attribute VB_Name = "mod_Diagnose"
 Option Explicit
 
 ' ===============================================================

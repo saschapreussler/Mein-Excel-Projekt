@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Uebersicht_Filter"
+﻿Attribute VB_Name = "mod_Uebersicht_Filter"
 Option Explicit
 
 ' ***************************************************************

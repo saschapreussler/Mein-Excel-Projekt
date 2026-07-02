@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_KategorieEngine_Scoring"
+﻿Attribute VB_Name = "mod_KategorieEngine_Scoring"
 Option Explicit
 
 ' =====================================================

@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Formatierung"
+﻿Attribute VB_Name = "mod_Formatierung"
 Option Explicit
 
 ' ***************************************************************

@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_KategorieEngine_Pipeline"
+﻿Attribute VB_Name = "mod_KategorieEngine_Pipeline"
 Option Explicit
 
 ' ===============================================================

@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Uebersicht_Dashboard"
+﻿Attribute VB_Name = "mod_Uebersicht_Dashboard"
 Option Explicit
 
 ' ***************************************************************

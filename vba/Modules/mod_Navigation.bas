@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Navigation"
+﻿Attribute VB_Name = "mod_Navigation"
 Option Explicit
 
 ' ===============================================================

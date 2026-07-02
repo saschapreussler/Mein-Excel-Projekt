@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Zahlungspruefung"
+﻿Attribute VB_Name = "mod_Zahlungspruefung"
 Option Explicit
 
 ' ***************************************************************
