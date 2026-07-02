@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_FinanzUebersicht
 ' VERSION: 2.0 - 21.04.2026
-' ZWECK: Erstellt und pflegt das Blatt "Finanz-Übersicht"
+' ZWECK: Erstellt und pflegt das Blatt "Finanz-?bersicht"
 '        - Kategorien dynamisch aus Bankkonto Spalte H
 '        - Sammelzahlungen: Aufschluesselung via Spalte L (Bemerkung)
 '        - KPIs: Einnahmen, Ausgaben, Saldo, Kontostand, VK-Saldo
@@ -29,7 +29,7 @@ Private Const FILTER_DD_NAME As String = "dd_MonatFilter_FU"
 Private Const FILTER_BTN_NAME As String = "btn_FilterErweitert_FU"
 Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung"
 
-' v8.0: Erweiterte Filter (Modul-State, persistent während Session)
+' v8.0: Erweiterte Filter (Modul-State, persistent w?hrend Session)
 Private m_FilterKat As String       ' Kategorie (leer = alle)
 Private m_FilterName As String      ' Mitglied/Parzelle - Teilstring-Match in BK-Spalte Empfaenger/Bemerkung
 Private m_FilterDatVon As Date      ' 0 = kein Filter
@@ -37,7 +37,7 @@ Private m_FilterDatBis As Date      ' 0 = kein Filter
 
 
 ' ===============================================================
-' HAUPTPROZEDUR: Finanz-Übersicht erstellen/aktualisieren
+' HAUPTPROZEDUR: Finanz-?bersicht erstellen/aktualisieren
 ' ===============================================================
 Public Sub ErstelleFinanzUebersicht()
     Dim ws As Worksheet
@@ -54,7 +54,7 @@ Public Sub ErstelleFinanzUebersicht()
     Call EntferneAlleObjekte(ws)
     Call BaueFinanzUebersicht(ws, 0)
     
-    ' v8.0: Home-Button setzen (wurde von EntferneAlleObjekte gelöscht)
+    ' v8.0: Home-Button setzen (wurde von EntferneAlleObjekte gel?scht)
     On Error Resume Next
     Call mod_Navigation.ErstelleHomeButton(ws)
     On Error GoTo 0
@@ -126,13 +126,20 @@ End Sub
 ' Wird bei Erstellung und bei Filterwechsel aufgerufen
 ' ===============================================================
 Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Long)
-    
+
+    ' v8.3: Fruehe Leer-Erkennung. Wenn weder Bankkonto- noch Vereinskasse-
+    '       Buchungen existieren, wird nur der Vorjahres-Kontostand angezeigt.
+    If IstAllesLeer() Then
+        Call BaueFinanzUebersicht_NurKontostand(ws)
+        Exit Sub
+    End If
+
     ' --- 1. Daten sammeln ---
     Dim dictEinn As Object
     Dim dictAusg As Object
     Set dictEinn = CreateObject("Scripting.Dictionary")
     Set dictAusg = CreateObject("Scripting.Dictionary")
-    
+
     Call SammleDaten(dictEinn, dictAusg, monatFilter)
     
     ' Sortierte Arrays erstellen
@@ -569,7 +576,7 @@ Private Sub SammleDaten(ByRef dictEinn As Object, _
     
     Dim r As Long
     For r = BK_START_ROW To lastRow
-        ' Monatsfilter prüfen
+        ' Monatsfilter pr?fen
         If monatFilter > 0 Then
             If IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then
                 If Month(CDate(wsBK.Cells(r, BK_COL_DATUM).value)) <> monatFilter Then GoTo nextRow
@@ -646,7 +653,7 @@ Private Sub VerteileSammelzahlung(ByVal wsBK As Worksheet, _
     Dim bemerkung As String
     bemerkung = Trim(CStr(wsBK.Cells(zeile, BK_COL_BEMERKUNG).value))
     
-    ' Prüfen ob Spalte L das SAMMEL:-Format enthält
+    ' Pr?fen ob Spalte L das SAMMEL:-Format enth?lt
     If Left(UCase(bemerkung), 7) <> "SAMMEL:" Then
         ' Kein SAMMEL-Format -> Gesamtbetrag als "Sammelzahlung" buchen
         If gesamtBetrag > 0 Then
@@ -677,7 +684,7 @@ Private Sub VerteileSammelzahlung(ByVal wsBK As Worksheet, _
         Dim eineZeile As String
         eineZeile = Trim(zeilen(z))
         
-        ' Erste Zeile "SAMMEL:" überspringen
+        ' Erste Zeile "SAMMEL:" ?berspringen
         If UCase(eineZeile) = "SAMMEL:" Or eineZeile = "" Then GoTo NextZeile
         
         ' Format: "Kategorie: Betrag ?"
@@ -696,7 +703,7 @@ Private Sub VerteileSammelzahlung(ByVal wsBK As Worksheet, _
             betragStr = Replace(betragStr, "EUR", "")
             betragStr = Trim(betragStr)
             
-            ' Komma durch Punkt ersetzen für CDbl
+            ' Komma durch Punkt ersetzen f?r CDbl
             betragStr = Replace(betragStr, ".", "")
             betragStr = Replace(betragStr, ",", ".")
             
@@ -880,7 +887,7 @@ Private Sub ErstelleFilterDropDown(ByVal ws As Worksheet, ByVal aktuellerMonat A
         .Font.Size = 9
     End With
     
-    ' v8.0: "Filter zurücksetzen" Button
+    ' v8.0: "Filter zur?cksetzen" Button
     Dim btnReset As Button
     Set btnReset = ws.Buttons.Add(ddLeft + 260, ddTop, 110, 18)
     With btnReset
@@ -977,7 +984,7 @@ End Sub
 
 
 ' ===============================================================
-' v8.0: Alle erweiterten Filter zurücksetzen + neu aufbauen
+' v8.0: Alle erweiterten Filter zur?cksetzen + neu aufbauen
 ' ===============================================================
 Public Sub FilterZuruecksetzen()
     m_FilterKat = ""
@@ -1157,6 +1164,151 @@ ChartErr:
     Debug.Print "[FinanzUebersicht] Diagramm-Fehler: " & Err.Description
     Err.Clear
 End Sub
+
+
+' ===============================================================
+' LEER-CHECK (v8.3):
+' Liefert True, wenn weder auf Bankkonto noch auf Vereinskasse
+' Buchungen vorhanden sind (jeweils ab der Start-Zeile).
+' ===============================================================
+Private Function IstAllesLeer() As Boolean
+    Dim wsBK As Worksheet, wsVK As Worksheet
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    Set wsVK = ThisWorkbook.Worksheets(WS_VEREINSKASSE)
+    On Error GoTo 0
+
+    Dim bkLast As Long, vkLast As Long
+    bkLast = 0: vkLast = 0
+    If Not wsBK Is Nothing Then
+        bkLast = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    End If
+    If Not wsVK Is Nothing Then
+        vkLast = wsVK.Cells(wsVK.Rows.count, VK_COL_DATUM).End(xlUp).Row
+    End If
+
+    IstAllesLeer = (bkLast < BK_START_ROW) And (vkLast < VK_START_ROW)
+End Function
+
+
+' ===============================================================
+' LEER-ANSICHT (v8.3):
+' Wird ausschliesslich dann gerendert, wenn Bankkonto und Verein-
+' kasse noch keine Buchungen enthalten. Zeigt NUR den zuletzt
+' bekannten Kontostand aus dem Vorjahr (Blatt "Einstellungen") an,
+' plus einen kurzen Hinweistext.
+' ===============================================================
+Private Sub BaueFinanzUebersicht_NurKontostand(ByVal ws As Worksheet)
+
+    ' Blatt aufraeumen (breiter als sonst, damit Reste weg sind)
+    ws.Range("A1:K200").ClearContents
+    ws.Range("A1:K200").ClearFormats
+    ws.Range("A1:K200").Interior.color = CLR_WHITE
+
+    ' Gitternetz aus
+    Dim wnd As Window
+    For Each wnd In Application.Windows
+        If wnd.Caption = ThisWorkbook.Name Then
+            wnd.DisplayGridlines = False
+        End If
+    Next wnd
+
+    ' Spaltenbreiten (identisch zur normalen Ansicht)
+    ws.Columns("A").ColumnWidth = 2
+    ws.Columns("B").ColumnWidth = 4
+    ws.Columns("C").ColumnWidth = 32
+    ws.Columns("D").ColumnWidth = 18
+    ws.Columns("E").ColumnWidth = 14
+    ws.Columns("F").ColumnWidth = 4
+    ws.Columns("G").ColumnWidth = 18
+    ws.Columns("H").ColumnWidth = 18
+    ws.Columns("I").ColumnWidth = 18
+    ws.Columns("J").ColumnWidth = 4
+    ws.Columns("K").ColumnWidth = 2
+
+    ' Titel-Banner
+    With ws.Range("A3:K3")
+        .Merge
+        .value = "   FINANZ-" & ChrW(220) & "BERSICHT"
+        .Font.Size = 18
+        .Font.Bold = True
+        .Font.color = CLR_WHITE
+        .Interior.color = CLR_HEADER
+        .HorizontalAlignment = xlLeft
+        .VerticalAlignment = xlCenter
+    End With
+    ws.Rows(3).RowHeight = 40
+
+    ' Untertitel: Abrechnungsjahr
+    Dim abrJahr As Long
+    abrJahr = HoleAbrechnungsjahr()
+    With ws.Range("B4:J4")
+        .Merge
+        .value = "Abrechnungsjahr " & IIf(abrJahr > 0, CStr(abrJahr), "---") & _
+                 "  |  keine Buchungen"
+        .Font.Size = 10
+        .Font.color = RGB(220, 220, 220)
+        .Interior.color = CLR_HEADER
+        .HorizontalAlignment = xlLeft
+        .VerticalAlignment = xlCenter
+    End With
+    ws.Range("A4").Interior.color = CLR_HEADER
+    ws.Range("K4").Interior.color = CLR_HEADER
+    ws.Rows(4).RowHeight = 24
+
+    ' Akzentlinie
+    ws.Range("A5:K5").Interior.color = CLR_ACCENT
+    ws.Rows(5).RowHeight = 4
+
+    ' Ein einziger KPI-Block: Kontostand aus Vorjahr (Einstellungen)
+    ws.Rows(6).RowHeight = 20
+    ws.Range("A6:K10").Interior.color = CLR_LIGHT_BG
+
+    With ws.Range("B7:I7")
+        .Merge
+        .value = ChrW(9473) & ChrW(9473) & "  ZULETZT BEKANNTER KONTOSTAND (VORJAHR)  " & _
+                 ChrW(9473) & ChrW(9473)
+        .Font.Size = 9
+        .Font.Bold = True
+        .Font.color = RGB(140, 140, 140)
+        .Interior.color = CLR_LIGHT_BG
+        .HorizontalAlignment = xlCenter
+    End With
+    ws.Rows(7).RowHeight = 18
+
+    Dim kontostand As Double
+    kontostand = HoleKontostandVorjahr()
+
+    ws.Rows(8).RowHeight = 60
+    Call SchreibeKPI(ws, "D", kontostand, "Kontostand", RGB(142, 68, 173))
+    ws.Rows(9).RowHeight = 18
+    ws.Rows(10).RowHeight = 14
+
+    ' Hinweistext
+    ws.Rows(11).RowHeight = 10
+    With ws.Range("B12:J16")
+        .Merge
+        .value = ChrW(9432) & "  Noch keine Buchungen im aktuellen Abrechnungsjahr." & vbLf & vbLf & _
+                 "Angezeigt wird nur der zuletzt bekannte Kontostand aus dem Vorjahr." & vbLf & _
+                 "Quelle: Blatt 'Einstellungen'." & vbLf & vbLf & _
+                 "Sobald Kontoausz" & ChrW(252) & "ge im Bankkonto importiert oder Eintr" & _
+                 ChrW(228) & "ge in der Vereinskasse erfasst werden, aktualisiert sich " & _
+                 "diese Ansicht automatisch."
+        .Font.Size = 11
+        .Font.color = RGB(80, 80, 80)
+        .Interior.color = CLR_WHITE
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .WrapText = True
+    End With
+    ws.Rows(12).RowHeight = 20
+    ws.Rows(13).RowHeight = 20
+    ws.Rows(14).RowHeight = 20
+    ws.Rows(15).RowHeight = 20
+    ws.Rows(16).RowHeight = 20
+End Sub
+
+
 
 
 

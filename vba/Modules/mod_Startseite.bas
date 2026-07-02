@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Startseite
 ' VERSION: 2.0 - 18.04.2026
-' ZWECK: Startseite (Startmenü) als professioneller Eye-Catcher
+' ZWECK: Startseite (Startmen?) als professioneller Eye-Catcher
 '        - Gradient-Look mit Farbverlauf-Effekt
 '        - KPIs: Abrechnungsjahr, Mitglieder, Parzellen, Kontostand
 '        - Navigations-Buttons in Kachel-Optik
@@ -115,7 +115,7 @@ Private Sub VorbereiteBlatt(ByVal ws As Worksheet)
     ws.Columns("K").ColumnWidth = 4      ' Padding rechts
     ws.Columns("L").ColumnWidth = 2      ' Rand
     
-    ' Zeilenhöhen
+    ' Zeilenh?hen
     ws.Rows("1").RowHeight = 6           ' Top-Rand
     ws.Rows("2").RowHeight = 50          ' Hero Titel
     ws.Rows("3").RowHeight = 24          ' Hero Untertitel
@@ -234,7 +234,7 @@ End Sub
 ' KPI-BEREICH: 4 Kennzahlen-Karten
 ' ===============================================================
 Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
-    ' Hintergrund KPI-Bereich (erweitert für 2 KPI-Zeilen)
+    ' Hintergrund KPI-Bereich (erweitert f?r 2 KPI-Zeilen)
     ws.Range("A6:L12").Interior.color = CLR_SECTION_BG
     
     ' KPI-Header
@@ -414,7 +414,7 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         col3Left, ws.Range("I17").Top + 4, kachelW, kachelH, _
         CLR_BTN_MITGL, "'mod_Navigation.ZeigeMitgliederverwaltung'")
     
-    ' --- Zeile 4: Finanz-Übersicht ---
+    ' --- Zeile 4: Finanz-?bersicht ---
     Call ErstelleKachel(ws, "kachel_FinanzUebersicht", _
         ChrW(9654) & " Finanz-" & ChrW(220) & "bersicht", _
         col1Left, ws.Range("C18").Top + 4, kachelW, kachelH, _
@@ -495,7 +495,7 @@ Private Sub ErstelleKachel(ByVal ws As Worksheet, _
         .Adjustments(1) = 0.18
         On Error GoTo KachelErr
         
-        ' Dezenter Schatten für 3D-Effekt
+        ' Dezenter Schatten f?r 3D-Effekt
         With .Shadow
             .Visible = msoTrue
             .Type = msoShadow14
@@ -594,7 +594,7 @@ Public Function ZaehleBelegteParzellen() As Long
     ' Quelle 1: Einstellungen!C14 (Zelle, in der die Anzahl der
     ' verpachteten Parzellen gepflegt wird). Wenn dort kein gueltiger
     ' Zahlenwert steht, faellt die Funktion auf die Mitgliederliste
-    ' zurück und zaehlt distinkte Parzellen (ohne "Verein" und KGA).
+    ' zur?ck und zaehlt distinkte Parzellen (ohne "Verein" und KGA).
 
     ' --- Quelle 1: Einstellungen!C14 -------------------------------
     Dim wsCfg As Worksheet
@@ -659,7 +659,7 @@ End Function
 ' ---------------------------------------------------------------
 ' Schreibt die aktuelle Anzahl belegter Parzellen
 ' (Quelle: ZaehleBelegteParzellen, identisch zu Startseite /
-' Einstellungen / Übersicht / Mitgliederliste) in:
+' Einstellungen / ?bersicht / Mitgliederliste) in:
 '   - Tabellenblatt "Strom":  Zelle B6
 '   - Tabellenblatt "Wasser": Zelle A4
 '
@@ -788,7 +788,7 @@ End Function
 
 ' ===============================================================
 ' KPI-UPDATE: Kontostand auf Startseite aktualisieren
-' Wird nach CSV-Import und manuellen Änderungen aufgerufen
+' Wird nach CSV-Import und manuellen ?nderungen aufgerufen
 ' ===============================================================
 Public Sub AktualisiereKontostandKPI()
     Dim ws As Worksheet
@@ -864,6 +864,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 

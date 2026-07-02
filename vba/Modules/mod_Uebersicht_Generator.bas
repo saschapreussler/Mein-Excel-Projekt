@@ -7,39 +7,39 @@ Option Explicit
 ' ZWECK: Generiert Uebersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - Kategorien DYNAMISCH aus Einstellungen-Blatt (Spalte B)
-'        - Zeigt Soll/Ist/Status für jede Kombination
+'        - Zeigt Soll/Ist/Status f?r jede Kombination
 '        - Behandelt SHARE-Keys (Gemeinschaftskonten) korrekt
 '        - Bei Kategorien OHNE festen Soll-Betrag:
 '          Soll-Zelle bleibt leer + hell-gelb + editierbar
-'          Nur Zahlungstermin-Prüfung (puenktlich / Säumnis)
-'        - Säumnis-Gebühren werden in Bemerkung angezeigt
+'          Nur Zahlungstermin-Pr?fung (puenktlich / S?umnis)
+'        - S?umnis-Geb?hren werden in Bemerkung angezeigt
 ' FIX v1.1: InitialisiereNachDezemberCache -> InitialisiereNachDezemberCacheZP
-' FIX v1.2: Val() statt CDbl() für systemunabhaengiges Parsen
+' FIX v1.2: Val() statt CDbl() f?r systemunabhaengiges Parsen
 ' FIX v1.3: "Typen unvertraeglich" behoben (Variant, StrComp, etc.)
 ' FIX v1.4: ChrW() in Const nicht erlaubt -> Private Variablen
 ' NEU v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
 '           - Keine hart kodierten Kategorienamen mehr
 '           - Soll-Betrag 0 -> Zelle leer + hell-gelb + editierbar
-'           - Zahlungstermin-Prüfung auch ohne Soll-Betrag
-'           - Säumnis-Gebühren in Bemerkung
+'           - Zahlungstermin-Pr?fung auch ohne Soll-Betrag
+'           - S?umnis-Geb?hren in Bemerkung
 ' NEU v3.0: HoleAktiveMitglieder liest jetzt aus Daten-Blatt
 '           (EntityKey-Tabelle R-W) statt aus Mitgliederliste
 '           - SHARE-Keys: Parzelle "2, 5" wird aufgeteilt
-'           - stummModus für automatische Aufrufe (keine MsgBox)
+'           - stummModus f?r automatische Aufrufe (keine MsgBox)
 '           - Trigger: Bankkonto H/I + Einstellungen -> auto-Update
-' NEU v4.0: Monatsweise BeFuellung der Übersicht
+' NEU v4.0: Monatsweise BeFuellung der ?bersicht
 '           - Nur Monate mit importierten CSV-Daten werden angezeigt
 '           - ErmittleImportierteMonate() scannt Bankkonto Spalte A
 '           - Eintrag erscheint nur wenn:
-'             a) Zahlung vorhanden (Ist > 0) -> grün/GELB
+'             a) Zahlung vorhanden (Ist > 0) -> gr?n/GELB
 '             b) Frist abgelaufen + keine Zahlung -> ROT
 '           - Einheitliches Datumsformat: "Januar 2026"
-' NEU v4.1: Fälligkeit-basierte Kategoriefilterung
+' NEU v4.1: F?lligkeit-basierte Kategoriefilterung
 '           - Kategorien erscheinen nur im Fuelligkeitsmonat
 '             (nicht mehr in allen 12 Monaten)
-'           - Fälligkeit aus Daten Spalte O (Kategorie-Tabelle)
+'           - F?lligkeit aus Daten Spalte O (Kategorie-Tabelle)
 '           - Vorjahr-Speicher (Daten Spalten CA-CF):
-'             Okt-Dez Zahlungen des Vorjahres für Jan-Maerz Zuordnung
+'             Okt-Dez Zahlungen des Vorjahres f?r Jan-Maerz Zuordnung
 '           - Spalte C linksbuendig, Format "Maerz 2025"
 '           - PruefeZahlungen: flexibler Perioden-Vergleich
 ' SPLIT v4.2: Datenquellen + Vorjahr-Speicher ausgelagert nach
@@ -47,9 +47,9 @@ Option Explicit
 '             HoleAktiveMitglieder, Ermittle*, Vorjahr-Speicher)
 ' NEU v4.3: - Spalte C NumberFormat "@" (Text) verhindert
 '             Excel-Datumserkennung ("Jan 25" -> "Januar 2025")
-'           - Variabler Soll: Folgemonat-Übernahme aus Vormonat
+'           - Variabler Soll: Folgemonat-?bernahme aus Vormonat
 '             HoleManuellSollAusVormonat() nutzt gesicherte Werte
-'             Gelb->Grün wenn Ist = manueller Soll
+'             Gelb->Gr?n wenn Ist = manueller Soll
 '           - Zebra basiert auf sichtbaren Zeilen (nach Filter)
 ' NEU v4.4: - Ehrenmitglied: kein Mitgliedsbeitrag noetig
 '           - Partner-Mitgliedsbeitrag: Doppelzahlung erkennen
@@ -61,18 +61,18 @@ Option Explicit
 '             Abschlagszahlungen, Endabrechnung, Betriebskosten
 '             erscheinen nur 1x pro Parzelle (nicht pro Mitglied)
 '           - Nur Mitgliedsbeitrag wird pro Mitglied angezeigt
-'           - Worksheet_Change Event: Gelb->Grün bei manueller
-'             Soll-Eingabe + MsgBox für Folgemonat-Übernahme
+'           - Worksheet_Change Event: Gelb->Gr?n bei manueller
+'             Soll-Eingabe + MsgBox f?r Folgemonat-?bernahme
 ' FIX v4.5b: - Reentrancy-Schutz (m_IsGenerating)
 '            - AutoFilter VOR ClearContents entfernen
 '            - Robustere Fehlerbehandlung (Blattschutz im ErrorHandler)
 ' NEU v4.6: - Ehrenmitglied-Rolle: ErmittleEntityRoleVonFunktion
 '             erkennt jetzt "Ehrenmitglied" aus Mitgliederliste Spalte O
 '           - Januar-Schutz: Wenn keine Vorjahr-Daten vorhanden,
-'             wird ROT auf GELB herabgestuft statt falsche Säumnis
-'             (Dezember-Zahlung des Vorjahres könnte fehlen)
+'             wird ROT auf GELB herabgestuft statt falsche S?umnis
+'             (Dezember-Zahlung des Vorjahres k?nnte fehlen)
 ' NEU v5.0: - Keine Buendelung mehr! Jedes Mitglied / jede Parzelle
-'             bekommt für jeden Monat / jede Kategorie eine eigene Zeile.
+'             bekommt f?r jeden Monat / jede Kategorie eine eigene Zeile.
 '             KonsolidiereMitgliedsbeitragZeilen entfernt.
 '           - FormatiereUebersicht laeuft erst NACH AutoFilter / MonatsRegister
 '             / Lock, damit NumberFormat (Euro) und Ausrichtung (Spalte A
@@ -96,7 +96,7 @@ Private Const UEB_COL_STATUS As Long = 7        ' G - Status (gruen/GELB/ROT)
 Private Const UEB_COL_BEMERKUNG As Long = 8     ' H - Bemerkung
 Private Const UEB_COL_SUMME_IST As Long = 9     ' I - Summe Ist (kumuliert)
 
-' Farbe für Summen-Spalte (dezentes Hellblau)
+' Farbe f?r Summen-Spalte (dezentes Hellblau)
 Private Const FARBE_SUMME As Long = 16247773    ' RGB(189, 215, 248)
 Private Const FARBE_SUMME_ZEBRA As Long = 15790320 ' RGB(208, 228, 241)
 
@@ -105,13 +105,13 @@ Private Const AMPEL_GRUEN As Long = 12968900    ' RGB(196, 225, 196)
 Private Const AMPEL_GELB As Long = 10086143     ' RGB(255, 235, 156)
 Private Const AMPEL_ROT As Long = 9871103       ' RGB(255, 199, 206)
 
-' Hell-gelb für "bitte manuell beFuellen" (Soll-Betrag variabel)
+' Hell-gelb f?r "bitte manuell beFuellen" (Soll-Betrag variabel)
 Private Const FARBE_HELLGELB_MANUELL As Long = 10092543  ' RGB(255, 255, 153)
 
 ' Zebra-Farbe (identisch mit Bankkonto / EntityKey-Tabelle)
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
 
-' Status-String für grün (Encoding-sicher, wird in Init gesetzt)
+' Status-String f?r gr?n (Encoding-sicher, wird in Init gesetzt)
 Private m_STATUS_GRUEN As String
 Private m_StatusInitialisiert As Boolean
 
@@ -120,7 +120,7 @@ Private m_IsGenerating As Boolean
 
 
 ' ===============================================================
-' Type für eine dynamische Kategorie aus Einstellungen
+' Type f?r eine dynamische Kategorie aus Einstellungen
 ' ===============================================================
 Public Type UebKategorie
     Name As String
@@ -128,7 +128,7 @@ Public Type UebKategorie
     HatFestenSoll As Boolean      ' True wenn Spalte C > 0
     saeumnisGebuehr As Double     ' Spalte I auf Einstellungen
     SollMonate As String          ' Spalte E: "03, 06, 09" oder leer = alle
-    faelligkeit As String         ' Spalte O auf Daten: "monatlich", "jährlich" etc.
+    faelligkeit As String         ' Spalte O auf Daten: "monatlich", "j?hrlich" etc.
 End Type
 
 
@@ -146,8 +146,8 @@ End Sub
 
 
 ' ===============================================================
-' v4.5b: Gibt zurück ob GeneriereUebersicht gerade laeuft.
-' Wird von Workbook_SheetChange geprüft um Events während
+' v4.5b: Gibt zur?ck ob GeneriereUebersicht gerade laeuft.
+' Wird von Workbook_SheetChange gepr?ft um Events w?hrend
 ' der Generierung zu ignorieren.
 ' ===============================================================
 Public Function IsGenerating() As Boolean
@@ -158,7 +158,7 @@ End Function
 ' ===============================================================
 ' HAUPTFUNKTION: Generiert komplettes Uebersichtsblatt
 ' v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
-' v3.0: stummModus für automatische Aufrufe (ohne MsgBox)
+' v3.0: stummModus f?r automatische Aufrufe (ohne MsgBox)
 ' ===============================================================
 Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                                 Optional ByVal stummModus As Boolean = False)
@@ -297,7 +297,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
         Debug.Print "[" & ChrW(220) & "bersicht] Blatt neu erstellt: " & wsUeb.Name
     End If
 
-    ' Blattreihenfolge sicherstellen: Startmenü -> Zahlungsübersicht -> Dashboard
+    ' Blattreihenfolge sicherstellen: Startmen? -> Zahlungs?bersicht -> Dashboard
     On Error Resume Next
     If Not wsUeb Is Nothing Then
         Dim wsStart As Worksheet
@@ -317,7 +317,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     wsUeb.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ErrorHandler
     
-    ' v4.3: Manuell eingetragene Soll-Werte SICHERN bevor Inhalt gelöscht wird
+    ' v4.3: Manuell eingetragene Soll-Werte SICHERN bevor Inhalt gel?scht wird
     Dim gespeicherteSoll As Object
     Set gespeicherteSoll = SammleManuelleSollWerte(wsUeb)
     
@@ -328,7 +328,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     wsUeb.Range(wsUeb.Cells(1, 1), wsUeb.Cells(UEBERSICHT_START_ROW - 1, UEB_COL_SUMME_IST)).ClearContents
     wsUeb.Range(wsUeb.Cells(1, 1), wsUeb.Cells(UEBERSICHT_START_ROW - 1, UEB_COL_SUMME_IST)).Interior.ColorIndex = xlNone
     
-    ' Alten Inhalt Löschen (ab Zeile 4, inkl. Spalte I)
+    ' Alten Inhalt L?schen (ab Zeile 4, inkl. Spalte I)
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
                 wsUeb.Cells(wsUeb.Rows.count, UEB_COL_SUMME_IST)).ClearContents
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, 1), _
@@ -337,7 +337,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' Header setzen
     Call SetzeUebersichtHeader(wsUeb)
 
-    ' Home-Button auf der Zahlungsübersicht immer neu setzen
+    ' Home-Button auf der Zahlungs?bersicht immer neu setzen
     On Error Resume Next
     Call mod_Navigation.ErstelleHomeButton(wsUeb)
     On Error GoTo ErrorHandler
@@ -345,13 +345,13 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' Einstellungen-Cache laden (Performance)
     Call mod_Zahlungspruefung.LadeEinstellungenCacheZP
     
-    ' Dezember-Cache initialisieren (für Vorauszahlungen)
+    ' Dezember-Cache initialisieren (f?r Vorauszahlungen)
     Call mod_Zahlungspruefung.InitialisiereNachDezemberCacheZP(jahr)
     
     ' v4.0: Vorjahr-Speicher beFuellen (Okt-Dez Vorjahr)
     Call mod_Uebersicht_Daten.BefuelleVorjahrSpeicher(jahr - 1)
     
-    ' v4.0: Vorjahr-Speicher automatisch löschen (ab August)
+    ' v4.0: Vorjahr-Speicher automatisch l?schen (ab August)
     Call mod_Uebersicht_Daten.PruefeVorjahrSpeicherAblauf
     
     ' Aktive Mitglieder aus Daten-Blatt EntityKey-Tabelle laden
@@ -366,7 +366,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
         Debug.Print "[" & ChrW(220) & "bersicht] Pr" & ChrW(252) & "fe Daten-Blatt: " & _
                     "EntityKey (R), Parzelle (V), Role (W)"
         
-        ' v4.5b: Blatt trotzdem schützen und aufraumen
+        ' v4.5b: Blatt trotzdem sch?tzen und aufraumen
         On Error Resume Next
         wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
         On Error GoTo 0
@@ -388,10 +388,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     End If
     
     ' =============================================
-    ' v4.0: DATEN GENERIEREN - Nur relevante Einträge!
+    ' v4.0: DATEN GENERIEREN - Nur relevante Eintr?ge!
     '
     ' Ein Eintrag erscheint NUR wenn:
-    '   a) Zahlung vorhanden (Ist > 0) -> GRÜN/GELB
+    '   a) Zahlung vorhanden (Ist > 0) -> GR?N/GELB
     '   b) Monat hat importierte CSV-Daten UND
     '      Frist abgelaufen UND keine Zahlung -> ROT
     '
@@ -416,24 +416,24 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 IIf(dbgMonate = "", "(keine)", dbgMonate)
     
     ' v4.5: Dictionary um zu tracken welche Parzelle+Monat+Kategorie-Kombinationen
-    ' bereits geschrieben wurden (für Parzelle-basierte Kategorien)
+    ' bereits geschrieben wurden (f?r Parzelle-basierte Kategorien)
     Dim geschriebeneParzKat As Object
     Set geschriebeneParzKat = CreateObject("Scripting.Dictionary")
     geschriebeneParzKat.CompareMode = vbTextCompare
     
-    ' v5.0: Dictionary für kumulierte Ist-Summen pro Parzelle+Kategorie
+    ' v5.0: Dictionary f?r kumulierte Ist-Summen pro Parzelle+Kategorie
     ' Key = "Parzelle|Kategorie", Value = kumulierter Ist-Betrag
     Dim summeIstDict As Object
     Set summeIstDict = CreateObject("Scripting.Dictionary")
     summeIstDict.CompareMode = vbTextCompare
     
-    ' Sammelt Zeilennummern pro Parzelle+Kategorie für nachtraegliches Befüllen
+    ' Sammelt Zeilennummern pro Parzelle+Kategorie f?r nachtraegliches Bef?llen
     ' Key = "Parzelle|Kategorie", Value = Collection von Zeilennummern
     Dim summeIstZeilen As Object
     Set summeIstZeilen = CreateObject("Scripting.Dictionary")
     summeIstZeilen.CompareMode = vbTextCompare
     
-    ' v5.1: Dictionary für MB-SOLL-Multiplikator bei Gemeinschaftskonten
+    ' v5.1: Dictionary f?r MB-SOLL-Multiplikator bei Gemeinschaftskonten
     ' Zaehlt wie viele eindeutige Mitglieder denselben EntityKey auf einer Parzelle nutzen.
     ' Key = "Parzelle|EntityKey", Value = Anzahl Personen
     Dim mbMultiplier As Object
@@ -474,7 +474,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
             End If
         End If
         
-        ' v4.7: Pachtende prüfen - Monate nach Pachtende überspringen
+        ' v4.7: Pachtende pr?fen - Monate nach Pachtende ?berspringen
         Dim austrittMonat As Long
         austrittMonat = 13 ' Standardwert: kein Austritt (alle Monate aktiv)
         If IsDate(mitglied("Austritt")) Then
@@ -482,7 +482,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
             austrittDatum = CDate(mitglied("Austritt"))
             If austrittDatum > 0 Then
                 If Year(austrittDatum) < jahr Then
-                    ' Pacht endete vor dem Abrechnungsjahr -> gesamtes Jahr überspringen
+                    ' Pacht endete vor dem Abrechnungsjahr -> gesamtes Jahr ?berspringen
                     austrittMonat = 0
                 ElseIf Year(austrittDatum) = jahr Then
                     ' Pacht endet im Abrechnungsjahr -> nur bis zum Austrittsmonat
@@ -491,34 +491,34 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
             End If
         End If
         
-        ' Wenn Pachtende vor dem Abrechnungsjahr -> dieses Mitglied komplett überspringen
+        ' Wenn Pachtende vor dem Abrechnungsjahr -> dieses Mitglied komplett ?berspringen
         If austrittMonat = 0 Then GoTo NextMitglied
         
         For monat = 1 To 12
-            ' v5.2: Monate vor Eintritt überspringen (nur Mitgliedsbeitrag)
+            ' v5.2: Monate vor Eintritt ?berspringen (nur Mitgliedsbeitrag)
             ' Pacht muss unabhaengig vom Mitglied immer bezahlt werden
             
-            ' v4.7: Monate nach Pachtende überspringen
+            ' v4.7: Monate nach Pachtende ?berspringen
             If monat > austrittMonat Then GoTo NextMonat
             
             Dim k As Long
             For k = 0 To anzahlKat - 1
                 
-                ' Prüfen ob diese Kategorie in diesem Monat fällig ist
+                ' Pr?fen ob diese Kategorie in diesem Monat f?llig ist
                 If Not IstKategorieImMonatFaellig(kategorien(k), monat) Then
                     GoTo NextKat
                 End If
                 
                 kategorie = kategorien(k).Name
                 
-                ' v7.4: Eintrittsdatum-Filter für ALLE Kategorien
+                ' v7.4: Eintrittsdatum-Filter f?r ALLE Kategorien
                 ' Wenn ein Mitglied erst im laufenden Jahr eintritt
                 ' (Spalte P "Mitglieds-/Pachtbeginn"), zahlt es weder
                 ' Mitgliedsbeitrag noch Pacht noch Brauchwasser-Abschlaege
-                ' noch sonstige Gebühren VOR seinem Eintrittsmonat.
+                ' noch sonstige Geb?hren VOR seinem Eintrittsmonat.
                 ' Beispiel: Parzelle 10 ohne Paechter bis 30.06.2025,
                 ' neues Mitglied ab 01.07.2025 -> keine Pacht/MB/Wasser
-                ' für Januar-Juni 2025.
+                ' f?r Januar-Juni 2025.
                 ' (Spalte P leer = ganzes Jahr aktiv -> eintrittMonat=0 -> Filter inaktiv)
                 If eintrittMonat > 0 Then
                     If monat < eintrittMonat Then GoTo NextKat
@@ -526,7 +526,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 
                 ' v4.0: MITGLIED OHNE PACHT zahlt NUR Mitgliedsbeitrag
                 ' Alle anderen Kategorien (Pacht, Betriebskosten, Fixkosten,
-                ' Abschlagszahlungen Strom/Wasser etc.) überspringen
+                ' Abschlagszahlungen Strom/Wasser etc.) ?berspringen
                 If InStr(UCase(mitgliedRole), "OHNE PACHT") > 0 Then
                     If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) <> 0 Then
                         GoTo NextKat
@@ -552,10 +552,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
-                ' Zahlung prüfen (mod_Zahlungspruefung)
+                ' Zahlung pr?fen (mod_Zahlungspruefung)
                 ergebnis = mod_Zahlungspruefung.PruefeZahlungen(entityKey, kategorie, monat, jahr)
                 
-                ' Ergebnis parsen: "GRÜN|Soll:50.00|Ist:50.00"
+                ' Ergebnis parsen: "GR?N|Soll:50.00|Ist:50.00"
                 soll = 0
                 ist = 0
                 status = "ROT"
@@ -579,8 +579,8 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     status = teile(0)
                 End If
                 
-                ' v4.0: Vorjahr-Zahlungen prüfen (Jan-Maerz)
-                ' Dezember-Zahlung des Vorjahres die für diesen Monat gilt
+                ' v4.0: Vorjahr-Zahlungen pr?fen (Jan-Maerz)
+                ' Dezember-Zahlung des Vorjahres die f?r diesen Monat gilt
                 If monat <= 3 And ist = 0 Then
                     Dim vjBetrag As Double
                     vjBetrag = mod_Uebersicht_Daten.HoleVorjahrZahlung(entityKey, kategorie, monat)
@@ -595,16 +595,16 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
-                ' v4.6/v5.4: Vorjahr-Schutz nur für Januar:
-                ' Wenn keine Vorjahr-Daten vorhanden sind, könnte eine Okt-Dez-
-                ' Zahlung des Vorjahres für Januar gelten.
+                ' v4.6/v5.4: Vorjahr-Schutz nur f?r Januar:
+                ' Wenn keine Vorjahr-Daten vorhanden sind, k?nnte eine Okt-Dez-
+                ' Zahlung des Vorjahres f?r Januar gelten.
                 If monat = 1 And ist = 0 And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
                     If StrComp(status, "ROT", vbTextCompare) = 0 Then
                         status = "GELB"
                     End If
                 End If
                 
-                ' v4.4: Partner-Zahlung prüfen bei Mitgliedsbeitrag
+                ' v4.4: Partner-Zahlung pr?fen bei Mitgliedsbeitrag
                 ' Wenn ein Mitglied auf der gleichen Parzelle >= 2x Soll
                 ' bezahlt hat, gilt der Beitrag als mitbezahlt
                 Dim partnerInfo As String
@@ -615,15 +615,15 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     If partnerInfo <> "" Then
                         ist = soll
                         status = m_STATUS_GRUEN
-                        ' BUGFIX: Säumnis-/Verspaetungs-Bemerkung aus ZP entfernen,
+                        ' BUGFIX: S?umnis-/Verspaetungs-Bemerkung aus ZP entfernen,
                         ' weil die Zahlung jetzt als bezahlt (durch Partner) gilt
                         If UBound(teile) >= 3 Then teile(3) = ""
                     End If
                 End If
                 
                 ' =============================================
-                ' v4.0: FILTER - Nur relevante Einträge anzeigen
-                ' ROT-Einträge erscheinen NUR für Monate mit
+                ' v4.0: FILTER - Nur relevante Eintr?ge anzeigen
+                ' ROT-Eintr?ge erscheinen NUR f?r Monate mit
                 ' importierten Kontoauszuegen auf dem Bankkonto-Blatt.
                 ' =============================================
                 Dim zeigeEintrag As Boolean
@@ -652,7 +652,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
-                ' Wenn nicht relevant -> nächste Kategorie
+                ' Wenn nicht relevant -> n?chste Kategorie
                 If Not zeigeEintrag Then GoTo NextKat
                 
                 ' Zeile schreiben
@@ -686,18 +686,18 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     soll = soll * mbFaktor
                 Else
                     ' KEIN fester Soll-Betrag -> Zelle hell-gelb (editierbar)
-                    ' v4.3: Zuerst prüfen ob Nutzer bereits einen Betrag für
+                    ' v4.3: Zuerst pr?fen ob Nutzer bereits einen Betrag f?r
                     ' diese Kategorie+Parzelle in einem frueheren Monat gesetzt hat
                     Dim manuellSoll As Double
                     manuellSoll = HoleManuellSollAusVormonat(gespeicherteSoll, CStr(parzelleWert), kategorie)
                     
                     If manuellSoll > 0 Then
-                        ' Folgemonat: Betrag aus Vormonat übernehmen
+                        ' Folgemonat: Betrag aus Vormonat ?bernehmen
                         wsUeb.Cells(rowIdx, UEB_COL_SOLL).value = manuellSoll
                         soll = manuellSoll
                         wsUeb.Cells(rowIdx, UEB_COL_SOLL).Locked = False
                         
-                        ' Prüfen ob Ist den manuellen Soll erreicht
+                        ' Pr?fen ob Ist den manuellen Soll erreicht
                         If ist > 0 And Abs(ist - manuellSoll) < 0.01 Then
                             status = m_STATUS_GRUEN
                             wsUeb.Cells(rowIdx, UEB_COL_SOLL).Interior.color = AMPEL_GRUEN
@@ -714,7 +714,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                         wsUeb.Cells(rowIdx, UEB_COL_SOLL).Locked = False
                     End If
                     
-                    ' Status bei variablem Betrag: Termin-Prüfung
+                    ' Status bei variablem Betrag: Termin-Pr?fung
                     If ist > 0 Then
                         status = m_STATUS_GRUEN
                     End If
@@ -733,7 +733,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
                 
                 ' =============================================
-                ' v2.0: Bemerkung mit Säumnis-Info
+                ' v2.0: Bemerkung mit S?umnis-Info
                 ' =============================================
                 Dim bemerkung As String
                 bemerkung = ""
@@ -743,7 +743,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     bemerkung = teile(3)
                 End If
                 
-                ' Säumnis-Gebühr anhängen wenn Status ROT und Gebühr definiert
+                ' S?umnis-Geb?hr anh?ngen wenn Status ROT und Geb?hr definiert
                 If StrComp(status, "ROT", vbTextCompare) = 0 Then
                     If kategorien(k).saeumnisGebuehr > 0 Then
                         Dim saeumnisText As String
@@ -775,7 +775,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
-                ' v4.4: Partner-Info anhängen wenn Mitgliedsbeitrag mitbezahlt
+                ' v4.4: Partner-Info anh?ngen wenn Mitgliedsbeitrag mitbezahlt
                 If partnerInfo <> "" Then
                     If bemerkung = "" Then
                         bemerkung = partnerInfo
@@ -784,7 +784,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
-                ' v4.6/v5.4: Hinweis NUR für Januar ohne Vorjahr-Daten
+                ' v4.6/v5.4: Hinweis NUR f?r Januar ohne Vorjahr-Daten
                 If monat = 1 And ist = 0 And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
                     Dim vjHinweis As String
                     vjHinweis = "Keine Vorjahr-Daten: Zahlung evtl. im Vorjahr (Okt-Dez) erfolgt"
@@ -829,7 +829,7 @@ NextMitglied:
     ' bekommt eine eigene Zeile, auch wenn mehrere auf derselben Parzelle bezahlt
     ' haben. Die Konsolidierungslogik wurde entfernt.
 
-    ' Summe-Ist pro Parzelle+Kategorie befüllen (Spalte I).
+    ' Summe-Ist pro Parzelle+Kategorie bef?llen (Spalte I).
     If rowIdx > UEBERSICHT_START_ROW Then
         Call BefuelleSummeIstSpalte(wsUeb, rowIdx - 1)
     End If
@@ -845,7 +845,7 @@ NextMitglied:
     ' Einstellungen-Cache freigeben
     Call mod_Zahlungspruefung.EntladeEinstellungenCacheZP
     
-    ' F und H müssen immer manuell editierbar bleiben (auch bei Schutz).
+    ' F und H m?ssen immer manuell editierbar bleiben (auch bei Schutz).
     On Error Resume Next
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_IST), _
                 wsUeb.Cells(wsUeb.Rows.count, UEB_COL_IST)).Locked = False
@@ -854,10 +854,10 @@ NextMitglied:
     On Error GoTo ErrorHandler
 
     ' v5.0: Formatierung NACH AutoFilter/MonatsRegister/Locked, aber VOR Protect,
-    ' damit nichts NumberFormat / HorizontalAlignment / AutoFit überschreibt.
+    ' damit nichts NumberFormat / HorizontalAlignment / AutoFit ?berschreibt.
     Call FormatiereUebersicht(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
 
-    ' Blatt schützen (Soll-Zellen ohne festen Betrag bleiben editierbar)
+    ' Blatt sch?tzen (Soll-Zellen ohne festen Betrag bleiben editierbar)
     ' AllowFiltering: Nutzer kann AutoFilter ohne Blattschutz-Aufhebung verwenden
     On Error Resume Next
     wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
@@ -868,7 +868,7 @@ NextMitglied:
     Application.ScreenUpdating = True
     
     ' Die Vorjahr-Hinweispruefung wird gezielt beim Blattwechsel auf
-    ' die Zahlungsübersicht gestartet (nicht direkt während Generierung).
+    ' die Zahlungs?bersicht gestartet (nicht direkt w?hrend Generierung).
     
     Dim endTime As Double
     endTime = Timer
@@ -895,7 +895,7 @@ ErrorHandler:
     Application.EnableEvents = True
     Application.ScreenUpdating = True
     
-    ' v4.5b: Blatt im Fehlerfall trotzdem schützen
+    ' v4.5b: Blatt im Fehlerfall trotzdem sch?tzen
     On Error Resume Next
     If Not wsUeb Is Nothing Then
         wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
@@ -914,8 +914,8 @@ End Sub
 
 
 ' ===============================================================
-' Beim Öffnen der Zahlungsübersicht Hinweisdialog zu Januar-Positionen
-' anzeigen, wenn Vorjahrdaten nicht verfügbar sind.
+' Beim ?ffnen der Zahlungs?bersicht Hinweisdialog zu Januar-Positionen
+' anzeigen, wenn Vorjahrdaten nicht verf?gbar sind.
 ' Keine komplette Neugenerierung des Blattes.
 ' ===============================================================
 Public Sub PruefeVorjahrHinweisBeimOeffnen()
@@ -940,33 +940,33 @@ End Sub
 
 
 ' ===============================================================
-' v4.0: prüft ob eine Kategorie in einem bestimmten Monat Fuellig ist
-' Kombiniert SollMonate (Einstellungen Spalte E) mit Fälligkeit
+' v4.0: pr?ft ob eine Kategorie in einem bestimmten Monat Fuellig ist
+' Kombiniert SollMonate (Einstellungen Spalte E) mit F?lligkeit
 ' (Daten Spalte O).
 ' - monatlich: SollMonate oder alle Monate
-' - jährlich: nur SollMonate (1 Monat)
+' - j?hrlich: nur SollMonate (1 Monat)
 ' - halbjaehrlich: nur SollMonate (2 Monate)
 ' - quartalsweise/vierteljaehrlich: nur SollMonate (3-4 Monate)
 ' - benutzerdefiniert: nur SollMonate
-' Wenn SollMonate leer UND Fälligkeit nicht monatlich ->
-'   Kategorie ist NICHT in allen Monaten fällig!
+' Wenn SollMonate leer UND F?lligkeit nicht monatlich ->
+'   Kategorie ist NICHT in allen Monaten f?llig!
 '   Dann Fallback: Kategorie nie anzeigen (muss in Einstellungen
 '   Spalte E konfiguriert werden)
 ' ===============================================================
 Private Function IstKategorieImMonatFaellig(ByRef kat As UebKategorie, _
                                              ByVal monat As Long) As Boolean
     
-    ' Wenn SollMonate definiert -> nur diese prüfen
+    ' Wenn SollMonate definiert -> nur diese pr?fen
     If kat.SollMonate <> "" Then
         IstKategorieImMonatFaellig = mod_KategorieEngine_Zeitraum.IstMonatInListe(monat, kat.SollMonate)
         Exit Function
     End If
     
-    ' SollMonate leer -> Fälligkeit entscheidet
+    ' SollMonate leer -> F?lligkeit entscheidet
     Dim fl As String
     fl = kat.faelligkeit
     
-    ' Monatlich oder leer -> in ALLEN Monaten fällig
+    ' Monatlich oder leer -> in ALLEN Monaten f?llig
     If fl = "" Or fl = "monatlich" Then
         IstKategorieImMonatFaellig = True
         Exit Function
@@ -987,9 +987,9 @@ End Function
 ' ===============================================================
 Private Sub SetzeUebersichtHeader(ByVal wsUeb As Worksheet)
     
-    ' Hinweis: Die Zeilenhöhen für Zeile 1 (Home-Button) und Zeile 2
+    ' Hinweis: Die Zeilenh?hen f?r Zeile 1 (Home-Button) und Zeile 2
     ' (Monats-Register) werden zentral in mod_Uebersicht_Filter.ErstelleMonatsRegister
-    ' bzw. mod_Navigation gesetzt und sollten hier NICHT überschrieben werden.
+    ' bzw. mod_Navigation gesetzt und sollten hier NICHT ?berschrieben werden.
     
     With wsUeb
         .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_PARZELLE).value = "Parzelle"
@@ -1040,14 +1040,14 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     ' Zebramuster (identisch mit Bankkonto/EntityKey-Tabelle)
     ' Ungerade Zeilen (1., 3., 5. Datenzeile) = weiss
     ' Gerade Zeilen (2., 4., 6. Datenzeile) = ZEBRA_COLOR
-    ' ACHTUNG: Nicht überschreiben bei Soll-Spalte (hell-gelb) und Status-Spalte (Ampel)
+    ' ACHTUNG: Nicht ?berschreiben bei Soll-Spalte (hell-gelb) und Status-Spalte (Ampel)
     For r = startRow To endRow
         Dim c As Long
         If (r - startRow) Mod 2 = 1 Then
             ' Gerade Datenzeile -> Zebra-Farbe
             For c = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
                 If c = UEB_COL_STATUS Then
-                    ' Status-Spalte (G) behält IMMER ihre Ampelfarbe
+                    ' Status-Spalte (G) beh?lt IMMER ihre Ampelfarbe
                 ElseIf c = UEB_COL_SOLL Then
                     If wsUeb.Cells(r, c).Interior.color <> FARBE_HELLGELB_MANUELL And _
                        wsUeb.Cells(r, c).Interior.color <> AMPEL_GRUEN Then
@@ -1062,7 +1062,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
             ' Ungerade Datenzeile -> weiss (aber Soll/Status auslassen)
             For c = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
                 If c = UEB_COL_STATUS Then
-                    ' Status-Spalte behält Ampelfarbe
+                    ' Status-Spalte beh?lt Ampelfarbe
                 ElseIf c = UEB_COL_SOLL Then
                     If wsUeb.Cells(r, c).Interior.color <> FARBE_HELLGELB_MANUELL And _
                        wsUeb.Cells(r, c).Interior.color <> AMPEL_GRUEN Then
@@ -1095,7 +1095,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
         If wsUeb.Columns(colAutoFit).ColumnWidth < 10 Then
             wsUeb.Columns(colAutoFit).ColumnWidth = 10
         End If
-        ' Etwas Puffer für bessere Lesbarkeit
+        ' Etwas Puffer f?r bessere Lesbarkeit
         wsUeb.Columns(colAutoFit).ColumnWidth = wsUeb.Columns(colAutoFit).ColumnWidth + 2
     Next colAutoFit
     
@@ -1149,11 +1149,11 @@ End Sub
 
 ' ===============================================================
 ' v4.3: Sammelt manuell eingetragene Soll-Werte aus der
-' bestehenden Übersicht BEVOR diese gelöscht wird.
-' Gibt ein Dictionary zurück: Key = "Parzelle|Kategorie"
+' bestehenden ?bersicht BEVOR diese gel?scht wird.
+' Gibt ein Dictionary zur?ck: Key = "Parzelle|Kategorie"
 '                               Value = Soll-Betrag (Double)
 ' Nur Zeilen mit hell-gelber oder gruener Soll-Zelle werden
-' beruecksichtigt (= variable Soll-Beträge).
+' beruecksichtigt (= variable Soll-Betr?ge).
 ' ===============================================================
 Private Function SammleManuelleSollWerte(ByVal wsUeb As Worksheet) As Object
     
@@ -1177,7 +1177,7 @@ Private Function SammleManuelleSollWerte(ByVal wsUeb As Worksheet) As Object
         ' v4.4: Keine Gruppenblock-Logik mehr noetig, jede Zeile hat Parzelle
         If parzelle = "" Then GoTo NextSollRow
         
-        ' Nur variable Soll-Zellen (hell-gelb oder grün) beruecksichtigen
+        ' Nur variable Soll-Zellen (hell-gelb oder gr?n) beruecksichtigen
         Dim sollFarbe As Long
         sollFarbe = wsUeb.Cells(r, UEB_COL_SOLL).Interior.color
         
@@ -1205,8 +1205,8 @@ End Function
 
 ' ===============================================================
 ' v4.3: Sucht im gesicherten Dictionary nach einem manuell
-' eingetragenen Soll-Betrag für die gleiche Parzelle+Kategorie.
-' Gibt den Betrag zurück (0 wenn nicht gefunden).
+' eingetragenen Soll-Betrag f?r die gleiche Parzelle+Kategorie.
+' Gibt den Betrag zur?ck (0 wenn nicht gefunden).
 ' ===============================================================
 Private Function HoleManuellSollAusVormonat(ByVal gespeicherteSoll As Object, _
                                              ByVal parzelle As String, _
@@ -1227,9 +1227,9 @@ End Function
 
 
 ' ===============================================================
-' v4.4: Prüfen ob ein Partner auf der gleichen Parzelle den
-' Mitgliedsbeitrag für beide bezahlt hat (z.B. 15 EUR statt 7.50).
-' Gibt Partner-Info-String zurück wenn mitbezahlt, sonst "".
+' v4.4: Pr?fen ob ein Partner auf der gleichen Parzelle den
+' Mitgliedsbeitrag f?r beide bezahlt hat (z.B. 15 EUR statt 7.50).
+' Gibt Partner-Info-String zur?ck wenn mitbezahlt, sonst "".
 ' ===============================================================
 Private Function PruefePartnerMitgliedsbeitrag( _
                     ByVal mitglieder As Collection, _
@@ -1246,7 +1246,7 @@ Private Function PruefePartnerMitgliedsbeitrag( _
         ' Gleiche Parzelle, anderer EntityKey?
         If CLng(partner("Parzelle")) = parzelle Then
             If StrComp(CStr(partner("EntityKey")), meineEntityKey, vbTextCompare) <> 0 Then
-                ' Partner gefunden - Zahlung prüfen
+                ' Partner gefunden - Zahlung pr?fen
                 Dim partnerCount As Long
                 Dim partnerIst As Double
                 Call mod_Zahlungspruefung.ZaehleZahlungenZP( _
@@ -1387,17 +1387,17 @@ End Function
 
 ' ===============================================================
 ' v5.4: VORJAHR-GELB-PRUEFUNG
-' Scannt die Zahlungsübersicht nach GELB-Eintraegen im Januar
+' Scannt die Zahlungs?bersicht nach GELB-Eintraegen im Januar
 ' wo "Keine Vorjahr-Daten" in der Bemerkung steht.
 ' Fragt den Nutzer ob die Zahlungen im Vorjahr erfolgt sind.
 '
 ' Ablauf:
 '   1) Sammle alle betroffenen Zeilen
-'   2) Frage: "N Positionen ohne Vorjahr-Daten. Einzeln prüfen?"
-'   3) Pro Position: "Wurde [Kategorie] für Parzelle [X] in [Monat]
+'   2) Frage: "N Positionen ohne Vorjahr-Daten. Einzeln pr?fen?"
+'   3) Pro Position: "Wurde [Kategorie] f?r Parzelle [X] in [Monat]
 '      im Vorjahr (Okt-Dez) fristgerecht bezahlt?"
-'      - Ja -> GRÜN + Bemerkung "Im Vorjahr bezahlt (Nutzer best.)"
-'      - Nein -> ROT + Säumnis (falls definiert)
+'      - Ja -> GR?N + Bemerkung "Im Vorjahr bezahlt (Nutzer best.)"
+'      - Nein -> ROT + S?umnis (falls definiert)
 '   4) Abbrechen = Alles bleibt GELB
 ' ===============================================================
 Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
@@ -1460,7 +1460,7 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
         Dim vjMitglied As String
         vjMitglied = CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)
 
-        ' Soll-Betrag jetzt vorab lesen, damit alle drei Dialoge ihn anzeigen können.
+        ' Soll-Betrag jetzt vorab lesen, damit alle drei Dialoge ihn anzeigen k?nnen.
         Dim sollWertVorab As Double
         sollWertVorab = LeseDoubleAusZelleVJ(wsUeb.Cells(r, UEB_COL_SOLL))
 
@@ -1471,8 +1471,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
             sollText = "(variabel - keine feste Vorgabe)"
         End If
 
-        ' Gemeinsamer Info-Block für MsgBox + beide InputBoxen,
-        ' damit der Nutzer in JEDER Box weiss, für wen / was / wieviel.
+        ' Gemeinsamer Info-Block f?r MsgBox + beide InputBoxen,
+        ' damit der Nutzer in JEDER Box weiss, f?r wen / was / wieviel.
         ' vbTab nutzt die Tab-Stops der MsgBox - so stehen die Werte
         ' auch in der proportionalen Dialogschrift sauber untereinander.
         Dim infoBlock As String
@@ -1517,7 +1517,7 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
                                "------------------------------------------------------------" & vbCrLf & _
                                infoBlock & vbCrLf & _
                                "------------------------------------------------------------" & vbCrLf & vbCrLf & _
-                               "Wann wurde die Zahlung für obige Position im Vorjahr" & vbCrLf & _
+                               "Wann wurde die Zahlung f?r obige Position im Vorjahr" & vbCrLf & _
                                "(Oktober bis Dezember) ueberwiesen / verbucht?" & vbCrLf & vbCrLf & _
                                "Vorbelegt: 15.12. des Vorjahres - bitte ggf. anpassen.", _
                                "Vorjahrzahlung - Datum (Pos. " & i & "/" & gelbZeilen.count & ")", _
@@ -1568,8 +1568,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
 
             wsUeb.Cells(r, UEB_COL_IST).value = zahlBetrag
 
-            ' Bestehende Säumnis-/Verspätet-/Fällig-/Noch-offen-Hinweise
-            ' aus der Bemerkung entfernen - die manuelle Bestätigung
+            ' Bestehende S?umnis-/Versp?tet-/F?llig-/Noch-offen-Hinweise
+            ' aus der Bemerkung entfernen - die manuelle Best?tigung
             ' widerlegt sie (Zahlung war ja fristgerecht im Vorjahr).
             aktBem = EntferneNegativHinweiseVJ(aktBem)
 
@@ -1579,8 +1579,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
                       Format(zahlBetrag, "#,##0.00") & " " & ChrW(8364)
 
             ' Status-Entscheidung:
-            '  - Variable Kategorie (Soll=0): jede Zahlung gilt als GRÜN
-            '  - Fester Soll: Betragsgleichheit innerhalb 1 Cent -> GRÜN
+            '  - Variable Kategorie (Soll=0): jede Zahlung gilt als GR?N
+            '  - Fester Soll: Betragsgleichheit innerhalb 1 Cent -> GR?N
             '  - sonst GELB mit Abweichungs-Hinweis
             Dim istGruen As Boolean
             If sollWert <= 0 Then
@@ -1625,7 +1625,7 @@ NextPos:
     
     Application.EnableEvents = True
     
-    ' v7.4: Dashboard auf aktuellen Stand bringen, falls Status-Änderungen
+    ' v7.4: Dashboard auf aktuellen Stand bringen, falls Status-?nderungen
     '       vorgenommen wurden (sonst zeigt Dashboard noch alte GELB-Werte).
     If bestaetigtGruen + bestaetigtRot > 0 Then
         On Error Resume Next
@@ -1648,9 +1648,9 @@ End Sub
 
 
 ' ===============================================================
-' Helper für Vorjahr-Dialog: liest einen Geldbetrag robust aus
+' Helper f?r Vorjahr-Dialog: liest einen Geldbetrag robust aus
 ' einer Zelle. CDbl() verarbeitet Currency/Double direkt korrekt;
-' Strings werden über LeseDoubleAusStringVJ konvertiert.
+' Strings werden ?ber LeseDoubleAusStringVJ konvertiert.
 ' ===============================================================
 Private Function LeseDoubleAusZelleVJ(ByVal c As Range) As Double
     Dim v As Variant
@@ -1692,9 +1692,9 @@ Private Function LeseDoubleAusStringVJ(ByVal s As String) As Double
 End Function
 
 
-' Entfernt Säumnis-/Verspätet-/Fällig-/Noch-offen-Hinweise aus
+' Entfernt S?umnis-/Versp?tet-/F?llig-/Noch-offen-Hinweise aus
 ' einer mit " | " separierten Bemerkung. Wird verwendet, wenn der
-' Nutzer manuell bestätigt, dass die Zahlung fristgerecht im
+' Nutzer manuell best?tigt, dass die Zahlung fristgerecht im
 ' Vorjahr erfolgte - dann sind diese Hinweise widerlegt.
 Private Function EntferneNegativHinweiseVJ(ByVal bem As String) As String
     If Trim(bem) = "" Then Exit Function
@@ -1709,16 +1709,16 @@ Private Function EntferneNegativHinweiseVJ(ByVal bem As String) As String
         t = Trim(teile(i))
         If t = "" Then GoTo NextTeil
 
-        ' Säumnis (mit Umlaut oder ASCII)
+        ' S?umnis (mit Umlaut oder ASCII)
         If InStr(1, t, "S" & ChrW(228) & "umnis", vbTextCompare) > 0 Then GoTo NextTeil
-        If InStr(1, t, "Säumnis", vbTextCompare) > 0 Then GoTo NextTeil
-        ' Verspätet
+        If InStr(1, t, "S?umnis", vbTextCompare) > 0 Then GoTo NextTeil
+        ' Versp?tet
         If InStr(1, t, "Versp" & ChrW(228) & "tet", vbTextCompare) > 0 Then GoTo NextTeil
-        If InStr(1, t, "Verspätet", vbTextCompare) > 0 Then GoTo NextTeil
-        ' Noch offen / Fällig am - werden durch manuelle Bestätigung obsolet
+        If InStr(1, t, "Versp?tet", vbTextCompare) > 0 Then GoTo NextTeil
+        ' Noch offen / F?llig am - werden durch manuelle Best?tigung obsolet
         If InStr(1, t, "Noch offen", vbTextCompare) > 0 Then GoTo NextTeil
         If InStr(1, t, "F" & ChrW(228) & "llig am", vbTextCompare) > 0 Then GoTo NextTeil
-        If InStr(1, t, "Fällig am", vbTextCompare) > 0 Then GoTo NextTeil
+        If InStr(1, t, "F?llig am", vbTextCompare) > 0 Then GoTo NextTeil
         ' Teilzahlung-Hinweis
         If InStr(1, t, "Teilzahlung", vbTextCompare) > 0 Then GoTo NextTeil
 
@@ -1732,6 +1732,8 @@ NextTeil:
 
     EntferneNegativHinweiseVJ = ergebnis
 End Function
+
+
 
 
 

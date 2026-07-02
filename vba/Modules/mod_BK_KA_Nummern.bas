@@ -4,14 +4,14 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_BK_KA_Nummern
 ' VERSION: 1.0 - 15.05.2026
-' ZWECK: Punkt 11 - Vergibt fortlaufende Nummern für
-'        Bankkonto-Ausgaben (BK NN) und Vereinskassen-Einträge (KA NN).
-'        Bei Bargeldauszahlung wird zusätzlich ein VK-Eintrag mit
+' ZWECK: Punkt 11 - Vergibt fortlaufende Nummern f?r
+'        Bankkonto-Ausgaben (BK NN) und Vereinskassen-Eintr?ge (KA NN).
+'        Bei Bargeldauszahlung wird zus?tzlich ein VK-Eintrag mit
 '        Bezug zur BK-Nummer angelegt.
 '
 ' Schema (Spalte J auf Bankkonto, Spalte F auf Vereinskasse):
-'   - "BK 01", "BK 02", ... für Ausgaben (Betrag < 0) je Jahr
-'   - "KA 01", "KA 02", ... für Vereinskassen-Einträge je Jahr
+'   - "BK 01", "BK 02", ... f?r Ausgaben (Betrag < 0) je Jahr
+'   - "KA 01", "KA 02", ... f?r Vereinskassen-Eintr?ge je Jahr
 '   - Bei Kategorie "Bargeldauszahlung":
 '        Bankkonto Spalte J = "BK 03 / KA 01"
 '        Vereinskasse Spalte F = "KA 01 / BK 03"
@@ -28,7 +28,7 @@ Private m_IsRunning As Boolean
 
 
 ' ===============================================================
-' Public: Vergibt BK-Nummer für eine einzelne Bankkonto-Zeile.
+' Public: Vergibt BK-Nummer f?r eine einzelne Bankkonto-Zeile.
 ' Wird vom Worksheet_Change auf Bankkonto Spalte H aufgerufen.
 ' ===============================================================
 Public Sub VergebeBKNummerFuerZeile(ByVal wsBK As Worksheet, ByVal zeile As Long)
@@ -49,8 +49,8 @@ End Sub
 
 
 ' ===============================================================
-' Public: Neuberechnung aller BK/KA-Nummern für das aktuelle
-' Abrechnungsjahr. Wird nach CSV-Import oder bei Änderung der
+' Public: Neuberechnung aller BK/KA-Nummern f?r das aktuelle
+' Abrechnungsjahr. Wird nach CSV-Import oder bei ?nderung der
 ' Kategorie aufgerufen.
 ' ===============================================================
 Public Sub NeuberechneAlleBKNummern(Optional ByVal wsBK As Worksheet = Nothing)
@@ -85,8 +85,8 @@ Public Sub NeuberechneAlleBKNummern(Optional ByVal wsBK As Worksheet = Nothing)
     lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then GoTo CleanUp
     
-    ' --- Schritt 1: BK-Spalte J für das Abrechnungsjahr leeren ---
-    '     (Einträge aus Vorjahren bleiben unangetastet)
+    ' --- Schritt 1: BK-Spalte J f?r das Abrechnungsjahr leeren ---
+    '     (Eintr?ge aus Vorjahren bleiben unangetastet)
     Dim abrJahr As Long
     abrJahr = HoleAbrechnungsjahr
     
@@ -157,7 +157,7 @@ Public Sub NeuberechneAlleBKNummern(Optional ByVal wsBK As Worksheet = Nothing)
     Next i
     
 NumeriereKA:
-    ' --- Schritt 4: VK-Einträge für Bargeldauszahlung sicherstellen + KA-Nummern vergeben ---
+    ' --- Schritt 4: VK-Eintr?ge f?r Bargeldauszahlung sicherstellen + KA-Nummern vergeben ---
     If wsVK Is Nothing Then GoTo Schutz
     
     Call SyncBargeldauszahlungenZuVK(wsBK, wsVK, abrJahr)
@@ -179,10 +179,10 @@ End Sub
 
 ' ===============================================================
 ' Synchronisiert Bargeldauszahlungen vom Bankkonto in die Vereinskasse:
-' - Für jede Bankkonto-Zeile mit Kategorie "Bargeldauszahlung" und
+' - F?r jede Bankkonto-Zeile mit Kategorie "Bargeldauszahlung" und
 '   BK-Nummer im aktuellen Jahr wird ein VK-Eintrag sichergestellt
 '   (anhand von Datum + Betrag identifiziert).
-' - Bestehende VK-Einträge werden NICHT dupliziert.
+' - Bestehende VK-Eintr?ge werden NICHT dupliziert.
 ' ===============================================================
 Private Sub SyncBargeldauszahlungenZuVK(ByVal wsBK As Worksheet, _
                                         ByVal wsVK As Worksheet, _
@@ -208,14 +208,14 @@ Private Sub SyncBargeldauszahlungenZuVK(ByVal wsBK As Worksheet, _
         
         Dim bkNrStr As String
         bkNrStr = CStr(wsBK.Cells(r, BK_COL_INTERNE_NR).value)
-        ' Falls der Eintrag noch keine BK-Nr hat, überspringen (kommt in naechstem Lauf)
+        ' Falls der Eintrag noch keine BK-Nr hat, ?berspringen (kommt in naechstem Lauf)
         If LenB(bkNrStr) = 0 Then GoTo NextBK
         ' Nur den BK-Teil verwenden (BK 03 / KA xx -> BK 03)
         Dim p As Long
         p = InStr(1, bkNrStr, "/")
         If p > 0 Then bkNrStr = Trim(Left$(bkNrStr, p - 1))
         
-        ' Prüfen ob VK-Eintrag bereits existiert (Datum + Betrag positiv)
+        ' Pr?fen ob VK-Eintrag bereits existiert (Datum + Betrag positiv)
         Dim gefunden As Boolean
         gefunden = False
         For v = VK_START_ROW To lastVK
@@ -223,7 +223,7 @@ Private Sub SyncBargeldauszahlungenZuVK(ByVal wsBK As Worksheet, _
                 If CDate(wsVK.Cells(v, VK_COL_DATUM).value) = bkDatum Then
                     If IsNumeric(wsVK.Cells(v, VK_COL_BETRAG).value) Then
                         If Abs(CDbl(wsVK.Cells(v, VK_COL_BETRAG).value) - Abs(bkBetrag)) < 0.005 Then
-                            ' Zusätzlich prüfen ob Beschreibung auf Bargeldauszahlung hindeutet
+                            ' Zus?tzlich pr?fen ob Beschreibung auf Bargeldauszahlung hindeutet
                             Dim besch As String
                             besch = LCase$(CStr(wsVK.Cells(v, VK_COL_BESCHREIBUNG).value))
                             If InStr(besch, LCase$(KAT_BARGELDAUSZAHLUNG)) > 0 Or _
@@ -254,7 +254,7 @@ End Sub
 
 
 ' ===============================================================
-' Numeriert alle VK-Einträge im Abrechnungsjahr nach Datum
+' Numeriert alle VK-Eintr?ge im Abrechnungsjahr nach Datum
 ' fortlaufend mit "KA 01", "KA 02", ...
 ' Wenn der VK-Eintrag einer Bankkonto-Bargeldauszahlung entspricht,
 ' wird die KA-Nr UND BK-Nr verschraenkt eingetragen:
@@ -375,6 +375,8 @@ End Sub
 ' ===============================================================
 ' (Abrechnungsjahr wird aus mod_Const.HoleAbrechnungsjahr bezogen)
 ' ===============================================================
+
+
 
 
 

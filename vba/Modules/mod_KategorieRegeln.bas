@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_KategorieRegeln
-' ZWECK: Kategorieverwaltung + Konsistenzprüfung
+' ZWECK: Kategorieverwaltung + Konsistenzpr?fung
 ' AKTUALISIERT: Spalte O (Guthabenfaehig) wurde entfernt
 ' ***************************************************************
 
@@ -16,7 +16,7 @@ Public Sub Initialisiere_Kategorie_Regeln()
     Set ws = ThisWorkbook.Worksheets("Daten")
 
     ' Auswahlfelder auf festen Bereich anwenden
-    ' AKTUALISIERT: Spalte O ist jetzt Fälligkeit (war vorher Guthabenfaehig)
+    ' AKTUALISIERT: Spalte O ist jetzt F?lligkeit (war vorher Guthabenfaehig)
     Call SetListValidationRange(ws.Range("K" & FIRST_DATA_ROW & ":K" & FIRST_DATA_ROW + MAX_CATEGORY_ROWS), "lst_EinnahmeAusgabe")
     Call SetListValidationRange(ws.Range("M" & FIRST_DATA_ROW & ":M" & FIRST_DATA_ROW + MAX_CATEGORY_ROWS), "lst_Prioritaet")
     Call SetListValidationRange(ws.Range("O" & FIRST_DATA_ROW & ":O" & FIRST_DATA_ROW + MAX_CATEGORY_ROWS), "lst_Faelligkeit")
@@ -36,7 +36,7 @@ Private Sub SetListValidationRange(targetRange As Range, listName As String)
 End Sub
 
 ' =====================================================
-' Konsistenzprüfung bei gleichen Kategorien
+' Konsistenzpr?fung bei gleichen Kategorien
 ' =====================================================
 Public Sub PruefeUndSynchronisiere_Kategorie(ByVal ws As Worksheet, ByVal changedRow As Long)
 
@@ -51,15 +51,15 @@ Public Sub PruefeUndSynchronisiere_Kategorie(ByVal ws As Worksheet, ByVal change
 
     Application.EnableEvents = False
 
-    ' Referenzwerte übernehmen (AKTUALISIERT - ohne Guthabenfaehig)
+    ' Referenzwerte ?bernehmen (AKTUALISIERT - ohne Guthabenfaehig)
     ws.Cells(changedRow, DATA_CAT_COL_EINAUS).value = ws.Cells(refRow, DATA_CAT_COL_EINAUS).value
     ws.Cells(changedRow, DATA_CAT_COL_ZIELSPALTE).value = ws.Cells(refRow, DATA_CAT_COL_ZIELSPALTE).value
     ws.Cells(changedRow, DATA_CAT_COL_FAELLIGKEIT).value = ws.Cells(refRow, DATA_CAT_COL_FAELLIGKEIT).value
 
     MsgBox _
         "Die Kategorie '" & katName & "' existiert bereits." & vbCrLf & vbCrLf & _
-        "Einnahme/Ausgabe, Zielspalte und Fälligkeit " & _
-        "wurden automatisch übernommen, um Inkonsistenzen zu vermeiden.", _
+        "Einnahme/Ausgabe, Zielspalte und F?lligkeit " & _
+        "wurden automatisch ?bernommen, um Inkonsistenzen zu vermeiden.", _
         vbInformation, "Kategorie vereinheitlicht"
 
     Application.EnableEvents = True
@@ -84,6 +84,8 @@ Private Function FindeErsteKategorieZeile(ws As Worksheet, _
 
     FindeErsteKategorieZeile = 0
 End Function
+
+
 
 
 

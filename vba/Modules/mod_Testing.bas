@@ -5,7 +5,7 @@ Option Explicit
 ' MODUL: mod_Testing
 ' VERSION: 3.0 - 07.06.2026
 '
-' ZWECK: Komplettes Test-Framework für das Kassenbuch.
+' ZWECK: Komplettes Test-Framework f?r das Kassenbuch.
 '
 ' Vereinigt die frueheren Module mod_Testing + mod_TestReset.
 '
@@ -30,9 +30,9 @@ Option Explicit
 '
 ' TEST-SZENARIEN (in den generierten CSVs):
 '   A: Fehlende MB-Zahlung Jan 2024 -> ROT (Nutzer verneint)
-'   B: Fehlende MB-Zahlung Jan 2024 -> GRÜN (Nutzer bestätigt)
-'   C: Fehlende Brauchwasser Jan 2024 -> GRÜN (bestätigt)
-'   D: Vorauszahlung MB Dez 2024 -> auto-GRÜN Jan 2025
+'   B: Fehlende MB-Zahlung Jan 2024 -> GR?N (Nutzer best?tigt)
+'   C: Fehlende Brauchwasser Jan 2024 -> GR?N (best?tigt)
+'   D: Vorauszahlung MB Dez 2024 -> auto-GR?N Jan 2025
 '
 Public Sub TestReset_VorCSVImport()
 
@@ -137,7 +137,7 @@ Public Sub TestReset_VorCSVImport()
     End If
 
     ' =============================================================
-    ' 2a. DASHBOARD MITGLIEDERZAHLUNGEN löschen (ganzes Blatt)
+    ' 2a. DASHBOARD MITGLIEDERZAHLUNGEN l?schen (ganzes Blatt)
     ' =============================================================
     Dim wsDash As Worksheet
     On Error Resume Next
@@ -193,7 +193,7 @@ Public Sub TestReset_VorCSVImport()
     End If
 
     ' =============================================================
-    ' 4a. ENTITYKEY-TABELLE löschen (optional per MsgBox)
+    ' 4a. ENTITYKEY-TABELLE l?schen (optional per MsgBox)
     ' =============================================================
     Dim ekLoeschen As Boolean
     ekLoeschen = False
@@ -211,11 +211,44 @@ Public Sub TestReset_VorCSVImport()
         Application.ScreenUpdating = False
 
         If ekAntwort = vbYes Then
-            wsDaten.Range(wsDaten.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
-                          wsDaten.Cells(ekLastRow, EK_COL_DEBUG)).Clear
+            ' v8.3: Kompletter EntityKey-Bereich bis Blattende - inkl.
+            '       Formatierung (Zebra), bedingter Formatierung (Ampel),
+            '       Datenueberpruefung, Rahmen, Ausrichtung.
+            Dim ekRange As Range
+            Set ekRange = wsDaten.Range( _
+                wsDaten.Cells(EK_START_ROW, EK_COL_ENTITYKEY), _
+                wsDaten.Cells(wsDaten.Rows.count, EK_COL_DEBUG))
+
+            ' Bedingte Formatierungen entfernen (Zebra + Ampel)
+            On Error Resume Next
+            ekRange.FormatConditions.Delete
+            ' Datenueberpruefung entfernen
+            ekRange.Validation.Delete
+            ' Zellverbunde aufheben (falls vorhanden)
+            ekRange.UnMerge
+            On Error GoTo ErrorHandler
+
+            ' Werte + Kommentare + Standard-Formate loeschen
+            ekRange.Clear
+
+            ' Explizit Interior/Font/Border/Alignment auf Default zuruecksetzen
+            With ekRange
+                .Interior.ColorIndex = xlColorIndexNone
+                .Interior.Pattern = xlNone
+                .Font.ColorIndex = xlAutomatic
+                .Font.Bold = False
+                .Font.Italic = False
+                .Font.Underline = xlUnderlineStyleNone
+                .Borders.LineStyle = xlNone
+                .HorizontalAlignment = xlGeneral
+                .VerticalAlignment = xlBottom
+                .NumberFormat = "General"
+                .WrapText = False
+            End With
+
             ekLoeschen = True
             Debug.Print "[TestReset] EntityKey-Tabelle: " & _
-                (ekLastRow - EK_START_ROW + 1) & " Eintr" & ChrW(228) & "ge gel" & ChrW(246) & "scht."
+                (ekLastRow - EK_START_ROW + 1) & " Eintrï¿½ge + Formatierung gelï¿½scht."
         Else
             Debug.Print "[TestReset] EntityKey-Tabelle: beibehalten (Benutzerauswahl)."
         End If
@@ -688,7 +721,7 @@ Public Sub GeneriereTestCSVDateien()
     If UBound(uniqueParz) >= 1 Then testParz2 = CStr(uniqueParz(1))
     If UBound(uniqueParz) >= 2 Then testParz3 = CStr(uniqueParz(2))
 
-    ' Brauchwasser-Kategorie suchen (für Szenario C)
+    ' Brauchwasser-Kategorie suchen (f?r Szenario C)
     Dim bwIdx As Long: bwIdx = 0
     For k = 1 To anzKat
         If InStr(1, LCase(kName(k)), "brauchwasser") > 0 Or _
@@ -741,7 +774,7 @@ Public Sub GeneriereTestCSVDateien()
                         If kIstMB(k) And jahr = 2024 And monat = 1 Then skipZeile = True
                     End If
 
-                    ' === SZENARIO B: Parzelle 3 kein MB Jan 2024 (GRÜN) ===
+                    ' === SZENARIO B: Parzelle 3 kein MB Jan 2024 (GR?N) ===
                     If testParz3 <> "" And mParzelle(m) = testParz3 Then
                         If kIstMB(k) And jahr = 2024 And monat = 1 Then skipZeile = True
                     End If
@@ -763,7 +796,7 @@ Public Sub GeneriereTestCSVDateien()
 
                     If skipZeile Then GoTo NaechsteKat
 
-                    ' === SZENARIO D: Vorauszahlung Dez 2024 für Jan 2025 ===
+                    ' === SZENARIO D: Vorauszahlung Dez 2024 f?r Jan 2025 ===
                     If testParz1 <> "" And mParzelle(m) = testParz1 Then
                         If jahr = 2024 And monat = 12 Then
                             If kIstMB(k) Or (bwIdx > 0 And k = bwIdx) Then
@@ -994,7 +1027,7 @@ End Sub
 
 
 ' ===============================================================
-' SEKTION 6: HILFSFUNKTIONEN (privat, für CSV-Generator)
+' SEKTION 6: HILFSFUNKTIONEN (privat, f?r CSV-Generator)
 ' ===============================================================
 
 Private Function Feld(ByVal wert As String) As String
@@ -1018,7 +1051,7 @@ Private Function CSVHeaderZeile() As String
         Feld("Kontonummer/IBAN") & ";" & _
         Feld("BIC (SWIFT-Code)") & ";" & _
         Feld("Betrag") & ";" & _
-        Feld("Währung")
+        Feld("W?hrung")
 End Function
 
 Private Function CSVZeile( _
@@ -1100,7 +1133,7 @@ Private Sub SchreibeUTF8Datei(ByVal pfad As String, ByVal inhalt As String)
     utf8Stream.Open
     utf8Stream.WriteText inhalt
 
-    ' BOM entfernen: In Binary umschalten, 3 Bytes überspringen
+    ' BOM entfernen: In Binary umschalten, 3 Bytes ?berspringen
     utf8Stream.Position = 0
     utf8Stream.Type = 1
     utf8Stream.Position = 3
@@ -1120,6 +1153,8 @@ Private Sub SchreibeUTF8Datei(ByVal pfad As String, ByVal inhalt As String)
     Set utf8Stream = Nothing
     Set binStream = Nothing
 End Sub
+
+
 
 
 

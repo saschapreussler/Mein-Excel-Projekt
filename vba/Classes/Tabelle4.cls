@@ -20,7 +20,7 @@ Option Explicit
 ' ===============================================================
 
 Private Sub Worksheet_Activate()
-    ' ComboBox befüllen und Filter zurücksetzen
+    ' ComboBox bef?llen und Filter zur?cksetzen
     Call mod_Vereinskasse_Filter.BefuelleVereinskasseComboBox(Me)
 
     ' v8.2: AutoFilter B26:T26 sicherstellen (selbstheilend).
@@ -38,7 +38,7 @@ Private Sub cbo_MonatFilter_VK_Change()
     ' Filter anwenden basierend auf ComboBox-Auswahl
     ' HINWEIS: Me.cbo_MonatFilter_VK funktioniert NICHT,
     '          weil die ComboBox zur Laufzeit erstellt wird.
-    '          Daher Zugriff über OLEObjects().
+    '          Daher Zugriff ?ber OLEObjects().
     Dim oleObj As OLEObject
     On Error Resume Next
     Set oleObj = Me.OLEObjects("cbo_MonatFilter_VK")
@@ -48,6 +48,7 @@ Private Sub cbo_MonatFilter_VK_Change()
     
     Call mod_Vereinskasse_Filter.WendeVereinskasseFilterAn(Me, CStr(oleObj.Object.value))
 End Sub
+
 
 
 

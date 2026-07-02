@@ -4,10 +4,10 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Event
 ' VERSION: 1.0 - 15.03.2026
-' ZWECK: Verarbeitet manuelle Änderungen auf dem Übersicht-Blatt
-'        - Gelb -> Grün wenn Nutzer Soll-Betrag eintraegt
-'        - MsgBox: Soll-Betrag für Folgemonat übernehmen?
-'        - Automatische Übernahme in Folgemonate gleicher Parzelle+Kategorie
+' ZWECK: Verarbeitet manuelle ?nderungen auf dem ?bersicht-Blatt
+'        - Gelb -> Gr?n wenn Nutzer Soll-Betrag eintraegt
+'        - MsgBox: Soll-Betrag f?r Folgemonat ?bernehmen?
+'        - Automatische ?bernahme in Folgemonate gleicher Parzelle+Kategorie
 '        - Wird von DieseArbeitsmappe.Workbook_SheetChange aufgerufen
 ' ***************************************************************
 
@@ -30,9 +30,9 @@ Private Const AMPEL_GELB As Long = 10092543              ' RGB(255, 255, 153)
 Private Const AMPEL_ROT As Long = 13408767               ' RGB(255, 204, 204)
 
 ' ---------------------------------------------------------------
-' Snapshot der zuletzt selektierten IST-Zelle (für Rollback bei
+' Snapshot der zuletzt selektierten IST-Zelle (f?r Rollback bei
 ' Abbruch der Datums-Inputbox in Punkt 10).
-' Wird gefüllt von MerkeAktuellenUebersichtZustand (SheetSelectionChange).
+' Wird gef?llt von MerkeAktuellenUebersichtZustand (SheetSelectionChange).
 ' ---------------------------------------------------------------
 Private g_SnapAdresse As String
 Private g_SnapIst As Variant
@@ -43,8 +43,8 @@ Private g_SnapBemerkung As Variant
 
 ' ===============================================================
 ' Wird von Workbook_SheetChange aufgerufen wenn eine Zelle
-' auf dem Übersicht-Blatt geändert wurde.
-' Prüft ob eine gelbe Soll-Zelle (Spalte E) manuell befüllt wurde.
+' auf dem ?bersicht-Blatt ge?ndert wurde.
+' Pr?ft ob eine gelbe Soll-Zelle (Spalte E) manuell bef?llt wurde.
 ' ===============================================================
 Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     
@@ -56,7 +56,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     ' Nur Datenzeilen
     If Target.Row < UEBERSICHT_START_ROW Then Exit Sub
     
-    ' Punkt 10: Manuelle IST-Änderung -> Datumsabfrage
+    ' Punkt 10: Manuelle IST-?nderung -> Datumsabfrage
     If Target.Column = UEB_COL_IST Then
         Call VerarbeiteIstAenderung(Target)
         Exit Sub
@@ -68,7 +68,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     ' Nur wenn Zelle aktuell hell-gelb ist (= variabel, editierbar)
     If Target.Interior.color <> FARBE_HELLGELB_MANUELL Then Exit Sub
     
-    ' Neuer Wert prüfen
+    ' Neuer Wert pr?fen
     Dim neuerWert As Double
     neuerWert = 0
     
@@ -76,7 +76,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
         neuerWert = CDbl(Target.value)
     End If
     
-    ' Wenn Wert gelöscht oder 0 -> nichts tun (bleibt gelb)
+    ' Wenn Wert gel?scht oder 0 -> nichts tun (bleibt gelb)
     If neuerWert <= 0 Then Exit Sub
     
     Dim wsUeb As Worksheet
@@ -99,7 +99,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     wsUeb.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ErrorHandler
     
-    ' 1. Aktuelle Zelle: Gelb -> Grün + Bemerkung anpassen
+    ' 1. Aktuelle Zelle: Gelb -> Gr?n + Bemerkung anpassen
     Target.Interior.color = AMPEL_GRUEN
     
     Dim bemerkung As String
@@ -120,7 +120,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     End If
     wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value = bemerkung
     
-    ' 2. Prüfen ob IST den neuen Soll erreicht -> Status aktualisieren
+    ' 2. Pr?fen ob IST den neuen Soll erreicht -> Status aktualisieren
     Dim istWert As Double
     istWert = val(CStr(wsUeb.Cells(zeile, UEB_COL_IST).value))
     
@@ -129,11 +129,11 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
         wsUeb.Cells(zeile, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
     End If
     
-    ' 3. Folgemonat-Übernahme: MsgBox fragen
+    ' 3. Folgemonat-?bernahme: MsgBox fragen
     Dim lastRow As Long
     lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
     
-    ' Prüfen ob es ueberhaupt Folgezeilen für diese Parzelle+Kategorie gibt
+    ' Pr?fen ob es ueberhaupt Folgezeilen f?r diese Parzelle+Kategorie gibt
     Dim hatFolgezeilen As Boolean
     hatFolgezeilen = False
     Dim rCheck As Long
@@ -147,7 +147,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     Next rCheck
     
     If hatFolgezeilen Then
-        ' MsgBox: Soll-Betrag für Folgezahlungen übernehmen?
+        ' MsgBox: Soll-Betrag f?r Folgezahlungen ?bernehmen?
         Dim antwort As VbMsgBoxResult
         antwort = MsgBox( _
             "Der Soll-Betrag f" & ChrW(252) & "r '" & kategorie & "' (Parzelle " & parzelle & _
@@ -183,7 +183,7 @@ End Sub
 
 ' ===============================================================
 ' Uebertraegt den Soll-Betrag in alle Folgezeilen mit gleicher
-' Parzelle+Kategorie. Setzt Farbe auf Grün + Bemerkung.
+' Parzelle+Kategorie. Setzt Farbe auf Gr?n + Bemerkung.
 ' ===============================================================
 Private Sub UebernehmeSollInFolgemonate(ByVal wsUeb As Worksheet, _
                                          ByVal startZeile As Long, _
@@ -194,7 +194,7 @@ Private Sub UebernehmeSollInFolgemonate(ByVal wsUeb As Worksheet, _
     
     Dim r As Long
     For r = startZeile + 1 To lastRow
-        ' Parzelle + Kategorie müssen uebereinstimmen
+        ' Parzelle + Kategorie m?ssen uebereinstimmen
         If CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value) = parzelle Then
             If StrComp(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value), kategorie, vbTextCompare) = 0 Then
                 ' Nur wenn Zelle noch gelb ist (= noch nicht manuell gesetzt)
@@ -202,7 +202,7 @@ Private Sub UebernehmeSollInFolgemonate(ByVal wsUeb As Worksheet, _
                     ' Soll-Wert setzen
                     wsUeb.Cells(r, UEB_COL_SOLL).value = sollWert
                     
-                    ' Gelb -> Grün
+                    ' Gelb -> Gr?n
                     wsUeb.Cells(r, UEB_COL_SOLL).Interior.color = AMPEL_GRUEN
                     
                     ' Bemerkung aktualisieren
@@ -274,7 +274,7 @@ End Function
 ' PUNKT 10: Snapshot der aktuellen IST-Zelle merken
 ' Wird von DieseArbeitsmappe.Workbook_SheetSelectionChange aufgerufen,
 ' damit wir bei Abbruch der Datums-Inputbox den Original-Zustand
-' wiederherstellen können.
+' wiederherstellen k?nnen.
 ' ===============================================================
 Public Sub MerkeAktuellenUebersichtZustand(ByVal Target As Range)
     On Error Resume Next
@@ -295,11 +295,11 @@ End Sub
 
 
 ' ===============================================================
-' PUNKT 10: Manuelle IST-Änderung verarbeiten
+' PUNKT 10: Manuelle IST-?nderung verarbeiten
 ' - Inputbox: Wann wurde gezahlt? (Datum)
-' - Bei gueltigem Datum: Status GRÜN, Bemerkung "manuell geändert,
+' - Bei gueltigem Datum: Status GR?N, Bemerkung "manuell ge?ndert,
 '   Zahlungsdatum TT.MM.JJJJ", Dashboard updaten
-' - Bei Abbruch / ungueltig: ALLES zurücksetzen aus Snapshot
+' - Bei Abbruch / ungueltig: ALLES zur?cksetzen aus Snapshot
 ' ===============================================================
 Private Sub VerarbeiteIstAenderung(ByVal Target As Range)
     On Error GoTo ErrorHandler
@@ -309,7 +309,7 @@ Private Sub VerarbeiteIstAenderung(ByVal Target As Range)
     Dim zeile As Long
     zeile = Target.Row
     
-    ' Status der Zeile prüfen - nur wenn Zelle einen Inhalt hat
+    ' Status der Zeile pr?fen - nur wenn Zelle einen Inhalt hat
     Dim neuerWert As Variant
     neuerWert = Target.value
     
@@ -317,10 +317,10 @@ Private Sub VerarbeiteIstAenderung(ByVal Target As Range)
     neuerIst = 0
     If IsNumeric(neuerWert) Then neuerIst = CDbl(neuerWert)
     
-    ' Wenn Löschen oder 0 -> nichts tun (User darf zurücksetzen)
+    ' Wenn L?schen oder 0 -> nichts tun (User darf zur?cksetzen)
     If neuerIst <= 0 Then Exit Sub
     
-    ' Snapshot prüfen - nur weiter wenn wir die alten Werte haben
+    ' Snapshot pr?fen - nur weiter wenn wir die alten Werte haben
     Dim hatSnapshot As Boolean
     hatSnapshot = (g_SnapAdresse = Target.Address(External:=True))
     
@@ -362,14 +362,14 @@ Private Sub VerarbeiteIstAenderung(ByVal Target As Range)
     End If
     
     If Not datumOk Then
-        ' Abbruch oder ungueltiges Datum -> ALLES zurücksetzen
+        ' Abbruch oder ungueltiges Datum -> ALLES zur?cksetzen
         If hatSnapshot Then
             Target.value = g_SnapIst
             ws.Cells(zeile, UEB_COL_STATUS).value = g_SnapStatus
             ws.Cells(zeile, UEB_COL_STATUS).Interior.color = g_SnapStatusFarbe
             ws.Cells(zeile, UEB_COL_BEMERKUNG).value = g_SnapBemerkung
         Else
-            ' Kein Snapshot - vorsichtig zurücksetzen
+            ' Kein Snapshot - vorsichtig zur?cksetzen
             Target.value = ""
         End If
         
@@ -377,7 +377,7 @@ Private Sub VerarbeiteIstAenderung(ByVal Target As Range)
                "Die " & ChrW(196) & "nderung wurde zur" & ChrW(252) & "ckgesetzt.", _
                vbInformation, "Abgebrochen"
     Else
-        ' Gueltiges Datum -> Status GRÜN + Bemerkung
+        ' Gueltiges Datum -> Status GR?N + Bemerkung
         ws.Cells(zeile, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
         ws.Cells(zeile, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
         
@@ -443,6 +443,8 @@ Private Function FuegeBemerkungEinmalHinzu(ByVal basis As String, _
 
     FuegeBemerkungEinmalHinzu = res & " | " & neuTeil
 End Function
+
+
 
 
 
