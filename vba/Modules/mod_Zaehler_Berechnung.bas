@@ -1,10 +1,10 @@
-Attribute VB_Name = "mod_Zaehler_Berechnung"
+﻿Attribute VB_Name = "mod_Zaehler_Berechnung"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Zaehler_Berechnung
 ' Ausgelagert aus mod_ZaehlerLogik
-' enth?lt: CalculateAllZaehlerVerbrauch, CalculateSingleZaehler
+' enthält: CalculateAllZaehlerVerbrauch, CalculateSingleZaehler
 ' ===============================================================
 
 ' --- Konstanten (lokal dupliziert) ---
@@ -273,7 +273,7 @@ Private Sub CalculateSingleZaehler( _
         End If
         
         ' ***************************************************************
-        ' LOGIK F?r SPALTE E (BEMERKUNG BEI ZaehlerWECHSEL)
+        ' LOGIK Für SPALTE E (BEMERKUNG BEI ZaehlerWECHSEL)
         ' ***************************************************************
         Dim oldBemerkung As String
         Dim newHistoryText As String

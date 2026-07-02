@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_KategorieEngine_Normalize"
+﻿Attribute VB_Name = "mod_KategorieEngine_Normalize"
 Option Explicit
 
 Public Function NormalizeBankkontoZeile(ByVal wsBK As Worksheet, _
@@ -17,7 +17,7 @@ Public Function NormalizeText(ByVal inputText As String) As String
     txt = LCase(Trim(inputText))
     If txt = "" Then NormalizeText = "": Exit Function
 
-    ' Umlaute ersetzen (f?r Matching-Normalisierung)
+    ' Umlaute ersetzen (für Matching-Normalisierung)
     txt = Replace(txt, ChrW(228), "ae")  ' ?
     txt = Replace(txt, ChrW(246), "oe")  ' ?
     txt = Replace(txt, ChrW(252), "ue")  ' ?

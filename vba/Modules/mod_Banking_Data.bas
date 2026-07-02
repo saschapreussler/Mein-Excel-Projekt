@@ -1,23 +1,23 @@
-Attribute VB_Name = "mod_Banking_Data"
+﻿Attribute VB_Name = "mod_Banking_Data"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Data (ORCHESTRATOR)
 ' VERSION: 5.0 - Modularisiert
-' ?nderung v5.0:
+' änderung v5.0:
 '   - Formatierung ausgelagert nach mod_Banking_Format
 '   - Import-Report ausgelagert nach mod_Banking_Report
-'   - Dieses Modul: Import-Logik, Pr?fungen, Loesch-/Aktualisierung
-' ?nderung v4.0:
+'   - Dieses Modul: Import-Logik, Prüfungen, Loesch-/Aktualisierung
+' änderung v4.0:
 '   - NEU: Schritt 7 in Importiere_Kontoauszug:
-'     ?bersicht generieren nach CSV-Import (nur bei neuen Daten)
+'     übersicht generieren nach CSV-Import (nur bei neuen Daten)
 '     Aufruf: mod_Uebersicht_Generator.GeneriereUebersicht
-' ?nderung v3.9:
+' änderung v3.9:
 '   - Setze_Monat_Periode ENTFERNT (verschoben nach
 '     mod_Zahlungspruefung.SetzeMonatPeriode)
 '   - HoleFaelligkeitFuerKategorie ENTFERNT (verschoben nach
 '     mod_Zahlungspruefung.HoleFaelligkeitFuerKategorie)
-'   - Aufruf in Importiere_Kontoauszug ge?ndert auf
+'   - Aufruf in Importiere_Kontoauszug geändert auf
 '     mod_Zahlungspruefung.SetzeMonatPeriode
 ' ===============================================================
 
@@ -113,7 +113,7 @@ Public Sub Importiere_Kontoauszug()
     Set wsTemp = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.count))
     If Err.Number <> 0 Then
         MsgBox "Fehler beim Erstellen des Temp-Blatts: " & Err.Description & vbCrLf & vbCrLf & _
-           "Bitte Pr?fen Sie ob die Arbeitsmappe gesch?tzt ist.", vbCritical
+           "Bitte Prüfen Sie ob die Arbeitsmappe geschützt ist.", vbCritical
         Err.Clear
         Application.DisplayAlerts = True
         Application.ScreenUpdating = True
@@ -165,8 +165,8 @@ Public Sub Importiere_Kontoauszug()
     
     ' ============================================================
     ' v5.1: Jahrpruefung - CSV-Daten mit Abrechnungsjahr abgleichen
-    ' VOR dem Eintragen ins Bankkonto pr?fen ob die Jahre uebereinstimmen
-    ' v6.0: Abrechnungsjahr aus Einstellungen statt Startmen?!F1
+    ' VOR dem Eintragen ins Bankkonto prüfen ob die Jahre uebereinstimmen
+    ' v6.0: Abrechnungsjahr aus Einstellungen statt Startmenü!F1
     ' ============================================================
     Dim wsEinstImport As Worksheet
     On Error Resume Next
@@ -377,11 +377,11 @@ ImportAbschluss:
     Err.Clear
     On Error GoTo 0
     
-    ' 7. ?bersicht IMMER aktualisieren (fasst ALLE vorhandenen Daten zusammen)
+    ' 7. übersicht IMMER aktualisieren (fasst ALLE vorhandenen Daten zusammen)
     '    v4.0: NEU - Uebersichtsblatt nach jedem Import generieren
     '    v4.1: stummModus=True da Import bereits eigene Erfolgsmeldung zeigt
     '    v4.2: On Error Resume Next ENTFERNT - GeneriereUebersicht hat eigenen ErrorHandler
-    '    v4.3: Bedingung rowsProcessed>0 ENTFERNT - ?bersicht zeigt ALLE Daten,
+    '    v4.3: Bedingung rowsProcessed>0 ENTFERNT - übersicht zeigt ALLE Daten,
     '          nicht nur neu importierte. Auch bei 100% Duplikaten aktualisieren!
     Debug.Print "[Import] Starte " & ChrW(220) & "bersicht-Generierung..."
     Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
@@ -396,7 +396,7 @@ ImportAbschluss:
     ' WICHTIG: AllowFiltering/AllowSorting damit AutoFilter Zeile 29 klickbar bleibt!
     Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsZiel)
     
-    ' 8. Formeln wiederherstellen (k?nnten durch Import/Sort ?berschrieben sein)
+    ' 8. Formeln wiederherstellen (könnten durch Import/Sort Überschrieben sein)
     Call mod_Banking_Format.StelleFormelnWiederHer(wsZiel)
     
     wsZiel.Activate
@@ -431,7 +431,7 @@ ImportAbschluss:
     
     msgText = "CSV-Import Ergebnis:" & vbCrLf & _
               String(30, "=") & vbCrLf & vbCrLf & _
-              "Datens?tze in CSV:" & vbTab & rowsTotalInFile & vbCrLf & _
+              "Datensätze in CSV:" & vbTab & rowsTotalInFile & vbCrLf & _
               "Importiert:" & vbTab & vbTab & rowsProcessed & " / " & rowsTotalInFile & vbCrLf & _
               "Duplikate:" & vbTab & vbTab & rowsIgnoredDupe & vbCrLf & _
               "Fehler:" & vbTab & vbTab & vbTab & rowsFailedImport & vbCrLf & vbCrLf
@@ -439,19 +439,19 @@ ImportAbschluss:
     If rowsFailedImport > 0 Then
         msgText = msgText & "ACHTUNG: " & rowsFailedImport & " Zeilen konnten nicht verarbeitet werden!"
     ElseIf rowsProcessed = 0 And rowsIgnoredDupe > 0 Then
-        msgText = msgText & "Alle Eintr?ge waren bereits in der Datenbank vorhanden."
+        msgText = msgText & "Alle Einträge waren bereits in der Datenbank vorhanden."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe = 0 Then
-        msgText = msgText & "Alle Datens?tze wurden erfolgreich importiert."
+        msgText = msgText & "Alle Datensätze wurden erfolgreich importiert."
     ElseIf rowsProcessed > 0 And rowsIgnoredDupe > 0 Then
-        msgText = msgText & rowsProcessed & " neue Datens?tze importiert," & vbCrLf & _
-                  rowsIgnoredDupe & " Duplikate ?bersprungen."
+        msgText = msgText & rowsProcessed & " neue Datensätze importiert," & vbCrLf & _
+                  rowsIgnoredDupe & " Duplikate übersprungen."
     End If
     
     MsgBox msgText, msgIcon, msgTitle
     
     ' ============================================================
-    ' ENTITYKEY-Pr?fung: Spalte W (EntityRole) vollst?ndig?
-    ' Nur Pr?fen wenn tats?chlich neue Datens?tze importiert wurden
+    ' ENTITYKEY-Prüfung: Spalte W (EntityRole) vollständig?
+    ' Nur Prüfen wenn tatsächlich neue Datensätze importiert wurden
     ' ============================================================
     If rowsProcessed > 0 Then
         Call PruefeUnvollstaendigeEntityKeys
@@ -469,8 +469,8 @@ End Sub
 
 
 ' ===============================================================
-' 1b. ENTITYKEY-Pr?fung NACH IMPORT
-'     pr?ft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
+' 1b. ENTITYKEY-Prüfung NACH IMPORT
+'     prüft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
 '     eine vollstaendige Zuordnung in Spalte W (EntityRole) haben.
 '     Bei fehlenden Eintraegen: MsgBox mit Angebot zur Navigation.
 ' ===============================================================
@@ -496,7 +496,7 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
     ibanOhneRole = ""
     
     For r = EK_START_ROW To lastRow
-        ' Nur Zeilen Pr?fen die eine IBAN haben
+        ' Nur Zeilen Prüfen die eine IBAN haben
         If Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)) <> "" Then
             ' Spalte W (EntityRole) leer?
             If Trim(CStr(wsDaten.Cells(r, EK_COL_ROLE).value)) = "" Then
@@ -505,7 +505,7 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
                 ' Erste leere Zeile merken
                 If ersteLeereZeile = 0 Then ersteLeereZeile = r
                 
-                ' Maximal 5 IBANs f?r die Anzeige sammeln
+                ' Maximal 5 IBANs für die Anzeige sammeln
                 If anzahlOhneRole <= 5 Then
                     Dim kontoname As String
                     kontoname = Trim(CStr(wsDaten.Cells(r, EK_COL_KONTONAME).value))
@@ -521,7 +521,7 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
         End If
     Next r
     
-    ' Keine fehlenden Eintr?ge -> nichts tun
+    ' Keine fehlenden Einträge -> nichts tun
     If anzahlOhneRole = 0 Then Exit Sub
     
     ' MsgBox zusammenbauen
@@ -537,7 +537,7 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
     hinweis = hinweis & vbCrLf & vbCrLf & _
               "Ohne diese Zuordnung kann die Kategorie-Engine die Buchungen " & _
               "nicht korrekt verarbeiten." & vbCrLf & vbCrLf & _
-              "M?chten Sie die fehlenden Angaben jetzt vervollst?ndigen?"
+              "Möchten Sie die fehlenden Angaben jetzt vervollständigen?"
     
     Dim antwort As VbMsgBoxResult
     antwort = MsgBox(hinweis, vbYesNo + vbExclamation, _
@@ -560,7 +560,7 @@ End Sub
 
 
 ' ===============================================================
-' 8b. Alle Bankkontozeilen L?schen
+' 8b. Alle Bankkontozeilen Löschen
 ' ===============================================================
 Public Sub LoescheAlleBankkontoZeilen()
     
@@ -588,7 +588,7 @@ Public Sub LoescheAlleBankkontoZeilen()
         ws.Range(ws.Cells(BK_START_ROW, 1), ws.Cells(lastRow, 26)).Interior.ColorIndex = xlNone
     End If
     
-    ' Formeln wiederherstellen (wurden durch ClearContents gel?scht)
+    ' Formeln wiederherstellen (wurden durch ClearContents gelöscht)
     Call mod_Banking_Format.StelleFormelnWiederHer(ws)
     
     Call mod_Banking_Format.Schuetze_BankkontoBlatt(ws)

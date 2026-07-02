@@ -1,13 +1,13 @@
-Attribute VB_Name = "mod_Navigation"
+﻿Attribute VB_Name = "mod_Navigation"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Navigation
 ' VERSION: 1.0 - 18.04.2026
 ' ZWECK: Navigation zwischen Tabellenblaettern
-'        - Startseite -> alle Bl?tter (Button-Handler)
-'        - Alle Bl?tter -> Startseite (Home-Button)
-'        - Home-Buttons auf allen Bl?ttern erstellen/entfernen
+'        - Startseite -> alle Blätter (Button-Handler)
+'        - Alle Blätter -> Startseite (Home-Button)
+'        - Home-Buttons auf allen Blättern erstellen/entfernen
 ' ===============================================================
 
 Private Const HOME_BTN_NAME As String = "btn_Home"
@@ -29,7 +29,7 @@ End Sub
 
 
 ' ===============================================================
-' NAVIGATION: Einzelne Bl?tter aktivieren (Button-Handler)
+' NAVIGATION: Einzelne Blätter aktivieren (Button-Handler)
 ' ===============================================================
 Public Sub NavigiereZu_Bankkonto()
     AktiviereTabellenblatt WS_BANKKONTO
@@ -132,7 +132,7 @@ End Sub
 
 
 ' ===============================================================
-' HOME-BUTTONS: Auf allen Bl?ttern erstellen (ausser Startseite)
+' HOME-BUTTONS: Auf allen Blättern erstellen (ausser Startseite)
 ' Wird bei Workbook_Open aufgerufen
 ' ===============================================================
 Public Sub SetzeHomeButtonsAufAllenBlaettern()
@@ -142,13 +142,13 @@ Public Sub SetzeHomeButtonsAufAllenBlaettern()
     
     For Each ws In ThisWorkbook.Worksheets
         If ws.Name <> startName Then
-            ' Navigationszeilen-H?he korrigieren (falls bereits migriert)
+            ' Navigationszeilen-Höhe korrigieren (falls bereits migriert)
             On Error Resume Next
             If Application.WorksheetFunction.CountA(ws.Rows(1)) = 0 Then
                 ws.Unprotect PASSWORD:=PASSWORD
                 ws.Rows(1).RowHeight = 30
-                ' Auf der ?bersicht liegt in Zeile 2 die Monats-Register-Leiste,
-                ' deshalb braucht sie dort mehr Platz als der schmale Spacer (3) auf den anderen Bl?ttern.
+                ' Auf der übersicht liegt in Zeile 2 die Monats-Register-Leiste,
+                ' deshalb braucht sie dort mehr Platz als der schmale Spacer (3) auf den anderen Blättern.
                 If ws.Name = WS_UEBERSICHT() Then
                     ws.Rows(2).RowHeight = 26
                 Else
@@ -176,7 +176,7 @@ Public Sub ErstelleHomeButton(ByVal ws As Worksheet)
     
     On Error GoTo BtnFehler
     
-    ' Gr??e abh?ngig vom Blatt-Typ anpassen
+    ' Größe abhängig vom Blatt-Typ anpassen
     Dim btnW As Double, btnH As Double, fontSize As Double
     Select Case ws.Name
         Case WS_BANKKONTO
@@ -188,7 +188,7 @@ Public Sub ErstelleHomeButton(ByVal ws As Worksheet)
         Case WS_FINANZ_UEBERSICHT()
             btnW = 80: btnH = 26: fontSize = 10
         Case Else
-            ' Standard f?r alle anderen Bl?tter
+            ' Standard für alle anderen Blätter
             btnW = 88: btnH = 26: fontSize = 10
     End Select
     
@@ -253,11 +253,11 @@ End Sub
 
 
 ' ===============================================================
-' MIGRATION: 2 Zeilen oben einf?gen f?r Navigationsleiste
+' MIGRATION: 2 Zeilen oben einfügen für Navigationsleiste
 ' Wird einmalig aufgerufen wenn Blatt noch keine Navigationszeilen hat.
-' Pr?ft ob Zeile 1 leer ist (= bereits migriert) oder Daten enth?lt.
-' Betroffene Bl?tter: Bankkonto, Strom, Wasser, Einstellungen,
-'                      Zahlungs?bersicht, Finanz-?bersicht
+' Prüft ob Zeile 1 leer ist (= bereits migriert) oder Daten enthält.
+' Betroffene Blätter: Bankkonto, Strom, Wasser, Einstellungen,
+'                      Zahlungsübersicht, Finanz-übersicht
 ' ===============================================================
 Public Sub MigriereNavigationszeilen()
     Dim blaetter As Variant
@@ -277,7 +277,7 @@ Public Sub MigriereNavigationszeilen()
         End If
     Next i
     
-    ' ?bersicht und Finanz-?bersicht separat (Function-Konstanten)
+    ' übersicht und Finanz-übersicht separat (Function-Konstanten)
     On Error Resume Next
     Set ws = Nothing
     Set ws = ThisWorkbook.Worksheets(WS_UEBERSICHT())
@@ -292,7 +292,7 @@ Public Sub MigriereNavigationszeilen()
 End Sub
 
 Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
-    ' Pr?fen ob bereits migriert: Zeile 1 muss leer sein UND
+    ' Prüfen ob bereits migriert: Zeile 1 muss leer sein UND
     ' Zeile 3 muss Daten enthalten (sonst ist das Blatt neu/leer)
     If Application.WorksheetFunction.CountA(ws.Rows(1)) = 0 And _
        Application.WorksheetFunction.CountA(ws.Rows(2)) = 0 Then
@@ -304,13 +304,13 @@ Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     
-    ' 2 leere Zeilen oben einf?gen
+    ' 2 leere Zeilen oben einfügen
     ws.Rows("1:2").Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
     
     ' Eingefuegte Zeilen bereinigen
     ws.Range("A1:AZ2").Clear
     ws.Rows(1).RowHeight = 30
-    ' Auf der ?bersicht liegt in Zeile 2 die Monats-Register-Leiste -> mehr H?he
+    ' Auf der übersicht liegt in Zeile 2 die Monats-Register-Leiste -> mehr Höhe
     If ws.Name = WS_UEBERSICHT() Then
         ws.Rows(2).RowHeight = 26
     Else
@@ -321,7 +321,7 @@ Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
     
-    Debug.Print "[Navigation] Navigationszeilen eingef?gt auf: " & ws.Name
+    Debug.Print "[Navigation] Navigationszeilen eingefügt auf: " & ws.Name
 End Sub
 
 

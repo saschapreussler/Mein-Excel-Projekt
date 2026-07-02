@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_EntityKey_Kontoname"
+﻿Attribute VB_Name = "mod_EntityKey_Kontoname"
 Option Explicit
 
 ' ***************************************************************
@@ -9,14 +9,14 @@ Option Explicit
 ' FUNKTIONEN:
 '   - IstKontonameRedundant: Semantische Redundanzpruefung
 '   - ZerlegeInWorte: Name in normalisierte Wortmenge zerlegen
-'   - SindWortmengenGleich: Wortmengen-Gleichheit pr?fen
-'   - IstTeilmenge: Teilmengen-Pr?fung
+'   - SindWortmengenGleich: Wortmengen-Gleichheit prüfen
+'   - IstTeilmenge: Teilmengen-Prüfung
 '   - BereinigeKontonamen: Dictionary von Redundanzen bereinigen
 '   - SammelKontonamen: Dictionary zu String zusammenfuegen
 ' ***************************************************************
 
 ' ===============================================================
-' Pr?ft ob ein Kontoname semantisch redundant ist
+' Prüft ob ein Kontoname semantisch redundant ist
 ' ===============================================================
 Public Function IstKontonameRedundant(ByRef dictNames As Object, ByVal neuerName As String) As Boolean
     Dim key As Variant
@@ -81,7 +81,7 @@ Public Function ZerlegeInWorte(ByVal Name As String) As Object
 End Function
 
 ' ===============================================================
-' Pr?ft ob zwei Wortmengen identisch sind
+' Prüft ob zwei Wortmengen identisch sind
 ' ===============================================================
 Public Function SindWortmengenGleich(ByRef dict1 As Object, ByRef dict2 As Object) As Boolean
     Dim key As Variant
@@ -99,7 +99,7 @@ Public Function SindWortmengenGleich(ByRef dict1 As Object, ByRef dict2 As Objec
 End Function
 
 ' ===============================================================
-' Pr?ft ob dict1 eine Teilmenge von dict2 ist
+' Prüft ob dict1 eine Teilmenge von dict2 ist
 ' ===============================================================
 Public Function IstTeilmenge(ByRef dictKlein As Object, ByRef dictGross As Object) As Boolean
     Dim key As Variant

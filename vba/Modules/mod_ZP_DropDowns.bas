@@ -1,10 +1,10 @@
-Attribute VB_Name = "mod_ZP_DropDowns"
+﻿Attribute VB_Name = "mod_ZP_DropDowns"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_ZP_DropDowns
 ' Ausgelagert aus mod_Zahlungspruefung
-' enth?lt: DropDown-Logik f?r Bankkonto-Blatt (Spalte H + I),
+' enthält: DropDown-Logik für Bankkonto-Blatt (Spalte H + I),
 '          Hilfsspalten AF/AG, Spaltenentsperrung
 ' ===============================================================
 
@@ -31,7 +31,7 @@ Public Sub SetzeBankkontoDropDowns(ByVal wsBK As Worksheet)
     ' Hilfsspalten auf Daten-Blatt aktualisieren (AF + AG)
     Call AktualisiereKategorieHilfsspalten
     
-    ' Blattschutz aufheben (noetig f?r Data Validation)
+    ' Blattschutz aufheben (noetig für Data Validation)
     On Error Resume Next
     wsBK.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
@@ -40,7 +40,7 @@ Public Sub SetzeBankkontoDropDowns(ByVal wsBK As Worksheet)
     Call SetzeKategorieDropDowns(wsBK, lastRow)
     Call SetzeMonatDropDowns(wsBK, lastRow)
     
-    ' Spalten entsperren f?r Nutzereingaben
+    ' Spalten entsperren für Nutzereingaben
     Call EntsperreSpaltenFuerNutzer(wsBK, lastRow)
     
     ' Blattschutz wieder aktivieren
@@ -52,7 +52,7 @@ End Sub
 
 
 ' ===============================================================
-' Bef?llt Hilfsspalten AF (32) + AG (33) auf Blatt "Daten"
+' Befüllt Hilfsspalten AF (32) + AG (33) auf Blatt "Daten"
 ' mit eindeutigen Kategorienamen, getrennt nach E und A.
 ' AF = Einnahmen-Kategorien (K = "E")
 ' AG = Ausgaben-Kategorien (K = "A")
@@ -141,7 +141,7 @@ End Sub
 
 ' ===============================================================
 ' Setzt DropDown-Listen in Spalte H (Kategorie)
-' F?r jede Zeile: Betrag > 0 -> Einnahmen (AF), Betrag < 0 -> Ausgaben (AG)
+' Für jede Zeile: Betrag > 0 -> Einnahmen (AF), Betrag < 0 -> Ausgaben (AG)
 ' Referenziert dynamisch auf den befuellten Bereich in AF bzw. AG
 ' ===============================================================
 Private Sub SetzeKategorieDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
@@ -165,14 +165,14 @@ Private Sub SetzeKategorieDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long
     lastA = wsDaten.Cells(wsDaten.Rows.count, DATA_COL_KAT_AUSGABEN).End(xlUp).Row
     If lastA < DATA_START_ROW Then lastA = DATA_START_ROW
     
-    ' Spaltenbuchstaben f?r Validation-Formeln berechnen
+    ' Spaltenbuchstaben für Validation-Formeln berechnen
     Dim spalteBuchstabeE As String
     spalteBuchstabeE = SpalteNrZuBuchstabe(DATA_COL_KAT_EINNAHMEN)
     
     Dim spalteBuchstabeA As String
     spalteBuchstabeA = SpalteNrZuBuchstabe(DATA_COL_KAT_AUSGABEN)
     
-    ' Daten-Blattname f?r Formel
+    ' Daten-Blattname für Formel
     Dim datenName As String
     datenName = wsDaten.Name
     
@@ -275,7 +275,7 @@ End Sub
 
 
 ' ===============================================================
-' Spalten H, I, J, L entsperren f?r Nutzereingaben
+' Spalten H, I, J, L entsperren für Nutzereingaben
 ' ===============================================================
 Private Sub EntsperreSpaltenFuerNutzer(ByVal ws As Worksheet, ByVal lastRow As Long)
     

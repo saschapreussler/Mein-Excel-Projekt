@@ -1,12 +1,12 @@
-Attribute VB_Name = "mod_ZP_Periode"
+﻿Attribute VB_Name = "mod_ZP_Periode"
 Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_ZP_Periode
 ' VERSION: 1.0 - 15.03.2026
-' ZWECK: Monat/Periode-Logik f?r Zahlungspr?fung
-'        - SetzeMonatPeriode: Spalte I (Monat/Periode) bef?llen
-'        - HoleFaelligkeitFuerKategorie: F?lligkeit ermitteln
+' ZWECK: Monat/Periode-Logik für Zahlungsprüfung
+'        - SetzeMonatPeriode: Spalte I (Monat/Periode) befüllen
+'        - HoleFaelligkeitFuerKategorie: Fälligkeit ermitteln
 ' QUELLE: Extrahiert aus mod_Zahlungspruefung v3.2
 ' ***************************************************************
 
@@ -15,7 +15,7 @@ Option Explicit
 ' MONAT/PERIODE SETZEN (ueberarbeitet)
 ' FIX v1.5: Application.EnableEvents = False VOR dem Beschreiben
 '           von Spalte I, damit Worksheet_Change NICHT getriggert wird.
-' v2.0: Am Ende wird SetzeBankkontoDropDowns aufgerufen (f?r H + I)
+' v2.0: Am Ende wird SetzeBankkontoDropDowns aufgerufen (für H + I)
 ' ===============================================================
 Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
     
@@ -79,11 +79,11 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
                         ws.Cells(r, BK_COL_BEMERKUNG).value = bestehendeBemerkung & vbLf & gelbHinweis
                     End If
                     
-                    ' Hell-gelber Hintergrund f?r die Bemerkung (gleiche Farbe wie Spalte I)
+                    ' Hell-gelber Hintergrund für die Bemerkung (gleiche Farbe wie Spalte I)
                     ws.Cells(r, BK_COL_BEMERKUNG).Interior.color = RGB(255, 235, 156)
                 Else
                     ws.Cells(r, BK_COL_MONAT_PERIODE).value = ergebnis
-                    ' Ampelfarbe Gr?n = Monat eindeutig bestimmt
+                    ' Ampelfarbe Grün = Monat eindeutig bestimmt
                     ws.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206)
                 End If
             Else
@@ -112,14 +112,14 @@ End Sub
 
 
 ' ===============================================================
-' F?LLIGKEIT AUS KATEGORIE-TABELLE (Spalte O) HOLEN
+' FÄLLIGKEIT AUS KATEGORIE-TABELLE (Spalte O) HOLEN
 ' ===============================================================
 Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
                                               ByVal kategorie As String) As String
     Dim lastRow As Long
     Dim r As Long
     
-    ' PRIO 1: Einstellungen-Blatt pr?fen (Spalte B = Kategorie)
+    ' PRIO 1: Einstellungen-Blatt prüfen (Spalte B = Kategorie)
     Dim wsEinst As Worksheet
     On Error Resume Next
     Set wsEinst = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
@@ -132,7 +132,7 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
                 Dim SollMonate As String
                 SollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
                 If SollMonate = "" Then
-                    ' SollMonate leer -> Daten-Blatt Spalte O als Fallback pr?fen
+                    ' SollMonate leer -> Daten-Blatt Spalte O als Fallback prüfen
                     GoTo PruefeDatenBlatt
                 Else
                     Dim anzMonate As Long
@@ -150,7 +150,7 @@ Public Function HoleFaelligkeitFuerKategorie(ByVal wsDaten As Worksheet, _
     End If
     
 PruefeDatenBlatt:
-    ' PRIO 2: Fallback auf Daten-Blatt (Spalte O = F?lligkeit)
+    ' PRIO 2: Fallback auf Daten-Blatt (Spalte O = Fälligkeit)
     lastRow = wsDaten.Cells(wsDaten.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     
     For r = DATA_START_ROW To lastRow

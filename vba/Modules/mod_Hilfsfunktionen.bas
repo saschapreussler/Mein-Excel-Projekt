@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Hilfsfunktionen"
+﻿Attribute VB_Name = "mod_Hilfsfunktionen"
 Option Explicit
 
 ' **********************************************************
@@ -12,7 +12,7 @@ Private Const TEMP_WS_NAME As String = "TEMP_LISTEN"
 ' PROZEDUR: AktualisiereNamedRange_MitgliederNamen
 ' Erstellt oder aktualisiert einen benannten Bereich
 ' mit den Namen aller aktiven Mitglieder.
-' WICHTIG: Das Temporaere Worksheet wird am Ende IMMER gel?scht!
+' WICHTIG: Das Temporaere Worksheet wird am Ende IMMER gelöscht!
 ' **********************************************************
 Public Sub AktualisiereNamedRange_MitgliederNamen()
     
@@ -42,11 +42,11 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
         Application.DisplayAlerts = False
         Set wsTemp = ThisWorkbook.Worksheets.Add(After:=wsM)
         wsTemp.Name = TEMP_WS_NAME
-        ' Verstecke das Worksheet (optional, f?r zus?tzliche Sicherheit)
+        ' Verstecke das Worksheet (optional, für zusätzliche Sicherheit)
         wsTemp.Visible = xlSheetVeryHidden
         Application.DisplayAlerts = True
     Else
-        ' Vorherige Daten L?schen
+        ' Vorherige Daten Löschen
         wsTemp.Cells.Clear
     End If
     
@@ -91,7 +91,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
             ' 4. Benannten Bereich erstellen/aktualisieren (Spalte D, ab Zeile 2)
             Set rngTarget = wsTemp.Range(wsTemp.Cells(2, 4), wsTemp.Cells(tempRow, 4))
             
-            ' Bestehenden benannten Bereich L?schen
+            ' Bestehenden benannten Bereich Löschen
             On Error Resume Next
             ThisWorkbook.Names("rng_MitgliederNamen").Delete
             On Error GoTo ErrorHandler
@@ -101,7 +101,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
         End If
     End If
     
-    ' *** WICHTIG: Temporaeres Worksheet IMMER L?schen! ***
+    ' *** WICHTIG: Temporaeres Worksheet IMMER Löschen! ***
     Call LoescheTempWorksheet
     
 CleanUp:
@@ -114,7 +114,7 @@ CleanUp:
     
 ErrorHandler:
     MsgBox "Fehler in AktualisiereNamedRange_MitgliederNamen: " & Err.Description, vbCritical
-    ' Versuche trotz Fehler das Temp-Worksheet zu L?schen
+    ' Versuche trotz Fehler das Temp-Worksheet zu Löschen
     Call LoescheTempWorksheet
     Resume CleanUp
 
@@ -142,7 +142,7 @@ End Sub
 ' **********************************************************
 ' PROZEDUR: BereinigeTempWorksheets
 ' oeffentliche Prozedur zum Bereinigen aller Temporaeren Worksheets
-' Kann manuell oder beim ?ffnen der Arbeitsmappe aufgerufen werden
+' Kann manuell oder beim öffnen der Arbeitsmappe aufgerufen werden
 ' **********************************************************
 Public Sub BereinigeTempWorksheets()
     Dim ws As Worksheet
@@ -158,7 +158,7 @@ Public Sub BereinigeTempWorksheets()
         End If
     Next ws
     
-    ' L?sche gesammelte Worksheets
+    ' Lösche gesammelte Worksheets
     Application.DisplayAlerts = False
     For Each tempName In wsToDelete
         On Error Resume Next
@@ -171,7 +171,7 @@ End Sub
 ' **********************************************************
 ' Sicherheits-Reset: Stellt EnableEvents und ScreenUpdating
 ' wieder her, falls ein Makro abgestuerzt ist.
-' Kann ?ber Alt+F8 manuell aufgerufen werden.
+' Kann Über Alt+F8 manuell aufgerufen werden.
 ' **********************************************************
 Public Sub ResetApplication()
     Application.EnableEvents = True
@@ -179,11 +179,11 @@ Public Sub ResetApplication()
     Application.DisplayAlerts = True
     Application.Cursor = xlDefault
     Application.StatusBar = False
-    Debug.Print "ResetApplication: Alle Application-Flags zur?ckgesetzt."
+    Debug.Print "ResetApplication: Alle Application-Flags zurückgesetzt."
 End Sub
 
 ' ***************************************************************
-' HILFSFUNKTION: Pr?fen, ob eine UserForm geladen ist (KORRIGIERT F?r EXCEL)
+' HILFSFUNKTION: Prüfen, ob eine UserForm geladen ist (KORRIGIERT Für EXCEL)
 ' ***************************************************************
 Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     

@@ -1393,7 +1393,7 @@ Private Sub cmd_Uebernehmen_Click()
         End If
         
     Else
-        ' === NORMALE ?NDERUNG (kein Parzellenwechsel) ===
+        ' === NORMALE ÄNDERUNG (kein Parzellenwechsel) ===
         Call SpeichereMitgliedsdaten(wsM, lRow, NewParzelle)
         
         ' Normale änderung - nur Sortierung und Formatierung

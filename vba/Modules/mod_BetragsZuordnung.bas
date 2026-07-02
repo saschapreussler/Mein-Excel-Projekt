@@ -1,11 +1,11 @@
-Attribute VB_Name = "mod_BetragsZuordnung"
+﻿Attribute VB_Name = "mod_BetragsZuordnung"
 Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_BetragsZuordnung
 ' VERSION: 2.0 - 08.02.2026
-' FIX: GELB (Sammelzahlung) wird ?bersprungen - keine
-'      Betragszuordnung und kein ?berschreiben auf ROT!
+' FIX: GELB (Sammelzahlung) wird übersprungen - keine
+'      Betragszuordnung und kein Überschreiben auf ROT!
 '      Bessere Bemerkungen bei fehlender Zielspalte.
 ' ***************************************************************
 
@@ -24,7 +24,7 @@ Public Sub ApplyBetragsZuordnung(ByVal wsBK As Worksheet, _
     If wsBK.Cells(rowBK, BK_COL_KATEGORIE).Interior.color = RGB(255, 199, 206) Then Exit Sub
     
     ' GELB = Sammelzahlung/Mehrdeutigkeit ? NICHT anfassen!
-    ' Der Nutzer muss die Betr?ge manuell aufteilen.
+    ' Der Nutzer muss die Beträge manuell aufteilen.
     If wsBK.Cells(rowBK, BK_COL_KATEGORIE).Interior.color = RGB(255, 235, 156) Then Exit Sub
 
     ' Zielueberschrift aus Kategorietabelle
@@ -42,7 +42,7 @@ Public Sub ApplyBetragsZuordnung(ByVal wsBK As Worksheet, _
         Exit Sub
     End If
 
-    ' Zielspalte abh?ngig vom Vorzeichen suchen
+    ' Zielspalte abhängig vom Vorzeichen suchen
     Dim targetCol As Long
     If betrag >= 0 Then
         targetCol = FindBankkontoColumnByHeader(wsBK, targetHeader, 13, 19)

@@ -1,20 +1,20 @@
-Attribute VB_Name = "mod_Banking_Report"
+﻿Attribute VB_Name = "mod_Banking_Report"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Report
 ' Ausgelagert aus mod_Banking_Data
-' enth?lt: Import Report ListBox (ActiveX) Verwaltung
+' enthält: Import Report ListBox (ActiveX) Verwaltung
 '          Protokoll-Speicher (Daten!Y500), Farbcodierung
 ' ===============================================================
 
-' Farb-Konstanten f?r ListBox-Hintergrund (OLE_COLOR / BGR)
+' Farb-Konstanten für ListBox-Hintergrund (OLE_COLOR / BGR)
 Private Const LB_COLOR_GRUEN As Long = &HC0FFC0     ' hellgruen
 Private Const LB_COLOR_GELB As Long = &HC0FFFF      ' hellgelb
 Private Const LB_COLOR_ROT As Long = &HC0C0FF       ' hellrot
 Private Const LB_COLOR_WEISS As Long = &HFFFFFF     ' weiss
 
-' Trennzeichen f?r Serialisierung in Zelle Y500
+' Trennzeichen für Serialisierung in Zelle Y500
 Private Const PROTO_SEP As String = "||"
 
 ' Protokoll-Speicher: Zelle Y500 auf dem Daten-Blatt
@@ -30,7 +30,7 @@ Private Const MAX_ZEILEN As Long = 500
 ' ---------------------------------------------------------------
 ' Initialize: Liest Y500, beFuellt ActiveX ListBox,
 '     setzt Hintergrundfarbe.
-'     Aufruf: Workbook_Open, Worksheet_Activate, nach L?schen
+'     Aufruf: Workbook_Open, Worksheet_Activate, nach Löschen
 ' ---------------------------------------------------------------
 Public Sub Initialize_ImportReport_ListBox()
     
@@ -82,13 +82,13 @@ Public Sub Initialize_ImportReport_ListBox()
 
     Call SchreibeReportNachH8(wsBK, reportText, reportFarbe)
     
-    ' Blattschutz wiederherstellen (mit AllowFiltering f?r Zeile 29)
+    ' Blattschutz wiederherstellen (mit AllowFiltering für Zeile 29)
     Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsBK)
     
 End Sub
 
 ' ---------------------------------------------------------------
-' Update: Neuen 5-Zeilen-Block OBEN einf?gen,
+' Update: Neuen 5-Zeilen-Block OBEN einfügen,
 '     in Y500 serialisiert speichern, ListBox aktualisieren.
 ' ---------------------------------------------------------------
 Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported As Long, _
@@ -121,7 +121,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     ' --- 5-Zeilen-Block zusammenbauen ---
     neuerBlock = "Import: " & Format(Now, "DD.MM.YYYY  HH:MM:SS") & _
                  PROTO_SEP & _
-                 imported & " / " & totalRows & " Datens?tze importiert" & _
+                 imported & " / " & totalRows & " Datensätze importiert" & _
                  PROTO_SEP & _
                  dupes & " Duplikate erkannt" & _
                  PROTO_SEP & _
@@ -161,7 +161,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     ' --- In Y500 speichern (eine einzige Zelle!) ---
     wsDaten.Cells(PROTO_ZEILE, PROTO_SPALTE).value = gesamt
     
-    ' --- Daten-Blatt sch?tzen ---
+    ' --- Daten-Blatt schützen ---
     On Error Resume Next
     wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
@@ -182,7 +182,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     Call SchreibeReportNachH8(wsBK, reportText, _
                               IIf(failed > 0, LB_COLOR_ROT, IIf(dupes > 0, LB_COLOR_GELB, LB_COLOR_GRUEN)))
     
-    ' Blattschutz wiederherstellen (mit AllowFiltering f?r Zeile 29)
+    ' Blattschutz wiederherstellen (mit AllowFiltering für Zeile 29)
     Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsBK)
     
 End Sub
@@ -206,7 +206,7 @@ Private Sub SchreibeReportNachH8(ByVal wsBK As Worksheet, _
 End Sub
 
 ' ---------------------------------------------------------------
-' Farbe f?r den aktuellsten Report-Block bestimmen
+' Farbe für den aktuellsten Report-Block bestimmen
 ' ---------------------------------------------------------------
 Private Function BestimmeReportFarbe(ByRef zeilen() As String) As Long
     BestimmeReportFarbe = LB_COLOR_WEISS

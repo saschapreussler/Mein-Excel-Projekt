@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_KategorieEngine_Evaluator"
+﻿Attribute VB_Name = "mod_KategorieEngine_Evaluator"
 Option Explicit
 
 ' =====================================================
@@ -15,18 +15,18 @@ Option Explicit
 '     ErmittleMonatPeriode, IstMonatInListe
 ' =====================================================
 
-' Mindest-Score-Differenz f?r sichere Zuordnung
+' Mindest-Score-Differenz für sichere Zuordnung
 Private Const SCORE_DOMINANZ_SCHWELLE As Long = 20
 
-' Kategorie f?r echte Mehrdeutigkeit (nur programmatisch!)
+' Kategorie für echte Mehrdeutigkeit (nur programmatisch!)
 Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung (mehrere Positionen) Mitglied"
 
-' Farbe f?r "Folgemonat manuell best?tigt" (hell-gr?n)
+' Farbe für "Folgemonat manuell bestätigt" (hell-grün)
 Private Const FARBE_HELLGRUEN As Long = 12968900  ' RGB(196, 225, 196) -> &HC4E1C4 -> Long
 
 
 ' -----------------------------
-' EntityInfo ?ber IBAN bestimmen (kombiniert: Role + Parzelle)
+' EntityInfo Über IBAN bestimmen (kombiniert: Role + Parzelle)
 ' -----------------------------
 Private Sub GetEntityInfoByIBAN(ByVal strIBAN As String, _
                                  ByRef outRole As String, _
@@ -129,7 +129,7 @@ End Function
 ' =====================================================
 ' Hauptfunktion: Kategorie evaluieren (v9.3)
 ' Braucht KEINEN Named Range! Liest Regeln direkt vom
-' Daten-Blatt ?ber DATA_CAT_COL_* Konstanten.
+' Daten-Blatt Über DATA_CAT_COL_* Konstanten.
 ' Scoring-Logik aus v7.0 wiederhergestellt.
 ' v9.3: WordCountBonus + erhoehter Prio-Bonus
 ' =====================================================
@@ -138,23 +138,23 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                                       ByVal wsData As Worksheet, _
                                       ByVal lastRuleRow As Long)
 
-    ' Bereits kategorisiert? ?berspringen
+    ' Bereits kategorisiert? überspringen
     If Trim(wsBK.Cells(rowBK, BK_COL_KATEGORIE).value) <> "" Then Exit Sub
 
     Dim ctx As Object
     Set ctx = BuildKategorieContext(wsBK, rowBK)
 
     ' ================================
-    ' PHASE 0: SONDERREGEL F?r 0-EURO-Betr?ge
+    ' PHASE 0: SONDERREGEL Für 0-EURO-Beträge
     ' ================================
     If ctx("IsNullBetrag") And ctx("IsEntgeltabschluss") Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
-                       "Entgeltabschluss (Kontof" & ChrW(252) & "hrung)", "GR?N"
+                       "Entgeltabschluss (Kontof" & ChrW(252) & "hrung)", "GRÜN"
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = "0-Euro-Abschluss automatisch zugeordnet"
         Exit Sub
     End If
 
-    ' 0-Euro ohne Sonderregel -> ?berspringen
+    ' 0-Euro ohne Sonderregel -> überspringen
     If ctx("IsNullBetrag") Then Exit Sub
 
     Dim normText As String
@@ -168,14 +168,14 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     ' 1a) Entgeltabschluss (BankGebuehren)
     If ctx("IsEntgeltabschluss") And ctx("IsAusgabe") Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
-                       "Entgeltabschluss (Kontof" & ChrW(252) & "hrung)", "GR?N"
+                       "Entgeltabschluss (Kontof" & ChrW(252) & "hrung)", "GRÜN"
         Exit Sub
     End If
     
     ' 1b) Bargeldauszahlung
     If ctx("IsBargeldauszahlung") And ctx("IsAusgabe") Then
         ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), _
-                       "Bargeldauszahlung", "GR?N"
+                       "Bargeldauszahlung", "GRÜN"
         Exit Sub
     End If
 
@@ -203,7 +203,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         Dim prio As Long
         Dim faelligkeit As String
 
-        ' Spalten ?ber Konstanten lesen
+        ' Spalten Über Konstanten lesen
         category = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KATEGORIE).value))    ' J
         einAus = UCase(Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_EINAUS).value)))   ' K
         keyword = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KEYWORD).value))        ' L
@@ -243,7 +243,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
             score = 100
             
             ' Prioritaetsbonus (niedrigere Prio = hoeherer Bonus)
-            ' v9.3: Faktor 8 statt 5 f?r staerkere Differenzierung
+            ' v9.3: Faktor 8 statt 5 für staerkere Differenzierung
             score = score + (10 - prio) * 8
             
             ' EntityRole bekannt = hoehere Konfidenz (+20 wie in v7.0)
@@ -268,18 +268,18 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                 score = score + 5
             End If
             
-            ' ExactMatchBonus (v8.0: +10 wenn Keyword zusammenh?ngend im Text)
+            ' ExactMatchBonus (v8.0: +10 wenn Keyword zusammenhängend im Text)
             score = score + ExactMatchBonus(normText, normKeyword)
             
-            ' WordCountBonus (v9.3: Anzahl W?rter im Keyword * 5)
+            ' WordCountBonus (v9.3: Anzahl Wörter im Keyword * 5)
             score = score + WordCountBonus(normKeyword)
             
-             ' Betragsvalidierung ?ber Einstellungen
+             ' Betragsvalidierung Über Einstellungen
             Dim betragBonus As Long
             betragBonus = PruefeBetragGegenEinstellungen(category, ctx("AbsAmount"))
             score = score + betragBonus
             
-             ' Zeitfenstervalidierung ?ber Einstellungen
+             ' Zeitfenstervalidierung Über Einstellungen
             If IsDate(ctx("Datum")) Then
                 Dim zeitBonus As Long
                 zeitBonus = PruefeZeitfenster(category, CDate(ctx("Datum")), faelligkeit)
@@ -326,7 +326,7 @@ NextRule:
         
         If scoreDifferenz >= SCORE_DOMINANZ_SCHWELLE Then
             ' SICHERER TREFFER trotz mehrerer Matches
-            ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GR?N"
+            ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRÜN"
             Exit Sub
         End If
         
@@ -356,16 +356,16 @@ NextRule:
         Exit Sub
     End If
 
-    ' Genau 1 Treffer = sicher gr?n
+    ' Genau 1 Treffer = sicher grün
     If bestCategory <> "" Then
-        ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GR?N"
+        ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRÜN"
         Exit Sub
     End If
 
     ' Kein Treffer = ROT
     If ctx("EntityRole") = "" Then
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-        "Keine Kategorie gefunden. IBAN nicht zugeordnet - bitte Entity-Mapping Pr?fen!"
+        "Keine Kategorie gefunden. IBAN nicht zugeordnet - bitte Entity-Mapping Prüfen!"
     Else
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
             "Keine passende Kategorie gefunden (EntityRole: " & ctx("EntityRole") & ")"
@@ -376,7 +376,7 @@ End Sub
 
 
 ' =====================================================
-' Betragsspalten entsperren f?r manuelle Eingabe
+' Betragsspalten entsperren für manuelle Eingabe
 ' =====================================================
 Private Sub EntsperreBetragsspalten(ByVal wsBK As Worksheet, _
                                     ByVal rowBK As Long, _
@@ -413,7 +413,7 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         .Interior.Pattern = xlSolid
 
         Select Case confidence
-            Case "GR?N": .Interior.color = RGB(198, 239, 206)
+            Case "GRÜN": .Interior.color = RGB(198, 239, 206)
             Case "GELB":  .Interior.color = RGB(255, 235, 156)
             Case "ROT"
                 .Interior.color = RGB(255, 199, 206)

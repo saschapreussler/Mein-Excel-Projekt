@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Repo_Sync"
+﻿Attribute VB_Name = "mod_Repo_Sync"
 Option Explicit
 
 ' ***************************************************************
@@ -359,10 +359,18 @@ End Sub
 
 ' ===============================================================
 ' Importiert UserForms (.frm + .frx) aus dem Repository
-' Die .frm-Datei wird UTF-8 ? ANSI konvertiert.
-' Die zugeh�rige .frx-Datei (Bin�rdaten der Steuerelemente)
-' wird direkt in den Temp-Ordner kopiert, da VBA beim Import
-' beide Dateien im selben Ordner erwartet.
+'
+' STRATEGIE (v3.3, sicher):
+'   - UserForm existiert bereits im Projekt:
+'       Nur den Code-Teil aus der .frm ersetzen. Layout und
+'       Steuerelemente bleiben unveraendert. KEIN Remove.
+'   - UserForm existiert noch nicht:
+'       Binaerkopie ins Temp-Verzeichnis + VBComponents.Import.
+'
+' Grund: Bei grossen UserForms (frm_Mitgliedsdaten ~82 KB) kann
+' ein Remove + Import fehlschlagen und die Form geht dann komplett
+' verloren. Durch reine Code-Aktualisierung bestehender Forms
+' vermeiden wir diesen Total-Verlust.
 ' ===============================================================
 Private Sub ImportiereUserForms(fso As Object, vbProj As Object, _
                                  pfad As String, tempPfad As String, _
@@ -372,64 +380,114 @@ Private Sub ImportiereUserForms(fso As Object, vbProj As Object, _
     Dim file As Object
     Dim compName As String
     Dim vbComp As Object
-    Dim ansiDatei As String
+    Dim codeInhalt As String
+    Dim frmZiel As String
     Dim frxQuelle As String
     Dim frxZiel As String
-    
+
     Set folder = fso.GetFolder(pfad)
-    
+
     For Each file In folder.Files
         If LCase(fso.GetExtensionName(file.Name)) = "frm" Then
             compName = fso.GetBaseName(file.Name)
-            
-            ' �berspringe diese Module
-            If compName = "mod_Repo_Sync" Or compName = "mod_VBA_Export" Then
-                GoTo NaechsteForm
-            End If
-            
+
             On Error Resume Next
-            
-            ' Bestehende UserForm l�schen (falls vorhanden)
+
             Set vbComp = Nothing
             Set vbComp = vbProj.VBComponents(compName)
+            Err.Clear
+
             If Not vbComp Is Nothing Then
-                vbProj.VBComponents.Remove vbComp
-                DoEvents  ' VBA Zeit geben, die L�schung zu verarbeiten
-            End If
-            Err.Clear
-            
-            ' .frm-Datei konvertieren (UTF-8 ? ANSI)
-            ansiDatei = KonvertiereUTF8zuAnsi(file.Path, tempPfad & file.Name, fso)
-            
-            ' .frx-Datei (Bin�rdaten) in den Temp-Ordner kopieren
-            frxQuelle = fso.BuildPath(pfad, compName & ".frx")
-            frxZiel = tempPfad & compName & ".frx"
-            If fso.FileExists(frxQuelle) Then
-                fso.CopyFile frxQuelle, frxZiel, True
-            End If
-            Err.Clear
-            
-            ' Import der konvertierten .frm (+ .frx im selben Ordner)
-            If ansiDatei <> "" Then
-                vbProj.VBComponents.Import ansiDatei
-            Else
-                ' Fallback: direkt aus Repo importieren
-                vbProj.VBComponents.Import file.Path
-            End If
-            
-            If Err.Number = 0 Then
-                counter = counter + 1
-            Else
-                Fehler = Fehler & "  " & file.Name & " (" & Err.Description & ")" & vbCrLf
+                ' -------------------------------------------
+                ' UserForm existiert bereits: nur Code updaten
+                ' -------------------------------------------
+                codeInhalt = LeseFrmCode(file.Path)
                 Err.Clear
+                With vbComp.CodeModule
+                    If .CountOfLines > 0 Then .DeleteLines 1, .CountOfLines
+                    If Len(codeInhalt) > 0 Then .AddFromString codeInhalt
+                End With
+
+                If Err.Number = 0 Then
+                    counter = counter + 1
+                Else
+                    Fehler = Fehler & "  " & file.Name & _
+                             " (Code-Update: " & Err.Description & ")" & vbCrLf
+                    Err.Clear
+                End If
+            Else
+                ' -------------------------------------------
+                ' UserForm neu: Binaerkopie + Import
+                ' -------------------------------------------
+                frmZiel = tempPfad & compName & ".frm"
+                fso.CopyFile file.Path, frmZiel, True
+
+                frxQuelle = fso.BuildPath(pfad, compName & ".frx")
+                frxZiel = tempPfad & compName & ".frx"
+                If fso.FileExists(frxQuelle) Then
+                    fso.CopyFile frxQuelle, frxZiel, True
+                End If
+                Err.Clear
+
+                vbProj.VBComponents.Import frmZiel
+
+                If Err.Number = 0 Then
+                    counter = counter + 1
+                Else
+                    Fehler = Fehler & "  " & file.Name & _
+                             " (Import: " & Err.Description & ")" & vbCrLf
+                    Err.Clear
+                End If
             End If
-            
+
             On Error GoTo 0
-            
-NaechsteForm:
         End If
     Next file
 End Sub
+
+
+' ===============================================================
+' LeseFrmCode (v3.3)
+' ---------------------------------------------------------------
+' Extrahiert den reinen Code-Teil aus einer .frm-Datei. Der
+' Layout-Header (VERSION 5.00, Begin {GUID}...End, alle
+' Attribute VB_...-Zeilen) wird uebersprungen. Rueckgabe ist
+' alles NACH der letzten Attribute-Zeile - typischerweise
+' "Option Explicit" gefolgt von den Event-Handler-Subs.
+' ===============================================================
+Private Function LeseFrmCode(dateipfad As String) As String
+    Dim inhalt As String
+    inhalt = LeseDateiMitEncodingErkennung(dateipfad)
+
+    Dim zeilen() As String
+    zeilen = Split(inhalt, vbCrLf)
+
+    Dim i As Long
+    Dim lastAttrLine As Long
+    lastAttrLine = -1
+
+    For i = 0 To UBound(zeilen)
+        If Left(Trim(zeilen(i)), 10) = "Attribute " Then
+            lastAttrLine = i
+        End If
+    Next i
+
+    If lastAttrLine < 0 Then
+        LeseFrmCode = inhalt
+        Exit Function
+    End If
+
+    Dim ausgabe As String
+    For i = lastAttrLine + 1 To UBound(zeilen)
+        ausgabe = ausgabe & zeilen(i) & vbCrLf
+    Next i
+
+    If Right(ausgabe, 2) = vbCrLf Then
+        ausgabe = Left(ausgabe, Len(ausgabe) - 2)
+    End If
+
+    LeseFrmCode = ausgabe
+End Function
 
 
 ' ===============================================================

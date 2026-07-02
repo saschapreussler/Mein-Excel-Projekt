@@ -1,11 +1,11 @@
-Attribute VB_Name = "mod_Dashboard_Matrix"
+﻿Attribute VB_Name = "mod_Dashboard_Matrix"
 Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Dashboard_Matrix
 ' VERSION: 2.0 - 27.03.2026
 ' ZWECK: Zahlungsmatrix, Verzugsdetail und Spaltenanpassung
-'        f?r das Dashboard "?bersicht (neu)"
+'        für das Dashboard "übersicht (neu)"
 ' ABHAENGIGKEITEN: mod_Uebersicht_Dashboard (Types, Farben),
 '                  mod_Uebersicht_Daten, mod_Zahlungspruefung
 ' ***************************************************************
@@ -13,7 +13,7 @@ Option Explicit
 
 ' ============================================================
 '  MATRIX MIT DATEN SCHREIBEN
-'  Sammelt gleichzeitig KPI-Werte und Verzug-Eintr?ge
+'  Sammelt gleichzeitig KPI-Werte und Verzug-Einträge
 ' ============================================================
 Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                                     ByVal jahr As Long, _
@@ -41,7 +41,7 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
     Dim importierteMonate() As Boolean
     importierteMonate = mod_Uebersicht_Daten.ErmittleImportierteMonate(jahr)
     
-    ' --- PUNKT 12: Kategorien klassifizieren (monatlich vs. j?hrlich) ---
+    ' --- PUNKT 12: Kategorien klassifizieren (monatlich vs. jährlich) ---
     Dim katIstJaehrlich() As Boolean
     Dim katSpalte() As Long
     ReDim katIstJaehrlich(0 To anzKat)
@@ -154,7 +154,7 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
         Dim alleRollen As String
         alleRollen = UCase(parzellen(p).roles)
         
-        ' Punkt 12: Aggregator f?r Jahresposten-Sammelspalte (pro Mitgliederzeile)
+        ' Punkt 12: Aggregator für Jahresposten-Sammelspalte (pro Mitgliederzeile)
         Dim jpFaellig As Long: jpFaellig = 0
         Dim jpBezahlt As Long: jpBezahlt = 0
         Dim jpSoll As Double: jpSoll = 0
@@ -181,7 +181,7 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
             Dim istMB As Boolean
             istMB = (StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0)
             
-            ' Ehrenmitglied-Pr?fung f?r Mitgliedsbeitrag
+            ' Ehrenmitglied-Prüfung für Mitgliedsbeitrag
             If istMB Then
                 Dim mbZahler As Long: mbZahler = 0
                 Dim mbEhren As Long: mbEhren = 0
@@ -197,7 +197,7 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                 Next eChk
                 
                 If mbZahler = 0 And mbEhren > 0 Then
-                    ' Alle Ehrenmitglieder -> Befreit (gr?n)
+                    ' Alle Ehrenmitglieder -> Befreit (grün)
                     If katCol > 0 Then
                     With ws.Cells(rowIdx, katCol)
                         .value = ChrW(10004) & " Befreit"
@@ -236,7 +236,7 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                 
                 faelligMonate = faelligMonate + 1
                 
-                ' PruefeZahlungen f?r EntityKeys
+                ' PruefeZahlungen für EntityKeys
                 Dim mIst As Double: mIst = 0
                 Dim mSoll As Double: mSoll = 0
                 Dim mBestStatus As String: mBestStatus = "ROT"
@@ -248,16 +248,16 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                     ek = Trim(eKeys(eIdx))
                     If ek = "" Then GoTo NextEKDash
                     
-                    ' MB: Ehrenmitglieder ?berspringen
+                    ' MB: Ehrenmitglieder überspringen
                     If istMB Then
                         Dim eRole As String: eRole = ""
                         If eIdx <= UBound(eRollen) Then eRole = UCase(Trim(eRollen(eIdx)))
                         If InStr(eRole, "EHREN") > 0 Then GoTo NextEKDash
                     End If
 
-                    ' v7.4: Eintrittsdatum-Filter f?r ALLE Kategorien
-                    ' Mitglied zahlt erst ab seinem Eintrittsmonat f?r alle
-                    ' Geb?hren (Mitgliedsbeitrag, Pacht, Wasser-/Strom-Abschlag etc.)
+                    ' v7.4: Eintrittsdatum-Filter für ALLE Kategorien
+                    ' Mitglied zahlt erst ab seinem Eintrittsmonat für alle
+                    ' Gebühren (Mitgliedsbeitrag, Pacht, Wasser-/Strom-Abschlag etc.)
                     If eIdx <= UBound(eEintritte) Then
                         Dim eEintritt As String
                         eEintritt = Trim(eEintritte(eIdx))
@@ -312,7 +312,7 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
 NextEKDash:
                 Next eIdx
                 
-                ' v5.4: MB-Soll anpassen f?r Mitglieder ohne eigenen EntityKey
+                ' v5.4: MB-Soll anpassen für Mitglieder ohne eigenen EntityKey
                 ' Wenn mehr Mitglieder auf der Parzelle sind als zahlende EntityKeys,
                 ' muss der Soll auf die tatsaechliche Mitgliederzahl hochgerechnet werden.
                 If istMB Then
@@ -335,7 +335,7 @@ NextEKDash:
                     End If
                 End If
                 
-                ' Soll aus ?bersicht-Blatt nachladen (nur per-Parzelle)
+                ' Soll aus übersicht-Blatt nachladen (nur per-Parzelle)
                 If Not istMB And mSoll = 0 Then
                     If Not sollDict Is Nothing Then
                         Dim uKey As String
@@ -353,7 +353,7 @@ NextEKDash:
                     End If
                 End If
                 
-                ' Keine S?umnis -> ROT wird zu GELB herabgestuft
+                ' Keine Säumnis -> ROT wird zu GELB herabgestuft
                 If StrComp(mBestStatus, "ROT", vbTextCompare) = 0 Then
                     If kategorien(k).saeumnisGebuehr = 0 Then
                         mBestStatus = "GELB"
@@ -518,7 +518,7 @@ NextKatDash:
             ws.Range(ws.Cells(rowIdx, 1), ws.Cells(rowIdx, 2)).Interior.color = RGB(245, 245, 250)
         End If
         
-        ' Rahmen + Zeilenh?he
+        ' Rahmen + Zeilenhöhe
         With ws.Range(ws.Cells(rowIdx, 1), ws.Cells(rowIdx, letzteSpalte))
             .Borders.LineStyle = xlContinuous
             .Borders.color = RGB(220, 220, 220)
@@ -599,7 +599,7 @@ NextKatDash:
         If alleLeer Then ws.Columns(prufCol).Hidden = True
     Next kCheck
     
-    ' Datenbalken f?r Quote-Spalte
+    ' Datenbalken für Quote-Spalte
     On Error Resume Next
     Dim rngQ As Range
     Set rngQ = ws.Range(ws.Cells(DASH_MATRIX_START_ROW, colGesamt + 1), _
@@ -644,7 +644,7 @@ Private Sub SchreibeMatrixZelle(ByVal ws As Worksheet, _
         Dim euroFmt As String
         euroFmt = "#,##0.00 " & ChrW(8364)
         
-        ' PUNKT 12: Kreis-Anzeige f?r Sammelspalte Jahresposten
+        ' PUNKT 12: Kreis-Anzeige für Sammelspalte Jahresposten
         Dim punkte As String: punkte = ""
         If alsPunkte And faellig > 0 Then
             Dim ii As Long
@@ -735,12 +735,12 @@ End Sub
 Public Function IstJaehrlicheKategorie(ByRef kat As UebKategorie) As Boolean
     Dim fl As String
     fl = LCase(Trim(kat.faelligkeit))
-    If fl = "j" & ChrW(228) & "hrlich" Or fl = "j?hrlich" Or fl = "jahr" Or fl = "annual" Then
+    If fl = "j" & ChrW(228) & "hrlich" Or fl = "jährlich" Or fl = "jahr" Or fl = "annual" Then
         IstJaehrlicheKategorie = True
         Exit Function
     End If
     
-    ' SollMonate hat genau einen Monat -> j?hrlich
+    ' SollMonate hat genau einen Monat -> jährlich
     If kat.SollMonate <> "" Then
         Dim teile() As String
         teile = Split(kat.SollMonate, ",")
@@ -762,7 +762,7 @@ End Function
 
 
 ' ============================================================
-'  F?LLIGKEIT PRUEFEN
+'  FÄLLIGKEIT PRUEFEN
 ' ============================================================
 Public Function IstKatImMonatFaellig(ByRef kat As UebKategorie, _
                                        ByVal monat As Long) As Boolean
@@ -880,7 +880,7 @@ Public Sub SchreibeVerzugsdetail(ByVal ws As Worksheet, _
             .Font.Name = "Calibri"
             .Font.Size = 9
             .VerticalAlignment = xlCenter
-            ' v5.1: Zeilenh?he dynamisch je nach Anzahl Namen (vbLf-getrennt)
+            ' v5.1: Zeilenhöhe dynamisch je nach Anzahl Namen (vbLf-getrennt)
             Dim nameCount As Long
             nameCount = UBound(Split(liste(i).mitglied, vbLf)) + 1
             If nameCount > 1 Then

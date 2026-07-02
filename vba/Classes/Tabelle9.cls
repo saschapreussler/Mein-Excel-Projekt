@@ -1,4 +1,4 @@
-VERSION 1.0 CLASS
+﻿VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
@@ -11,7 +11,7 @@ Option Explicit
 
 ' ===============================================================
 ' TABELLENBLATT-MODUL: Einstellungen (v5.0)
-' Formatiert die Zahlungstermin-Tabelle bei ?nderungen.
+' Formatiert die Zahlungstermin-Tabelle bei änderungen.
 ' NEU v5.0: Konfigurationsbereich (Zeilen 1-19) auswerten
 '           Mitgliedsbeitrag/Pacht -> Zahlungstermine sync
 ' ===============================================================
@@ -76,7 +76,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             If Trim(CStr(Me.Cells(rowES, ES_COL_STICHTAG_FIX).value)) <> "" Then
                 MsgBox "Spalte F (Soll-Stichtag Fix) ist bereits geFuellt!" & vbLf & _
                        "Entweder Spalte D/E ODER Spalte F verwenden." & vbLf & vbLf & _
-                       "Die Eingabe in Spalte E wird zur?ckgesetzt.", vbExclamation, "Konflikt"
+                       "Die Eingabe in Spalte E wird zurückgesetzt.", vbExclamation, "Konflikt"
                 Target.ClearContents
                 GoTo WeiterFormatieren
             End If
@@ -95,7 +95,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     End If
     
     ' ---------------------------------------------------------------
-    ' SPALTE D: Soll-Tag - D/E vs F Sperre Pr?fen
+    ' SPALTE D: Soll-Tag - D/E vs F Sperre Prüfen
     ' ---------------------------------------------------------------
     If Target.Column = ES_COL_SOLL_TAG Then
         Dim tagWert As String
@@ -106,7 +106,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             If Trim(CStr(Me.Cells(rowES, ES_COL_STICHTAG_FIX).value)) <> "" Then
                 MsgBox "Spalte F (Soll-Stichtag Fix) ist bereits geFuellt!" & vbLf & _
                        "Entweder Spalte D/E ODER Spalte F verwenden." & vbLf & vbLf & _
-                       "Die Eingabe in Spalte D wird zur?ckgesetzt.", vbExclamation, "Konflikt"
+                       "Die Eingabe in Spalte D wird zurückgesetzt.", vbExclamation, "Konflikt"
                 Target.ClearContents
                 GoTo WeiterFormatieren
             End If
@@ -114,7 +114,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     End If
     
     ' ---------------------------------------------------------------
-    ' SPALTE F: Soll-Stichtag (Fix) - D/E vs F Sperre Pr?fen
+    ' SPALTE F: Soll-Stichtag (Fix) - D/E vs F Sperre Prüfen
     ' ---------------------------------------------------------------
     If Target.Column = ES_COL_STICHTAG_FIX Then
         Dim stichtagWert As String
@@ -130,7 +130,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             If dWert <> "" Or eWert <> "" Then
                 MsgBox "Spalte D (Soll-Tag) oder E (Soll-Monate) ist bereits geFuellt!" & vbLf & _
                        "Entweder Spalte D/E ODER Spalte F verwenden." & vbLf & vbLf & _
-                       "Die Eingabe in Spalte F wird zur?ckgesetzt.", vbExclamation, "Konflikt"
+                       "Die Eingabe in Spalte F wird zurückgesetzt.", vbExclamation, "Konflikt"
                 Target.ClearContents
                 GoTo WeiterFormatieren
             End If
@@ -138,14 +138,14 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     End If
     
     ' ---------------------------------------------------------------
-    ' SPALTE B: Kategorie - Duplikat Pr?fen, sortieren, Cursor setzen
+    ' SPALTE B: Kategorie - Duplikat Prüfen, sortieren, Cursor setzen
     ' ---------------------------------------------------------------
     If Target.Column = ES_COL_KATEGORIE Then
         Dim katWert As String
         katWert = Trim(CStr(Target.value))
         
         If katWert <> "" Then
-            ' Duplikat-Pr?fung: Kommt diese Kategorie bereits in einer anderen Zeile vor?
+            ' Duplikat-Prüfung: Kommt diese Kategorie bereits in einer anderen Zeile vor?
             Dim pruefZeile As Long
             Dim LetzteZeile As Long
             LetzteZeile = Me.Cells(Me.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
@@ -173,7 +173,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             
             For suchZeile = ES_START_ROW To letzte
                 If StrComp(Trim(CStr(Me.Cells(suchZeile, ES_COL_KATEGORIE).value)), katWert, vbTextCompare) = 0 Then
-                    ' Cursor in die N?CHSTE Spalte (C = Soll-Betrag) setzen
+                    ' Cursor in die NÄCHSTE Spalte (C = Soll-Betrag) setzen
                     Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
                     Application.EnableEvents = True
                     Me.Cells(suchZeile, ES_COL_SOLL_BETRAG).Select
@@ -183,10 +183,10 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                     Call mod_Einstellungen.FormatiereZahlungsterminTabelle(Me)
                     Application.EnableEvents = True
                     
-                    ' Re-Evaluierung ausl?sen
+                    ' Re-Evaluierung auslösen
                     Call mod_KategorieEngine_Pipeline.ReEvaluiereAlleNichtManuellen
                     
-                    ' v3.0: ?bersicht nach Kategorie-?nderung aktualisieren
+                    ' v3.0: übersicht nach Kategorie-änderung aktualisieren
                     On Error Resume Next
                     Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
                     Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
@@ -202,7 +202,7 @@ WeiterFormatieren:
     Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
 
 NurFormatieren:
-    ' v4.5b: Error-Handler und Events auch bei Multi-Zell-?nderungen sicherstellen
+    ' v4.5b: Error-Handler und Events auch bei Multi-Zell-änderungen sicherstellen
     On Error GoTo SafeExit
     Application.EnableEvents = False
     
@@ -212,7 +212,7 @@ NurFormatieren:
     ' Bankkonto-Kategorien neu evaluieren
     Call mod_KategorieEngine_Pipeline.ReEvaluiereAlleNichtManuellen
     
-    ' v3.0: ?bersicht nach Einstellungs-?nderung automatisch aktualisieren
+    ' v3.0: übersicht nach Einstellungs-änderung automatisch aktualisieren
     On Error Resume Next
     Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
     Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
@@ -276,20 +276,20 @@ Private Sub VerarbeiteKonfigAenderung(ByVal Target As Range)
             Call mod_Einstellungen.SyncMitgliedsbeitragZuTabelle(Me)
             
         Case ES_CFG_MIETE_ROW, ES_CFG_GRUNDSTEUER_ROW
-            ' Miete/Grundsteuer ge?ndert -> Pacht aktualisiert sich per Formel
+            ' Miete/Grundsteuer geändert -> Pacht aktualisiert sich per Formel
             ' -> Pacht in Zahlungstermine sync
             Application.Calculate  ' Formeln aktualisieren
             Call mod_Einstellungen.SyncPachtZuTabelle(Me)
             
         Case ES_CFG_PARZELLEN_ROW
-            ' Parzellen-Anzahl ge?ndert -> Pacht aktualisiert sich per Formel
+            ' Parzellen-Anzahl geändert -> Pacht aktualisiert sich per Formel
             Application.Calculate
             Call mod_Einstellungen.SyncPachtZuTabelle(Me)
     End Select
     
     Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
-    ' v6.1: Startseite bei JEDER Konfig-?nderung aktualisieren
+    ' v6.1: Startseite bei JEDER Konfig-änderung aktualisieren
     ' (Abrechnungsjahr, Kontostand, Vereinsname etc.)
     On Error Resume Next
     Call mod_Startseite.InitialisiereStartseite

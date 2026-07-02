@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Format_Kategorie"
+﻿Attribute VB_Name = "mod_Format_Kategorie"
 Option Explicit
 
 ' ***************************************************************
@@ -7,9 +7,9 @@ Option Explicit
 ' ABGELEITET AUS: mod_Formatierung (Modularisierung)
 ' VERSION: 1.0 - 01.03.2026
 ' FUNKTIONEN:
-'   - FormatiereKategorieTabelle: Zebra + Rahmen f?r J-P
+'   - FormatiereKategorieTabelle: Zebra + Rahmen für J-P
 '   - SortiereKategorieTabelle: Sortierung nach Spalte J
-'   - SetzeZielspalteDropdown: DropDown f?r Zielspalte N
+'   - SetzeZielspalteDropdown: DropDown für Zielspalte N
 ' ***************************************************************
 
 Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiss
@@ -31,7 +31,7 @@ Public Sub FormatiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
     
     lastRow = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     
-    ' Maximale letzte Zeile ?ber alle Spalten J-P ermitteln
+    ' Maximale letzte Zeile Über alle Spalten J-P ermitteln
     lastRowMax = lastRow
     Dim col As Long
     For col = DATA_CAT_COL_START To DATA_CAT_COL_END
@@ -167,7 +167,7 @@ Public Sub SortiereKategorieTabelle(Optional ByRef ws As Worksheet = Nothing)
 End Sub
 
 ' ===============================================================
-' ZIELSPALTE-DROPDOWN SETZEN (abh?ngig von E/A)
+' ZIELSPALTE-DROPDOWN SETZEN (abhängig von E/A)
 ' ===============================================================
 Public Sub SetzeZielspalteDropdown(ByRef ws As Worksheet, ByVal zeile As Long, ByVal einAus As String)
     
