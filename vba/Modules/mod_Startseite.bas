@@ -1,10 +1,10 @@
-Attribute VB_Name = "mod_Startseite"
+﻿Attribute VB_Name = "mod_Startseite"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Startseite
 ' VERSION: 2.0 - 18.04.2026
-' ZWECK: Startseite (Startmen?) als professioneller Eye-Catcher
+' ZWECK: Startseite (Startmenü) als professioneller Eye-Catcher
 '        - Gradient-Look mit Farbverlauf-Effekt
 '        - KPIs: Abrechnungsjahr, Mitglieder, Parzellen, Kontostand
 '        - Navigations-Buttons in Kachel-Optik
@@ -148,7 +148,7 @@ End Sub
 
 
 ' ===============================================================
-' ZENTRALER CLICK-DISPATCHER f?r Startseite-Kacheln
+' ZENTRALER CLICK-DISPATCHER für Startseite-Kacheln
 ' ---------------------------------------------------------------
 ' Hintergrund: In einigen Bestandsdateien wurden OnAction-Ziele,
 ' Modulstaende oder Shape-Ueberlagerungen inkonsistent. Dieser
@@ -264,6 +264,7 @@ End Sub
 Public Sub FixNurEinstellungenButtonSofort(Optional ByVal zeigeMeldung As Boolean = False)
     Dim ws As Worksheet
     Dim shp As Shape
+    Dim ziel As String
 
     On Error Resume Next
     Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
@@ -277,14 +278,14 @@ Public Sub FixNurEinstellungenButtonSofort(Optional ByVal zeigeMeldung As Boolea
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
 
-    ' ALLE Kacheln auf den zentralen, TEXT-basierten Dispatcher
-    ' verdrahten. Damit ist die Zuordnung voellig unabhaengig von
-    ' (evtl. vertauschten) Shape-Namen - es zaehlt nur der sichtbare
-    ' Text der Kachel.
+    ' Jede Kachel DIREKT auf ihr eigenes Navigations-Makro verdrahten.
+    ' Kein Dispatcher, keine Textlogik - eindeutig und nachweislich korrekt
+    ' (die Makros funktionieren, siehe direkter Aufruf-Test).
     For Each shp In ws.Shapes
-        If Left$(shp.Name, 7) = "kachel_" Then
+        ziel = KachelZielMakro(shp.Name)
+        If ziel <> "" Then
             On Error Resume Next
-            shp.OnAction = "'mod_Startseite.StartseitenKachelDispatcher'"
+            shp.OnAction = ziel
             On Error GoTo 0
         End If
     Next shp
@@ -296,10 +297,34 @@ Public Sub FixNurEinstellungenButtonSofort(Optional ByVal zeigeMeldung As Boolea
     On Error GoTo 0
 
     If zeigeMeldung Then
-        MsgBox "Startseiten-Buttons neu verdrahtet (Routing per sichtbarem Text).", _
+        MsgBox "Startseiten-Buttons direkt verdrahtet (jede Kachel auf ihr eigenes Makro).", _
                vbInformation, "Startseite"
     End If
 End Sub
+
+
+' ===============================================================
+' Liefert das direkte Ziel-Makro fuer eine Kachel anhand ihres
+' Namens. Leerer Rueckgabewert = keine bekannte Kachel.
+' ===============================================================
+Private Function KachelZielMakro(ByVal shapeName As String) As String
+    Select Case shapeName
+        Case "kachel_Uebersicht":       KachelZielMakro = "'mod_Navigation.NavigiereZu_Uebersicht'"
+        Case "kachel_Bankkonto":        KachelZielMakro = "'mod_Navigation.NavigiereZu_Bankkonto'"
+        Case "kachel_Vereinskasse":     KachelZielMakro = "'mod_Navigation.NavigiereZu_Vereinskasse'"
+        Case "kachel_Dashboard":        KachelZielMakro = "'mod_Navigation.NavigiereZu_Dashboard'"
+        Case "kachel_Strom":            KachelZielMakro = "'mod_Navigation.NavigiereZu_Strom'"
+        Case "kachel_Wasser":           KachelZielMakro = "'mod_Navigation.NavigiereZu_Wasser'"
+        Case "kachel_Einstellungen":    KachelZielMakro = "'mod_Navigation.NavigiereZu_Einstellungen'"
+        Case "kachel_Daten":            KachelZielMakro = "'mod_Navigation.NavigiereZu_Daten'"
+        Case "kachel_Mitglieder":       KachelZielMakro = "'mod_Navigation.ZeigeMitgliederverwaltung'"
+        Case "kachel_FinanzUebersicht": KachelZielMakro = "'mod_Navigation.NavigiereZu_FinanzUebersicht'"
+        Case "kachel_Betriebskosten":   KachelZielMakro = "'mod_Navigation.ZeigeSerienbrief_Betriebskosten'"
+        Case "kachel_Endabrechnung":    KachelZielMakro = "'mod_Navigation.ZeigeSerienbrief_Endabrechnung'"
+        Case "kachel_NeuesJahr":        KachelZielMakro = "'mod_Jahreswechsel.StarteNeuesJahr'"
+        Case "kachel_NormaleAnsicht":   KachelZielMakro = "'mod_Startseite.StelleNormaleAnsichtWiederHer'"
+    End Select
+End Function
 
 
 Private Function RechteckeUeberlappen(ByVal l1 As Double, ByVal t1 As Double, ByVal w1 As Double, ByVal h1 As Double, _
@@ -434,7 +459,7 @@ Private Sub VorbereiteBlatt(ByVal ws As Worksheet)
     ws.Columns("K").ColumnWidth = 4      ' Padding rechts
     ws.Columns("L").ColumnWidth = 2      ' Rand
     
-    ' Zeilenh?hen
+    ' Zeilenhöhen
     ws.Rows("1").RowHeight = 6           ' Top-Rand
     ws.Rows("2").RowHeight = 50          ' Hero Titel
     ws.Rows("3").RowHeight = 24          ' Hero Untertitel
@@ -553,7 +578,7 @@ End Sub
 ' KPI-BEREICH: 4 Kennzahlen-Karten
 ' ===============================================================
 Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
-    ' Hintergrund KPI-Bereich (erweitert f?r 2 KPI-Zeilen)
+    ' Hintergrund KPI-Bereich (erweitert für 2 KPI-Zeilen)
     ws.Range("A6:L12").Interior.color = CLR_SECTION_BG
     
     ' KPI-Header
@@ -733,7 +758,7 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         col3Left, ws.Range("I17").Top + 4, kachelW, kachelH, _
         CLR_BTN_MITGL, "'mod_Startseite.StartseitenKachelDispatcher'")
     
-    ' --- Zeile 4: Finanz-?bersicht ---
+    ' --- Zeile 4: Finanz-übersicht ---
     Call ErstelleKachel(ws, "kachel_FinanzUebersicht", _
         ChrW(9654) & " Finanz-" & ChrW(220) & "bersicht", _
         col1Left, ws.Range("C18").Top + 4, kachelW, kachelH, _
@@ -762,17 +787,19 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         col2Left, ws.Range("F21").Top + 4, kachelW, kachelH, _
         CLR_BTN_SERIENBR, "'mod_Startseite.StartseitenKachelDispatcher'")
     
-    ' Punkt 13: Neues Kalenderjahr starten
+    ' Punkt 13: Neues Kalenderjahr starten - direkt unter "Mitgliederverwaltung"
+    ' (Spalte 3 = col3Left), auf gleicher Hoehe wie Finanz-Uebersicht /
+    ' Normale Ansicht (Zeile 18).
     Call ErstelleKachel(ws, "kachel_NeuesJahr", _
         ChrW(9654) & " Neues Kalenderjahr", _
-        col1Left + (kachelW + 6) * 2, ws.Range("C18").Top + 4, kachelW, kachelH, _
-        CLR_BTN_ADMIN, "'mod_Startseite.StartseitenKachelDispatcher'")
+        col3Left, ws.Range("I18").Top + 4, kachelW, kachelH, _
+        CLR_BTN_ADMIN, "'mod_Jahreswechsel.StarteNeuesJahr'")
 
-    ' Normale Ansicht wiederherstellen (Menueband / Register einblenden)
+    ' Normale Ansicht wiederherstellen (Menueband / Register einblenden) - Spalte 2, Zeile 18
     Call ErstelleKachel(ws, "kachel_NormaleAnsicht", _
         ChrW(9707) & " Normale Ansicht", _
         col2Left, ws.Range("F18").Top + 4, kachelW, kachelH, _
-        RGB(120, 90, 90), "'mod_Startseite.StartseitenKachelDispatcher'")
+        RGB(120, 90, 90), "'mod_Startseite.StelleNormaleAnsichtWiederHer'")
 End Sub
 
 
@@ -820,7 +847,7 @@ Private Sub ErstelleKachel(ByVal ws As Worksheet, _
         .Adjustments(1) = 0.18
         On Error GoTo KachelErr
         
-        ' Dezenter Schatten f?r 3D-Effekt
+        ' Dezenter Schatten für 3D-Effekt
         With .Shadow
             .Visible = msoTrue
             .Type = msoShadow14
@@ -919,7 +946,7 @@ Public Function ZaehleBelegteParzellen() As Long
     ' Quelle 1: Einstellungen!C14 (Zelle, in der die Anzahl der
     ' verpachteten Parzellen gepflegt wird). Wenn dort kein gueltiger
     ' Zahlenwert steht, faellt die Funktion auf die Mitgliederliste
-    ' zur?ck und zaehlt distinkte Parzellen (ohne "Verein" und KGA).
+    ' zurück und zaehlt distinkte Parzellen (ohne "Verein" und KGA).
 
     ' --- Quelle 1: Einstellungen!C14 -------------------------------
     Dim wsCfg As Worksheet
@@ -984,7 +1011,7 @@ End Function
 ' ---------------------------------------------------------------
 ' Schreibt die aktuelle Anzahl belegter Parzellen
 ' (Quelle: ZaehleBelegteParzellen, identisch zu Startseite /
-' Einstellungen / ?bersicht / Mitgliederliste) in:
+' Einstellungen / übersicht / Mitgliederliste) in:
 '   - Tabellenblatt "Strom":  Zelle B6
 '   - Tabellenblatt "Wasser": Zelle A4
 '
@@ -1113,7 +1140,7 @@ End Function
 
 ' ===============================================================
 ' KPI-UPDATE: Kontostand auf Startseite aktualisieren
-' Wird nach CSV-Import und manuellen ?nderungen aufgerufen
+' Wird nach CSV-Import und manuellen änderungen aufgerufen
 ' ===============================================================
 Public Sub AktualisiereKontostandKPI()
     Dim ws As Worksheet

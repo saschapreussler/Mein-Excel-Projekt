@@ -1,11 +1,11 @@
-Attribute VB_Name = "mod_Einstellungen_DropDowns"
+﻿Attribute VB_Name = "mod_Einstellungen_DropDowns"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Einstellungen_DropDowns
 ' Ausgelagert aus mod_Einstellungen
-' enth?lt: SetzeDropDowns, HoleAlleKategorien
-' FIX v2.1: Hilfsspalte f?r Fallback-DropDown = Daten!BA
+' enthält: SetzeDropDowns, HoleAlleKategorien
+' FIX v2.1: Hilfsspalte für Fallback-DropDown = Daten!BA
 ' ===============================================================
 
 
@@ -63,7 +63,7 @@ Public Sub SetzeDropDowns(ByVal ws As Worksheet)
         End If
     Next k
     
-    ' 4. Basisliste als String (f?r leere Zeilen / N?CHSTE freie Zeile)
+    ' 4. Basisliste als String (für leere Zeilen / NÄCHSTE freie Zeile)
     Dim basisListe As String
     basisListe = ""
     If verfuegbar.count > 0 Then

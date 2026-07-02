@@ -29,9 +29,7 @@ Set-Location (Split-Path -Parent $PSScriptRoot)
 
 $excluded = @(
     "mod_EntityKey_Normalize.bas",
-    "mod_Mapping_Tools.bas",
-    "mod_Repo_Sync.bas",
-    "mod_VBA_Export.bas"
+    "mod_Mapping_Tools.bas"
 )
 
 # ---- Woerterliste laden + "?"-Muster generieren ---------------------------
@@ -95,7 +93,10 @@ foreach ($p in $pairs) {
 
 function Fix-Text {
     param([string]$text)
-    $result = $text
+    # U+FFFD (Unicode-Ersatzzeichen) entsteht beim Fehllesen von ANSI als
+    # UTF-8. Wie "?" als Umlaut-Platzhalter behandeln, damit BEIDE
+    # Korruptionsarten ueber das Woerterbuch repariert werden.
+    $result = $text.Replace([char]0xFFFD, '?')
     foreach ($r in $regexList) { $result = $r[0].Replace($result, $r[1]) }
     return $result
 }
@@ -103,21 +104,19 @@ function Fix-Text {
 
 function Fix-Line {
     param([string]$line, [bool]$isFrm)
-    $trim = $line.TrimStart()
-    if ($trim.StartsWith("'")) {
-        return Fix-Text $line
-    }
 
-    # kein Kommentar -> nur "..." Substrings ersetzen
+    # Ein-Pass-Scanner: verarbeitet String-Literale ("...") UND Kommentare
+    # (sowohl ganze Kommentarzeilen als auch INLINE-Kommentare 'nach Code).
     $sb = New-Object System.Text.StringBuilder
     $i = 0
-    while ($i -lt $line.Length) {
+    $n = $line.Length
+    while ($i -lt $n) {
         $ch = $line[$i]
         if ($ch -eq '"') {
             $start = $i
             $j = $i + 1
-            while ($j -lt $line.Length -and $line[$j] -ne '"') { $j++ }
-            if ($j -lt $line.Length) {
+            while ($j -lt $n -and $line[$j] -ne '"') { $j++ }
+            if ($j -lt $n) {
                 $str = $line.Substring($start, $j - $start + 1)
                 [void]$sb.Append((Fix-Text $str))
                 $i = $j + 1
@@ -125,6 +124,11 @@ function Fix-Line {
                 [void]$sb.Append($ch)
                 $i++
             }
+        } elseif ($ch -eq "'") {
+            # Ab hier ist der Rest der Zeile ein Kommentar -> komplett fixen
+            $rest = $line.Substring($i)
+            [void]$sb.Append((Fix-Text $rest))
+            $i = $n
         } else {
             [void]$sb.Append($ch)
             $i++

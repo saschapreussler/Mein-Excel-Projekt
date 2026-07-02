@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Diagnose"
+﻿Attribute VB_Name = "mod_Diagnose"
 Option Explicit
 
 ' ===============================================================
@@ -8,7 +8,7 @@ Option Explicit
 '        Jeder Test zeigt ein MsgBox-Ergebnis
 '
 ' ANLEITUNG:
-'   1. VBE ?ffnen (Alt+F11)
+'   1. VBE öffnen (Alt+F11)
 '   2. Im Direktfenster (Strg+G) eingeben:
 '      mod_Diagnose.DiagnoseAlles
 '   3. Oder einzelne Tests ausfuehren:
@@ -66,7 +66,7 @@ End Sub
 
 
 ' ===============================================================
-' TEST 01: Pr?fen ob alle erwarteten Module existieren
+' TEST 01: Prüfen ob alle erwarteten Module existieren
 ' ===============================================================
 Public Sub Test_01_ModulCheck()
     LogZeile "--- TEST 01: Module im VBA-Projekt ---"
@@ -108,7 +108,7 @@ End Sub
 
 
 ' ===============================================================
-' TEST 02: Pr?fen ob Blattnamen korrekt sind
+' TEST 02: Prüfen ob Blattnamen korrekt sind
 ' ===============================================================
 Public Sub Test_02_BlattNamen()
     LogZeile ""
@@ -148,7 +148,7 @@ Public Sub Test_02_BlattNamen()
         End If
     Next i
     
-    ' Alle vorhandenen Bl?tter auflisten
+    ' Alle vorhandenen Blätter auflisten
     LogZeile "  Vorhandene Bl" & ChrW(228) & "tter:"
     For Each ws In ThisWorkbook.Worksheets
         LogZeile "    -> """ & ws.Name & """ (CodeName: " & ws.CodeName & ")"
@@ -157,7 +157,7 @@ End Sub
 
 
 ' ===============================================================
-' TEST 03: Tabellen-Codenamen pr?fen
+' TEST 03: Tabellen-Codenamen prüfen
 '          Besonders wichtig: Welche Tabelle = Vereinskasse?
 ' ===============================================================
 Public Sub Test_03_TabellenCodenames()
@@ -185,7 +185,7 @@ Public Sub Test_03_TabellenCodenames()
         LogFEHLER "Blatt 'Vereinskasse' existiert nicht!"
     End If
     
-    ' Startmen?-Blatt pr?fen
+    ' Startmenü-Blatt prüfen
     Set ws = Nothing
     On Error Resume Next
     Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
@@ -200,7 +200,7 @@ End Sub
 
 
 ' ===============================================================
-' TEST 04: Einstellungen-Werte pr?fen
+' TEST 04: Einstellungen-Werte prüfen
 ' ===============================================================
 Public Sub Test_04_EinstellungenWerte()
     LogZeile ""
@@ -284,7 +284,7 @@ Public Sub Test_05_Startseite()
     
     LogOK "Blatt gefunden: " & ws.Name & " (Code: " & ws.CodeName & ")"
     
-    ' Pr?fen ob InitialisiereStartseite aufrufbar ist
+    ' Prüfen ob InitialisiereStartseite aufrufbar ist
     On Error Resume Next
     Err.Clear
     Call mod_Startseite.InitialisiereStartseite
@@ -300,7 +300,7 @@ End Sub
 
 
 ' ===============================================================
-' TEST 06: Bankkonto E4-Formel pr?fen
+' TEST 06: Bankkonto E4-Formel prüfen
 ' ===============================================================
 Public Sub Test_06_BankkontoFormeln()
     LogZeile ""
@@ -316,7 +316,7 @@ Public Sub Test_06_BankkontoFormeln()
         Exit Sub
     End If
     
-    ' E4 pr?fen
+    ' E4 prüfen
     Dim formelE2 As String
     On Error Resume Next
     formelE2 = ws.Range("E4").FormulaLocal
@@ -345,7 +345,7 @@ Public Sub Test_06_BankkontoFormeln()
         Err.Clear
     Else
         LogOK "StelleFormelnWiederHer erfolgreich"
-        ' Nochmal pr?fen
+        ' Nochmal prüfen
         formelE2 = ws.Range("E4").FormulaLocal
         If InStr(formelE2, "Einstellungen") > 0 Then
             LogOK "E4 jetzt korrekt: " & Left$(formelE2, 60) & "..."
@@ -374,7 +374,7 @@ Public Sub Test_07_VereinskasseComboBox()
     
     LogOK "Vereinskasse gefunden (CodeName: " & wsVK.CodeName & ")"
     
-    ' Pr?fen ob ComboBox existiert
+    ' Prüfen ob ComboBox existiert
     Dim oleObj As OLEObject
     On Error Resume Next
     Set oleObj = wsVK.OLEObjects("cbo_MonatFilter_VK")
@@ -391,7 +391,7 @@ Public Sub Test_07_VereinskasseComboBox()
             LogFEHLER "InitialisiereVereinskasseComboBox FEHLER " & Err.Number & ": " & Err.Description
             Err.Clear
         Else
-            ' Pr?fen ob jetzt vorhanden
+            ' Prüfen ob jetzt vorhanden
             Set oleObj = Nothing
             Set oleObj = wsVK.OLEObjects("cbo_MonatFilter_VK")
             If Not oleObj Is Nothing Then
@@ -403,23 +403,23 @@ Public Sub Test_07_VereinskasseComboBox()
         On Error GoTo 0
     End If
     
-    ' Vereinskasse CodeName pr?fen
+    ' Vereinskasse CodeName prüfen
     If wsVK.CodeName <> "Tabelle4" Then
         LogFEHLER "WICHTIG: Vereinskasse CodeName ist """ & wsVK.CodeName & """ aber Events stehen in Tabelle4.cls!" & vbLf & _
                   "  Die ComboBox-Events (Worksheet_Activate, cbo_MonatFilter_VK_Change)" & vbLf & _
-                  "  m?ssen in das Sheet-Modul """ & wsVK.CodeName & """ verschoben werden."
+                  "  müssen in das Sheet-Modul """ & wsVK.CodeName & """ verschoben werden."
     End If
 End Sub
 
 
 ' ===============================================================
-' TEST 08: Navigations-Module pr?fen
+' TEST 08: Navigations-Module prüfen
 ' ===============================================================
 Public Sub Test_08_NavigationsModule()
     LogZeile ""
     LogZeile "--- TEST 08: Navigation ---"
     
-    ' Pr?fen ob mod_Navigation existiert und Funktionen hat
+    ' Prüfen ob mod_Navigation existiert und Funktionen hat
     Dim comp As Object
     On Error Resume Next
     Set comp = ThisWorkbook.VBProject.VBComponents("mod_Navigation")
@@ -483,7 +483,7 @@ Public Sub Test_InputBox_Abrechnungsjahr()
     ' InputBox aufrufen
     Call mod_Einstellungen.PruefeAbrechnungsjahr
     
-    ' Pr?fen ob Wert gesetzt wurde
+    ' Prüfen ob Wert gesetzt wurde
     Dim neuer_wert As Variant
     neuer_wert = ws.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL).value
     

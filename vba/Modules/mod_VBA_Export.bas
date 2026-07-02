@@ -1,14 +1,19 @@
-Attribute VB_Name = "mod_VBA_Export"
+ï»¿Attribute VB_Name = "mod_VBA_Export"
 Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_VBA_Export
 ' ZWECK: Exportiert alle VBA-Komponenten in Repository-Ordner
-' VERSION: 1.0 - 04.02.2026
+' VERSION: 2.0 - 02.07.2026
+' WICHTIG (v2.0): vbComp.Export schreibt ANSI (Windows-1252) OHNE
+'   BOM. Der Import (mod_Repo_Sync) erwartet aber UTF-8. Dieser
+'   Mismatch hat ueber Export/Import-Zyklen die Umlaute zu "?"
+'   zerstoert. Deshalb werden .bas/.cls nach dem Export sofort
+'   nach UTF-8 MIT BOM konvertiert. .frm bleibt unveraendert.
 ' ***************************************************************
 
 ' ===============================================================
-' ZIELORDNER FÜR EXPORT
+' ZIELORDNER FÃœR EXPORT
 ' ===============================================================
 Private Const EXPORT_PATH_CLASSES As String = "C:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\Classes\"
 Private Const EXPORT_PATH_USERFORMS As String = "C:\Users\DELL Latitude 7490\Desktop\Mein Projekt\vba\UserForms\"
@@ -33,20 +38,20 @@ Public Sub ExportiereAlleVBAKomponenten()
     
     On Error GoTo ErrorHandler
     
-    ' Prüfe ob Zugriff auf VBA-Projekt erlaubt ist
+    ' PrÃ¼fe ob Zugriff auf VBA-Projekt erlaubt ist
     On Error Resume Next
     Set vbProj = ThisWorkbook.VBProject
     If Err.Number <> 0 Then
         MsgBox "FEHLER: Zugriff auf VBA-Projekt nicht erlaubt!" & vbCrLf & vbCrLf & _
                "Bitte aktivieren Sie in Excel:" & vbCrLf & _
-               "Datei > Optionen > Trust Center > Einstellungen für das Trust Center" & vbCrLf & _
+               "Datei > Optionen > Trust Center > Einstellungen fÃ¼r das Trust Center" & vbCrLf & _
                "> Makroeinstellungen > 'Zugriff auf das VBA-Projektobjektmodell vertrauen'", _
                vbCritical, "Zugriff verweigert"
         Exit Sub
     End If
     On Error GoTo ErrorHandler
     
-    ' Prüfe ob Zielordner existieren
+    ' PrÃ¼fe ob Zielordner existieren
     If Not OrdnerExistiert(EXPORT_PATH_CLASSES) Then
         errors = errors & "Ordner nicht gefunden: " & EXPORT_PATH_CLASSES & vbCrLf
     End If
@@ -62,7 +67,7 @@ Public Sub ExportiereAlleVBAKomponenten()
         Exit Sub
     End If
     
-    ' Zähler initialisieren
+    ' ZÃ¤hler initialisieren
     countModules = 0
     countClasses = 0
     countForms = 0
@@ -83,6 +88,7 @@ Public Sub ExportiereAlleVBAKomponenten()
                 On Error Resume Next
                 vbComp.Export exportPath & fileName & extension
                 If Err.Number = 0 Then
+                    KonvertiereDateiZuUtf8BOM exportPath & fileName & extension
                     countModules = countModules + 1
                 Else
                     errors = errors & "Modul: " & fileName & " - " & Err.Description & vbCrLf
@@ -97,6 +103,7 @@ Public Sub ExportiereAlleVBAKomponenten()
                 On Error Resume Next
                 vbComp.Export exportPath & fileName & extension
                 If Err.Number = 0 Then
+                    KonvertiereDateiZuUtf8BOM exportPath & fileName & extension
                     countClasses = countClasses + 1
                 Else
                     errors = errors & "Klasse: " & fileName & " - " & Err.Description & vbCrLf
@@ -119,13 +126,14 @@ Public Sub ExportiereAlleVBAKomponenten()
                 On Error GoTo ErrorHandler
                 
             Case 100 ' vbext_ct_Document - Dokument/Arbeitsblatt (.cls)
-                ' Arbeitsblätter und ThisWorkbook als Klassen exportieren
+                ' ArbeitsblÃ¤tter und ThisWorkbook als Klassen exportieren
                 exportPath = EXPORT_PATH_CLASSES
                 extension = ".cls"
                 
                 On Error Resume Next
                 vbComp.Export exportPath & fileName & extension
                 If Err.Number = 0 Then
+                    KonvertiereDateiZuUtf8BOM exportPath & fileName & extension
                     countClasses = countClasses + 1
                 Else
                     errors = errors & "Dokument: " & fileName & " - " & Err.Description & vbCrLf
@@ -149,7 +157,7 @@ Public Sub ExportiereAlleVBAKomponenten()
     msg = msg & "  UserForms: " & countForms & " -> " & EXPORT_PATH_USERFORMS & vbCrLf
     
     If countSkipped > 0 Then
-        msg = msg & vbCrLf & "Übersprungen: " & countSkipped
+        msg = msg & vbCrLf & "Ã¼bersprungen: " & countSkipped
     End If
     
     If errors <> "" Then
@@ -169,7 +177,7 @@ ErrorHandler:
 End Sub
 
 ' ===============================================================
-' HILFSFUNKTION: Prüft ob Ordner existiert
+' HILFSFUNKTION: PrÃ¼ft ob Ordner existiert
 ' ===============================================================
 Private Function OrdnerExistiert(ByVal pfad As String) As Boolean
     On Error Resume Next
@@ -205,7 +213,10 @@ Public Sub ExportiereNurModule()
         If vbComp.Type = 1 Then ' Standard-Modul
             On Error Resume Next
             vbComp.Export EXPORT_PATH_MODULES & vbComp.Name & ".bas"
-            If Err.Number = 0 Then count = count + 1
+            If Err.Number = 0 Then
+                KonvertiereDateiZuUtf8BOM EXPORT_PATH_MODULES & vbComp.Name & ".bas"
+                count = count + 1
+            End If
             Err.Clear
             On Error GoTo 0
         End If
@@ -242,7 +253,10 @@ Public Sub ExportiereNurKlassen()
         If vbComp.Type = 2 Or vbComp.Type = 100 Then ' Klasse oder Dokument
             On Error Resume Next
             vbComp.Export EXPORT_PATH_CLASSES & vbComp.Name & ".cls"
-            If Err.Number = 0 Then count = count + 1
+            If Err.Number = 0 Then
+                KonvertiereDateiZuUtf8BOM EXPORT_PATH_CLASSES & vbComp.Name & ".cls"
+                count = count + 1
+            End If
             Err.Clear
             On Error GoTo 0
         End If
@@ -250,5 +264,62 @@ Public Sub ExportiereNurKlassen()
     
     MsgBox count & " Klassen exportiert nach:" & vbCrLf & EXPORT_PATH_CLASSES, vbInformation
     
+End Sub
+
+
+' ===============================================================
+' Konvertiert eine gerade per vbComp.Export erzeugte Datei von
+' ANSI (Windows-1252) nach UTF-8 MIT BOM.
+'
+' HINTERGRUND / WARUM DAS NOETIG IST:
+'   VBIDE.Export schreibt im System-Codepage (Windows-1252) OHNE
+'   BOM. Der Import (mod_Repo_Sync) liest die Repo-Dateien jedoch
+'   als UTF-8. Ohne diese Konvertierung werden Umlaute ueber die
+'   Export/Import-Zyklen schrittweise zu "?" zerstoert.
+'   Mit UTF-8+BOM greift im Import die eindeutige BOM-Erkennung
+'   und die Umlaute bleiben dauerhaft erhalten.
+'
+' HINWEIS: NICHT fuer .frm verwenden - UserForms muessen im
+'   ANSI-Format (ohne BOM) bleiben, damit VBComponents.Import sie
+'   korrekt einlesen kann.
+' ===============================================================
+Private Sub KonvertiereDateiZuUtf8BOM(ByVal pfad As String)
+    On Error Resume Next
+
+    Dim sIn As Object
+    Dim inhalt As String
+
+    ' 1) Datei als Windows-1252 (ANSI) lesen - so schreibt vbComp.Export
+    Set sIn = CreateObject("ADODB.Stream")
+    sIn.Type = 2                 ' adTypeText
+    sIn.Charset = "windows-1252"
+    sIn.Open
+    sIn.LoadFromFile pfad
+    inhalt = sIn.ReadText(-1)
+    sIn.Close
+
+    If Err.Number <> 0 Then
+        Err.Clear
+        On Error GoTo 0
+        Exit Sub
+    End If
+
+    ' Evtl. vorhandenes BOM-Zeichen am Anfang entfernen
+    If Len(inhalt) > 0 Then
+        If AscW(Left$(inhalt, 1)) = &HFEFF Then inhalt = Mid$(inhalt, 2)
+    End If
+
+    ' 2) Als UTF-8 MIT BOM zurueckschreiben (ADODB schreibt BOM automatisch)
+    Dim sOut As Object
+    Set sOut = CreateObject("ADODB.Stream")
+    sOut.Type = 2                ' adTypeText
+    sOut.Charset = "utf-8"
+    sOut.Open
+    sOut.WriteText inhalt
+    sOut.SaveToFile pfad, 2      ' adSaveCreateOverWrite
+    sOut.Close
+
+    Err.Clear
+    On Error GoTo 0
 End Sub
 

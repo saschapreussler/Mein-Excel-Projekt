@@ -142,7 +142,7 @@ Public Sub OeffneMitgliedsDetails()
         .lbl_Email.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 12)
         .lbl_Funktion.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 13)
         
-        ' F?lle auch die Pachtbeginn und Pachtende Labels
+        ' Fülle auch die Pachtbeginn und Pachtende Labels
         If Me.lst_Mitgliederliste.ColumnCount > 14 Then
             .lbl_Pachtbeginn.Caption = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 14)
         Else
@@ -169,7 +169,7 @@ Public Sub OeffneMitgliedsDetails()
         .txt_Email.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 12)
         .cbo_Funktion.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 13)
         
-        ' F?lle auch die Pachtbeginn und Pachtende TextBoxen
+        ' Fülle auch die Pachtbeginn und Pachtende TextBoxen
         If Me.lst_Mitgliederliste.ColumnCount > 14 Then
             .txt_Pachtbeginn.value = Me.lst_Mitgliederliste.List(Me.lst_Mitgliederliste.ListIndex, 14)
         Else

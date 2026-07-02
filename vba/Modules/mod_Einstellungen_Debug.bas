@@ -1,16 +1,16 @@
-Attribute VB_Name = "mod_Einstellungen_Debug"
+﻿Attribute VB_Name = "mod_Einstellungen_Debug"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Einstellungen_Debug
 ' Ausgelagert aus mod_Einstellungen
-' enth?lt: Diagnose-Prozeduren f?r DropDown-Logik
-' Aufruf: Im VBA-Editor ?ber F5 oder Direktfenster
+' enthält: Diagnose-Prozeduren für DropDown-Logik
+' Aufruf: Im VBA-Editor Über F5 oder Direktfenster
 ' ===============================================================
 
 
 ' ===============================================================
-' DEBUG: DropDown-Logik Schritt f?r Schritt Pr?fen
+' DEBUG: DropDown-Logik Schritt für Schritt Prüfen
 ' Aufruf: Call DebugDropDownLogik
 ' ===============================================================
 Public Sub DebugDropDownLogik()
@@ -113,7 +113,7 @@ Public Sub DebugDropDownLogik()
         End If
     Next k
     
-    msg = msg & vbLf & "--- verfuegbarE Kategorien (f?r leere Zeilen) ---" & vbLf
+    msg = msg & vbLf & "--- verfuegbarE Kategorien (für leere Zeilen) ---" & vbLf
     msg = msg & "Anzahl: " & verfuegbar.count & vbLf
     
     Dim basisListe As String
@@ -153,7 +153,7 @@ Public Sub DebugDropDownLogik()
     nextRow = lastRow + 1
     If nextRow < ES_START_ROW Then nextRow = ES_START_ROW
     
-    msg = msg & vbLf & "--- N?CHSTE FREIE ZEILE: " & nextRow & " ---" & vbLf
+    msg = msg & vbLf & "--- NÄCHSTE FREIE ZEILE: " & nextRow & " ---" & vbLf
     On Error Resume Next
     valFormula = ws.Cells(nextRow, ES_COL_KATEGORIE).Validation.Formula1
     If Err.Number <> 0 Then
@@ -183,7 +183,7 @@ End Sub
 
 
 ' ===============================================================
-' DEBUG: Validation einer bestimmten Zeile Pr?fen
+' DEBUG: Validation einer bestimmten Zeile Prüfen
 ' Aufruf: Call DebugValidationZeile(4)
 ' ===============================================================
 Public Sub DebugValidationZeile(ByVal zeile As Long)
@@ -216,7 +216,7 @@ End Sub
 
 
 ' ===============================================================
-' DEBUG: SetzeDropDowns isoliert aufrufen und Ergebnis Pr?fen
+' DEBUG: SetzeDropDowns isoliert aufrufen und Ergebnis Prüfen
 ' Aufruf: Call DebugSetzeDropDownsUndPruefe
 ' ===============================================================
 Public Sub DebugSetzeDropDownsUndPruefe()
