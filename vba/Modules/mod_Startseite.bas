@@ -54,6 +54,8 @@ Public Sub InitialisiereStartseite()
     Call SchreibeHeroBanner(ws)
     Call SchreibeKPIBereich(ws)
     Call ErstelleNavigationsKacheln(ws)
+    ' Harte Absicherung: Einstellungen-Button direkt setzen und nach vorn bringen
+    Call FixNurEinstellungenButtonSofort
     Call SchreibeFooter(ws)
     
     ws.Cells.Locked = True

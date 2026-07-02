@@ -68,6 +68,7 @@ Private Sub Workbook_Open()
     ' v6.0: Startseite initialisieren (KPIs, Buttons, Design)
     On Error Resume Next
     Call mod_Startseite.InitialisiereStartseite
+    Call mod_Startseite.FixNurEinstellungenButtonSofort
     On Error GoTo 0
     
     ' v6.0: Home-Buttons auf allen Blättern setzen
