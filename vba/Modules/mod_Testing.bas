@@ -104,6 +104,39 @@ Public Sub TestReset_VorCSVImport()
         " gel" & ChrW(246) & "scht."
 
     ' =============================================================
+    ' 2b. VEREINSKASSE leeren (ab Zeile 27, Spalten A-T)
+    ' =============================================================
+    Dim wsVK As Worksheet
+    On Error Resume Next
+    Set wsVK = ThisWorkbook.Worksheets(WS_VEREINSKASSE)
+    On Error GoTo ErrorHandler
+
+    If Not wsVK Is Nothing Then
+        wsVK.Unprotect PASSWORD:=PASSWORD
+        If wsVK.AutoFilterMode Then wsVK.AutoFilterMode = False
+
+        Dim vkLastRow As Long
+        vkLastRow = wsVK.Cells(wsVK.Rows.count, VK_COL_DATUM).End(xlUp).Row
+        If vkLastRow < VK_START_ROW Then
+            vkLastRow = wsVK.Cells(wsVK.Rows.count, 1).End(xlUp).Row
+        End If
+
+        If vkLastRow >= VK_START_ROW Then
+            wsVK.Range(wsVK.Cells(VK_START_ROW, 1), _
+                       wsVK.Cells(vkLastRow, 20)).Clear
+            Debug.Print "[TestReset] Vereinskasse: " & _
+                (vkLastRow - VK_START_ROW + 1) & " Zeilen gel" & ChrW(246) & "scht."
+        Else
+            Debug.Print "[TestReset] Vereinskasse: keine Daten."
+        End If
+
+        wsVK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, _
+                     AllowFiltering:=True, AllowSorting:=True
+    Else
+        Debug.Print "[TestReset] Vereinskasse: Blatt nicht gefunden."
+    End If
+
+    ' =============================================================
     ' 2a. DASHBOARD MITGLIEDERZAHLUNGEN loeschen (ganzes Blatt)
     ' =============================================================
     Dim wsDash As Worksheet
@@ -209,6 +242,7 @@ Public Sub TestReset_VorCSVImport()
            "Gel" & ChrW(246) & "scht:" & vbCrLf & _
            "  " & ChrW(8226) & " Bankkonto (alle Kontoausz" & ChrW(252) & "ge)" & vbCrLf & _
            "  " & ChrW(8226) & " " & ChrW(220) & "bersicht (alle Eintr" & ChrW(228) & "ge)" & vbCrLf & _
+           "  " & ChrW(8226) & " Vereinskasse (Daten ab Zeile 27)" & vbCrLf & _
            "  " & ChrW(8226) & " Dashboard Mitgliederzahlungen" & vbCrLf & _
            "  " & ChrW(8226) & " Import-Protokoll (Y500)" & vbCrLf & _
            "  " & ChrW(8226) & " Vorjahr-Speicher: " & _
@@ -1086,6 +1120,8 @@ Private Sub SchreibeUTF8Datei(ByVal pfad As String, ByVal inhalt As String)
     Set utf8Stream = Nothing
     Set binStream = Nothing
 End Sub
+
+
 
 
 
