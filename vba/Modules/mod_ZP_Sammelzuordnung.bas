@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_ZP_Sammelzuordnung"
+Attribute VB_Name = "mod_ZP_Sammelzuordnung"
 Option Explicit
 
 ' ===============================================================
@@ -158,6 +158,8 @@ Public Function FrageNachManuellerMonatszuordnungZP(ByVal wsBK As Worksheet, _
     FrageNachManuellerMonatszuordnungZP = monat
     
 End Function
+
+
 
 
 

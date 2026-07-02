@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Vereinskasse_Filter"
+Attribute VB_Name = "mod_Vereinskasse_Filter"
 Option Explicit
 
 ' ===============================================================
@@ -372,6 +372,8 @@ Public Sub VereinskasseFilterJetzt()
                vbCritical, "Vereinskasse-Filter: FEHLER"
     End If
 End Sub
+
+
 
 
 

@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_BK_KA_Nummern"
+Attribute VB_Name = "mod_BK_KA_Nummern"
 Option Explicit
 
 ' ***************************************************************
@@ -375,6 +375,8 @@ End Sub
 ' ===============================================================
 ' (Abrechnungsjahr wird aus mod_Const.HoleAbrechnungsjahr bezogen)
 ' ===============================================================
+
+
 
 
 

@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_EntityKey_Kontoname"
+Attribute VB_Name = "mod_EntityKey_Kontoname"
 Option Explicit
 
 ' ***************************************************************
@@ -215,6 +215,7 @@ Public Function SammelKontonamen(ByRef dictNames As Object) As String
     
     SammelKontonamen = result
 End Function
+
 
 
 

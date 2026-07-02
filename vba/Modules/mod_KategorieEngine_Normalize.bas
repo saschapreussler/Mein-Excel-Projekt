@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_KategorieEngine_Normalize"
+Attribute VB_Name = "mod_KategorieEngine_Normalize"
 Option Explicit
 
 Public Function NormalizeBankkontoZeile(ByVal wsBK As Worksheet, _
@@ -57,6 +57,8 @@ Public Function NormalizeText(ByVal inputText As String) As String
 
     NormalizeText = Trim(txt)
 End Function
+
+
 
 
 

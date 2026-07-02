@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_EntityKey_Manager"
+Attribute VB_Name = "mod_EntityKey_Manager"
 Option Explicit
 
 ' ***************************************************************
@@ -632,6 +632,8 @@ ErrorHandler:
     wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Debug.Print "FEHLER in AktualisiereEntityKeyBeiAustritt: " & Err.Description
 End Sub
+
+
 
 
 

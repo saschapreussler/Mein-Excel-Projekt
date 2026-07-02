@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Format_Dropdowns"
+Attribute VB_Name = "mod_Format_Dropdowns"
 Option Explicit
 
 ' ***************************************************************
@@ -124,6 +124,8 @@ Private Sub ErstelleKategorieNamedRanges(ByRef ws As Worksheet, ByVal lastRowE A
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

@@ -1,4 +1,4 @@
-ï»¿Attribute VB_Name = "mod_Banking_Data"
+Attribute VB_Name = "mod_Banking_Data"
 Option Explicit
 
 ' ===============================================================
@@ -537,7 +537,7 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
     hinweis = hinweis & vbCrLf & vbCrLf & _
               "Ohne diese Zuordnung kann die Kategorie-Engine die Buchungen " & _
               "nicht korrekt verarbeiten." & vbCrLf & vbCrLf & _
-              "Moechten Sie die fehlenden Angaben jetzt vervollstaendigen?"
+              "Möchten Sie die fehlenden Angaben jetzt vervollständigen?"
     
     Dim antwort As VbMsgBoxResult
     antwort = MsgBox(hinweis, vbYesNo + vbExclamation, _
@@ -683,6 +683,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 

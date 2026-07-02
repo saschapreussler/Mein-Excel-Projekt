@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_BetragsZuordnung"
+Attribute VB_Name = "mod_BetragsZuordnung"
 Option Explicit
 
 ' ***************************************************************
@@ -103,6 +103,8 @@ Private Function FindBankkontoColumnByHeader(ByVal wsBK As Worksheet, _
 
     FindBankkontoColumnByHeader = 0
 End Function
+
+
 
 
 

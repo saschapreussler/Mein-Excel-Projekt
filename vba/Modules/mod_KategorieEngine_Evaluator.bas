@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_KategorieEngine_Evaluator"
+Attribute VB_Name = "mod_KategorieEngine_Evaluator"
 Option Explicit
 
 ' =====================================================
@@ -421,6 +421,8 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         End Select
     End With
 End Sub
+
+
 
 
 

@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Diagnose"
+Attribute VB_Name = "mod_Diagnose"
 Option Explicit
 
 ' ===============================================================
@@ -784,6 +784,8 @@ Private Sub LogFEHLER(ByVal text As String)
     m_log = m_log & "  " & ChrW(10060) & " " & text & vbLf
     m_fehler = m_fehler + 1
 End Sub
+
+
 
 
 

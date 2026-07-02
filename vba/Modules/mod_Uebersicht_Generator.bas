@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Uebersicht_Generator"
+Attribute VB_Name = "mod_Uebersicht_Generator"
 Option Explicit
 
 ' ***************************************************************
@@ -1732,6 +1732,8 @@ NextTeil:
 
     EntferneNegativHinweiseVJ = ergebnis
 End Function
+
+
 
 
 

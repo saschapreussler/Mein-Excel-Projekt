@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Const"
+Attribute VB_Name = "mod_Const"
 Option Explicit
 
 ' ***************************************************************
@@ -402,6 +402,8 @@ Public Function HoleAbrechnungsjahr() As Long
         HoleAbrechnungsjahr = 0
     End If
 End Function
+
+
 
 
 

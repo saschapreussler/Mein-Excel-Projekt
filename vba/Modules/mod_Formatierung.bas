@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Formatierung"
+Attribute VB_Name = "mod_Formatierung"
 Option Explicit
 
 ' ***************************************************************
@@ -698,6 +698,8 @@ CleanExit:
     Application.ScreenUpdating = warScreenUpdating
     On Error GoTo 0
 End Sub
+
+
 
 
 

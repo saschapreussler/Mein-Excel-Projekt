@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Jahreswechsel"
+Attribute VB_Name = "mod_Jahreswechsel"
 '==================================================================
 '  PUNKT 13: Neues Kalenderjahr starten
 '  - Erstellt eine Archiv-Kopie der aktuellen Mappe
@@ -275,6 +275,8 @@ Private Sub SetzeAbrechnungsjahr(ByVal jahr As Long)
         On Error GoTo 0
     End If
 End Sub
+
+
 
 
 

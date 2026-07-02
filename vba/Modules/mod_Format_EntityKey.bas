@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Format_EntityKey"
+Attribute VB_Name = "mod_Format_EntityKey"
 Option Explicit
 
 ' ***************************************************************
@@ -306,6 +306,8 @@ Private Sub SetzeZellschutzFuerZeile(ByRef ws As Worksheet, ByVal zeile As Long,
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

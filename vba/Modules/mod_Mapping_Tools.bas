@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Mapping_Tools"
+Attribute VB_Name = "mod_Mapping_Tools"
 Option Explicit
 
 ' ==========================================================
@@ -202,6 +202,8 @@ EndSearch:
     FuzzyMemberSearch = finalZuordnung
     
 End Function
+
+
 
 
 

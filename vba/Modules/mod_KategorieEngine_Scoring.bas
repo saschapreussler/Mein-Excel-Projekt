@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_KategorieEngine_Scoring"
+Attribute VB_Name = "mod_KategorieEngine_Scoring"
 Option Explicit
 
 ' =====================================================
@@ -191,6 +191,8 @@ Public Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
     End If
     
 End Function
+
+
 
 
 

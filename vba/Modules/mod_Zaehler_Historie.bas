@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Zaehler_Historie"
+Attribute VB_Name = "mod_Zaehler_Historie"
 Option Explicit
 
 ' ===============================================================
@@ -232,6 +232,8 @@ Public Sub FarbeHistorieEintraege()
     
     If wasProtected Then ws.Protect PASSWORD, AllowFormattingCells:=True, UserInterfaceOnly:=True, AllowFiltering:=True
 End Sub
+
+
 
 
 

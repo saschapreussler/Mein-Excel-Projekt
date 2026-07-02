@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Format_Bankkonto"
+Attribute VB_Name = "mod_Format_Bankkonto"
 Option Explicit
 
 ' ***************************************************************
@@ -177,6 +177,8 @@ Public Function NamedRangeExists(ByVal rangeName As String) As Boolean
     End If
     On Error GoTo 0
 End Function
+
+
 
 
 

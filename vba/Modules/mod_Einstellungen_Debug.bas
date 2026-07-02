@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Einstellungen_Debug"
+Attribute VB_Name = "mod_Einstellungen_Debug"
 Option Explicit
 
 ' ===============================================================
@@ -287,6 +287,8 @@ Public Sub DebugSetzeDropDownsUndPruefe()
     MsgBox msg, vbInformation, "Debug SetzeDropDowns Ergebnis"
     
 End Sub
+
+
 
 
 

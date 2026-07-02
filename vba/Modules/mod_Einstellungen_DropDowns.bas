@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Einstellungen_DropDowns"
+Attribute VB_Name = "mod_Einstellungen_DropDowns"
 Option Explicit
 
 ' ===============================================================
@@ -311,6 +311,8 @@ Private Function LetzteZeile(ByVal ws As Worksheet) As Long
     If lr < ES_START_ROW Then lr = ES_START_ROW - 1
     LetzteZeile = lr
 End Function
+
+
 
 
 

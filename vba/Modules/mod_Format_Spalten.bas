@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_Format_Spalten"
+Attribute VB_Name = "mod_Format_Spalten"
 Option Explicit
 
 ' ***************************************************************
@@ -218,6 +218,8 @@ Public Sub VerdichteSpalteOhneLuecken(ByRef ws As Worksheet, ByVal checkCol As L
     End If
     
 End Sub
+
+
 
 
 
