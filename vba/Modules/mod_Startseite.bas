@@ -65,6 +65,243 @@ End Sub
 
 
 ' ===============================================================
+' REPARATUR: Button-OnAction-Zuweisungen korrigieren
+' ---------------------------------------------------------------
+' Setzt OnAction bei allen bestehenden Kacheln der Startseite
+' anhand ihres Namens neu. Nutzlich, wenn die Kacheln aus einer
+' alten Version stammen und noch falsche Makro-Zuweisungen haben
+' (z.B. "kachel_Einstellungen" zeigt versehentlich auf
+' NavigiereZu_Daten).
+'
+' Aufruf im Direktfenster:
+'   RepariereStartseitenButtons
+' ===============================================================
+Public Sub RepariereStartseitenButtons()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
+    On Error GoTo 0
+    If ws Is Nothing Then
+        MsgBox "Startseite nicht gefunden.", vbExclamation, "Button-Reparatur"
+        Exit Sub
+    End If
+
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+
+    Dim shp As Shape
+    Dim newAction As String
+    Dim fixed As Long, gesamt As Long
+    Dim report As String
+
+    For Each shp In ws.Shapes
+        newAction = "'mod_Startseite.StartseitenKachelDispatcher'"
+        Select Case shp.Name
+            Case "kachel_Uebersicht", "kachel_Bankkonto", "kachel_Vereinskasse", _
+                 "kachel_Dashboard", "kachel_Strom", "kachel_Wasser", _
+                 "kachel_Einstellungen", "kachel_Daten", "kachel_Mitglieder", _
+                 "kachel_FinanzUebersicht", "kachel_Betriebskosten", _
+                 "kachel_Endabrechnung", "kachel_NeuesJahr"
+                ' all start tiles use one deterministic click-dispatcher
+            Case Else
+                newAction = ""
+        End Select
+
+        If newAction <> "" Then
+            gesamt = gesamt + 1
+            Dim altAction As String
+            altAction = ""
+            On Error Resume Next
+            altAction = shp.OnAction
+            shp.OnAction = newAction
+            If Err.Number = 0 Then
+                If altAction <> newAction Then
+                    fixed = fixed + 1
+                    report = report & "  " & shp.Name & vbCrLf & _
+                             "     alt: " & altAction & vbCrLf & _
+                             "     neu: " & newAction & vbCrLf
+                End If
+            End If
+            Err.Clear
+            On Error GoTo 0
+        End If
+    Next shp
+
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+
+    If fixed = 0 Then
+        MsgBox "Alle " & gesamt & " Startseiten-Buttons haben bereits die korrekte Makro-Zuweisung." & vbCrLf & vbCrLf & _
+               "Falls trotzdem der falsche Button reagiert, wurde vermutlich der falsche Kachel-Namen vergeben. " & _
+               "In diesem Fall bitte 'InitialisiereStartseite' aufrufen (baut alle Kacheln neu).", _
+               vbInformation, "Button-Reparatur"
+    Else
+        MsgBox fixed & " von " & gesamt & " Buttons wurden korrigiert:" & vbCrLf & vbCrLf & report, _
+               vbInformation, "Button-Reparatur"
+    End If
+End Sub
+
+
+' ===============================================================
+' ZENTRALER CLICK-DISPATCHER für Startseite-Kacheln
+' ---------------------------------------------------------------
+' Hintergrund: In einigen Bestandsdateien wurden OnAction-Ziele,
+' Modulstaende oder Shape-Ueberlagerungen inkonsistent. Dieser
+' Dispatcher nutzt Application.Caller und steuert je Kachel das
+' Ziel explizit und robust an.
+' ===============================================================
+Public Sub StartseitenKachelDispatcher()
+    Dim callerName As String
+    On Error Resume Next
+    callerName = CStr(Application.Caller)
+    On Error GoTo 0
+
+    If callerName = "" Then Exit Sub
+
+    Select Case callerName
+        Case "kachel_Uebersicht"
+            mod_Navigation.NavigiereZu_Uebersicht
+        Case "kachel_Bankkonto"
+            AktiviereBlattRobust WS_BANKKONTO, "Bankkonto"
+        Case "kachel_Vereinskasse"
+            AktiviereBlattRobust WS_VEREINSKASSE, "Vereinskasse"
+        Case "kachel_Dashboard"
+            mod_Navigation.NavigiereZu_Dashboard
+        Case "kachel_Strom"
+            AktiviereBlattRobust "Strom", "Strom"
+        Case "kachel_Wasser"
+            AktiviereBlattRobust "Wasser", "Wasser"
+        Case "kachel_Einstellungen"
+            ' hard-route: niemals ueber Daten umleiten
+            AktiviereBlattRobust WS_EINSTELLUNGEN, "Einstellungen"
+        Case "kachel_Daten"
+            AktiviereBlattRobust WS_DATEN, "Daten"
+        Case "kachel_Mitglieder"
+            frm_Mitgliederverwaltung.Show
+        Case "kachel_FinanzUebersicht"
+            mod_Navigation.NavigiereZu_FinanzUebersicht
+        Case "kachel_Betriebskosten"
+            mod_Navigation.ZeigeSerienbrief_Betriebskosten
+        Case "kachel_Endabrechnung"
+            mod_Navigation.ZeigeSerienbrief_Endabrechnung
+        Case "kachel_NeuesJahr"
+            mod_Jahreswechsel.StarteNeuesJahr
+    End Select
+End Sub
+
+
+Public Sub OeffneEinstellungenDirekt()
+    AktiviereBlattRobust WS_EINSTELLUNGEN, "Einstellungen"
+End Sub
+
+
+Public Sub FixNurEinstellungenButtonSofort()
+    Dim ws As Worksheet
+    Dim shpE As Shape
+    Dim shpD As Shape
+
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
+    On Error GoTo 0
+    If ws Is Nothing Then
+        MsgBox "Startseite nicht gefunden.", vbExclamation, "Sofort-Fix"
+        Exit Sub
+    End If
+
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+
+    On Error Resume Next
+    Set shpE = ws.Shapes("kachel_Einstellungen")
+    Set shpD = ws.Shapes("kachel_Daten")
+    On Error GoTo 0
+
+    If shpE Is Nothing Then
+        MsgBox "Shape 'kachel_Einstellungen' fehlt. Bitte zuerst InitialisiereStartseite ausfuehren.", vbExclamation, "Sofort-Fix"
+        Exit Sub
+    End If
+
+    On Error Resume Next
+    shpE.OnAction = "'mod_Startseite.OeffneEinstellungenDirekt'"
+    shpE.ZOrder msoBringToFront
+    If Not shpD Is Nothing Then shpD.ZOrder msoSendToBack
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+
+    MsgBox "Sofort-Fix gesetzt: Einstellungen-Button oeffnet jetzt direkt Einstellungen.", vbInformation, "Sofort-Fix"
+End Sub
+
+
+Private Sub AktiviereBlattRobust(ByVal blattName As String, ByVal fallbackName As String)
+    Dim ws As Worksheet
+
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(blattName)
+    If ws Is Nothing And fallbackName <> "" Then Set ws = ThisWorkbook.Worksheets(fallbackName)
+    On Error GoTo 0
+
+    If ws Is Nothing Then
+        MsgBox "Tabellenblatt '" & blattName & "' nicht gefunden.", vbExclamation, "Startseite"
+        Exit Sub
+    End If
+
+    ws.Activate
+    On Error Resume Next
+    ws.Range("A1").Select
+    On Error GoTo 0
+End Sub
+
+
+Public Sub DiagnoseStartseitenButtons()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
+    On Error GoTo 0
+    If ws Is Nothing Then
+        MsgBox "Startseite nicht gefunden.", vbExclamation, "Startseiten-Diagnose"
+        Exit Sub
+    End If
+
+    Dim base As Shape
+    On Error Resume Next
+    Set base = ws.Shapes("kachel_Einstellungen")
+    On Error GoTo 0
+    If base Is Nothing Then
+        MsgBox "Shape 'kachel_Einstellungen' nicht gefunden.", vbExclamation, "Startseiten-Diagnose"
+        Exit Sub
+    End If
+
+    Dim report As String
+    report = "kachel_Einstellungen:" & vbCrLf & _
+             "  OnAction: " & HoleOnActionSafe(base) & vbCrLf & vbCrLf & _
+             "Alle Startseiten-Kacheln:" & vbCrLf
+
+    Dim shp As Shape
+    For Each shp In ws.Shapes
+        If Left$(shp.Name, 7) = "kachel_" Then
+            report = report & "  " & shp.Name & " -> " & HoleOnActionSafe(shp) & vbCrLf
+        End If
+    Next shp
+
+    MsgBox report, vbInformation, "Startseiten-Diagnose"
+End Sub
+
+
+Private Function HoleOnActionSafe(ByVal shp As Shape) As String
+    On Error Resume Next
+    HoleOnActionSafe = shp.OnAction
+    If Err.Number <> 0 Then
+        HoleOnActionSafe = "<nicht verfuegbar>"
+        Err.Clear
+    End If
+    On Error GoTo 0
+End Function
+
+
+' ===============================================================
 ' ALTE SHAPES ENTFERNEN
 ' ===============================================================
 Private Sub EntferneAlteShapes(ByVal ws As Worksheet)
@@ -78,8 +315,11 @@ Private Sub EntferneAlteShapes(ByVal ws As Worksheet)
         End If
     Next i
     
+    Dim oleObj As OLEObject
     On Error Resume Next
-    ws.OLEObjects("cmdMitgliederverwaltung").Delete
+    For Each oleObj In ws.OLEObjects
+        oleObj.Delete
+    Next oleObj
     Err.Clear
     On Error GoTo 0
 End Sub
@@ -370,55 +610,55 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     Call ErstelleKachel(ws, "kachel_Uebersicht", _
         ChrW(9654) & " Zahlungs" & ChrW(252) & "bersicht", _
         col1Left, ws.Range("C15").Top + 4, kachelW, kachelH, _
-        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Uebersicht'")
+        CLR_BTN_FINANCE, "'mod_Startseite.StartseitenKachelDispatcher'")
     
     Call ErstelleKachel(ws, "kachel_Bankkonto", _
         ChrW(9733) & " Bankkonto", _
         col1Left, ws.Range("C16").Top + 4, kachelW, kachelH, _
-        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Bankkonto'")
+        CLR_BTN_FINANCE, "'mod_Startseite.StartseitenKachelDispatcher'")
     
     Call ErstelleKachel(ws, "kachel_Vereinskasse", _
         ChrW(9830) & " Vereinskasse", _
         col1Left, ws.Range("C17").Top + 4, kachelW, kachelH, _
-        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Vereinskasse'")
+        CLR_BTN_FINANCE, "'mod_Startseite.StartseitenKachelDispatcher'")
     
     ' --- Spalte 2: Verbrauch & Verwaltung ---
     Call ErstelleKachel(ws, "kachel_Dashboard", _
         ChrW(9650) & " Dashboard", _
         col2Left, ws.Range("F15").Top + 4, kachelW, kachelH, _
-        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Dashboard'")
+        CLR_BTN_FINANCE, "'mod_Startseite.StartseitenKachelDispatcher'")
     
     Call ErstelleKachel(ws, "kachel_Strom", _
         ChrW(9889) & " Strom", _
         col2Left, ws.Range("F16").Top + 4, kachelW, kachelH, _
-        CLR_BTN_METER, "'mod_Navigation.NavigiereZu_Strom'")
+        CLR_BTN_METER, "'mod_Startseite.StartseitenKachelDispatcher'")
     
     Call ErstelleKachel(ws, "kachel_Wasser", _
         ChrW(8776) & " Wasser", _
         col2Left, ws.Range("F17").Top + 4, kachelW, kachelH, _
-        CLR_BTN_METER, "'mod_Navigation.NavigiereZu_Wasser'")
+        CLR_BTN_METER, "'mod_Startseite.StartseitenKachelDispatcher'")
     
     ' --- Spalte 3: Admin ---
     Call ErstelleKachel(ws, "kachel_Einstellungen", _
         ChrW(9881) & " Einstellungen", _
         col3Left, ws.Range("I15").Top + 4, kachelW, kachelH, _
-        CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Einstellungen'")
+        CLR_BTN_ADMIN, "'mod_Startseite.StartseitenKachelDispatcher'")
     
     Call ErstelleKachel(ws, "kachel_Daten", _
         ChrW(9632) & " Daten", _
         col3Left, ws.Range("I16").Top + 4, kachelW, kachelH, _
-        CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Daten'")
+        CLR_BTN_ADMIN, "'mod_Startseite.StartseitenKachelDispatcher'")
     
     Call ErstelleKachel(ws, "kachel_Mitglieder", _
         ChrW(9679) & " Mitgliederverwaltung", _
         col3Left, ws.Range("I17").Top + 4, kachelW, kachelH, _
-        CLR_BTN_MITGL, "'mod_Navigation.ZeigeMitgliederverwaltung'")
+        CLR_BTN_MITGL, "'mod_Startseite.StartseitenKachelDispatcher'")
     
     ' --- Zeile 4: Finanz-übersicht ---
     Call ErstelleKachel(ws, "kachel_FinanzUebersicht", _
         ChrW(9654) & " Finanz-" & ChrW(220) & "bersicht", _
         col1Left, ws.Range("C18").Top + 4, kachelW, kachelH, _
-        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_FinanzUebersicht'")
+        CLR_BTN_FINANCE, "'mod_Startseite.StartseitenKachelDispatcher'")
     
     ' --- Serienbrief-Bereich ---
     With ws.Range("B19:J19")
@@ -436,18 +676,18 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     Call ErstelleKachel(ws, "kachel_Betriebskosten", _
         ChrW(9633) & " Betriebskostenabrechnung", _
         col1Left, ws.Range("C21").Top + 4, kachelW, kachelH, _
-        CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Betriebskosten'")
+        CLR_BTN_SERIENBR, "'mod_Startseite.StartseitenKachelDispatcher'")
     
     Call ErstelleKachel(ws, "kachel_Endabrechnung", _
         ChrW(9633) & " Endabrechnung", _
         col2Left, ws.Range("F21").Top + 4, kachelW, kachelH, _
-        CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Endabrechnung'")
+        CLR_BTN_SERIENBR, "'mod_Startseite.StartseitenKachelDispatcher'")
     
     ' Punkt 13: Neues Kalenderjahr starten
     Call ErstelleKachel(ws, "kachel_NeuesJahr", _
         ChrW(9654) & " Neues Kalenderjahr", _
         col1Left + (kachelW + 6) * 2, ws.Range("C18").Top + 4, kachelW, kachelH, _
-        CLR_BTN_ADMIN, "'mod_Jahreswechsel.StarteNeuesJahr'")
+        CLR_BTN_ADMIN, "'mod_Startseite.StartseitenKachelDispatcher'")
 End Sub
 
 

@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Repo_Sync
-' VERSION: 3.0 - 01.03.2026
+' VERSION: 3.3 - 02.07.2026
 ' ZWECK: Importiert ALLE VBA-Komponenten aus dem Repository
 '        inkl. Dokument-Module (DieseArbeitsmappe, TabelleX)
 '
@@ -48,6 +48,7 @@ Private Const REPO_PATH_MODULES As String = "C:\Users\DELL Latitude 7490\Desktop
 
 ' Tempor�rer Unterordner f�r ANSI-konvertierte Dateien
 Private Const TEMP_SUBFOLDER As String = "VBA_Repo_Sync_Temp"
+Private Const SYNC_VERSION As String = "3.3"
 
 
 ' ===============================================================
@@ -163,7 +164,7 @@ Public Sub SyncVBAVomRepository()
     ' 8. Ergebnis anzeigen
     ' ---------------------------------------------------------
     Dim msg As String
-    msg = "VBA-Synchronisierung abgeschlossen! (v3.0)" & vbCrLf & vbCrLf
+    msg = "VBA-Synchronisierung abgeschlossen! (v" & SYNC_VERSION & ")" & vbCrLf & vbCrLf
     If countDoubletten > 0 Then
         msg = msg & "Bereinigt:" & vbCrLf
         msg = msg & "  Doubletten entfernt: " & countDoubletten & vbCrLf & vbCrLf
