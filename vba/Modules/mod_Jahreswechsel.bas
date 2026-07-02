@@ -1,9 +1,9 @@
-ï»¿Attribute VB_Name = "mod_Jahreswechsel"
+Attribute VB_Name = "mod_Jahreswechsel"
 '==================================================================
 '  PUNKT 13: Neues Kalenderjahr starten
 '  - Erstellt eine Archiv-Kopie der aktuellen Mappe
 '  - Loescht jahresbezogene Daten in der Original-Mappe
-'  - BehÃ¤lt: Mitgliederliste, EntityKeys, Kategorien, Zaehlerstaende
+'  - Behält: Mitgliederliste, EntityKeys, Kategorien, Zaehlerstaende
 '  - Setzt Abrechnungsjahr in Einstellungen +1
 '==================================================================
 Option Explicit
@@ -77,7 +77,7 @@ Public Sub StarteNeuesJahr()
     ' --- 2b) Vereinskasse leeren (ausser Okt-Dez altJahr) ---
     Call LeereVereinskasse(altJahr)
 
-    ' --- 3) Ã¼bersicht / Dashboard / Finanz-Ã¼bersicht leeren ---
+    ' --- 3) übersicht / Dashboard / Finanz-übersicht leeren ---
     Call LeereBlatt(WS_UEBERSICHT(), UEBERSICHT_START_ROW)
     Call LeereBlatt("Dashboard Mitgliederzahlungen", DASH_MATRIX_START_ROW)
     Call LeereFinanzUebersicht
@@ -105,7 +105,7 @@ End Sub
 
 
 ' ==================================================================
-'  Bankkonto leeren - behÃ¤lt DatensÃ¤tze ab Okt des altJahr
+'  Bankkonto leeren - behält Datensätze ab Okt des altJahr
 ' ==================================================================
 Private Sub LeereBankkonto(ByVal altJahr As Long)
     Dim ws As Worksheet
@@ -147,7 +147,7 @@ End Sub
 
 
 ' ==================================================================
-'  Vereinskasse leeren - behÃ¤lt DatensÃ¤tze ab Okt des altJahr
+'  Vereinskasse leeren - behält Datensätze ab Okt des altJahr
 ' ==================================================================
 Private Sub LeereVereinskasse(ByVal altJahr As Long)
     Dim ws As Worksheet
@@ -189,7 +189,7 @@ End Sub
 
 
 ' ==================================================================
-'  Generisches Leeren ab einer Startzeile (Werte lÃ¶schen)
+'  Generisches Leeren ab einer Startzeile (Werte löschen)
 ' ==================================================================
 Private Sub LeereBlatt(ByVal sheetName As String, ByVal startRow As Long)
     Dim ws As Worksheet
@@ -222,7 +222,7 @@ End Sub
 
 
 ' ==================================================================
-'  Finanz-Ã¼bersicht leeren (KPIs/Auswertungen)
+'  Finanz-übersicht leeren (KPIs/Auswertungen)
 ' ==================================================================
 Private Sub LeereFinanzUebersicht()
     Dim ws As Worksheet
@@ -275,6 +275,8 @@ Private Sub SetzeAbrechnungsjahr(ByVal jahr As Long)
         On Error GoTo 0
     End If
 End Sub
+
+
 
 
 

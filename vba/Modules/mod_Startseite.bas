@@ -1,10 +1,10 @@
-ï»¿Attribute VB_Name = "mod_Startseite"
+Attribute VB_Name = "mod_Startseite"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Startseite
 ' VERSION: 2.0 - 18.04.2026
-' ZWECK: Startseite (StartmenÃ¼) als professioneller Eye-Catcher
+' ZWECK: Startseite (Startmenü) als professioneller Eye-Catcher
 '        - Gradient-Look mit Farbverlauf-Effekt
 '        - KPIs: Abrechnungsjahr, Mitglieder, Parzellen, Kontostand
 '        - Navigations-Buttons in Kachel-Optik
@@ -55,7 +55,7 @@ Public Sub InitialisiereStartseite()
     Call SchreibeKPIBereich(ws)
     Call ErstelleNavigationsKacheln(ws)
     ' Harte Absicherung: Einstellungen-Button direkt setzen und nach vorn bringen
-    Call FixNurEinstellungenButtonSofort
+    Call FixNurEinstellungenButtonSofort(False)
     Call SchreibeFooter(ws)
     
     ws.Cells.Locked = True
@@ -147,7 +147,7 @@ End Sub
 
 
 ' ===============================================================
-' ZENTRALER CLICK-DISPATCHER fÃ¼r Startseite-Kacheln
+' ZENTRALER CLICK-DISPATCHER für Startseite-Kacheln
 ' ---------------------------------------------------------------
 ' Hintergrund: In einigen Bestandsdateien wurden OnAction-Ziele,
 ' Modulstaende oder Shape-Ueberlagerungen inkonsistent. Dieser
@@ -199,10 +199,11 @@ Public Sub OeffneEinstellungenDirekt()
 End Sub
 
 
-Public Sub FixNurEinstellungenButtonSofort()
+Public Sub FixNurEinstellungenButtonSofort(Optional ByVal zeigeMeldung As Boolean = False)
     Dim ws As Worksheet
     Dim shpE As Shape
     Dim shpD As Shape
+    Dim i As Long
 
     On Error Resume Next
     Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
@@ -222,19 +223,65 @@ Public Sub FixNurEinstellungenButtonSofort()
     On Error GoTo 0
 
     If shpE Is Nothing Then
-        MsgBox "Shape 'kachel_Einstellungen' fehlt. Bitte zuerst InitialisiereStartseite ausfuehren.", vbExclamation, "Sofort-Fix"
+        If zeigeMeldung Then
+            MsgBox "Shape 'kachel_Einstellungen' fehlt. Bitte zuerst InitialisiereStartseite ausfuehren.", vbExclamation, "Sofort-Fix"
+        End If
         Exit Sub
     End If
+
+    ' Alle ueberlagernden Shapes im Bereich von 'kachel_Einstellungen' entfernen.
+    ' So kann kein altes Objekt den Klick mehr auf ein falsches Ziel abfangen.
+    For i = ws.Shapes.count To 1 Step -1
+        Dim shpX As Shape
+        Set shpX = ws.Shapes(i)
+        If shpX.Name <> "kachel_Einstellungen" Then
+            If RechteckeUeberlappen(shpE.Left, shpE.Top, shpE.Width, shpE.Height, _
+                                    shpX.Left, shpX.Top, shpX.Width, shpX.Height) Then
+                If shpX.Name <> "kachel_Daten" Then
+                    On Error Resume Next
+                    shpX.Delete
+                    On Error GoTo 0
+                End If
+            End If
+        End If
+    Next i
+
+    Dim oleObj As OLEObject
+    For Each oleObj In ws.OLEObjects
+        If RechteckeUeberlappen(shpE.Left, shpE.Top, shpE.Width, shpE.Height, _
+                                oleObj.Left, oleObj.Top, oleObj.Width, oleObj.Height) Then
+            On Error Resume Next
+            oleObj.Delete
+            On Error GoTo 0
+        End If
+    Next oleObj
 
     On Error Resume Next
     shpE.OnAction = "'mod_Startseite.OeffneEinstellungenDirekt'"
     shpE.ZOrder msoBringToFront
-    If Not shpD Is Nothing Then shpD.ZOrder msoSendToBack
+    If Not shpD Is Nothing Then
+        shpD.OnAction = "'mod_Navigation.NavigiereZu_Daten'"
+        shpD.ZOrder msoSendToBack
+    End If
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 
-    MsgBox "Sofort-Fix gesetzt: Einstellungen-Button oeffnet jetzt direkt Einstellungen.", vbInformation, "Sofort-Fix"
+    If zeigeMeldung Then
+        MsgBox "Sofort-Fix gesetzt: Einstellungen-Button oeffnet jetzt direkt Einstellungen.", vbInformation, "Sofort-Fix"
+    End If
 End Sub
+
+
+Private Function RechteckeUeberlappen(ByVal l1 As Double, ByVal t1 As Double, ByVal w1 As Double, ByVal h1 As Double, _
+                                      ByVal l2 As Double, ByVal t2 As Double, ByVal w2 As Double, ByVal h2 As Double) As Boolean
+    Dim r1 As Double, b1 As Double, r2 As Double, b2 As Double
+    r1 = l1 + w1
+    b1 = t1 + h1
+    r2 = l2 + w2
+    b2 = t2 + h2
+
+    RechteckeUeberlappen = (l1 < r2) And (r1 > l2) And (t1 < b2) And (b1 > t2)
+End Function
 
 
 Private Sub AktiviereBlattRobust(ByVal blattName As String, ByVal fallbackName As String)
@@ -357,7 +404,7 @@ Private Sub VorbereiteBlatt(ByVal ws As Worksheet)
     ws.Columns("K").ColumnWidth = 4      ' Padding rechts
     ws.Columns("L").ColumnWidth = 2      ' Rand
     
-    ' ZeilenhÃ¶hen
+    ' Zeilenhöhen
     ws.Rows("1").RowHeight = 6           ' Top-Rand
     ws.Rows("2").RowHeight = 50          ' Hero Titel
     ws.Rows("3").RowHeight = 24          ' Hero Untertitel
@@ -476,7 +523,7 @@ End Sub
 ' KPI-BEREICH: 4 Kennzahlen-Karten
 ' ===============================================================
 Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
-    ' Hintergrund KPI-Bereich (erweitert fÃ¼r 2 KPI-Zeilen)
+    ' Hintergrund KPI-Bereich (erweitert für 2 KPI-Zeilen)
     ws.Range("A6:L12").Interior.color = CLR_SECTION_BG
     
     ' KPI-Header
@@ -656,7 +703,7 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         col3Left, ws.Range("I17").Top + 4, kachelW, kachelH, _
         CLR_BTN_MITGL, "'mod_Startseite.StartseitenKachelDispatcher'")
     
-    ' --- Zeile 4: Finanz-Ã¼bersicht ---
+    ' --- Zeile 4: Finanz-übersicht ---
     Call ErstelleKachel(ws, "kachel_FinanzUebersicht", _
         ChrW(9654) & " Finanz-" & ChrW(220) & "bersicht", _
         col1Left, ws.Range("C18").Top + 4, kachelW, kachelH, _
@@ -737,7 +784,7 @@ Private Sub ErstelleKachel(ByVal ws As Worksheet, _
         .Adjustments(1) = 0.18
         On Error GoTo KachelErr
         
-        ' Dezenter Schatten fÃ¼r 3D-Effekt
+        ' Dezenter Schatten für 3D-Effekt
         With .Shadow
             .Visible = msoTrue
             .Type = msoShadow14
@@ -836,7 +883,7 @@ Public Function ZaehleBelegteParzellen() As Long
     ' Quelle 1: Einstellungen!C14 (Zelle, in der die Anzahl der
     ' verpachteten Parzellen gepflegt wird). Wenn dort kein gueltiger
     ' Zahlenwert steht, faellt die Funktion auf die Mitgliederliste
-    ' zurÃ¼ck und zaehlt distinkte Parzellen (ohne "Verein" und KGA).
+    ' zurück und zaehlt distinkte Parzellen (ohne "Verein" und KGA).
 
     ' --- Quelle 1: Einstellungen!C14 -------------------------------
     Dim wsCfg As Worksheet
@@ -901,7 +948,7 @@ End Function
 ' ---------------------------------------------------------------
 ' Schreibt die aktuelle Anzahl belegter Parzellen
 ' (Quelle: ZaehleBelegteParzellen, identisch zu Startseite /
-' Einstellungen / Ã¼bersicht / Mitgliederliste) in:
+' Einstellungen / übersicht / Mitgliederliste) in:
 '   - Tabellenblatt "Strom":  Zelle B6
 '   - Tabellenblatt "Wasser": Zelle A4
 '
@@ -1030,7 +1077,7 @@ End Function
 
 ' ===============================================================
 ' KPI-UPDATE: Kontostand auf Startseite aktualisieren
-' Wird nach CSV-Import und manuellen Ã¤nderungen aufgerufen
+' Wird nach CSV-Import und manuellen änderungen aufgerufen
 ' ===============================================================
 Public Sub AktualisiereKontostandKPI()
     Dim ws As Worksheet
@@ -1106,6 +1153,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 

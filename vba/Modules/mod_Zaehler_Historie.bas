@@ -1,10 +1,10 @@
-ï»¿Attribute VB_Name = "mod_Zaehler_Historie"
+Attribute VB_Name = "mod_Zaehler_Historie"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Zaehler_Historie
 ' Ausgelagert aus mod_ZaehlerLogik
-' enthÃ¤lt: SchreibeHistorie, FarbeHistorieEintraege
+' enthält: SchreibeHistorie, FarbeHistorieEintraege
 ' ===============================================================
 
 ' --- Konstanten (lokal dupliziert) ---
@@ -151,7 +151,7 @@ Public Sub SchreibeHistorie( _
         
     End If
     
-    ' 5. Farben fÃ¼r Historie setzen & Update-Call
+    ' 5. Farben für Historie setzen & Update-Call
     Select Case Medium
         Case "Strom"
             lngColor = RGB_STROM
@@ -196,7 +196,7 @@ Fehler_Handler:
 End Sub
 
 ' ==========================================================
-' FAERBT HISTORIEN-EintrÃ¤ge
+' FAERBT HISTORIEN-Einträge
 ' ==========================================================
 Public Sub FarbeHistorieEintraege()
     Dim ws As Worksheet
@@ -232,6 +232,8 @@ Public Sub FarbeHistorieEintraege()
     
     If wasProtected Then ws.Protect PASSWORD, AllowFormattingCells:=True, UserInterfaceOnly:=True, AllowFiltering:=True
 End Sub
+
+
 
 
 

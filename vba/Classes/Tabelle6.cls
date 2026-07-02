@@ -1,4 +1,4 @@
-ï»¿VERSION 1.0 CLASS
+VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
@@ -13,16 +13,16 @@ Option Explicit
 ' EVENTS
 ' ==========================================================
 
-' Wird bei jedem Wechsel auf das Blatt ausgefÃ¼hrt
+' Wird bei jedem Wechsel auf das Blatt ausgeführt
 Private Sub Worksheet_Activate()
     ' Zwangsberechnung beim Aktivieren des Blattes
     Call UpdateWasserblatt
 End Sub
 
-' Wird bei jeder Ã¤nderung einer Zelle auf dem Blatt ausgefÃ¼hrt
+' Wird bei jeder änderung einer Zelle auf dem Blatt ausgeführt
 Private Sub Worksheet_Change(ByVal Target As Range)
-    ' Relevant: Stand Anfang (B) und Stand Ende (C) fÃ¼r Parzellen (Z. 10-23) und HauptZaehler (Z. 29)
-    ' Wir PrÃ¼fen den gesamten relevanten Bereich fÃ¼r Wasser: B10:C29
+    ' Relevant: Stand Anfang (B) und Stand Ende (C) für Parzellen (Z. 10-23) und HauptZaehler (Z. 29)
+    ' Wir Prüfen den gesamten relevanten Bereich für Wasser: B10:C29
     If Not Intersect(Target, Me.Range("B12:C31")) Is Nothing Then
         Application.EnableEvents = False
         Call UpdateWasserblatt
@@ -46,7 +46,7 @@ Private Sub btn_neuerZaehler_Wasser_Click()
     Exit Sub
     
 ErrHandler:
-    MsgBox "Fehler beim Ã¶ffnen des Zaehlerwechsel-Formulars: " & Err.Description & vbLf & _
+    MsgBox "Fehler beim öffnen des Zaehlerwechsel-Formulars: " & Err.Description & vbLf & _
            "Stellen Sie sicher, dass das UserForm den Code-Namen 'frm_Zaehlerwechsel' hat.", vbExclamation
 End Sub
 
@@ -75,6 +75,8 @@ End Sub
 Public Sub KorrigiereHistorieFarben()
     Call mod_Zaehler_Historie.FarbeHistorieEintraege
 End Sub
+
+
 
 
 

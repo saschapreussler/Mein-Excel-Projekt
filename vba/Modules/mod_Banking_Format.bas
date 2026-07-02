@@ -1,10 +1,10 @@
-ï»¿Attribute VB_Name = "mod_Banking_Format"
+Attribute VB_Name = "mod_Banking_Format"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Format
 ' Ausgelagert aus mod_Banking_Data
-' enthÃ¤lt: Zebra-Formatierung, Rahmen, allgemeine Formatierung,
+' enthält: Zebra-Formatierung, Rahmen, allgemeine Formatierung,
 '          Sortierung Bankkonto, Formel-Wiederherstellung
 ' ===============================================================
 
@@ -109,13 +109,13 @@ Public Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    ' Spalte B (Betrag): WÃ¤hrung + rechtsbuendig
+    ' Spalte B (Betrag): Währung + rechtsbuendig
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), ws.Cells(lastRow, BK_COL_BETRAG))
         .NumberFormat = euroFormat
         .HorizontalAlignment = xlRight
     End With
     
-    ' Spalten M-Z: WÃ¤hrung
+    ' Spalten M-Z: Währung
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
     
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BEMERKUNG), ws.Cells(lastRow, BK_COL_BEMERKUNG))
@@ -132,7 +132,7 @@ End Sub
 ' ===============================================================
 ' AUTO-FILTER auf Bankkonto-Header (Zeile 29) aktivieren
 ' Header-Zellen werden entsperrt, damit der Anwender filtern und
-' sortieren kann auch wenn das Blatt geschÃ¼tzt ist.
+' sortieren kann auch wenn das Blatt geschützt ist.
 ' Wird von Workbook_Open und nach CSV-Import aufgerufen.
 ' ===============================================================
 Public Sub Aktiviere_BankkontoFilter()
@@ -229,7 +229,7 @@ End Sub
 
 
 ' ===============================================================
-' Diagnose fÃ¼r Bankkonto-Filterzustand (Direktfenster).
+' Diagnose für Bankkonto-Filterzustand (Direktfenster).
 ' Aufruf: mod_Banking_Format.Diagnose_BankkontoFilter
 ' ===============================================================
 Public Sub Diagnose_BankkontoFilter()
@@ -272,7 +272,7 @@ End Sub
 
 
 ' ===============================================================
-' Standard-Blattschutz fÃ¼r Bankkonto-aehnliche BlÃ¤tter mit
+' Standard-Blattschutz für Bankkonto-aehnliche Blätter mit
 ' aktivierten AutoFilter-/Sortier-Rechten. Verwenden statt
 ' direktem ws.Protect, damit die Filter-Pfeile nutzbar bleiben.
 ' ===============================================================
@@ -330,7 +330,7 @@ End Sub
 ' ===============================================================
 ' FORMEL-WIEDERHERSTELLUNG
 ' Stellt die Formeln auf dem Bankkonto-Blatt wieder her,
-' die durch ClearContents oder Import verloren gehen kÃ¶nnen.
+' die durch ClearContents oder Import verloren gehen können.
 ' Betrifft: E4, C5, E10-E16, E18-E23, E25
 ' WICHTIG: Formeln werden 1:1 als FormulaLocal gesetzt!
 ' ===============================================================
@@ -403,6 +403,8 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

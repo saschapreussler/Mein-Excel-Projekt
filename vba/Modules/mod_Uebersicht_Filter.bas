@@ -1,10 +1,10 @@
-ï»¿Attribute VB_Name = "mod_Uebersicht_Filter"
+Attribute VB_Name = "mod_Uebersicht_Filter"
 Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Filter
 ' VERSION: 1.1 - 15.03.2026
-' ZWECK: Monats-Register (Shapes) auf dem Blatt "Ã¼bersicht"
+' ZWECK: Monats-Register (Shapes) auf dem Blatt "übersicht"
 '        Erstellt 13 Registerreiter-Shapes ("Alle" + 12 Monate)
 '        Klick auf Shape -> AutoFilter auf Spalte C (Monat)
 '        v1.1: Zebra auf sichtbare Zeilen nach Filter anwenden
@@ -12,17 +12,17 @@ Option Explicit
 ' FUNKTIONEN:
 '   - ErstelleMonatsRegister: Shapes erzeugen/aktualisieren
 '   - FilterUebersichtNachMonat: AutoFilter anwenden
-'   - EntferneMonatsRegister: Shapes lÃ¶schen
+'   - EntferneMonatsRegister: Shapes löschen
 ' ***************************************************************
 
-' Farben fÃ¼r Register-Tabs
+' Farben für Register-Tabs
 Private Const REG_FARBE_AKTIV As Long = 10053120     ' RGB(0, 112, 153) - aktiv
 Private Const REG_FARBE_INAKTIV As Long = 14408667    ' RGB(219, 229, 219) - inaktiv
 Private Const REG_SCHRIFT_AKTIV As Long = 16777215    ' Weiss
 Private Const REG_SCHRIFT_INAKTIV As Long = 0          ' Schwarz
 Private Const REG_SHAPE_PREFIX As String = "regMonat_"
 
-' Zeile/Spalte fÃ¼r Shape-Platzierung
+' Zeile/Spalte für Shape-Platzierung
 ' Layout: Zeile 1 = Home-Button, Zeile 2 = Monats-Register, Zeile 3 = Header
 Private Const REG_TOP_ROW As Long = 2
 Private Const REG_HEIGHT As Double = 22
@@ -30,7 +30,7 @@ Private Const REG_WIDTH As Double = 72
 Private Const REG_SPACING As Double = 2
 Private Const REG_LEFT_START As Double = 5
 
-' v1.1: Konstanten fÃ¼r Zebra-Reapply (identisch mit mod_Uebersicht_Generator)
+' v1.1: Konstanten für Zebra-Reapply (identisch mit mod_Uebersicht_Generator)
 Private Const ZEBRA_COLOR As Long = &HDEE5E3
 Private Const FARBE_HELLGELB_MANUELL As Long = 10092543
 Private Const UEB_COL_PARZELLE As Long = 1
@@ -60,9 +60,9 @@ Public Sub ErstelleMonatsRegister()
     wsUeb.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
 
-    ' ZeilenhÃ¶hen fÃ¼r das Layout sicherstellen
-    ' Zeile 1: Home-Button (HÃ¶he 30)
-    ' Zeile 2: Monats-Register-Shapes (HÃ¶he 26 = REG_HEIGHT 22 + 4 Rand)
+    ' Zeilenhöhen für das Layout sicherstellen
+    ' Zeile 1: Home-Button (Höhe 30)
+    ' Zeile 2: Monats-Register-Shapes (Höhe 26 = REG_HEIGHT 22 + 4 Rand)
     On Error Resume Next
     wsUeb.Rows(1).RowHeight = 30
     wsUeb.Rows(2).RowHeight = 26
@@ -143,7 +143,7 @@ End Sub
 
 
 ' ===============================================================
-' Filtert die Ã¼bersicht nach Monat (0 = Alle anzeigen)
+' Filtert die übersicht nach Monat (0 = Alle anzeigen)
 ' Wird per Shape-OnAction aufgerufen
 ' ===============================================================
 Public Sub FilterUebersichtNachMonat(ByVal monatIndex As Long)
@@ -161,7 +161,7 @@ Public Sub FilterUebersichtNachMonat(ByVal monatIndex As Long)
     wsUeb.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
 
-    ' Bestehenden AutoFilter zurÃ¼cksetzen
+    ' Bestehenden AutoFilter zurücksetzen
     If wsUeb.AutoFilterMode Then wsUeb.AutoFilterMode = False
 
     ' Letzte Datenzeile ermitteln
@@ -174,7 +174,7 @@ Public Sub FilterUebersichtNachMonat(ByVal monatIndex As Long)
         wsUeb.Range("A5:H" & lastRow).AutoFilter
     Else
         ' Filter auf Spalte C (Monat) anwenden
-        ' Filterkriterium: "*MonatName*" (enthÃ¤lt den Monatsnamen)
+        ' Filterkriterium: "*MonatName*" (enthält den Monatsnamen)
         Dim filterMonat As String
         filterMonat = MonthName(monatIndex)
 
@@ -218,8 +218,8 @@ End Sub
 
 ' ===============================================================
 ' v1.1: Zebra-Muster basierend auf SICHTBAREN Zeilen anwenden
-' Zaehlt nur sichtbare Zeilen fÃ¼r das Mod-2-Muster.
-' Ãœberspringt Status-Spalte (Ampel) und gelbe Soll-Zellen.
+' Zaehlt nur sichtbare Zeilen für das Mod-2-Muster.
+' Überspringt Status-Spalte (Ampel) und gelbe Soll-Zellen.
 ' ===============================================================
 Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
                                             ByVal startRow As Long, _
@@ -240,7 +240,7 @@ Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
                 ' Gerade sichtbare Zeile -> Zebra-Farbe
                 For c = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
                     If c = UEB_COL_STATUS Then
-                        ' Status-Spalte behÃ¤lt Ampelfarbe
+                        ' Status-Spalte behält Ampelfarbe
                     ElseIf c = UEB_COL_SOLL Then
                         If wsUeb.Cells(r, c).Interior.color <> FARBE_HELLGELB_MANUELL And _
                            wsUeb.Cells(r, c).Interior.color <> RGB(196, 225, 196) Then
@@ -255,7 +255,7 @@ Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
                 ' Ungerade sichtbare Zeile -> weiss
                 For c = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
                     If c = UEB_COL_STATUS Then
-                        ' Status-Spalte behÃ¤lt Ampelfarbe
+                        ' Status-Spalte behält Ampelfarbe
                     ElseIf c = UEB_COL_SOLL Then
                         If wsUeb.Cells(r, c).Interior.color <> FARBE_HELLGELB_MANUELL And _
                            wsUeb.Cells(r, c).Interior.color <> RGB(196, 225, 196) Then
@@ -276,7 +276,7 @@ End Sub
 
 
 ' ===============================================================
-' Entfernt alle Monats-Register-Shapes (fÃ¼r Reset)
+' Entfernt alle Monats-Register-Shapes (für Reset)
 ' ===============================================================
 Public Sub EntferneMonatsRegister()
 
@@ -290,10 +290,10 @@ Public Sub EntferneMonatsRegister()
     wsUeb.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
 
-    ' AutoFilter zurÃ¼cksetzen
+    ' AutoFilter zurücksetzen
     If wsUeb.AutoFilterMode Then wsUeb.AutoFilterMode = False
 
-    ' Shapes lÃ¶schen
+    ' Shapes löschen
     Dim shp As Shape
     Dim delNames As New Collection
     For Each shp In wsUeb.Shapes
@@ -311,6 +311,8 @@ Public Sub EntferneMonatsRegister()
     On Error GoTo 0
 
 End Sub
+
+
 
 
 

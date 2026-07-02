@@ -1,9 +1,9 @@
-ï»¿Attribute VB_Name = "mod_Format_Dropdowns"
+Attribute VB_Name = "mod_Format_Dropdowns"
 Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Format_Dropdowns
-' ZWECK: DropDown-Listen-Verwaltung fÃ¼r Kategorien (AF, AG, AH)
+' ZWECK: DropDown-Listen-Verwaltung für Kategorien (AF, AG, AH)
 ' ABGELEITET AUS: mod_Formatierung (Modularisierung)
 ' VERSION: 1.0 - 01.03.2026
 ' FUNKTIONEN:
@@ -12,7 +12,7 @@ Option Explicit
 ' ***************************************************************
 
 ' ===============================================================
-' DROPDOWN-LISTEN FÃœR KATEGORIEN AKTUALISIEREN (AF + AG + AH)
+' DROPDOWN-LISTEN FÜR KATEGORIEN AKTUALISIEREN (AF + AG + AH)
 ' ===============================================================
 Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = Nothing)
     
@@ -92,7 +92,7 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
 End Sub
 
 ' ===============================================================
-' NAMED RANGES FÃœR KATEGORIEN ERSTELLEN
+' NAMED RANGES FÜR KATEGORIEN ERSTELLEN
 ' ===============================================================
 Private Sub ErstelleKategorieNamedRanges(ByRef ws As Worksheet, ByVal lastRowE As Long, ByVal lastRowA As Long)
     
@@ -124,6 +124,8 @@ Private Sub ErstelleKategorieNamedRanges(ByRef ws As Worksheet, ByVal lastRowE A
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

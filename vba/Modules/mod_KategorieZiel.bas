@@ -1,11 +1,11 @@
-ï»¿Attribute VB_Name = "mod_KategorieZiel"
+Attribute VB_Name = "mod_KategorieZiel"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_KategorieZiel
 ' ZWECK:
-'   Dynamisches DropDown fÃ¼r Zielspalte (Daten!Spalte N)
-'   abhÃ¤ngig von Einnahme / Ausgabe (Spalte K)
+'   Dynamisches DropDown für Zielspalte (Daten!Spalte N)
+'   abhängig von Einnahme / Ausgabe (Spalte K)
 ' ===============================================================
 
 Private Const RULE_START_ROW As Long = 4
@@ -15,7 +15,7 @@ Private Const COL_EIN_AUS As Long = 11    ' Spalte K
 Private Const COL_ZIELSPALTE As Long = 14 ' Spalte N
 
 ' ---------------------------------------------------------------
-' Initialisierung fÃ¼r kompletten Bereich (manuell aufrufbar)
+' Initialisierung für kompletten Bereich (manuell aufrufbar)
 ' ---------------------------------------------------------------
 Public Sub Init_ZielspaltenDropdowns()
 
@@ -40,7 +40,7 @@ Public Sub ApplyZielspaltenDropdown(ByVal ws As Worksheet, ByVal rowNr As Long)
     Dim targetCell As Range
     Set targetCell = ws.Cells(rowNr, COL_ZIELSPALTE)
 
-    ' Immer zuerst LÃ¶schen
+    ' Immer zuerst Löschen
     targetCell.Validation.Delete
 
     If ea = "" Then Exit Sub
@@ -85,6 +85,8 @@ Private Function GetZielspaltenListe(ByVal einAus As String) As String
     End Select
 
 End Function
+
+
 
 
 

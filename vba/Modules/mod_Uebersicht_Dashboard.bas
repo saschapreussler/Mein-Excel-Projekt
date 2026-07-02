@@ -1,17 +1,17 @@
-ï»¿Attribute VB_Name = "mod_Uebersicht_Dashboard"
+Attribute VB_Name = "mod_Uebersicht_Dashboard"
 Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Dashboard
 ' VERSION: 2.0 - 27.03.2026
-' ZWECK: Visuelles Dashboard auf Blatt "Ã¼bersicht (neu)"
+' ZWECK: Visuelles Dashboard auf Blatt "übersicht (neu)"
 '        Einstiegspunkt, KPI-Karten, Parzellen-Gruppierung
 ' ABHAENGIGKEITEN: mod_Dashboard_Matrix, mod_Uebersicht_Daten,
 '                  mod_Zahlungspruefung
 ' ***************************************************************
 
 ' ============================================================
-'  TYPES (mÃ¼ssen VOR allen Sub/Function stehen!)
+'  TYPES (müssen VOR allen Sub/Function stehen!)
 ' ============================================================
 Public Type ParzelleInfo
     parzNr As Long
@@ -37,7 +37,7 @@ Public Type VerzugEintrag
 End Type
 
 ' ============================================================
-'  FARBEN (Public fÃ¼r mod_Dashboard_Matrix)
+'  FARBEN (Public für mod_Dashboard_Matrix)
 ' ============================================================
 Public m_CLR_NAVY As Long
 Public m_CLR_HEADER_BG As Long
@@ -54,7 +54,7 @@ Public m_CLR_TEXT_GRUEN As Long
 Public m_CLR_TEXT_DUNKELROT As Long
 Private m_FarbenInit As Boolean
 
-' Layout-Konstanten (Public fÃ¼r Matrix-Modul)
+' Layout-Konstanten (Public für Matrix-Modul)
 Public Const DASH_TITEL_ROW As Long = 2
 Public Const DASH_KPI_LABEL_ROW As Long = 5
 Public Const DASH_KPI_WERT_ROW As Long = 6
@@ -147,7 +147,7 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
     
     Call ErgaenzeParzellennamen(parzellen, anzParz, mitgliederML)
     
-    ' --- 4. Soll-Werte aus Ã¼bersicht laden ---
+    ' --- 4. Soll-Werte aus übersicht laden ---
     Dim sollDict As Object
     Set sollDict = LadeSollAusUebersicht()
     
@@ -229,7 +229,7 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
     Call mod_Navigation.ErstelleHomeButton(wsDash)
     On Error GoTo ErrorHandler
     
-    ' --- 13. Blatt schÃ¼tzen ---
+    ' --- 13. Blatt schützen ---
     On Error Resume Next
     wsDash.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo ErrorHandler
@@ -285,7 +285,7 @@ End Sub
 ' ============================================================
 Private Function ErmittleDashboardJahr(Optional ByVal stummModus As Boolean = False) As Long
     
-    ' v6.0: Abrechnungsjahr aus Einstellungen statt StartmenÃ¼!F1
+    ' v6.0: Abrechnungsjahr aus Einstellungen statt Startmenü!F1
     Dim jahrF1 As Long
     jahrF1 = HoleAbrechnungsjahr()
     
@@ -337,7 +337,7 @@ Private Function HoleOderErstelleSheet() As Worksheet
     On Error GoTo 0
     
     If ws Is Nothing Then
-        ' Direkt hinter dem Blatt "ZahlungsÃ¼bersicht" einfÃ¼gen
+        ' Direkt hinter dem Blatt "Zahlungsübersicht" einfügen
         Dim wsUeb As Worksheet
         On Error Resume Next
         Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
@@ -397,7 +397,7 @@ Public Sub GruppiereParzellen(ByVal mitglieder As Collection, _
             Dim ix As Long
             ix = dict(pKey)
             If InStr(tempArr(ix).entityKeys, m("EntityKey")) = 0 Then
-                ' Neuer EntityKey fÃ¼r diese Parzelle -> hinzufuegen
+                ' Neuer EntityKey für diese Parzelle -> hinzufuegen
                 tempArr(ix).entityKeys = tempArr(ix).entityKeys & "," & m("EntityKey")
                 tempArr(ix).roles = tempArr(ix).roles & "," & m("Role")
                 ' v5.2: Eintrittsdatum parallel speichern
@@ -410,7 +410,7 @@ Public Sub GruppiereParzellen(ByVal mitglieder As Collection, _
                 tempArr(ix).eintritte = tempArr(ix).eintritte & "," & eDat
             End If
             
-            ' v5.2: Name IMMER prÃ¼fen (auch wenn EntityKey bereits bekannt),
+            ' v5.2: Name IMMER prüfen (auch wenn EntityKey bereits bekannt),
             '        damit alle Personen auf der Parzelle dargestellt werden
             If InStr(1, tempArr(ix).mitgliedNamen, m("Name"), vbTextCompare) = 0 Then
                 tempArr(ix).mitgliedNamen = tempArr(ix).mitgliedNamen & vbLf & m("Name")
@@ -454,7 +454,7 @@ End Sub
 
 ' ============================================================
 '  SOLL-WERTE AUS UEBERSICHT-BLATT LADEN
-'  Liest manuell eingetragene Soll-BetrÃ¤ge (Parzelle|Kategorie)
+'  Liest manuell eingetragene Soll-Beträge (Parzelle|Kategorie)
 ' ============================================================
 Public Function LadeSollAusUebersicht() As Object
     
@@ -595,7 +595,7 @@ Private Sub SchreibeKPI(ByVal ws As Worksheet, _
                           offenDetail, _
                           m_CLR_KPI_ROT)
     
-    ' Karte 4: SÃ¤umnis
+    ' Karte 4: Säumnis
     Call SchreibeKPIKarte(ws, DASH_KPI_LABEL_ROW, 7, 8, _
                           "S" & ChrW(196) & "UMNIS", _
                           Format(summeSaeumnis, "#,##0.00") & " " & ChrW(8364), _
@@ -690,7 +690,7 @@ End Sub
 '  Fuegt Mitglieder aus der Mitgliederliste hinzu, die keinen
 '  eigenen EntityKey haben (z.B. Partner zahlt Kosten mit).
 '  Vergleicht per InStr (case-insensitive) um Doppeleintraege
-'  zu vermeiden - nutzt Nachname als SchlÃ¼sselwort.
+'  zu vermeiden - nutzt Nachname als Schlüsselwort.
 ' ============================================================
 Private Sub ErgaenzeParzellennamen(ByRef parzellen() As ParzelleInfo, _
                                     ByVal anzParz As Long, _
@@ -708,13 +708,13 @@ Private Sub ErgaenzeParzellennamen(ByRef parzellen() As ParzelleInfo, _
                 Dim mlName As String
                 mlName = CStr(mlM("Name"))
                 
-                ' PrÃ¼fen ob Name schon enthalten ist
+                ' Prüfen ob Name schon enthalten ist
                 ' (auch Teilstring-Match, da EntityKey-Tabelle ggf.
                 '  Kontoname hat und Mitgliederliste Vorname+Nachname)
                 Dim bereitsVorhanden As Boolean
                 bereitsVorhanden = False
                 
-                ' Nachname extrahieren (letztes Wort) fÃ¼r robusteren Vergleich
+                ' Nachname extrahieren (letztes Wort) für robusteren Vergleich
                 Dim nameParts() As String
                 nameParts = Split(mlName, " ")
                 Dim nachname As String
@@ -737,6 +737,8 @@ Private Sub ErgaenzeParzellennamen(ByRef parzellen() As ParzelleInfo, _
     Next mlM
     
 End Sub
+
+
 
 
 

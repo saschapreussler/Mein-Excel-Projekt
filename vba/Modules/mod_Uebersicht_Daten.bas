@@ -1,11 +1,11 @@
-ï»¿Attribute VB_Name = "mod_Uebersicht_Daten"
+Attribute VB_Name = "mod_Uebersicht_Daten"
 Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Daten
 ' VERSION: 1.2 - 16.03.2026
-' ZWECK: Datenquellen und Hilfsfunktionen fÃ¼r die Ã¼bersicht
-'        - Kategorien aus Einstellungen laden (inkl. FÃ¤lligkeit)
+' ZWECK: Datenquellen und Hilfsfunktionen für die übersicht
+'        - Kategorien aus Einstellungen laden (inkl. Fälligkeit)
 '        - Aktive Mitglieder aus Daten-Blatt holen
 '        - Jahr und importierte Monate aus Bankkonto ermitteln
 '        - Vorjahr-Speicher (Okt-Dez Puffer auf Daten CA-CF)
@@ -19,8 +19,8 @@ Option Explicit
 ' ===============================================================
 ' Laedt Kategorien DYNAMISCH aus Einstellungen-Blatt
 ' Liest Spalte B (Kategorie), C (Soll-Betrag), E (Soll-Monate),
-' I (SÃ¤umnis-GebÃ¼hr) + FÃ¤lligkeit aus Daten Spalte O
-' Gibt eindeutige Kategorien zurÃ¼ck (keine Duplikate)
+' I (Säumnis-Gebühr) + Fälligkeit aus Daten Spalte O
+' Gibt eindeutige Kategorien zurück (keine Duplikate)
 ' ===============================================================
 Public Sub LadeKategorienAusEinstellungen(ByRef kategorien() As UebKategorie, _
                                            ByRef anzahl As Long)
@@ -42,10 +42,10 @@ Public Sub LadeKategorienAusEinstellungen(ByRef kategorien() As UebKategorie, _
     lastRow = wsEinst.Cells(wsEinst.Rows.count, ES_COL_KATEGORIE).End(xlUp).Row
     If lastRow < ES_START_ROW Then Exit Sub
     
-    ' Dictionary fÃ¼r Eindeutigkeit
+    ' Dictionary für Eindeutigkeit
     Set dict = CreateObject("Scripting.Dictionary")
     
-    ' Zuerst zaehlen fÃ¼r ReDim
+    ' Zuerst zaehlen für ReDim
     For r = ES_START_ROW To lastRow
         katName = Trim(CStr(wsEinst.Cells(r, ES_COL_KATEGORIE).value))
         If katName <> "" Then
@@ -80,7 +80,7 @@ Public Sub LadeKategorienAusEinstellungen(ByRef kategorien() As UebKategorie, _
             End If
             .HatFestenSoll = (.SollBetrag > 0)
             
-            ' SÃ¤umnis-GebÃ¼hr aus Spalte I
+            ' Säumnis-Gebühr aus Spalte I
             Dim saeumnisWert As Variant
             saeumnisWert = wsEinst.Cells(r, ES_COL_SAEUMNIS).value
             If IsNumeric(saeumnisWert) Then
@@ -92,14 +92,14 @@ Public Sub LadeKategorienAusEinstellungen(ByRef kategorien() As UebKategorie, _
             ' Soll-Monate aus Spalte E (z.B. "03, 06, 09" oder leer = alle)
             .SollMonate = Trim(CStr(wsEinst.Cells(r, ES_COL_SOLL_MONATE).value))
             
-            ' FÃ¤lligkeit aus Daten-Blatt Spalte O (Kategorie-Tabelle)
+            ' Fälligkeit aus Daten-Blatt Spalte O (Kategorie-Tabelle)
             .faelligkeit = ""
         End With
         
         idx = idx + 1
     Next key
     
-    ' FÃ¤lligkeit aus Daten-Blatt nachladen (Spalte O)
+    ' Fälligkeit aus Daten-Blatt nachladen (Spalte O)
     Dim wsDatenKat As Worksheet
     On Error Resume Next
     Set wsDatenKat = ThisWorkbook.Worksheets(WS_DATEN)
@@ -131,12 +131,12 @@ End Sub
 ' ===============================================================
 ' Holt alle aktiven Mitglieder aus Daten-Blatt (EntityKey-Tabelle)
 ' Spalten: R=EntityKey, S=IBAN, T=Kontoname, U=Zuordnung, V=Parzelle, W=Role
-' Bei SHARE-Keys kÃ¶nnen mehrere Parzellen in V stehen (z.B. "2, 5")
+' Bei SHARE-Keys können mehrere Parzellen in V stehen (z.B. "2, 5")
 ' Mehrere Mitglieder pro Parzelle erlaubt (z.B. MIT + OHNE PACHT)
-' Dedup Ãœber EntityKey+Parzelle (nicht nur Parzelle)
+' Dedup Über EntityKey+Parzelle (nicht nur Parzelle)
 ' Name aus Spalte T (Kontoname), Fallback auf Spalte U (Zuordnung)
 ' v4.7: Role wird live aus Mitgliederliste Spalte O abgeglichen,
-'       damit Ehren-/Funktions-Ã¤nderungen sofort wirken
+'       damit Ehren-/Funktions-änderungen sofort wirken
 ' ===============================================================
 Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
     
@@ -151,12 +151,12 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         Exit Function
     End If
     
-    ' Dictionary fÃ¼r bereits verarbeitete EntityKey+Parzelle-Kombinationen
+    ' Dictionary für bereits verarbeitete EntityKey+Parzelle-Kombinationen
     Dim verarbeiteteKombis As Object
     Set verarbeiteteKombis = CreateObject("Scripting.Dictionary")
     
     ' v4.7: Funktions-Cache aus Mitgliederliste aufbauen
-    ' SchlÃ¼ssel: EntityKey -> Funktion (Spalte O)
+    ' Schlüssel: EntityKey -> Funktion (Spalte O)
     ' Damit wird die Role live aktualisiert, z.B. bei "Ehrenmitglied"
     Dim funktionsCache As Object
     Set funktionsCache = CreateObject("Scripting.Dictionary")
@@ -199,13 +199,13 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         entityKey = Trim(CStr(wsDaten.Cells(r, EK_COL_ENTITYKEY).value))
         If entityKey = "" Then GoTo NextDatenRow
         
-        ' Role prÃ¼fen: nur aktive Mitglieder
+        ' Role prüfen: nur aktive Mitglieder
         ' "MITGLIED MIT PACHT" und "MITGLIED OHNE PACHT" -> ja
         ' "EHEMALIGES MITGLIED" -> nein (ausschliessen)
         roleWert = UCase(Trim(CStr(wsDaten.Cells(r, EK_COL_ROLE).value)))
         
         ' v4.7: Role live aus Mitgliederliste aktualisieren
-        ' Falls in Mitgliederliste Spalte O eine Ã¤nderung erfolgte
+        ' Falls in Mitgliederliste Spalte O eine änderung erfolgte
         ' (z.B. "Ehrenmitglied"), wird die Role hier korrekt abgeleitet,
         ' auch wenn Spalte W auf dem Daten-Blatt noch den alten Wert hat.
         If funktionsCache.exists(entityKey) Then
@@ -233,7 +233,7 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
             zuordnung = Trim(CStr(wsDaten.Cells(r, EK_COL_KONTONAME).value))
         End If
         
-        ' Parzelle(n) aufteilen (bei SHARE-Keys: "2, 5" -> 2 EintrÃ¤ge)
+        ' Parzelle(n) aufteilen (bei SHARE-Keys: "2, 5" -> 2 Einträge)
         Dim parzellen() As String
         parzellen = Split(parzelleWert, ",")
         
@@ -248,7 +248,7 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                 
                 ' Nur Parzellen 1-14
                 If parzelleNr >= 1 And parzelleNr <= 14 Then
-                    ' Duplikat-PrÃ¼fung: EntityKey+Parzelle nur einmal
+                    ' Duplikat-Prüfung: EntityKey+Parzelle nur einmal
                     Dim kombiKey As String
                     kombiKey = entityKey & "_" & parzelleNr
                     
@@ -306,7 +306,7 @@ End Function
 ' ===============================================================
 ' Ermittelt das haeufigste Jahr aus Bankkonto-Daten
 ' Scannt Spalte A (Datum) und zaehlt welches Jahr am meisten
-' vorkommt. Gibt 0 zurÃ¼ck wenn keine Daten vorhanden.
+' vorkommt. Gibt 0 zurück wenn keine Daten vorhanden.
 ' ===============================================================
 Public Function ErmittleJahrAusBankkonto() As Long
     
@@ -377,8 +377,8 @@ End Function
 ' ===============================================================
 ' Ermittelt welche Monate im Bankkonto CSV-Daten haben
 ' Scannt Spalte A (Datum) ab BK_START_ROW und setzt True
-' fÃ¼r jeden Monat der mindestens eine Buchung enthÃ¤lt
-' Gibt Boolean-Array(1 To 12) zurÃ¼ck
+' für jeden Monat der mindestens eine Buchung enthält
+' Gibt Boolean-Array(1 To 12) zurück
 ' ===============================================================
 Public Function ErmittleImportierteMonate(ByVal jahr As Long) As Boolean()
     
@@ -437,7 +437,7 @@ End Function
 ' VORJAHR-SPEICHER: Okt-Dez des Vorjahres cachen
 ' Kopiert relevante Bankkonto-Buchungen (Okt-Dez Vorjahr) in den
 ' Hilfsspeicher auf Blatt Daten ab Spalte CA.
-' Zweck: Dezember-Zahlungen die fÃ¼r Januar gelten erkennen
+' Zweck: Dezember-Zahlungen die für Januar gelten erkennen
 ' ===============================================================
 Public Sub BefuelleVorjahrSpeicher(ByVal vorjahr As Long)
     
@@ -455,7 +455,7 @@ Public Sub BefuelleVorjahrSpeicher(ByVal vorjahr As Long)
     
     If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
     
-    ' Zuerst alten Speicher lÃ¶schen
+    ' Zuerst alten Speicher löschen
     Call LoescheVorjahrSpeicher
     
     ' Header setzen
@@ -502,7 +502,7 @@ Public Sub BefuelleVorjahrSpeicher(ByVal vorjahr As Long)
         wsDaten.Cells(vjRow, VJ_COL_MONAT_PERIODE).value = _
             Trim(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
         
-        ' EntityKey via IBAN aufloesen (Ãœber EntityKey-Tabelle)
+        ' EntityKey via IBAN aufloesen (Über EntityKey-Tabelle)
         Dim vjEK As String
         vjEK = ""
         Dim ek As Long
@@ -557,7 +557,7 @@ End Sub
 
 
 ' ===============================================================
-' PrÃ¼ft automatisch ob Vorjahr-Speicher gelÃ¶scht werden soll
+' Prüft automatisch ob Vorjahr-Speicher gelöscht werden soll
 ' Ab August des Folgejahres wird der Speicher automatisch geleert
 ' ===============================================================
 Public Sub PruefeVorjahrSpeicherAblauf()
@@ -570,16 +570,16 @@ Public Sub PruefeVorjahrSpeicherAblauf()
         
         If wsDaten Is Nothing Then Exit Sub
         
-        ' PrÃ¼fen ob noch Daten im Speicher sind
+        ' Prüfen ob noch Daten im Speicher sind
         Dim ersteDatum As Variant
         ersteDatum = wsDaten.Cells(VJ_START_ROW, VJ_COL_DATUM).value
         
         If IsDate(ersteDatum) Then
             If Year(CDate(ersteDatum)) < Year(Date) - 1 Then
-                ' Daten sind aelter als Vorjahr -> lÃ¶schen
+                ' Daten sind aelter als Vorjahr -> löschen
                 Call LoescheVorjahrSpeicher
             ElseIf Year(CDate(ersteDatum)) = Year(Date) - 1 Then
-                ' Vorjahr-Daten und wir sind >= August -> lÃ¶schen
+                ' Vorjahr-Daten und wir sind >= August -> löschen
                 Call LoescheVorjahrSpeicher
             End If
         End If
@@ -590,8 +590,8 @@ End Sub
 
 ' ===============================================================
 ' Holt Vorjahr-Zahlungsbetrag aus dem Speicher
-' PrÃ¼ft ob fÃ¼r den EntityKey + Kategorie eine Dezember-Zahlung
-' vorliegt, die fÃ¼r Januar des Folgejahres gelten kÃ¶nnte
+' Prüft ob für den EntityKey + Kategorie eine Dezember-Zahlung
+' vorliegt, die für Januar des Folgejahres gelten könnte
 ' (basierend auf Monat/Periode in Spalte CE)
 ' ===============================================================
 Public Function HoleVorjahrZahlung(ByVal entityKey As String, _
@@ -599,7 +599,7 @@ Public Function HoleVorjahrZahlung(ByVal entityKey As String, _
                                     ByVal monat As Long) As Double
     HoleVorjahrZahlung = 0
     
-    ' Nur fÃ¼r fruehe Monate relevant (Jan-Maerz)
+    ' Nur für fruehe Monate relevant (Jan-Maerz)
     If monat > 3 Then Exit Function
     
     Dim wsDaten As Worksheet
@@ -619,15 +619,15 @@ Public Function HoleVorjahrZahlung(ByVal entityKey As String, _
     erwarteterMonat = MonthName(monat)
     
     For r = VJ_START_ROW To lastRow
-        ' EntityKey prÃ¼fen
+        ' EntityKey prüfen
         If StrComp(Trim(CStr(wsDaten.Cells(r, VJ_COL_ENTITYKEY).value)), _
                    entityKey, vbTextCompare) <> 0 Then GoTo NextVJPruefRow
         
-        ' Kategorie prÃ¼fen
+        ' Kategorie prüfen
         If StrComp(Trim(CStr(wsDaten.Cells(r, VJ_COL_KATEGORIE).value)), _
                    kategorie, vbTextCompare) <> 0 Then GoTo NextVJPruefRow
         
-        ' Monat/Periode prÃ¼fen
+        ' Monat/Periode prüfen
         vjMonatPeriode = Trim(CStr(wsDaten.Cells(r, VJ_COL_MONAT_PERIODE).value))
         
         If StrComp(vjMonatPeriode, erwarteterMonat, vbTextCompare) = 0 Then
@@ -642,8 +642,8 @@ End Function
 
 
 ' ===============================================================
-' v4.6: PrÃ¼ft ob Vorjahr-Daten im Speicher vorhanden sind
-' Gibt True zurÃ¼ck wenn mindestens eine Zeile in CA-CF existiert
+' v4.6: Prüft ob Vorjahr-Daten im Speicher vorhanden sind
+' Gibt True zurück wenn mindestens eine Zeile in CA-CF existiert
 ' ===============================================================
 Public Function HatVorjahrDaten() As Boolean
     HatVorjahrDaten = False
@@ -664,7 +664,7 @@ End Function
 ' ===============================================================
 ' v5.4: Holt ALLE aktiven Mitglieder aus der Mitgliederliste
 ' (unabh. davon ob sie einen EntityKey haben oder nicht)
-' Gibt Collection von Dictionaries zurÃ¼ck:
+' Gibt Collection von Dictionaries zurück:
 '   Parzelle (Long), Name (String), EntityKey (String, kann leer sein)
 ' Aktiv = Pachtanfang vorhanden + Pachtende leer oder in der Zukunft
 ' ===============================================================
@@ -692,7 +692,7 @@ Public Function HoleMitgliederAusMitgliederliste() As Collection
     
     Dim r As Long
     For r = M_START_ROW To lastRow
-        ' Parzelle prÃ¼fen
+        ' Parzelle prüfen
         Dim parzStr As String
         parzStr = Trim(CStr(wsML.Cells(r, M_COL_PARZELLE).value))
         If parzStr = "" Then GoTo NextMLRow
@@ -702,12 +702,12 @@ Public Function HoleMitgliederAusMitgliederliste() As Collection
         parzNr = CLng(parzStr)
         If parzNr < 1 Or parzNr > 14 Then GoTo NextMLRow
         
-        ' Pachtanfang prÃ¼fen (muss vorhanden sein)
+        ' Pachtanfang prüfen (muss vorhanden sein)
         Dim paWert As Variant
         paWert = wsML.Cells(r, M_COL_PACHTANFANG).value
         If Not IsDate(paWert) Then GoTo NextMLRow
         
-        ' Pachtende prÃ¼fen (leer oder in der Zukunft = aktiv)
+        ' Pachtende prüfen (leer oder in der Zukunft = aktiv)
         Dim peWert As Variant
         peWert = wsML.Cells(r, M_COL_PACHTENDE).value
         If IsDate(peWert) Then
@@ -820,6 +820,8 @@ NextMR:
     ZaehleAktiveMitgliederGesamt = cnt
     
 End Function
+
+
 
 
 

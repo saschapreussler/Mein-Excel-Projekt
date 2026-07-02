@@ -1,4 +1,4 @@
-ï»¿Attribute VB_Name = "mod_Format_Spalten"
+Attribute VB_Name = "mod_Format_Spalten"
 Option Explicit
 
 ' ***************************************************************
@@ -8,8 +8,8 @@ Option Explicit
 ' VERSION: 1.0 - 01.03.2026
 ' FUNKTIONEN:
 '   - FormatiereAlleDatenSpalten: Alle 14 Einzel-Spalten formatieren
-'   - FormatiereSingleSpalte: Zebra + Rahmen fÃ¼r eine Spalte
-'   - FormatSingleColumnComplete: Public Wrapper fÃ¼r Einzelspalte
+'   - FormatiereSingleSpalte: Zebra + Rahmen für eine Spalte
+'   - FormatSingleColumnComplete: Public Wrapper für Einzelspalte
 '   - VerdichteSpalteOhneLuecken: Leere Zeilen entfernen
 ' ***************************************************************
 
@@ -218,6 +218,8 @@ Public Sub VerdichteSpalteOhneLuecken(ByRef ws As Worksheet, ByVal checkCol As L
     End If
     
 End Sub
+
+
 
 
 

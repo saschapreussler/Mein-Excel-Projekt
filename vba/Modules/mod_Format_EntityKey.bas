@@ -1,4 +1,4 @@
-ï»¿Attribute VB_Name = "mod_Format_EntityKey"
+Attribute VB_Name = "mod_Format_EntityKey"
 Option Explicit
 
 ' ***************************************************************
@@ -139,7 +139,7 @@ Private Sub FormatiereEntityKeyTabelle(ByRef ws As Worksheet, ByVal lastRow As L
         
         Call SetzeZellschutzFuerZeile(ws, r, currentRole)
         
-        ' Zebra NUR fÃ¼r R-T
+        ' Zebra NUR für R-T
         Set rngZebra = ws.Range(ws.Cells(r, EK_COL_ENTITYKEY), ws.Cells(r, EK_COL_KONTONAME))
         
         If (r - EK_START_ROW) Mod 2 = 0 Then
@@ -224,7 +224,7 @@ Public Sub SortiereEntityKeyTabelle(Optional ByRef ws As Worksheet = Nothing)
 End Sub
 
 ' ===============================================================
-' Vergleicht zwei EntityKey-Zeilen fÃ¼r Sortierung
+' Vergleicht zwei EntityKey-Zeilen für Sortierung
 ' ===============================================================
 Private Function VergleicheEntityKeyZeilen(entityKey1 As Variant, parzelle1 As Variant, _
                                             entityKey2 As Variant, parzelle2 As Variant) As Long
@@ -306,6 +306,8 @@ Private Sub SetzeZellschutzFuerZeile(ByRef ws As Worksheet, ByVal zeile As Long,
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

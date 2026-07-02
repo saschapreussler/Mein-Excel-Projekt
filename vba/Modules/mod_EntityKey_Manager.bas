@@ -1,9 +1,9 @@
-ï»¿Attribute VB_Name = "mod_EntityKey_Manager"
+Attribute VB_Name = "mod_EntityKey_Manager"
 Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_EntityKey_Manager (ORCHESTRATOR)
-' ZWECK: Verwaltung und Zuordnung von EntityKeys fÃ¼r Bankverkehr
+' ZWECK: Verwaltung und Zuordnung von EntityKeys für Bankverkehr
 ' VERSION: 6.0 - 01.03.2026 (Modularisiert)
 '
 ' SUB-MODULE:
@@ -11,8 +11,8 @@ Option Explicit
 '   mod_EntityKey_Kontoname  - Kontonamen-Deduplizierung
 '   mod_EntityKey_Classifier - Klassifikation (Shop/Versorger/Bank)
 '   mod_EntityKey_Matching   - Mitgliedersuche und Namensabgleich
-'   mod_EntityKey_Ampel      - Ampelfarben-System (GrÃ¼n/Gelb/Rot)
-'   mod_EntityKey_UI         - UI-Interaktion (manuelle Ã¤nderungen)
+'   mod_EntityKey_Ampel      - Ampelfarben-System (Grün/Gelb/Rot)
+'   mod_EntityKey_UI         - UI-Interaktion (manuelle änderungen)
 '
 ' VERBLEIBENDE FUNKTIONEN:
 '   - ImportiereIBANsAusBankkonto: IBAN-Import aus Bankkonto
@@ -151,7 +151,7 @@ Public Sub ImportiereIBANsAusBankkonto()
         Next r
     End If
     
-    ' Neue IBANs einfÃ¼gen
+    ' Neue IBANs einfügen
     If lastRowD < EK_START_ROW Then
         nextRowD = EK_START_ROW
     Else
@@ -259,7 +259,7 @@ Public Sub AktualisiereAlleEntityKeys()
         
         If iban = "" And kontoname = "" Then GoTo nextRow
         
-        ' PrÃ¼fe Geldautomat-Abhebung VOR Bankabschluss
+        ' Prüfe Geldautomat-Abhebung VOR Bankabschluss
         If currentEntityKey = "" Then
             If mod_EntityKey_Classifier.IstGeldautomatAbhebung(iban, kontoname) Then
                 wsD.Cells(r, EK_COL_ENTITYKEY).value = PREFIX_BANK & CreateGUID()
@@ -271,7 +271,7 @@ Public Sub AktualisiereAlleEntityKeys()
             End If
         End If
         
-        ' PrÃ¼fe IBAN "0" oder "3529000972" + ABSCHLUSS
+        ' Prüfe IBAN "0" oder "3529000972" + ABSCHLUSS
         If currentEntityKey = "" Then
             If mod_EntityKey_Classifier.IstBankAbschluss(iban, wsBK) Then
                 wsD.Cells(r, EK_COL_ENTITYKEY).value = PREFIX_BANK & CreateGUID()
@@ -343,7 +343,7 @@ ErrorHandler:
 End Sub
 
 ' ===============================================================
-' PrÃ¼ft ob Zeile bereits gueltige Daten hat
+' Prüft ob Zeile bereits gueltige Daten hat
 ' ===============================================================
 Private Function HatBereitsGueltigeDaten(ByVal entityKey As String, _
                                           ByVal zuordnung As String, _
@@ -402,7 +402,7 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
         End If
     Next i
     
-    ' Fall 1: Keine exakten Treffer -> Automatik prÃ¼fen
+    ' Fall 1: Keine exakten Treffer -> Automatik prüfen
     If mitgliederExakt.count = 0 Then
         
         If mod_EntityKey_Classifier.IstShop(kontoname) Then
@@ -456,7 +456,7 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
         End If
     Next i
     
-    ' Fall 2a: Genau 1 aktives Mitglied -> GRÃœN
+    ' Fall 2a: Genau 1 aktives Mitglied -> GRÜN
     If uniqueMemberIDs.count = 1 Then
         For i = 1 To mitgliederExakt.count
             mitgliedInfo = mitgliederExakt(i)
@@ -565,7 +565,7 @@ Public Sub AktualisiereEntityKeyBeiAustritt(ByVal alteMemberID As String)
     For r = EK_START_ROW To lastRow
         currentEK = Trim(wsD.Cells(r, EK_COL_ENTITYKEY).value)
         
-        ' PrÃ¼fe ob EntityKey die alte MemberID ist (direkt oder als SHARE-Teil)
+        ' Prüfe ob EntityKey die alte MemberID ist (direkt oder als SHARE-Teil)
         If currentEK = alteMemberID Then
             ' Einzelne MemberID -> EX-Prefix + neue GUID
             neuerEK = PREFIX_EHEMALIG & CreateGUID()
@@ -576,7 +576,7 @@ Public Sub AktualisiereEntityKeyBeiAustritt(ByVal alteMemberID As String)
             anzahlAktualisiert = anzahlAktualisiert + 1
             
         ElseIf Left(currentEK, Len(PREFIX_SHARE)) = PREFIX_SHARE Then
-            ' SHARE-Key: prÃ¼fe ob MemberID enthalten
+            ' SHARE-Key: prüfe ob MemberID enthalten
             If InStr(currentEK, alteMemberID) > 0 Then
                 ' Gemeinschaftskonto mit diesem Mitglied
                 Dim sharePart As String
@@ -632,6 +632,8 @@ ErrorHandler:
     wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Debug.Print "FEHLER in AktualisiereEntityKeyBeiAustritt: " & Err.Description
 End Sub
+
+
 
 
 

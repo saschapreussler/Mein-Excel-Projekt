@@ -1,9 +1,9 @@
-ï»¿Attribute VB_Name = "mod_Mitglieder_Logik"
+Attribute VB_Name = "mod_Mitglieder_Logik"
 ' =============================================================================
 ' Modul:       mod_Mitglieder_Logik
-' Beschreibung: Geschaeftslogik fÃ¼r Mitgliederverwaltung
+' Beschreibung: Geschaeftslogik für Mitgliederverwaltung
 '               Extrahiert aus frm_Mitgliedsdaten.frm (SPLIT v1.0)
-'               enthÃ¤lt: Parzellen-PrÃ¼fungen, Historie-Operationen,
+'               enthält: Parzellen-Prüfungen, Historie-Operationen,
 '                        Validierungs- und Hilfsfunktionen
 ' abhaengigkeiten: mod_Const (alle Spalten-/Worksheet-Konstanten)
 ' Datum:         2025-06
@@ -14,7 +14,7 @@ Option Explicit
 ' HILFSFUNKTIONEN
 ' =============================================================================
 
-' --- Hilfsfunktion fÃ¼r Parzelle -> Seite ---
+' --- Hilfsfunktion für Parzelle -> Seite ---
 Public Function GetSeiteFromParzelle(ByVal parzelle As String) As String
     Dim parzelleNum As Long
     
@@ -42,7 +42,7 @@ Public Function GetSeiteFromParzelle(ByVal parzelle As String) As String
     
 End Function
 
-' --- PrÃ¼fe ob Funktion bereits existiert ---
+' --- Prüfe ob Funktion bereits existiert ---
 Public Function FunktionExistiertBereits(ByVal funktion As String, ByVal ausschlussParzelle As String) As Boolean
     Dim ws As Worksheet
     Dim r As Long
@@ -63,7 +63,7 @@ Public Function FunktionExistiertBereits(ByVal funktion As String, ByVal ausschl
     FunktionExistiertBereits = False
 End Function
 
-' --- Hilfsfunktion: PrÃ¼fe ob String eine Zahl ist ---
+' --- Hilfsfunktion: Prüfe ob String eine Zahl ist ---
 Public Function IsNumericTag(ByVal value As String) As Boolean
     Dim testVal As Long
     On Error Resume Next
@@ -86,7 +86,7 @@ Public Function IstGueltigesDatum(ByVal datumStr As String) As Boolean
     On Error GoTo 0
 End Function
 
-' --- PrÃ¼fe ob FormularForm geladen ist ---
+' --- Prüfe ob FormularForm geladen ist ---
 Public Function IsFormLoaded(ByVal FormName As String) As Boolean
     Dim i As Long
     
@@ -105,7 +105,7 @@ End Function
 ' =============================================================================
 
 ' ***************************************************************
-' prÃ¼ft ob Person bereits auf dieser Parzelle existiert
+' prüft ob Person bereits auf dieser Parzelle existiert
 ' ***************************************************************
 Public Function ExistiertBereitsAufParzelle(ByVal memberID As String, ByVal parzelle As String, Optional ByVal ausschlussZeile As Long = 0) As Boolean
     Dim ws As Worksheet
@@ -129,7 +129,7 @@ Public Function ExistiertBereitsAufParzelle(ByVal memberID As String, ByVal parz
 End Function
 
 ' ***************************************************************
-' prÃ¼ft ob auf einer Parzelle noch zahlende Mitglieder sind
+' prüft ob auf einer Parzelle noch zahlende Mitglieder sind
 ' ***************************************************************
 Public Function HatParzelleNochZahlendesMitglied(ByVal parzelle As String, ByVal ausschlussMemberID As String) As Boolean
     Dim ws As Worksheet
@@ -148,7 +148,7 @@ Public Function HatParzelleNochZahlendesMitglied(ByVal parzelle As String, ByVal
             
             ' Ignoriere die auszuschliessende Member-ID
             If memberID <> ausschlussMemberID Then
-                ' PrÃ¼fe ob zahlendes Mitglied
+                ' Prüfe ob zahlendes Mitglied
                 If funktion = "Mitglied mit Pacht" Or _
                    funktion = "1. Vorsitzende(r)" Or _
                    funktion = "2. Vorsitzende(r)" Or _
@@ -192,7 +192,7 @@ Public Function GetParzellenVonMitglied(ByVal memberID As String) As String
 End Function
 
 ' ***************************************************************
-' prÃ¼ft ob eine Parzelle zahlendes Mitglied hat
+' prüft ob eine Parzelle zahlendes Mitglied hat
 ' ***************************************************************
 Public Function ParzelleHatZahlendesMitglied(ByVal parzelle As String) As Boolean
     Dim ws As Worksheet
@@ -224,7 +224,7 @@ Public Function ParzelleHatZahlendesMitglied(ByVal parzelle As String) As Boolea
 End Function
 
 ' ***************************************************************
-' prÃ¼ft ob Person auf Parzelle existiert
+' prüft ob Person auf Parzelle existiert
 ' ***************************************************************
 Public Function ExistiertPersonAufParzelle(ByVal vorname As String, ByVal nachname As String, _
                                              ByVal parzelle As String, Optional ByVal ausschlussZeile As Long = 0) As Boolean
@@ -250,7 +250,7 @@ Public Function ExistiertPersonAufParzelle(ByVal vorname As String, ByVal nachna
 End Function
 
 ' ***************************************************************
-' prÃ¼ft ob Parzelle leer ist (keine aktiven Mitglieder)
+' prüft ob Parzelle leer ist (keine aktiven Mitglieder)
 ' ***************************************************************
 Public Function IstParzelleLeer(ByVal parzelle As String) As Boolean
     Dim ws As Worksheet
@@ -300,7 +300,7 @@ End Function
 ' =============================================================================
 
 ' ***************************************************************
-' Zeigt Auswahl-Dialog fÃ¼r mehrere Mitglieder auf einer Parzelle
+' Zeigt Auswahl-Dialog für mehrere Mitglieder auf einer Parzelle
 ' ***************************************************************
 Public Function ZeigeAdressAuswahl(ByRef mitglieder As Collection) As Long
     Dim eingabe As String
@@ -360,18 +360,18 @@ Public Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, By
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
     
-    ' === SICHERHEITSCHECK: NIEMALS Verein-Parzelle LÃ¶schen ===
+    ' === SICHERHEITSCHECK: NIEMALS Verein-Parzelle Löschen ===
     If UCase(Trim(parzelle)) = "VEREIN" Then
         MsgBox "KRITISCHER FEHLER: Versuch, die Verein-Parzelle zu l" & ChrW(246) & "schen wurde verhindert!" & vbCrLf & _
                "Zeile " & lRow & ", Member-ID: " & memberID, vbCritical, "Sicherheitswarnung"
         Exit Sub
     End If
     
-    ' Entsperre beide BlÃ¤tter
+    ' Entsperre beide Blätter
     wsM.Unprotect PASSWORD:=PASSWORD
     wsH.Unprotect PASSWORD:=PASSWORD
     
-    ' Finde NÃ„CHSTE freie Zeile in Mitgliederhistorie (ab Zeile 4)
+    ' Finde NÄCHSTE freie Zeile in Mitgliederhistorie (ab Zeile 4)
     nextHistRow = wsH.Cells(wsH.Rows.count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row + 1
     If nextHistRow < H_START_ROW Then nextHistRow = H_START_ROW
     
@@ -400,10 +400,10 @@ Public Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, By
     End If
     On Error GoTo 0
     
-    ' LÃ¶sche Zeile aus Mitgliederliste
+    ' Lösche Zeile aus Mitgliederliste
     wsM.Rows(lRow).Delete Shift:=xlUp
     
-    ' Schuetze BlÃ¤tter wieder
+    ' Schuetze Blätter wieder
     wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
@@ -473,7 +473,7 @@ ErrorHandler:
 End Sub
 
 ' ***************************************************************
-' Verschiebt ALLE EintrÃ¤ge eines Mitglieds (alle Parzellen)
+' Verschiebt ALLE Einträge eines Mitglieds (alle Parzellen)
 ' von der Mitgliederliste in die Mitgliederhistorie.
 ' Wird beim Komplett-Austritt bei Mehrfach-Parzellen aufgerufen.
 ' ***************************************************************
@@ -495,7 +495,7 @@ Public Sub VerschiebeAlleParzellenInHistorie(ByVal memberID As String, _
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
     
-    ' Entsperre beide BlÃ¤tter
+    ' Entsperre beide Blätter
     wsM.Unprotect PASSWORD:=PASSWORD
     wsH.Unprotect PASSWORD:=PASSWORD
     
@@ -503,25 +503,25 @@ Public Sub VerschiebeAlleParzellenInHistorie(ByVal memberID As String, _
     deletedCount = 0
     parzellenListe = ""
     
-    ' RueckWAERTS durchlaufen wegen Zeilen-LÃ¶schung!
+    ' RueckWAERTS durchlaufen wegen Zeilen-Löschung!
     For r = lastRow To M_START_ROW Step -1
         If wsM.Cells(r, M_COL_MEMBER_ID).value = memberID Then
             parzelle = wsM.Cells(r, M_COL_PARZELLE).value
             
-            ' === SICHERHEITSCHECK: NIEMALS Verein-Zeile LÃ¶schen ===
+            ' === SICHERHEITSCHECK: NIEMALS Verein-Zeile Löschen ===
             If UCase(Trim(parzelle)) = "VEREIN" Then
                 Debug.Print "WARNUNG: Verein-Zeile " & ChrW(252) & "bersprungen (Zeile " & r & ") bei Komplett-Austritt"
                 GoTo NextRowKomplett
             End If
             
-            ' Sammle Parzellen fÃ¼r die MsgBox
+            ' Sammle Parzellen für die MsgBox
             If parzellenListe = "" Then
                 parzellenListe = parzelle
             Else
                 parzellenListe = parzelle & ", " & parzellenListe
             End If
             
-            ' Finde NÃ„CHSTE freie Zeile in Mitgliederhistorie
+            ' Finde NÄCHSTE freie Zeile in Mitgliederhistorie
             nextHistRow = wsH.Cells(wsH.Rows.count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row + 1
             If nextHistRow < H_START_ROW Then nextHistRow = H_START_ROW
             
@@ -550,14 +550,14 @@ Public Sub VerschiebeAlleParzellenInHistorie(ByVal memberID As String, _
             End If
             On Error GoTo ErrorHandler
             
-            ' LÃ¶sche Zeile aus Mitgliederliste
+            ' Lösche Zeile aus Mitgliederliste
             wsM.Rows(r).Delete Shift:=xlUp
             deletedCount = deletedCount + 1
         End If
 NextRowKomplett:
     Next r
     
-    ' Schuetze BlÃ¤tter wieder
+    ' Schuetze Blätter wieder
     wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
@@ -576,6 +576,8 @@ ErrorHandler:
     If Not wsH Is Nothing Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     MsgBox "Fehler beim Komplett-Austritt: " & Err.Description, vbCritical
 End Sub
+
+
 
 
 

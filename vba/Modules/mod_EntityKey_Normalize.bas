@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "mod_EntityKey_Normalize"
+Attribute VB_Name = "mod_EntityKey_Normalize"
 Option Explicit
 
 ' ***************************************************************
@@ -89,6 +89,7 @@ Public Function ExtrahiereAnzeigeName(ByVal kontoname As String) As String
     
     ExtrahiereAnzeigeName = erstesElement
 End Function
+
 
 
 
