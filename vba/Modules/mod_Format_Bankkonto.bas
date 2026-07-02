@@ -8,7 +8,7 @@ Option Explicit
 ' VERSION: 1.0 - 01.03.2026
 ' FUNKTIONEN:
 '   - FormatiereBlattBankkonto: Komplett-Formatierung Bankkonto
-'   - NamedRangeExists: Prüft ob Named Range existiert
+'   - NamedRangeExists: Pr?ft ob Named Range existiert
 ' ***************************************************************
 
 ' ===============================================================
@@ -50,7 +50,7 @@ Public Sub FormatiereBlattBankkonto()
     ws.Range(ws.Cells(BK_START_ROW, BK_COL_MITGL_BEITR), _
              ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
     
-    ' DropDown-Listen für Spalte H (Kategorie)
+    ' DropDown-Listen f?r Spalte H (Kategorie)
     Dim hatEinnahmen As Boolean
     Dim hatAusgaben As Boolean
     hatEinnahmen = NamedRangeExists("lst_KategorienEinnahmen")
@@ -107,7 +107,7 @@ Public Sub FormatiereBlattBankkonto()
         End If
     End If
     
-    ' DropDown-Listen für Spalte I (Monat/Periode)
+    ' DropDown-Listen f?r Spalte I (Monat/Periode)
     Dim hatMonatListe As Boolean
     hatMonatListe = NamedRangeExists("lst_MonatPeriode")
     
@@ -164,7 +164,7 @@ ErrorHandler:
 End Sub
 
 ' ===============================================================
-' Prüft ob Named Range existiert
+' Pr?ft ob Named Range existiert
 ' ===============================================================
 Public Function NamedRangeExists(ByVal rangeName As String) As Boolean
     Dim nm As Name
@@ -177,6 +177,8 @@ Public Function NamedRangeExists(ByVal rangeName As String) As Boolean
     End If
     On Error GoTo 0
 End Function
+
+
 
 
 

@@ -3,18 +3,18 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_EntityKey_Ampel
-' ZWECK: Ampelfarben-System (Grün/Gelb/Rot) für EntityKey-Tabelle
+' ZWECK: Ampelfarben-System (Gr?n/Gelb/Rot) f?r EntityKey-Tabelle
 ' ABGELEITET AUS: mod_EntityKey_Manager (Modularisierung)
 ' VERSION: 1.0 - 01.03.2026
 ' FUNKTIONEN:
-'   - SetzeAmpelFarbe: Farbe für Spalten U-X einer Zeile setzen
+'   - SetzeAmpelFarbe: Farbe f?r Spalten U-X einer Zeile setzen
 '   - SetzeAlleAmpelfarbenNachSortierung: Alle Zeilen nach Sort
-'   - BerechneAmpelStatus: Status-Logik (1=Grün, 2=Gelb, 3=Rot)
+'   - BerechneAmpelStatus: Status-Logik (1=Gr?n, 2=Gelb, 3=Rot)
 ' ***************************************************************
 
 ' ===============================================================
-' Setzt Farbe für Spalten U-X einer Zeile
-' ampelStatus: 1=Grün, 2=Gelb, 3=Rot
+' Setzt Farbe f?r Spalten U-X einer Zeile
+' ampelStatus: 1=Gr?n, 2=Gelb, 3=Rot
 ' ===============================================================
 Public Sub SetzeAmpelFarbe(ByRef ws As Worksheet, ByVal zeile As Long, ByVal ampelStatus As Long)
     Dim rngAmpel As Range
@@ -38,8 +38,8 @@ Public Sub SetzeAmpelFarbe(ByRef ws As Worksheet, ByVal zeile As Long, ByVal amp
 End Sub
 
 ' ===============================================================
-' Setzt Ampelfarben für ALLE Zeilen NACH Sortierung
-' EHEMALIGES MITGLIED in Historie -> GRÜN
+' Setzt Ampelfarben f?r ALLE Zeilen NACH Sortierung
+' EHEMALIGES MITGLIED in Historie -> GR?N
 ' ===============================================================
 Public Sub SetzeAlleAmpelfarbenNachSortierung(ByRef wsD As Worksheet)
     Dim lastRow As Long
@@ -70,7 +70,7 @@ Public Sub SetzeAlleAmpelfarbenNachSortierung(ByRef wsD As Worksheet)
         
         ampel = BerechneAmpelStatus(entityKey, zuordnung, role, debugTxt)
         
-        ' Bei EHEMALIGES MITGLIED prüfen ob in Historie
+        ' Bei EHEMALIGES MITGLIED pr?fen ob in Historie
         If UCase(role) = "EHEMALIGES MITGLIED" Then
             If Not wsH Is Nothing Then
                 kontoname = Trim(CStr(wsD.Cells(r, EK_COL_KONTONAME).value))
@@ -96,7 +96,7 @@ End Sub
 
 ' ===============================================================
 ' Berechnet den korrekten Ampelstatus einer Zeile
-' GRÜN (1), GELB (2), ROT (3)
+' GR?N (1), GELB (2), ROT (3)
 ' ===============================================================
 Public Function BerechneAmpelStatus(ByVal entityKey As String, _
                                       ByVal zuordnung As String, _
@@ -141,7 +141,7 @@ Public Function BerechneAmpelStatus(ByVal entityKey As String, _
         Exit Function
     End If
     
-    ' GRÜN: Alles vorhanden und sicher
+    ' GR?N: Alles vorhanden und sicher
     If entityKey <> "" And role <> "" Then
         If zuordnung <> "" Then
             BerechneAmpelStatus = 1
@@ -154,6 +154,8 @@ Public Function BerechneAmpelStatus(ByVal entityKey As String, _
     ' Default: Gelb
     BerechneAmpelStatus = 2
 End Function
+
+
 
 
 

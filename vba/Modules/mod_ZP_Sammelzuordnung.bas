@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_ZP_Sammelzuordnung
 ' Ausgelagert aus mod_Zahlungspruefung
-' enthält: Sammelueberweisungen erkennen + manuelle Monatszuordnung
+' enth?lt: Sammelueberweisungen erkennen + manuelle Monatszuordnung
 ' ===============================================================
 
 
@@ -90,7 +90,7 @@ End Sub
 
 
 ' ===============================================================
-' HILFSFUNKTION: Zeigt Dialog für Sammelzuordnung (Platzhalter)
+' HILFSFUNKTION: Zeigt Dialog f?r Sammelzuordnung (Platzhalter)
 ' ===============================================================
 Private Function ZeigeSammelZuordnungDialogZP(ByVal gesamtBetrag As Double, _
                                                ByRef kategorien() As String, _
@@ -158,6 +158,8 @@ Public Function FrageNachManuellerMonatszuordnungZP(ByVal wsBK As Worksheet, _
     FrageNachManuellerMonatszuordnungZP = monat
     
 End Function
+
+
 
 
 

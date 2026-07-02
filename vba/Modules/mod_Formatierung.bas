@@ -20,13 +20,13 @@ Option Explicit
 '   - FormatKategorieTableComplete: Public Wrapper Kategorie
 '   - FormatEntityKeyTableComplete: Public Wrapper EntityKey
 '   - OnDatenChange: Worksheet_Change Dispatcher
-'   - OnKategorieChange: Kategorie-änderung Validierung
+'   - OnKategorieChange: Kategorie-?nderung Validierung
 '   - ZentriereAlleZellenVertikal: Vertikale Zentrierung
 '   - FormatiereNeuesBlatt: Neues Blatt formatieren
 ' ***************************************************************
 
 ' ===============================================================
-' Zentriert ALLE Zellen auf ALLEN Blättern vertikal
+' Zentriert ALLE Zellen auf ALLEN Bl?ttern vertikal
 ' ===============================================================
 Public Sub ZentriereAlleZellenVertikal()
     
@@ -53,7 +53,7 @@ End Sub
 
 ' ===============================================================
 ' v5.1: Stellt sicher, dass AutoFilter-Dropdowns auf allen
-' relevanten Blättern vorhanden und nutzbar sind.
+' relevanten Bl?ttern vorhanden und nutzbar sind.
 ' Wird von Workbook_Open aufgerufen.
 ' ===============================================================
 Public Sub StelleAutoFilterBereit()
@@ -152,7 +152,7 @@ Public Sub StelleAutoFilterBereit()
         End If
         On Error GoTo 0
         
-        ' Blatt mit AllowFiltering schützen
+        ' Blatt mit AllowFiltering sch?tzen
         On Error Resume Next
         ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
         Err.Clear
@@ -161,7 +161,7 @@ Public Sub StelleAutoFilterBereit()
 NextSheet:
     Next i
     
-    ' Zurück zur Startseite navigieren
+    ' Zur?ck zur Startseite navigieren
     Dim wsStart As Worksheet
     Set wsStart = Nothing
     On Error Resume Next
@@ -441,7 +441,7 @@ Public Sub FormatEntityKeyTableComplete(ByRef ws As Worksheet)
 End Sub
 
 ' ===============================================================
-' Validierung und Reaktion bei änderung in Kategorie-Tabelle
+' Validierung und Reaktion bei ?nderung in Kategorie-Tabelle
 ' ===============================================================
 Public Sub OnKategorieChange(ByVal Target As Range)
     
@@ -456,12 +456,12 @@ Public Sub OnKategorieChange(ByVal Target As Range)
     
     If zeile < DATA_START_ROW Then Exit Sub
     
-    ' Spalte J oder K geändert: Dropdown-Listen aktualisieren
+    ' Spalte J oder K ge?ndert: Dropdown-Listen aktualisieren
     If Target.Column = DATA_CAT_COL_KATEGORIE Or Target.Column = DATA_CAT_COL_EINAUS Then
         Call mod_Format_Dropdowns.AktualisiereKategorieDropdownListen(ws)
     End If
     
-    ' Spalte K (E/A) geändert: Konsistenzprüfung
+    ' Spalte K (E/A) ge?ndert: Konsistenzpr?fung
     If Target.Column = DATA_CAT_COL_EINAUS Then
         Dim einAus As String
         einAus = UCase(Trim(Target.value))
@@ -511,7 +511,7 @@ Public Sub OnKategorieChange(ByVal Target As Range)
         Call mod_Format_Kategorie.SetzeZielspalteDropdown(ws, zeile, einAus)
     End If
     
-    ' Spalte L (Keyword) geändert: Duplikat-Prüfung
+    ' Spalte L (Keyword) ge?ndert: Duplikat-Pr?fung
     If Target.Column = DATA_CAT_COL_KEYWORD Then
         Dim neuesKeyword As String
         neuesKeyword = Trim(Target.value)
@@ -540,7 +540,7 @@ Public Sub OnKategorieChange(ByVal Target As Range)
 End Sub
 
 ' ===============================================================
-' WORKSHEET_CHANGE HANDLER für dynamische Formatierung
+' WORKSHEET_CHANGE HANDLER f?r dynamische Formatierung
 ' ===============================================================
 Public Sub OnDatenChange(ByVal Target As Range, ByVal ws As Worksheet)
     
@@ -576,21 +576,21 @@ End Sub
 ' ===============================================================
 ' FormatiereMitgliederlisteKomplett
 ' ---------------------------------------------------------------
-' Sorgt für ein durchgehend konsistentes Layout der
-' Mitgliederliste, immer wenn sich Daten Ändern. Wird gerufen von:
+' Sorgt f?r ein durchgehend konsistentes Layout der
+' Mitgliederliste, immer wenn sich Daten ?ndern. Wird gerufen von:
 '   - Workbook_Open
 '   - Worksheet_Change auf Mitgliederliste (Tabelle7)
-'   - mod_Mitglieder_UI nach Speichern / Löschen / Sortieren
+'   - mod_Mitglieder_UI nach Speichern / L?schen / Sortieren
 '
 ' Setzt:
 '   - Vertikale + horizontale Zentrierung im Datenbereich
 '   - Duenne durchgaengige Rahmen (innen + aussen)
 '   - Zebra-Streifen (weiss / hellgrau alternierend)
 '   - AutoFit auf Datenspalten + sinnvolle Mindestbreite
-'   - Datumsformat für Geburtstag / Pacht-Spalten
+'   - Datumsformat f?r Geburtstag / Pacht-Spalten
 '
 ' Wird intern stets unter ScreenUpdating=False und EnableEvents=False
-' ausgeführt, damit es keine Reentrancy in Worksheet_Change gibt.
+' ausgef?hrt, damit es keine Reentrancy in Worksheet_Change gibt.
 ' ===============================================================
 Public Sub FormatiereMitgliederlisteKomplett()
 
@@ -683,7 +683,7 @@ Public Sub FormatiereMitgliederlisteKomplett()
         End If
     Next c
 
-    ' Zeilenhöhe AutoFit
+    ' Zeilenh?he AutoFit
     On Error Resume Next
     wsM.Rows(M_HEADER_ROW & ":" & lastRow).AutoFit
     On Error GoTo CleanExit
@@ -698,6 +698,8 @@ CleanExit:
     Application.ScreenUpdating = warScreenUpdating
     On Error GoTo 0
 End Sub
+
+
 
 
 

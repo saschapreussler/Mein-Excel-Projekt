@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Startseite
 ' VERSION: 2.0 - 18.04.2026
-' ZWECK: Startseite (Startmenü) als professioneller Eye-Catcher
+' ZWECK: Startseite (Startmen?) als professioneller Eye-Catcher
 '        - Gradient-Look mit Farbverlauf-Effekt
 '        - KPIs: Abrechnungsjahr, Mitglieder, Parzellen, Kontostand
 '        - Navigations-Buttons in Kachel-Optik
@@ -54,11 +54,12 @@ Public Sub InitialisiereStartseite()
     Call SchreibeHeroBanner(ws)
     Call SchreibeKPIBereich(ws)
     Call ErstelleNavigationsKacheln(ws)
-    ' Harte Absicherung: Einstellungen-Button direkt setzen und nach vorn bringen
+    ' Alle Kacheln text-basiert verdrahten + Zellauswahl sperren
     Call FixNurEinstellungenButtonSofort(False)
     Call SchreibeFooter(ws)
     
     ws.Cells.Locked = True
+    ws.EnableSelection = xlNoSelection
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
     Application.EnableEvents = True
@@ -147,7 +148,7 @@ End Sub
 
 
 ' ===============================================================
-' ZENTRALER CLICK-DISPATCHER für Startseite-Kacheln
+' ZENTRALER CLICK-DISPATCHER f?r Startseite-Kacheln
 ' ---------------------------------------------------------------
 ' Hintergrund: In einigen Bestandsdateien wurden OnAction-Ziele,
 ' Modulstaende oder Shape-Ueberlagerungen inkonsistent. Dieser
@@ -155,42 +156,103 @@ End Sub
 ' Ziel explizit und robust an.
 ' ===============================================================
 Public Sub StartseitenKachelDispatcher()
+    Dim ws As Worksheet
+    Dim shp As Shape
     Dim callerName As String
+    Dim txt As String
+
     On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
     callerName = CStr(Application.Caller)
+    If Not ws Is Nothing And Len(callerName) > 0 Then
+        Set shp = ws.Shapes(callerName)
+    End If
+    If Not shp Is Nothing Then txt = shp.TextFrame2.TextRange.text
     On Error GoTo 0
 
-    If callerName = "" Then Exit Sub
+    ' ROUTING ANHAND DES SICHTBAREN TEXTES DER KACHEL.
+    ' Das ist immun gegen vertauschte/alte Shape-Namen: entscheidend
+    ' ist, was auf dem Button STEHT, nicht wie er intern heisst.
+    Dim t As String
+    t = LCase(txt)
 
-    Select Case callerName
-        Case "kachel_Uebersicht"
-            mod_Navigation.NavigiereZu_Uebersicht
-        Case "kachel_Bankkonto"
-            AktiviereBlattRobust WS_BANKKONTO, "Bankkonto"
-        Case "kachel_Vereinskasse"
-            AktiviereBlattRobust WS_VEREINSKASSE, "Vereinskasse"
-        Case "kachel_Dashboard"
-            mod_Navigation.NavigiereZu_Dashboard
-        Case "kachel_Strom"
-            AktiviereBlattRobust "Strom", "Strom"
-        Case "kachel_Wasser"
-            AktiviereBlattRobust "Wasser", "Wasser"
-        Case "kachel_Einstellungen"
-            ' hard-route: niemals ueber Daten umleiten
-            AktiviereBlattRobust WS_EINSTELLUNGEN, "Einstellungen"
-        Case "kachel_Daten"
-            AktiviereBlattRobust WS_DATEN, "Daten"
-        Case "kachel_Mitglieder"
-            frm_Mitgliederverwaltung.Show
-        Case "kachel_FinanzUebersicht"
-            mod_Navigation.NavigiereZu_FinanzUebersicht
-        Case "kachel_Betriebskosten"
-            mod_Navigation.ZeigeSerienbrief_Betriebskosten
-        Case "kachel_Endabrechnung"
-            mod_Navigation.ZeigeSerienbrief_Endabrechnung
-        Case "kachel_NeuesJahr"
-            mod_Jahreswechsel.StarteNeuesJahr
+    If InStr(t, "einstellung") > 0 Then
+        AktiviereBlattRobust WS_EINSTELLUNGEN, "Einstellungen"
+    ElseIf InStr(t, "zahlungs") > 0 Then
+        mod_Navigation.NavigiereZu_Uebersicht
+    ElseIf InStr(t, "bankkonto") > 0 Then
+        AktiviereBlattRobust WS_BANKKONTO, "Bankkonto"
+    ElseIf InStr(t, "vereinskasse") > 0 Then
+        AktiviereBlattRobust WS_VEREINSKASSE, "Vereinskasse"
+    ElseIf InStr(t, "dashboard") > 0 Then
+        mod_Navigation.NavigiereZu_Dashboard
+    ElseIf InStr(t, "strom") > 0 Then
+        AktiviereBlattRobust "Strom", "Strom"
+    ElseIf InStr(t, "wasser") > 0 Then
+        AktiviereBlattRobust "Wasser", "Wasser"
+    ElseIf InStr(t, "mitglied") > 0 Then
+        frm_Mitgliederverwaltung.Show
+    ElseIf InStr(t, "finanz") > 0 Then
+        mod_Navigation.NavigiereZu_FinanzUebersicht
+    ElseIf InStr(t, "betriebskosten") > 0 Then
+        mod_Navigation.ZeigeSerienbrief_Betriebskosten
+    ElseIf InStr(t, "endabrechnung") > 0 Then
+        mod_Navigation.ZeigeSerienbrief_Endabrechnung
+    ElseIf InStr(t, "kalenderjahr") > 0 Or InStr(t, "neues") > 0 Then
+        mod_Jahreswechsel.StarteNeuesJahr
+    ElseIf InStr(t, "ansicht") > 0 Then
+        StelleNormaleAnsichtWiederHer
+    ElseIf InStr(t, "daten") > 0 Then
+        AktiviereBlattRobust WS_DATEN, "Daten"
+    Else
+        ' Fallback: nach Shape-Name (falls Text leer gelesen wurde)
+        DispatchNachName callerName
+    End If
+End Sub
+
+
+' ===============================================================
+' Fallback-Routing anhand des Shape-Namens (nur wenn kein Text
+' ausgelesen werden konnte).
+' ===============================================================
+Private Sub DispatchNachName(ByVal shapeName As String)
+    Select Case shapeName
+        Case "kachel_Uebersicht":       mod_Navigation.NavigiereZu_Uebersicht
+        Case "kachel_Bankkonto":        AktiviereBlattRobust WS_BANKKONTO, "Bankkonto"
+        Case "kachel_Vereinskasse":     AktiviereBlattRobust WS_VEREINSKASSE, "Vereinskasse"
+        Case "kachel_Dashboard":        mod_Navigation.NavigiereZu_Dashboard
+        Case "kachel_Strom":            AktiviereBlattRobust "Strom", "Strom"
+        Case "kachel_Wasser":           AktiviereBlattRobust "Wasser", "Wasser"
+        Case "kachel_Einstellungen":    AktiviereBlattRobust WS_EINSTELLUNGEN, "Einstellungen"
+        Case "kachel_Daten":            AktiviereBlattRobust WS_DATEN, "Daten"
+        Case "kachel_Mitglieder":       frm_Mitgliederverwaltung.Show
+        Case "kachel_FinanzUebersicht": mod_Navigation.NavigiereZu_FinanzUebersicht
+        Case "kachel_Betriebskosten":   mod_Navigation.ZeigeSerienbrief_Betriebskosten
+        Case "kachel_Endabrechnung":    mod_Navigation.ZeigeSerienbrief_Endabrechnung
+        Case "kachel_NeuesJahr":        mod_Jahreswechsel.StarteNeuesJahr
+        Case "kachel_NormaleAnsicht":   StelleNormaleAnsichtWiederHer
     End Select
+End Sub
+
+
+' ===============================================================
+' Stellt die normale Excel-Ansicht wieder her (Menueband, Register,
+' Bearbeitungsleiste, Ueberschriften) - Gegenstueck zum Vollbild
+' des Startmenues.
+' ===============================================================
+Public Sub StelleNormaleAnsichtWiederHer()
+    On Error Resume Next
+    Call mod_Vollbild.SetzeVollbildModus(False)
+    Application.DisplayFullScreen = False
+    Application.DisplayFormulaBar = True
+    Application.DisplayStatusBar = True
+    If Not ActiveWindow Is Nothing Then
+        ActiveWindow.DisplayHeadings = True
+        ActiveWindow.DisplayWorkbookTabs = True
+        ActiveWindow.DisplayHorizontalScrollBar = True
+        ActiveWindow.DisplayVerticalScrollBar = True
+    End If
+    On Error GoTo 0
 End Sub
 
 
@@ -201,15 +263,13 @@ End Sub
 
 Public Sub FixNurEinstellungenButtonSofort(Optional ByVal zeigeMeldung As Boolean = False)
     Dim ws As Worksheet
-    Dim shpE As Shape
-    Dim shpD As Shape
-    Dim i As Long
+    Dim shp As Shape
 
     On Error Resume Next
     Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
     On Error GoTo 0
     If ws Is Nothing Then
-        MsgBox "Startseite nicht gefunden.", vbExclamation, "Sofort-Fix"
+        If zeigeMeldung Then MsgBox "Startseite nicht gefunden.", vbExclamation, "Startseite"
         Exit Sub
     End If
 
@@ -217,57 +277,27 @@ Public Sub FixNurEinstellungenButtonSofort(Optional ByVal zeigeMeldung As Boolea
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
 
-    On Error Resume Next
-    Set shpE = ws.Shapes("kachel_Einstellungen")
-    Set shpD = ws.Shapes("kachel_Daten")
-    On Error GoTo 0
-
-    If shpE Is Nothing Then
-        If zeigeMeldung Then
-            MsgBox "Shape 'kachel_Einstellungen' fehlt. Bitte zuerst InitialisiereStartseite ausfuehren.", vbExclamation, "Sofort-Fix"
-        End If
-        Exit Sub
-    End If
-
-    ' Alle ueberlagernden Shapes im Bereich von 'kachel_Einstellungen' entfernen.
-    ' So kann kein altes Objekt den Klick mehr auf ein falsches Ziel abfangen.
-    For i = ws.Shapes.count To 1 Step -1
-        Dim shpX As Shape
-        Set shpX = ws.Shapes(i)
-        If shpX.Name <> "kachel_Einstellungen" Then
-            If RechteckeUeberlappen(shpE.Left, shpE.Top, shpE.Width, shpE.Height, _
-                                    shpX.Left, shpX.Top, shpX.Width, shpX.Height) Then
-                If shpX.Name <> "kachel_Daten" Then
-                    On Error Resume Next
-                    shpX.Delete
-                    On Error GoTo 0
-                End If
-            End If
-        End If
-    Next i
-
-    Dim oleObj As OLEObject
-    For Each oleObj In ws.OLEObjects
-        If RechteckeUeberlappen(shpE.Left, shpE.Top, shpE.Width, shpE.Height, _
-                                oleObj.Left, oleObj.Top, oleObj.Width, oleObj.Height) Then
+    ' ALLE Kacheln auf den zentralen, TEXT-basierten Dispatcher
+    ' verdrahten. Damit ist die Zuordnung voellig unabhaengig von
+    ' (evtl. vertauschten) Shape-Namen - es zaehlt nur der sichtbare
+    ' Text der Kachel.
+    For Each shp In ws.Shapes
+        If Left$(shp.Name, 7) = "kachel_" Then
             On Error Resume Next
-            oleObj.Delete
+            shp.OnAction = "'mod_Startseite.StartseitenKachelDispatcher'"
             On Error GoTo 0
         End If
-    Next oleObj
+    Next shp
 
+    ' Keine Zellauswahl auf der Startseite zulassen
     On Error Resume Next
-    shpE.OnAction = "'mod_Startseite.OeffneEinstellungenDirekt'"
-    shpE.ZOrder msoBringToFront
-    If Not shpD Is Nothing Then
-        shpD.OnAction = "'mod_Navigation.NavigiereZu_Daten'"
-        shpD.ZOrder msoSendToBack
-    End If
+    ws.EnableSelection = xlNoSelection
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 
     If zeigeMeldung Then
-        MsgBox "Sofort-Fix gesetzt: Einstellungen-Button oeffnet jetzt direkt Einstellungen.", vbInformation, "Sofort-Fix"
+        MsgBox "Startseiten-Buttons neu verdrahtet (Routing per sichtbarem Text).", _
+               vbInformation, "Startseite"
     End If
 End Sub
 
@@ -404,7 +434,7 @@ Private Sub VorbereiteBlatt(ByVal ws As Worksheet)
     ws.Columns("K").ColumnWidth = 4      ' Padding rechts
     ws.Columns("L").ColumnWidth = 2      ' Rand
     
-    ' Zeilenhöhen
+    ' Zeilenh?hen
     ws.Rows("1").RowHeight = 6           ' Top-Rand
     ws.Rows("2").RowHeight = 50          ' Hero Titel
     ws.Rows("3").RowHeight = 24          ' Hero Untertitel
@@ -523,7 +553,7 @@ End Sub
 ' KPI-BEREICH: 4 Kennzahlen-Karten
 ' ===============================================================
 Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
-    ' Hintergrund KPI-Bereich (erweitert für 2 KPI-Zeilen)
+    ' Hintergrund KPI-Bereich (erweitert f?r 2 KPI-Zeilen)
     ws.Range("A6:L12").Interior.color = CLR_SECTION_BG
     
     ' KPI-Header
@@ -703,7 +733,7 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         col3Left, ws.Range("I17").Top + 4, kachelW, kachelH, _
         CLR_BTN_MITGL, "'mod_Startseite.StartseitenKachelDispatcher'")
     
-    ' --- Zeile 4: Finanz-übersicht ---
+    ' --- Zeile 4: Finanz-?bersicht ---
     Call ErstelleKachel(ws, "kachel_FinanzUebersicht", _
         ChrW(9654) & " Finanz-" & ChrW(220) & "bersicht", _
         col1Left, ws.Range("C18").Top + 4, kachelW, kachelH, _
@@ -737,6 +767,12 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         ChrW(9654) & " Neues Kalenderjahr", _
         col1Left + (kachelW + 6) * 2, ws.Range("C18").Top + 4, kachelW, kachelH, _
         CLR_BTN_ADMIN, "'mod_Startseite.StartseitenKachelDispatcher'")
+
+    ' Normale Ansicht wiederherstellen (Menueband / Register einblenden)
+    Call ErstelleKachel(ws, "kachel_NormaleAnsicht", _
+        ChrW(9707) & " Normale Ansicht", _
+        col2Left, ws.Range("F18").Top + 4, kachelW, kachelH, _
+        RGB(120, 90, 90), "'mod_Startseite.StartseitenKachelDispatcher'")
 End Sub
 
 
@@ -784,7 +820,7 @@ Private Sub ErstelleKachel(ByVal ws As Worksheet, _
         .Adjustments(1) = 0.18
         On Error GoTo KachelErr
         
-        ' Dezenter Schatten für 3D-Effekt
+        ' Dezenter Schatten f?r 3D-Effekt
         With .Shadow
             .Visible = msoTrue
             .Type = msoShadow14
@@ -883,7 +919,7 @@ Public Function ZaehleBelegteParzellen() As Long
     ' Quelle 1: Einstellungen!C14 (Zelle, in der die Anzahl der
     ' verpachteten Parzellen gepflegt wird). Wenn dort kein gueltiger
     ' Zahlenwert steht, faellt die Funktion auf die Mitgliederliste
-    ' zurück und zaehlt distinkte Parzellen (ohne "Verein" und KGA).
+    ' zur?ck und zaehlt distinkte Parzellen (ohne "Verein" und KGA).
 
     ' --- Quelle 1: Einstellungen!C14 -------------------------------
     Dim wsCfg As Worksheet
@@ -948,7 +984,7 @@ End Function
 ' ---------------------------------------------------------------
 ' Schreibt die aktuelle Anzahl belegter Parzellen
 ' (Quelle: ZaehleBelegteParzellen, identisch zu Startseite /
-' Einstellungen / übersicht / Mitgliederliste) in:
+' Einstellungen / ?bersicht / Mitgliederliste) in:
 '   - Tabellenblatt "Strom":  Zelle B6
 '   - Tabellenblatt "Wasser": Zelle A4
 '
@@ -1077,7 +1113,7 @@ End Function
 
 ' ===============================================================
 ' KPI-UPDATE: Kontostand auf Startseite aktualisieren
-' Wird nach CSV-Import und manuellen änderungen aufgerufen
+' Wird nach CSV-Import und manuellen ?nderungen aufgerufen
 ' ===============================================================
 Public Sub AktualisiereKontostandKPI()
     Dim ws As Worksheet
@@ -1153,6 +1189,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 

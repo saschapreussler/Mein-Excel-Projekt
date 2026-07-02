@@ -13,7 +13,7 @@ Option Explicit
 ' EVENTS
 ' ==========================================================
 
-' Wird bei jedem Wechsel auf das Blatt ausgeführt
+' Wird bei jedem Wechsel auf das Blatt ausgef?hrt
 Private Sub Worksheet_Activate()
 
     Dim ToggleControl As Object
@@ -29,9 +29,9 @@ Private Sub Worksheet_Activate()
     
     If Not ToggleControl Is Nothing Then
         
-        ' DEBUG-Prüfung: Ist das Blatt geschützt?
+        ' DEBUG-Pr?fung: Ist das Blatt gesch?tzt?
         If Me.ProtectContents Then
-            Debug.Print "Worksheet_Activate: Blatt ist geschützt. Hebe Schutz für SetModus auf."
+            Debug.Print "Worksheet_Activate: Blatt ist gesch?tzt. Hebe Schutz f?r SetModus auf."
             Me.Unprotect PASSWORD:=""
         Else
             Debug.Print "Worksheet_Activate: Blatt ist UNgeschuetzt."
@@ -52,7 +52,7 @@ Private Sub Worksheet_Activate()
         
     Else
         ' Fallback: Wenn das Steuerelement nicht gefunden wurde
-        Debug.Print "Worksheet_Activate: Toggle-Control nicht gefunden. Führe nur UpdateStromblatt aus."
+        Debug.Print "Worksheet_Activate: Toggle-Control nicht gefunden. F?hre nur UpdateStromblatt aus."
         Call UpdateStromblatt
     End If
     
@@ -63,7 +63,7 @@ ErrHandler:
     Application.ScreenUpdating = True
     ' WICHTIG: Fehlerbehandlung, um den Blattschutz wiederherzustellen, bevor der Fehler angezeigt wird
     On Error Resume Next
-    ' Nur versuchen, Blattschutz wiederherzustellen, wenn wir ihn aufgehoben haben könnten
+    ' Nur versuchen, Blattschutz wiederherzustellen, wenn wir ihn aufgehoben haben k?nnten
     If Not Me.ProtectContents Then
         Me.Protect PASSWORD:="", AllowFormattingCells:=True
         Debug.Print "Worksheet_Activate (FEHLER): Blattschutz wiederhergestellt."
@@ -74,7 +74,7 @@ ErrHandler:
     
 End Sub
 
-' Wird bei jeder änderung einer Zelle auf dem Blatt ausgeführt
+' Wird bei jeder ?nderung einer Zelle auf dem Blatt ausgef?hrt
 Private Sub Worksheet_Change(ByVal Target As Range)
     Dim isZaehlerChange As Boolean: isZaehlerChange = False
     Dim isCalculationChange As Boolean: isCalculationChange = False
@@ -83,12 +83,12 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     On Error GoTo ErrHandler
     
-    ' 1. Prüfen, ob eine Zaehlerstand-relevante Zelle geändert wurde (Original-Logik B8:C26)
+    ' 1. Pr?fen, ob eine Zaehlerstand-relevante Zelle ge?ndert wurde (Original-Logik B8:C26)
     If Not Intersect(Target, Me.Range("B10:C28")) Is Nothing Then
         isZaehlerChange = True
     End If
     
-    ' 2. Prüfen, ob eine Netto/Brutto-relevante Zelle geändert wurde (Neue Logik B7, K4:K5, M4:M5)
+    ' 2. Pr?fen, ob eine Netto/Brutto-relevante Zelle ge?ndert wurde (Neue Logik B7, K4:K5, M4:M5)
     ' v8.2: Application.Union statt Comma-Range (locale-sicher)
     Dim rngCalcCheck As Range
     On Error Resume Next
@@ -114,11 +114,11 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     If isCalculationChange Then
         
-        ' Blattschutz-Handling nur für die Berechnungsteile (K4:M5, B7) notwendig
+        ' Blattschutz-Handling nur f?r die Berechnungsteile (K4:M5, B7) notwendig
         wasProtected = Me.ProtectContents
         If wasProtected Then
             Me.Unprotect PASSWORD:=""
-            Debug.Print "Worksheet_Change: Blattschutz für Calculation-Change aufgehoben."
+            Debug.Print "Worksheet_Change: Blattschutz f?r Calculation-Change aufgehoben."
         End If
         
         If Not ToggleControl Is Nothing Then
@@ -146,7 +146,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         ' Blattschutz wiederherstellen
         If wasProtected Then
             Me.Protect PASSWORD:="", AllowFormattingCells:=True
-            Debug.Print "Worksheet_Change: Blattschutz für Calculation-Change wiederhergestellt."
+            Debug.Print "Worksheet_Change: Blattschutz f?r Calculation-Change wiederhergestellt."
         End If
         
     End If
@@ -215,9 +215,9 @@ End Sub
 Private Sub SetModus(modus As String)
     Dim r As Long
     
-    Debug.Print "SetModus(" & UCase(modus) & ") gestartet. Blatt geschützt? " & Me.ProtectContents
+    Debug.Print "SetModus(" & UCase(modus) & ") gestartet. Blatt gesch?tzt? " & Me.ProtectContents
     
-    For r = 4 To 5 ' Nur für die Zeilen 4 und 5
+    For r = 4 To 5 ' Nur f?r die Zeilen 4 und 5
         If UCase(modus) = "NETTO" Then
             ' NETTO (K) ist Eingabe, MWST (L) und BRUTTO (M) sind Ausgabe
             
@@ -244,14 +244,14 @@ Private Sub SetModus(modus As String)
     Next r
     
     ' Nach der Modus-Umschaltung:
-    ' 1. Netto/Brutto-Berechnung auslösen
+    ' 1. Netto/Brutto-Berechnung ausl?sen
     If UCase(modus) = "NETTO" Then
         Call RechneAlleZeilen("NETTO")
     Else
         Call RechneAlleZeilen("BRUTTO")
     End If
     
-    ' 2. Zaehlerstands-Berechnung auslösen
+    ' 2. Zaehlerstands-Berechnung ausl?sen
     Call UpdateStromblatt
     Debug.Print "SetModus beendet."
 End Sub
@@ -268,13 +268,13 @@ Private Sub RechneAlleZeilen(modus As String)
             mwstSatz = mwstSatz / 100
         End If
     Else
-        ' Dieser Fehler wuerde nicht 1004 auslösen
+        ' Dieser Fehler wuerde nicht 1004 ausl?sen
         ' MsgBox "Der MwSt-Satz in B7 ist ungueltig. Bitte korrigieren Sie ihn.", vbExclamation
         Exit Sub
     End If
     
     For r = 4 To 5
-        ' Prüfung auf Zell-Zusammenfuehrung beibehalten
+        ' Pr?fung auf Zell-Zusammenfuehrung beibehalten
         If Me.Cells(r, "K").MergeCells Or Me.Cells(r, "L").MergeCells Or Me.Cells(r, "M").MergeCells Then
             MsgBox "Zeile " & r & ": Bitte entferne jegliche Zell-Zusammenfuehrung (MergeCells) in Spalte K, L oder M.", vbCritical
             Exit Sub
@@ -316,7 +316,7 @@ Private Sub btn_neuerZaehler_Strom_Click()
     mod_ZaehlerLogik.Start_Zaehlerwechsel "Strom"
     Exit Sub
 ErrHandler:
-    MsgBox "Fehler beim öffnen des Zaehlerwechsel-Formulars: " & Err.Description, vbExclamation
+    MsgBox "Fehler beim ?ffnen des Zaehlerwechsel-Formulars: " & Err.Description, vbExclamation
 End Sub
 
 ' ==========================================================
@@ -344,6 +344,7 @@ End Sub
 Public Sub KorrigiereHistorieFarben()
     Call mod_Zaehler_Historie.FarbeHistorieEintraege
 End Sub
+
 
 
 

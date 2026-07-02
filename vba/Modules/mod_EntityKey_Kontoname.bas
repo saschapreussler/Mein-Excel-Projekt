@@ -9,14 +9,14 @@ Option Explicit
 ' FUNKTIONEN:
 '   - IstKontonameRedundant: Semantische Redundanzpruefung
 '   - ZerlegeInWorte: Name in normalisierte Wortmenge zerlegen
-'   - SindWortmengenGleich: Wortmengen-Gleichheit prüfen
-'   - IstTeilmenge: Teilmengen-Prüfung
+'   - SindWortmengenGleich: Wortmengen-Gleichheit pr?fen
+'   - IstTeilmenge: Teilmengen-Pr?fung
 '   - BereinigeKontonamen: Dictionary von Redundanzen bereinigen
 '   - SammelKontonamen: Dictionary zu String zusammenfuegen
 ' ***************************************************************
 
 ' ===============================================================
-' Prüft ob ein Kontoname semantisch redundant ist
+' Pr?ft ob ein Kontoname semantisch redundant ist
 ' ===============================================================
 Public Function IstKontonameRedundant(ByRef dictNames As Object, ByVal neuerName As String) As Boolean
     Dim key As Variant
@@ -81,7 +81,7 @@ Public Function ZerlegeInWorte(ByVal Name As String) As Object
 End Function
 
 ' ===============================================================
-' Prüft ob zwei Wortmengen identisch sind
+' Pr?ft ob zwei Wortmengen identisch sind
 ' ===============================================================
 Public Function SindWortmengenGleich(ByRef dict1 As Object, ByRef dict2 As Object) As Boolean
     Dim key As Variant
@@ -99,7 +99,7 @@ Public Function SindWortmengenGleich(ByRef dict1 As Object, ByRef dict2 As Objec
 End Function
 
 ' ===============================================================
-' Prüft ob dict1 eine Teilmenge von dict2 ist
+' Pr?ft ob dict1 eine Teilmenge von dict2 ist
 ' ===============================================================
 Public Function IstTeilmenge(ByRef dictKlein As Object, ByRef dictGross As Object) As Boolean
     Dim key As Variant
@@ -215,6 +215,7 @@ Public Function SammelKontonamen(ByRef dictNames As Object) As String
     
     SammelKontonamen = result
 End Function
+
 
 
 

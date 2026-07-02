@@ -364,3 +364,5 @@ Private Function ErsetzeCodeAusANSIDatei(vbComp As Object, _
 Fehler:
     ErsetzeCodeAusANSIDatei = False
 End Function
+
+

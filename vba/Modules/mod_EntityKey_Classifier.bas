@@ -7,17 +7,17 @@ Option Explicit
 ' ABGELEITET AUS: mod_EntityKey_Manager (Modularisierung)
 ' VERSION: 1.0 - 01.03.2026
 ' FUNKTIONEN:
-'   - DarfParzelleHaben: Prüft ob Role eine Parzelle haben darf
-'   - IstShop: Shop-Erkennung Über Keyword-Liste
-'   - ErmittleVersorgerZweck: Versorger-Erkennung mit Zweck-Rückgabe
-'   - IstBank: Bank-Erkennung Über Keyword-Liste
+'   - DarfParzelleHaben: Pr?ft ob Role eine Parzelle haben darf
+'   - IstShop: Shop-Erkennung ?ber Keyword-Liste
+'   - ErmittleVersorgerZweck: Versorger-Erkennung mit Zweck-R?ckgabe
+'   - IstBank: Bank-Erkennung ?ber Keyword-Liste
 '   - IstGeldautomatAbhebung: GA-Erkennung
 '   - IstBankAbschluss: Bankabschluss-Erkennung
 '   - ErmittleEntityRoleVonFunktion: Funktion -> EntityRole
 ' ***************************************************************
 
 ' ===============================================================
-' Prüft ob Role eine Parzelle haben darf
+' Pr?ft ob Role eine Parzelle haben darf
 ' ===============================================================
 Public Function DarfParzelleHaben(ByVal role As String) As Boolean
     Dim normRole As String
@@ -39,7 +39,7 @@ Public Function DarfParzelleHaben(ByVal role As String) As Boolean
 End Function
 
 ' ===============================================================
-' IstShop - Keyword-Liste (~60 Einträge)
+' IstShop - Keyword-Liste (~60 Eintr?ge)
 ' ===============================================================
 Public Function IstShop(ByVal kontoname As String) As Boolean
     Dim n As String
@@ -77,7 +77,7 @@ Public Function IstShop(ByVal kontoname As String) As Boolean
 End Function
 
 ' ===============================================================
-' ErmittleVersorgerZweck - Gibt Versorger-Zweck zurück oder ""
+' ErmittleVersorgerZweck - Gibt Versorger-Zweck zur?ck oder ""
 ' ===============================================================
 Public Function ErmittleVersorgerZweck(ByVal kontoname As String) As String
     Dim n As String
@@ -274,8 +274,8 @@ Public Function IstBank(ByVal kontoname As String) As Boolean
 End Function
 
 ' ===============================================================
-' Prüft ob Kontoname eine Geldautomat-Abhebung ist
-' Muster: IBAN="0", Name beginnt mit "GA " und enthält "BLZ"
+' Pr?ft ob Kontoname eine Geldautomat-Abhebung ist
+' Muster: IBAN="0", Name beginnt mit "GA " und enth?lt "BLZ"
 ' ===============================================================
 Public Function IstGeldautomatAbhebung(ByVal iban As String, ByVal kontoname As String) As Boolean
     Dim normIBAN As String
@@ -294,7 +294,7 @@ Public Function IstGeldautomatAbhebung(ByVal iban As String, ByVal kontoname As 
 End Function
 
 ' ===============================================================
-' Prüft ob IBAN eine Bank-Abschluss-IBAN ist
+' Pr?ft ob IBAN eine Bank-Abschluss-IBAN ist
 ' ===============================================================
 Public Function IstBankAbschluss(ByVal iban As String, ByRef wsBK As Worksheet) As Boolean
     Dim normIBAN As String
@@ -348,6 +348,8 @@ Public Function ErmittleEntityRoleVonFunktion(ByVal funktion As String) As Strin
         ErmittleEntityRoleVonFunktion = "MITGLIED MIT PACHT"
     End If
 End Function
+
+
 
 
 
