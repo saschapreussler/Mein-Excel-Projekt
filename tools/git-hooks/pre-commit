@@ -29,7 +29,7 @@ for f in $staged_files; do
                 vba/*.frm)
                     # .frm must stay ANSI (cp1252) without BOM.
                     # Check bytes directly to avoid text-decoding false positives.
-                  if ! TMP_FILE="$tmp_file" STAGED_FILE="$f" powershell -NoProfile -Command '
+                  if TMP_FILE="$tmp_file" STAGED_FILE="$f" powershell -NoProfile -Command '
                     $b=[System.IO.File]::ReadAllBytes($env:TMP_FILE)
                     $File=$env:STAGED_FILE
                         $failed=$false
