@@ -394,6 +394,70 @@ Public Sub DiagnoseStartseitenButtons()
 End Sub
 
 
+' ===============================================================
+' DIAGNOSE: Findet Shapes, die die Einstellungen-Kachel ueberlappen
+' ---------------------------------------------------------------
+' Wenn Name, Text und OnAction von 'kachel_Einstellungen' korrekt
+' sind, der Klick aber trotzdem woanders landet, faengt ein
+' darueberliegendes Shape (hoechste Z-Reihenfolge) den Klick ab.
+' Diese Prozedur listet alle Ueberlapper mit Z-Reihenfolge auf.
+' ===============================================================
+Public Sub DiagnoseStartseiteUeberlappung()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
+    On Error GoTo 0
+    If ws Is Nothing Then
+        MsgBox "Startseite nicht gefunden.", vbExclamation, "Ueberlappungs-Diagnose"
+        Exit Sub
+    End If
+
+    Dim ziel As Shape
+    On Error Resume Next
+    Set ziel = ws.Shapes("kachel_Einstellungen")
+    On Error GoTo 0
+    If ziel Is Nothing Then
+        MsgBox "Shape 'kachel_Einstellungen' nicht gefunden.", vbExclamation, "Ueberlappungs-Diagnose"
+        Exit Sub
+    End If
+
+    Dim report As String
+    report = "kachel_Einstellungen  (Z-Order " & ziel.ZOrderPosition & ")" & vbCrLf & _
+             "  L=" & Int(ziel.Left) & " T=" & Int(ziel.Top) & _
+             " W=" & Int(ziel.Width) & " H=" & Int(ziel.Height) & vbCrLf & vbCrLf & _
+             "Shapes, die diese Kachel UEBERLAPPEN:" & vbCrLf
+
+    Dim shp As Shape
+    Dim treffer As Long
+    Dim txt As String
+    For Each shp In ws.Shapes
+        If shp.Name <> ziel.Name Then
+            If RechteckeUeberlappen(ziel.Left, ziel.Top, ziel.Width, ziel.Height, _
+                                    shp.Left, shp.Top, shp.Width, shp.Height) Then
+                treffer = treffer + 1
+                txt = ""
+                On Error Resume Next
+                txt = Trim$(shp.TextFrame2.TextRange.text)
+                On Error GoTo 0
+                report = report & "  [Z " & shp.ZOrderPosition & "] " & shp.Name & _
+                         "  Text='" & txt & "'" & vbCrLf & _
+                         "        OnAction=" & HoleOnActionSafe(shp) & vbCrLf
+            End If
+        End If
+    Next shp
+
+    If treffer = 0 Then
+        report = report & "  (keine) - keine Ueberlappung, Ursache liegt woanders." & vbCrLf
+    Else
+        report = report & vbCrLf & "-> Das Shape mit der HOECHSTEN Z-Order faengt den Klick ab." & vbCrLf & _
+                 "   Loesung: 'InitialisiereStartseite' baut alle Kacheln sauber neu auf."
+    End If
+
+    report = report & vbCrLf & vbCrLf & "Shapes gesamt auf der Startseite: " & ws.Shapes.count
+    MsgBox report, vbInformation, "Ueberlappungs-Diagnose"
+End Sub
+
+
 Private Function HoleOnActionSafe(ByVal shp As Shape) As String
     On Error Resume Next
     HoleOnActionSafe = shp.OnAction
