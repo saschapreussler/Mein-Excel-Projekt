@@ -24,7 +24,6 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Const M_COL_FUNKTION As Long = 15  ' Spalte O
     Const M_COL_AUSTRITT As Long = 16  ' Spalte P
     
-    Const RELEVANT_COLUMNS As String = "B:B,D:D,O:O"
     Const AUSTRITT_STATUS As String = "Ehemaliges Mitglied"
     Const PARZELLE_VEREIN As String = "Verein"
     Const ANREDE_KGA As String = "KGA"
@@ -32,7 +31,11 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     ' ------------------------------------------------------------
     ' Prüfung & INITIALISIERUNG
     ' ------------------------------------------------------------
-    If Intersect(Target, Me.Range(RELEVANT_COLUMNS)) Is Nothing Then Exit Sub
+    ' Auf JEDE Aenderung im Tabellenbereich (Spalten B-R) reagieren, damit
+    ' Zebra/Rahmen/AutoFit auch bei manuellen Eingaben (z.B. Name in Spalte E)
+    ' sofort neu gesetzt werden. Die B/D/O-Spezial-Logik bleibt intern gegated.
+    ' Spalte A (Member ID) ist ausgeblendet/gesperrt -> bewusst nicht getriggert.
+    If Intersect(Target, Me.Range("B:R")) Is Nothing Then Exit Sub
     If Target.Row < M_START_ROW Then Exit Sub
 
     Application.EnableEvents = False

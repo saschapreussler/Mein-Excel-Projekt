@@ -583,10 +583,12 @@ End Sub
 '   - mod_Mitglieder_UI nach Speichern / Löschen / Sortieren
 '
 ' Setzt:
-'   - Vertikale + horizontale Zentrierung im Datenbereich
-'   - Duenne durchgaengige Rahmen (innen + aussen)
+'   - Vertikale Zentrierung; Header zentriert
+'   - Spalten C-G und I-Q linksbuendig, Rest zentriert
+'   - Duenne schwarze Rahmen um jede Zelle (innen + aussen)
 '   - Zebra-Streifen (weiss / hellgrau alternierend)
-'   - AutoFit auf Datenspalten + sinnvolle Mindestbreite
+'   - Reines AutoFit aller Tabellenspalten (nach laengstem Eintrag)
+'   - Spalte A (Member ID) und C (Seite) ausgeblendet
 '   - Datumsformat für Geburtstag / Pacht-Spalten
 '
 ' Wird intern stets unter ScreenUpdating=False und EnableEvents=False
@@ -620,23 +622,39 @@ Public Sub FormatiereMitgliederlisteKomplett()
     wsM.Unprotect PASSWORD:=PASSWORD
     On Error GoTo CleanExit
 
-    ' Letzte belegte Datenzeile + Spalte ermitteln
+    ' Letzte belegte Datenzeile ermitteln
     lastRow = wsM.Cells(wsM.Rows.count, M_COL_NACHNAME).End(xlUp).Row
     If lastRow < M_START_ROW Then lastRow = M_START_ROW
-    lastCol = M_COL_FUNKTION   ' bis Spalte O (15) - alles dahinter ist Verwaltungs-/Versteckt-Bereich
+    lastCol = M_COL_PACHTENDE   ' Tabelle A..Q (R = EntityKey bleibt Verwaltung)
 
     Set headerBereich = wsM.Range(wsM.Cells(M_HEADER_ROW, 1), _
                                    wsM.Cells(M_HEADER_ROW, lastCol))
     Set datenBereich = wsM.Range(wsM.Cells(M_START_ROW, 1), _
                                   wsM.Cells(lastRow, lastCol))
 
-    ' Ausrichtung: zentriert horizontal + vertikal
-    datenBereich.HorizontalAlignment = xlCenter
+    ' Ausrichtung: alles vertikal zentriert; Header horizontal zentriert.
+    ' Datenzeilen standardmaessig zentriert, aber Spalten C-G und I-Q
+    ' linksbuendig (Nutzerwunsch).
     datenBereich.VerticalAlignment = xlCenter
+    datenBereich.HorizontalAlignment = xlCenter
     headerBereich.HorizontalAlignment = xlCenter
     headerBereich.VerticalAlignment = xlCenter
 
-    ' Rahmen entfernen, dann neu setzen (innen + aussen, duenn, schwarz)
+    wsM.Range(wsM.Cells(M_START_ROW, M_COL_SEITE), _
+              wsM.Cells(lastRow, M_COL_STRASSE)).HorizontalAlignment = xlLeft    ' C-G
+    wsM.Range(wsM.Cells(M_START_ROW, M_COL_PLZ), _
+              wsM.Cells(lastRow, M_COL_PACHTENDE)).HorizontalAlignment = xlLeft  ' I-Q
+
+    ' Altformatierung unterhalb der belegten Zeilen entfernen, damit
+    ' beim Loeschen von Zeilen kein Rest-Zebra/Rahmen stehen bleibt.
+    Dim cleanEnd As Long
+    cleanEnd = lastRow + 50
+    With wsM.Range(wsM.Cells(lastRow + 1, 1), wsM.Cells(cleanEnd, lastCol))
+        .Interior.ColorIndex = xlNone
+        .Borders.LineStyle = xlNone
+    End With
+
+    ' Rahmen entfernen, dann neu setzen (innen + aussen, duenn, SCHWARZ)
     Dim rngGesamt As Range
     Set rngGesamt = wsM.Range(wsM.Cells(M_HEADER_ROW, 1), _
                                wsM.Cells(lastRow, lastCol))
@@ -650,7 +668,7 @@ Public Sub FormatiereMitgliederlisteKomplett()
         With rngGesamt.Borders(borderIds(i))
             .LineStyle = xlContinuous
             .Weight = xlThin
-            .color = RGB(150, 150, 150)
+            .color = RGB(0, 0, 0)
         End With
     Next i
 
@@ -673,15 +691,16 @@ Public Sub FormatiereMitgliederlisteKomplett()
               wsM.Cells(lastRow, M_COL_PACHTENDE)).NumberFormat = "DD.MM.YYYY"
     On Error GoTo CleanExit
 
-    ' Spaltenbreiten: AutoFit, dann sinnvolle Mindestbreite
-    Dim c As Long
+    ' Spaltenbreiten: reines AutoFit nach laengstem Eintrag (keine
+    ' Mindestbreite). AutoFit VOR dem Ausblenden, sonst wuerde AutoFit
+    ' die versteckten Spalten wieder einblenden.
     wsM.Range(wsM.Cells(M_HEADER_ROW, 1), wsM.Cells(lastRow, lastCol)) _
         .Columns.AutoFit
-    For c = 1 To lastCol
-        If wsM.Columns(c).ColumnWidth < 8 Then
-            wsM.Columns(c).ColumnWidth = 8
-        End If
-    Next c
+
+    ' Spalte A (Member ID) und C (Seite) ausblenden. Der Home-Button
+    ' (btn_Home) ist xlFreeFloating und bleibt deshalb sichtbar/nutzbar.
+    wsM.Columns(M_COL_MEMBER_ID).Hidden = True
+    wsM.Columns(M_COL_SEITE).Hidden = True
 
     ' Zeilenhöhe AutoFit
     On Error Resume Next
