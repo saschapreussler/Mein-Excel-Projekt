@@ -1,4 +1,5 @@
 ﻿Attribute VB_Name = "mod_Formatierung"
+Attribute VB_Name = "mod_Formatierung"
 Option Explicit
 
 ' ***************************************************************
@@ -797,7 +798,7 @@ Public Sub FormatiereMitgliederhistorie()
     ' Duenne schwarze Rahmenlinien für jede Zelle (innen + aussen)
     With datenBereich.Borders
         .LineStyle = xlContinuous
-        .Color = RGB(0, 0, 0)
+        .color = RGB(0, 0, 0)
         .Weight = xlThin
     End With
 
@@ -822,6 +823,8 @@ CleanExit:
     Application.ScreenUpdating = warScreenUpdating
     On Error GoTo 0
 End Sub
+
+
 
 
 

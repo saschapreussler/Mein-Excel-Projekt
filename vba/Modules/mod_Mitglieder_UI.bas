@@ -1,4 +1,5 @@
 ﻿Attribute VB_Name = "mod_Mitglieder_UI"
+Attribute VB_Name = "mod_Mitglieder_UI"
 Option Explicit
 
 ' ***************************************************************
@@ -84,7 +85,7 @@ Public Function CreateGUID_Public() As String
     On Error Resume Next
     Dim TypeLib As Object
     Set TypeLib = CreateObject("Scriptlet.TypeLib")
-    CreateGUID_Public = Mid(TypeLib.guid, 2, 36)
+    CreateGUID_Public = mid(TypeLib.guid, 2, 36)
     
     If CreateGUID_Public = "" Then
         Randomize
@@ -430,6 +431,8 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False
     
 End Function
+
+
 
 
 

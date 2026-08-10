@@ -1,4 +1,5 @@
 ﻿Attribute VB_Name = "mod_Repo_Sync"
+Attribute VB_Name = "mod_Repo_Sync"
 Option Explicit
 
 ' ***************************************************************
@@ -689,7 +690,7 @@ Private Function LeseDateiOhneKlassenHeader(dateipfad As String) As String
     ' BOM entfernen (falls vorhanden)
     If Len(gesamtInhalt) > 0 Then
         If AscW(Left(gesamtInhalt, 1)) = &HFEFF Then
-            gesamtInhalt = Mid(gesamtInhalt, 2)
+            gesamtInhalt = mid(gesamtInhalt, 2)
         End If
     End If
     
@@ -795,7 +796,7 @@ Private Function LeseDateiMitEncodingErkennung(dateipfad As String) As String
     ' BOM entfernen
     If Len(utf8Inhalt) > 0 Then
         If AscW(Left(utf8Inhalt, 1)) = &HFEFF Then
-            utf8Inhalt = Mid(utf8Inhalt, 2)
+            utf8Inhalt = mid(utf8Inhalt, 2)
         End If
     End If
     
@@ -823,7 +824,7 @@ Private Function LeseDateiMitEncodingErkennung(dateipfad As String) As String
         End With
 
         Debug.Print "[Sync] Encoding-Erkennung: ANSI (U+FFFD in UTF-8-Decoding) fuer " & _
-                    Mid(dateipfad, InStrRev(dateipfad, "\") + 1)
+                    mid(dateipfad, InStrRev(dateipfad, "\") + 1)
         LeseDateiMitEncodingErkennung = ansiDirekt
         Exit Function
     End If
@@ -856,7 +857,7 @@ Private Function LeseDateiMitEncodingErkennung(dateipfad As String) As String
         ' ANSI hat weniger "?" -> Datei ist ANSI-kodiert
         ' (UTF-8 hat Umlaute zu "?" korrumpiert)
         Debug.Print "[Sync] Encoding-Erkennung: ANSI fuer " & _
-                    Mid(dateipfad, InStrRev(dateipfad, "\") + 1)
+                    mid(dateipfad, InStrRev(dateipfad, "\") + 1)
         LeseDateiMitEncodingErkennung = ansiInhalt
     Else
         ' Gleich viele oder weniger "?" -> Datei ist UTF-8
@@ -889,7 +890,7 @@ Private Function KonvertiereUTF8zuAnsi(quellPfad As String, _
     ' BOM entfernen (falls vorhanden)
     If Len(inhalt) > 0 Then
         If AscW(Left(inhalt, 1)) = &HFEFF Then
-            inhalt = Mid(inhalt, 2)
+            inhalt = mid(inhalt, 2)
         End If
     End If
     
@@ -913,6 +914,8 @@ FallbackKopie:
     End If
     On Error GoTo 0
 End Function
+
+
 
 
 
