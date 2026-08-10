@@ -660,6 +660,56 @@ Public Sub RepariereUndPruefeEinstellungen()
 End Sub
 
 
+' ===============================================================
+' FINALER KLICK-HANDLER: wird direkt als OnAction gesetzt und
+' meldet beim ECHTEN Klick, ob er ueberhaupt laeuft und wohin die
+' Navigation fuehrt. Macht den Unterschied zwischen physischem
+' Klick und Application.Run sichtbar.
+' ===============================================================
+Public Sub KlickHandlerEinstellungen()
+    Dim callerName As String
+    callerName = "(kein Caller)"
+    On Error Resume Next
+    callerName = CStr(Application.Caller)
+    On Error GoTo 0
+
+    Dim vorSheet As String
+    vorSheet = ActiveSheet.Name
+
+    mod_Navigation.NavigiereZu_Einstellungen
+
+    MsgBox "Handler LIEF beim Klick." & vbCrLf & _
+           "Application.Caller   = " & callerName & vbCrLf & _
+           "ActiveSheet vor Nav  = " & vorSheet & vbCrLf & _
+           "ActiveSheet nach Nav = " & ActiveSheet.Name & vbCrLf & vbCrLf & _
+           "Kommt dieses Fenster beim Fehler NICHT und du landest auf " & _
+           "'Daten', dann ruft der Klick gar nicht diese OnAction auf.", _
+           vbInformation, "Finaler Klick-Handler"
+End Sub
+
+
+Public Sub SetzeKlickHandlerAufEinstellungen()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Sub
+
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    ws.Shapes("kachel_Einstellungen").OnAction = "mod_Startseite.KlickHandlerEinstellungen"
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+
+    MsgBox "Handler gesetzt auf kachel_Einstellungen." & vbCrLf & vbCrLf & _
+           "Jetzt bitte die FEHLERSEQUENZ ausfuehren:" & vbCrLf & _
+           "1) zu 'Einstellungen' wechseln" & vbCrLf & _
+           "2) mit 'Home' zurueck zur Startseite" & vbCrLf & _
+           "3) auf 'Einstellungen' klicken", _
+           vbInformation, "Handler aktiv"
+End Sub
+
+
 Private Function HoleOnActionSafe(ByVal shp As Shape) As String
     On Error Resume Next
     HoleOnActionSafe = shp.OnAction
