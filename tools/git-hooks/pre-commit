@@ -10,6 +10,8 @@ set -eu
 bad_repl="$(printf '\357\277\275')"
 # Visible mojibake sequence "ï¿½": C3 AF C2 BF C2 BD
 bad_moji="$(printf '\303\257\302\277\302\275')"
+# UTF-8 BOM: EF BB BF
+utf8_bom="$(printf '\357\273\277')"
 
 # Only scan code files where mojibake/replacement chars are risky for runtime.
 staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
@@ -20,20 +22,71 @@ failed=0
 for f in $staged_files; do
     case "$f" in
         vba/*.bas|vba/*.cls|vba/*.frm|tools/*.ps1)
-            content="$(git show ":$f" || true)"
-            if [ -z "$content" ]; then
-                continue
-            fi
+            tmp_file="$(mktemp)"
+            git show ":$f" > "$tmp_file" || true
 
-            if printf '%s' "$content" | LC_ALL=C grep -q "$bad_repl"; then
-                printf '\n[pre-commit] Blocked: replacement char found in staged file:\n  %s\n' "$f" >&2
-                failed=1
-            fi
+            case "$f" in
+                vba/*.frm)
+                    # .frm must stay ANSI (cp1252) without BOM.
+                    # Check bytes directly to avoid text-decoding false positives.
+                  if ! TMP_FILE="$tmp_file" STAGED_FILE="$f" powershell -NoProfile -Command '
+                    $b=[System.IO.File]::ReadAllBytes($env:TMP_FILE)
+                    $File=$env:STAGED_FILE
+                        $failed=$false
 
-            if printf '%s' "$content" | LC_ALL=C grep -q "$bad_moji"; then
-                printf '\n[pre-commit] Blocked: mojibake sequence found in staged file:\n  %s\n' "$f" >&2
-                failed=1
-            fi
+                        for($i=0;$i -le $b.Length-3;$i++){
+                          if($b[$i]-eq 0xEF -and $b[$i+1]-eq 0xBF -and $b[$i+2]-eq 0xBD){
+                            Write-Host "[pre-commit] Blocked: replacement char bytes found in staged file:"; Write-Host "  $File"
+                            $failed=$true; break
+                          }
+                        }
+
+                        for($i=0;$i -le $b.Length-6;$i++){
+                          if($b[$i]-eq 0xC3 -and $b[$i+1]-eq 0xAF -and $b[$i+2]-eq 0xC2 -and $b[$i+3]-eq 0xBF -and $b[$i+4]-eq 0xC2 -and $b[$i+5]-eq 0xBD){
+                            Write-Host "[pre-commit] Blocked: mojibake sequence found in staged file:"; Write-Host "  $File"
+                            $failed=$true; break
+                          }
+                        }
+
+                        if($b.Length -ge 3 -and $b[0]-eq 0xEF -and $b[1]-eq 0xBB -and $b[2]-eq 0xBF){
+                          Write-Host "[pre-commit] Blocked: .frm has UTF-8 BOM (must be ANSI cp1252):"; Write-Host "  $File"
+                          $failed=$true
+                        }
+
+                        $hasHigh=$false
+                        foreach($x in $b){ if($x -ge 128){ $hasHigh=$true; break } }
+                        $utf8=New-Object System.Text.UTF8Encoding($false,$true)
+                        $valid=$true
+                        try{ [void]$utf8.GetString($b) } catch { $valid=$false }
+                        if($hasHigh -and $valid){
+                          Write-Host "[pre-commit] Blocked: .frm looks UTF-8 encoded (must be ANSI cp1252):"; Write-Host "  $File"
+                          $failed=$true
+                        }
+
+                        if($failed){ exit 1 } else { exit 0 }'; then
+                        :
+                    else
+                        failed=1
+                    fi
+                    ;;
+                *)
+                    # Text-based checks are safe for .bas/.cls/.ps1 (UTF-8 in repo).
+                    content="$(git show ":$f" || true)"
+                    if [ -n "$content" ]; then
+                        if printf '%s' "$content" | LC_ALL=C grep -q "$bad_repl"; then
+                            printf '\n[pre-commit] Blocked: replacement char found in staged file:\n  %s\n' "$f" >&2
+                            failed=1
+                        fi
+
+                        if printf '%s' "$content" | LC_ALL=C grep -q "$bad_moji"; then
+                            printf '\n[pre-commit] Blocked: mojibake sequence found in staged file:\n  %s\n' "$f" >&2
+                            failed=1
+                        fi
+                    fi
+                    ;;
+            esac
+
+            rm -f "$tmp_file"
             ;;
         *)
             ;;
@@ -47,9 +100,10 @@ if [ "$failed" -ne 0 ]; then
 Commit aborted to protect Umlaut integrity.
 
 Recommended fix:
-  1) Run: tools/fix_mojibake_safe.ps1
-  2) Re-stage files
-  3) Commit again
+    1) Run: powershell -ExecutionPolicy Bypass -File tools/repair_qm_to_umlauts.ps1
+    2) Run: powershell -ExecutionPolicy Bypass -File tools/convert_repo_to_utf8bom.ps1
+    3) Re-stage files
+    4) Commit again
 
 If needed, inspect staged diff first:
   git diff --cached
