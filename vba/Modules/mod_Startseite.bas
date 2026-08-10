@@ -667,24 +667,29 @@ End Sub
 ' Klick und Application.Run sichtbar.
 ' ===============================================================
 Public Sub KlickHandlerEinstellungen()
-    Dim callerName As String
-    callerName = "(kein Caller)"
-    On Error Resume Next
-    callerName = CStr(Application.Caller)
-    On Error GoTo 0
+    Dim s_mit As String, s_ohne As String
 
-    Dim vorSheet As String
-    vorSheet = ActiveSheet.Name
+    ' --- Variante A: Einstellungen aktivieren MIT Events ---
+    ThisWorkbook.Worksheets(WS_STARTMENUE()).Activate
+    Application.EnableEvents = True
+    ThisWorkbook.Worksheets(WS_EINSTELLUNGEN).Activate
+    s_mit = ActiveSheet.Name
 
-    mod_Navigation.NavigiereZu_Einstellungen
+    ' --- zurueck zur Startseite ---
+    ThisWorkbook.Worksheets(WS_STARTMENUE()).Activate
 
-    MsgBox "Handler LIEF beim Klick." & vbCrLf & _
-           "Application.Caller   = " & callerName & vbCrLf & _
-           "ActiveSheet vor Nav  = " & vorSheet & vbCrLf & _
-           "ActiveSheet nach Nav = " & ActiveSheet.Name & vbCrLf & vbCrLf & _
-           "Kommt dieses Fenster beim Fehler NICHT und du landest auf " & _
-           "'Daten', dann ruft der Klick gar nicht diese OnAction auf.", _
-           vbInformation, "Finaler Klick-Handler"
+    ' --- Variante B: Einstellungen aktivieren OHNE Events ---
+    Application.EnableEvents = False
+    ThisWorkbook.Worksheets(WS_EINSTELLUNGEN).Activate
+    s_ohne = ActiveSheet.Name
+    Application.EnableEvents = True
+
+    MsgBox "Aktivieren von 'Einstellungen':" & vbCrLf & vbCrLf & _
+           "  MIT  Events (Worksheet_Activate laeuft)  -> " & s_mit & vbCrLf & _
+           "  OHNE Events (Worksheet_Activate aus)      -> " & s_ohne & vbCrLf & vbCrLf & _
+           "Ist MIT=Daten und OHNE=Einstellungen, dann verursacht das " & _
+           "Worksheet_Activate-Ereignis (FormatiereZahlungsterminTabelle) den Sprung.", _
+           vbInformation, "Bisect: Events"
 End Sub
 
 

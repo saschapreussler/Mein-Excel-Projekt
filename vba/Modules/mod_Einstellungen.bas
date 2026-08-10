@@ -678,7 +678,15 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     ' Zustand sichern und wiederherstellen (nicht bedingungslos True setzen!)
     Dim eventsWaren As Boolean
     eventsWaren = Application.EnableEvents
-    
+
+    ' Aktives Blatt sichern: diese Routine darf die Blattauswahl NICHT
+    ' veraendern. Die Cross-Sheet-Datenpruefung (SetzeDropDowns ->
+    ' 'Daten'!$BA$..) laesst sonst das Daten-Blatt aktiv.
+    Dim aktivVorher As Object
+    On Error Resume Next
+    Set aktivVorher = ActiveSheet
+    On Error GoTo 0
+
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     
@@ -705,6 +713,18 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
+    ' Blattauswahl wiederherstellen, falls eine Teilroutine (Cross-Sheet-
+    ' Datenpruefung) das aktive Blatt auf 'Daten' verschoben hat.
+    On Error Resume Next
+    If Not aktivVorher Is Nothing Then
+        If ActiveSheet Is Nothing Then
+            aktivVorher.Activate
+        ElseIf Not (ActiveSheet Is aktivVorher) Then
+            aktivVorher.Activate
+        End If
+    End If
+    On Error GoTo 0
+
     Application.EnableEvents = eventsWaren
     Application.ScreenUpdating = True
     
