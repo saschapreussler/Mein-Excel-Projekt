@@ -1,0 +1,60 @@
+#!/usr/bin/env sh
+
+# Block commits that contain known mojibake/replacement markers.
+# This checks STAGED content only.
+
+set -eu
+
+# UTF-8 byte patterns as escaped octal to keep script ASCII-safe.
+# U+FFFD replacement char: EF BF BD
+bad_repl="$(printf '\357\277\275')"
+# Visible mojibake sequence "ï¿½": C3 AF C2 BF C2 BD
+bad_moji="$(printf '\303\257\302\277\302\275')"
+
+# Only scan likely text sources we care about.
+staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
+[ -z "$staged_files" ] && exit 0
+
+failed=0
+
+for f in $staged_files; do
+    case "$f" in
+        vba/*.bas|vba/*.cls|vba/*.frm|tools/*.ps1|docs/*.md|README.md)
+            content="$(git show ":$f" || true)"
+            if [ -z "$content" ]; then
+                continue
+            fi
+
+            if printf '%s' "$content" | LC_ALL=C grep -q "$bad_repl"; then
+                printf '\n[pre-commit] Blocked: replacement char found in staged file:\n  %s\n' "$f" >&2
+                failed=1
+            fi
+
+            if printf '%s' "$content" | LC_ALL=C grep -q "$bad_moji"; then
+                printf '\n[pre-commit] Blocked: mojibake sequence found in staged file:\n  %s\n' "$f" >&2
+                failed=1
+            fi
+            ;;
+        *)
+            ;;
+    esac
+
+done
+
+if [ "$failed" -ne 0 ]; then
+    cat >&2 <<'EOF'
+
+Commit aborted to protect Umlaut integrity.
+
+Recommended fix:
+  1) Run: tools/fix_mojibake_safe.ps1
+  2) Re-stage files
+  3) Commit again
+
+If needed, inspect staged diff first:
+  git diff --cached
+EOF
+    exit 1
+fi
+
+exit 0
