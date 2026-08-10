@@ -109,6 +109,7 @@ End Function
 Private Function FrageWeitereMitgliederAustritt(ByVal parzelle As String, ByVal memberID As String) As String
     Dim anzahlWeitere As Long
     Dim antwort As VbMsgBoxResult
+    Dim namensListe As String
 
     anzahlWeitere = mod_Mitglieder_Logik.AnzahlWeitereMitgliederAufParzelle(parzelle, memberID)
     If anzahlWeitere <= 0 Then
@@ -116,7 +117,10 @@ Private Function FrageWeitereMitgliederAustritt(ByVal parzelle As String, ByVal 
         Exit Function
     End If
 
+    namensListe = ListeWeitereMitgliederAufParzelle(parzelle, memberID)
+
     antwort = MsgBox("Auf Parzelle " & parzelle & " sind noch " & anzahlWeitere & " weitere gemeldete Person(en)." & vbCrLf & vbCrLf & _
+                     namensListe & vbCrLf & _
                      "Sollen diese ebenfalls austreten und die Parzelle verlassen?", _
                      vbYesNoCancel + vbQuestion, "Weitere gemeldete Mitglieder")
 
@@ -126,6 +130,34 @@ Private Function FrageWeitereMitgliederAustritt(ByVal parzelle As String, ByVal 
         FrageWeitereMitgliederAustritt = "NEIN"
     Else
         FrageWeitereMitgliederAustritt = "ABBRUCH"
+    End If
+End Function
+
+Private Function ListeWeitereMitgliederAufParzelle(ByVal parzelle As String, ByVal ausschlussMemberID As String) As String
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim mid As String
+    Dim nameText As String
+    Dim idx As Long
+
+    Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    lastRow = ws.Cells(ws.Rows.count, M_COL_NACHNAME).End(xlUp).Row
+
+    For r = M_START_ROW To lastRow
+        If StrComp(Trim(CStr(ws.Cells(r, M_COL_PARZELLE).value)), Trim(parzelle), vbTextCompare) = 0 Then
+            mid = Trim(CStr(ws.Cells(r, M_COL_MEMBER_ID).value))
+            If StrComp(mid, Trim(ausschlussMemberID), vbTextCompare) <> 0 Then
+                idx = idx + 1
+                nameText = Trim(CStr(ws.Cells(r, M_COL_VORNAME).value)) & " " & Trim(CStr(ws.Cells(r, M_COL_NACHNAME).value))
+                ListeWeitereMitgliederAufParzelle = ListeWeitereMitgliederAufParzelle & _
+                    "- " & CStr(idx) & ": " & nameText & vbCrLf
+            End If
+        End If
+    Next r
+
+    If ListeWeitereMitgliederAufParzelle <> "" Then
+        ListeWeitereMitgliederAufParzelle = "Weitere gemeldete Personen:" & vbCrLf & ListeWeitereMitgliederAufParzelle
     End If
 End Function
 
@@ -1152,6 +1184,10 @@ Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVa
     Dim weitereMitgliederFlag As String
     Dim nachpaechterEintritt As Date
     Dim nachpaechterEintrittTag As String
+    Dim austrittsDatumFinal As Date
+    Dim zielRow As Long
+    Dim weitereVerschoben As Long
+    Dim grundWeitere As String
     Dim teile() As String
     Dim r As Long
     Dim lastRow As Long
@@ -1181,26 +1217,43 @@ Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVa
         teile = Split(CStr(Me.tag), "|")
         If UBound(teile) >= 4 Then weitereMitgliederFlag = teile(4)
     End If
-    
-    ' Austritt nur vorbereiten (Datum durch Nutzer best�tigen lassen),
-    ' nicht sofort mit Date() durchf�hren.
-    Call SetMode(True, False, True)
-    Me.tag = lRow & "|" & grund & "|" & newMemberID & "|" & newMemberName & "|NACHPAECHTER_NEU|" & _
-             weitereMitgliederFlag & "|" & nachpaechterEintrittTag
+
+    If newMemberID = "" Then
+        MsgBox "Der neu angelegte Nachp" & ChrW(228) & "chter konnte nicht zugeordnet werden.", vbCritical
+        Exit Sub
+    End If
 
     If nachpaechterEintrittTag <> "" Then
-        Me.txt_Pachtende.value = Format(DateAdd("d", -1, nachpaechterEintritt), "dd.mm.yyyy")
+        austrittsDatumFinal = DateAdd("d", -1, nachpaechterEintritt)
     Else
-        Me.txt_Pachtende.value = Format(Date, "dd.mm.yyyy")
+        austrittsDatumFinal = Date
     End If
-    Me.txt_Pachtende.SetFocus
-    Me.txt_Pachtende.SelStart = 0
-    Me.txt_Pachtende.SelLength = Len(Me.txt_Pachtende.value)
 
-        MsgBox "Nachp" & ChrW(228) & "chter wurde angelegt." & vbCrLf & vbCrLf & _
-            "Austrittsdatum wurde auf Eintrittsdatum des Nachp" & ChrW(228) & "chters - 1 Tag vorbelegt." & vbCrLf & _
-            "Bitte Austrittsdatum f" & ChrW(252) & "r den Vorp" & ChrW(228) & "chter pr" & ChrW(252) & "fen oder anpassen" & vbCrLf & _
-           "und anschliessend auf '" & ChrW(220) & "bernehmen' klicken.", vbInformation, "Austritt vorbereiten"
+    zielRow = mod_Mitglieder_Logik.FindeMitgliedsZeile(memberID, parzelle)
+    If zielRow = 0 Then
+        MsgBox "Der Vorp" & ChrW(228) & "chter konnte nicht mehr auf der Parzelle gefunden werden.", vbCritical
+        Exit Sub
+    End If
+
+    Call mod_Mitglieder_Logik.VerschiebeInHistorie(zielRow, parzelle, memberID, nachname, vorname, austrittsDatumFinal, grund, newMemberName, newMemberID)
+
+    If UCase(Trim(weitereMitgliederFlag)) = "JA" Then
+        grundWeitere = "P" & ChrW(228) & "chterwechsel"
+        weitereVerschoben = mod_Mitglieder_Logik.VerschiebeWeitereMitgliederAufParzelleInHistorie( _
+                           parzelle, memberID, austrittsDatumFinal, grundWeitere, newMemberName, newMemberID, newMemberID)
+    End If
+
+    Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+    If mod_Mitglieder_Logik.IsFormLoaded("frm_Mitgliederverwaltung") Then
+        frm_Mitgliederverwaltung.RefreshMitgliederListe
+    End If
+
+        MsgBox "Nachp" & ChrW(228) & "chter wurde angelegt und der Vorp" & ChrW(228) & "chter direkt ausgetragen." & vbCrLf & _
+            "Austrittsdatum: " & Format(austrittsDatumFinal, "dd.mm.yyyy") & _
+            IIf(weitereVerschoben > 0, vbCrLf & "Zus" & ChrW(228) & "tzlich ausgetragen: " & CStr(weitereVerschoben) & " Person(en).", ""), _
+            vbInformation, "P" & ChrW(228) & "chterwechsel"
+
+        Unload Me
 End Sub
 
 
@@ -2133,6 +2186,8 @@ ErrorHandler:
     ' Fallback bei Fehler
     Me.cbo_Funktion.RowSource = "Daten!B4:B12"
 End Sub
+
+
 
 
 

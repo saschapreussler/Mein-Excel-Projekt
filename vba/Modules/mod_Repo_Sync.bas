@@ -807,14 +807,29 @@ Private Function LeseDateiMitEncodingErkennung(dateipfad As String) As String
     
     ' WICHTIG: Beim Fehllesen einer ANSI-Datei als UTF-8 erzeugt ADODB
     ' NICHT "?" (0x3F), sondern das Unicode-Ersatzzeichen U+FFFD.
-    ' Beides muss als Korruptions-Indiz gelten, sonst wird eine
-    ' ANSI-Datei faelschlich als UTF-8 akzeptiert und die Umlaute
-    ' gehen beim spaeteren ANSI-Schreiben endgueltig als "?" verloren.
+    ' Sobald U+FFFD auftritt (und keine BOM vorhanden ist), behandeln
+    ' wir die Datei als ANSI. Das verhindert die "ï¿½"-Kette nach Sync.
     Dim hatErsatzzeichen As Boolean
     hatErsatzzeichen = (InStr(utf8Inhalt, ChrW(&HFFFD)) > 0)
+
+    If hatErsatzzeichen Then
+        Dim ansiDirekt As String
+        With stream
+            .Charset = "windows-1252"
+            .Open
+            .LoadFromFile dateipfad
+            ansiDirekt = .ReadText(-1)
+            .Close
+        End With
+
+        Debug.Print "[Sync] Encoding-Erkennung: ANSI (U+FFFD in UTF-8-Decoding) fuer " & _
+                    Mid(dateipfad, InStrRev(dateipfad, "\") + 1)
+        LeseDateiMitEncodingErkennung = ansiDirekt
+        Exit Function
+    End If
     
-    ' Wenn kein "?" UND kein Ersatzzeichen im UTF-8-Ergebnis -> UTF-8/ASCII
-    If InStr(utf8Inhalt, "?") = 0 And Not hatErsatzzeichen Then
+    ' Wenn kein "?" im UTF-8-Ergebnis -> UTF-8/ASCII
+    If InStr(utf8Inhalt, "?") = 0 Then
         LeseDateiMitEncodingErkennung = utf8Inhalt
         Exit Function
     End If
