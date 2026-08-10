@@ -314,7 +314,7 @@ Private Sub Test_8_MitgliedAustritt()
     
     Debug.Print "TEST 8: MITGLIED AUSTRITT (VALIDIERUNG)"
     Debug.Print "? MANUELLER TEST ERFORDERLICH:"
-    Debug.Print "1. ?ffne bestehendes Mitglied"
+    Debug.Print "1. Öffne bestehendes Mitglied"
     Debug.Print "2. Klick 'Entfernen'"
     Debug.Print "3. Wähle 'Austritt'"
     Debug.Print "4. Bestätige Austrittsdatum"

@@ -5,7 +5,7 @@
 # behandelt drei Korruptionsarten:
 #   1) Lossy "?"          (cp1252 0x3F, durch UTF-8->ASCII Konvertierung)
 #   2) Mojibake "Ã¤" etc. (cp1252 als UTF-8 fehlinterpretiert)
-#   3) Replacement "ï¿½"  (UTF-8 U+FFFD, dreifach Korruption)
+#   3) Replacement-Sequenz aus EF BF BD (UTF-8 U+FFFD, dreifach Korruption)
 # Ausschluss: BackUp*-Verzeichnisse.
 # Ergebnis wird IMMER als cp1252 (Windows-1252) zurueckgeschrieben,
 # damit Excel/VBE die Umlaute korrekt liest.
@@ -342,7 +342,7 @@ foreach ($f in $files) {
     $reps  = 0
 
     # Stufe 0: U+FFFD (als Einzelchar nach cp1252-Read) -> "?"
-    # (entsteht wenn Datei UTF-8 war; "ï¿½" Drei-Byte-Sequenz wird
+    # (entsteht wenn Datei UTF-8 war; die EF-BF-BD-Drei-Byte-Sequenz wird
     # von .NET cp1252-Decoder als ein U+FFFD geliefert).
     if ($txt.Contains($repl)) {
         $cnt = ([regex]::Matches($txt, [regex]::Escape($repl))).Count

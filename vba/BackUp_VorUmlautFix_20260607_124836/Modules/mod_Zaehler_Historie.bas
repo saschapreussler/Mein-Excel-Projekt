@@ -1,10 +1,10 @@
-Attribute VB_Name = "mod_Zaehler_Historie"
+﻿Attribute VB_Name = "mod_Zaehler_Historie"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Zaehler_Historie
 ' Ausgelagert aus mod_ZaehlerLogik
-' Enth?lt: SchreibeHistorie, FarbeHistorieEintraege
+' Enthält: SchreibeHistorie, FarbeHistorieEintraege
 ' ===============================================================
 
 ' --- Konstanten (lokal dupliziert) ---
@@ -53,7 +53,7 @@ Public Sub SchreibeHistorie( _
     Dim wasTargetProtected As Boolean, wasHistoryProtected As Boolean
     Dim AltEnde_Geprueft As Double, neuStart_Geprueft As Double
     
-    ' I. WERTE PR?FEN & RUNDEN
+    ' I. WERTE PRÜFEN & RUNDEN
     If AltEnde = Int(AltEnde) Then AltEnde_Geprueft = AltEnde Else AltEnde_Geprueft = Round(AltEnde, 4)
     If neuStart = Int(neuStart) Then neuStart_Geprueft = neuStart Else neuStart_Geprueft = Round(neuStart, 4)
     
@@ -151,7 +151,7 @@ Public Sub SchreibeHistorie( _
         
     End If
     
-    ' 5. Farben f?r Historie setzen & Update-Call
+    ' 5. Farben für Historie setzen & Update-Call
     Select Case Medium
         Case "Strom"
             lngColor = RGB_STROM

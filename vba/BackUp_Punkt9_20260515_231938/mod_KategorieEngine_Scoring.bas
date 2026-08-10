@@ -1,17 +1,17 @@
-Attribute VB_Name = "mod_KategorieEngine_Scoring"
+﻿Attribute VB_Name = "mod_KategorieEngine_Scoring"
 Option Explicit
 
 ' =====================================================
 ' KATEGORIE-ENGINE - SCORING & FILTER
 ' Ausgelagert aus mod_KategorieEngine_Evaluator
-' Enth?lt: Keyword-Matching, Score-Boni, EntityRole-Filter
+' Enthält: Keyword-Matching, Score-Boni, EntityRole-Filter
 ' =====================================================
 
 
 ' =====================================================
 ' MULTI-WORD-MATCHING (v7.0)
-' Pr?ft ob ALLE W?rter des Keywords im Text vorkommen.
-' Reihenfolge ist egal. Zusammengeschriebene W?rter
+' Prüft ob ALLE Wörter des Keywords im Text vorkommen.
+' Reihenfolge ist egal. Zusammengeschriebene Wörter
 ' werden ebenfalls erkannt (Substring-Matching je Wort).
 ' =====================================================
 Public Function MatchKeyword(ByVal normText As String, _
@@ -54,13 +54,13 @@ End Function
 
 ' =====================================================
 ' WordCountBonus (v9.3 - ersetzt CoverageBonus)
-' Z?hlt die W?rter im normalisierten Keyword und
+' Z?hlt die Wörter im normalisierten Keyword und
 ' gibt pro Wort 5 Punkte Bonus. L?ngere/spezifischere
 ' Keywords mit mehr W?rtern bekommen dadurch mehr Punkte.
 '
 ' Beispiel: normText = "max mustermann stvom wasser parz 9 gutschrift"
-'   Keyword "stvom wasser parz 9" -> 4 W?rter -> +20
-'   Keyword "wasser parz 9"       -> 3 W?rter -> +15
+'   Keyword "stvom wasser parz 9" -> 4 Wörter -> +20
+'   Keyword "wasser parz 9"       -> 3 Wörter -> +15
 '   Keyword "wasser"               -> 1 Wort   -> +5
 '
 ' Zusammen mit dem erh?hten Prio-Bonus (10-prio)*8

@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Zahlungspruefung"
+﻿Attribute VB_Name = "mod_Zahlungspruefung"
 Option Explicit
 
 ' ***************************************************************
@@ -15,7 +15,7 @@ Option Explicit
 '     Monatszuordnung
 '   - mod_ZP_Periode: SetzeMonatPeriode, HoleFaelligkeitFuerKategorie
 ' FIX v3.1: PruefeZahlungen nutzt jetzt Spalte I (Monat/Periode)
-'           statt Month(Buchungsdatum) f?r Monats-Zuordnung
+'           statt Month(Buchungsdatum) für Monats-Zuordnung
 ' NEU v3.2: Frist-/Toleranzpr?fung mit Vorlauf/Nachlauf aus
 '           Einstellungen (Spalte G/H). S?umnishinweis in Bemerkung.
 ' ***************************************************************
@@ -68,8 +68,8 @@ Private Const AMPEL_ROT As Long = 9871103
 ' v3.2: Frist-/Toleranzpruefung:
 '   - Vorlauf (Spalte G) und Nachlauf (Spalte H) aus Einstellungen
 '   - F?lligkeitsdatum wird berechnet (BerechneSollDatumZP)
-'   - Zahlung innerhalb [F?lligkeit - Vorlauf, F?lligkeit + Nachlauf] = p?nktlich
-'   - Zahlung eingegangen aber NACH F?lligkeit + Nachlauf = GELB + S?umnis
+'   - Zahlung innerhalb [Fälligkeit - Vorlauf, Fälligkeit + Nachlauf] = p?nktlich
+'   - Zahlung eingegangen aber NACH Fälligkeit + Nachlauf = GELB + Säumnis
 '   - Keine Zahlung = ROT
 ' ===============================================================
 Public Function PruefeZahlungen(ByVal entityKey As String, _
@@ -514,7 +514,7 @@ End Function
 
 
 ' ===============================================================
-' Holt Vorlauf/Nachlauf/S?umnis-Geb?hr aus dem Einstellungen-Cache
+' Holt Vorlauf/Nachlauf/Säumnis-Gebühr aus dem Einstellungen-Cache
 ' fuer eine bestimmte Kategorie
 ' ===============================================================
 Public Sub HoleToleranzZP(ByVal kategorie As String, _

@@ -1,10 +1,10 @@
-Attribute VB_Name = "mod_ZaehlerLogik"
+﻿Attribute VB_Name = "mod_ZaehlerLogik"
 Option Explicit
 
 ' ==========================================================
 ' MODUL: mod_ZaehlerLogik (ORCHESTRATOR)
 ' VERSION: 2.0 - Modularisiert
-' ?NDERUNG v2.0:
+' ÄNDERUNG v2.0:
 '   - Berechnung ausgelagert nach mod_Zaehler_Berechnung
 '   - Historie ausgelagert nach mod_Zaehler_Historie
 '   - Dieses Modul: Konstanten, Hilfsfunktionen, Initialisierung, KPIs
@@ -44,10 +44,10 @@ Private Const RGB_HEADER_BG As Long = 13619148
 
 
 ' ==========================================================
-' 0. HILFSFUNKTIONEN (Public f?r Sub-Module)
+' 0. HILFSFUNKTIONEN (Public für Sub-Module)
 ' ==========================================================
 
-' Zeilenh?he auf Minimum sicherstellen
+' Zeilenhöhe auf Minimum sicherstellen
 Public Sub EnsureMinRowHeight(ws As Worksheet, targetRow As Long)
     Const MIN_HEIGHT As Double = 50
     On Error Resume Next
@@ -57,7 +57,7 @@ Public Sub EnsureMinRowHeight(ws As Worksheet, targetRow As Long)
     On Error GoTo 0
 End Sub
 
-' Hole Namen f?r Parzelle
+' Hole Namen für Parzelle
 Public Function HoleNamenFuerParzelle(ws As Worksheet, suchParzelle As String, maxZ As Long) As String
     Dim r As Long
     Dim sTemp As String
@@ -136,7 +136,7 @@ Sub ErzeugeParzellenUebersicht()
     Dim nameGefunden As String
     
     Set wsQuelle = ThisWorkbook.Worksheets("Mitgliederliste")
-    Set wsZiel = ThisWorkbook.Worksheets("?bersicht")
+    Set wsZiel = ThisWorkbook.Worksheets("Übersicht")
     
     On Error Resume Next
     wsZiel.Unprotect
@@ -250,7 +250,7 @@ Sub AktualisiereZaehlerTabellenSpalteA()
         
         LaengeParzelleTitel = Len(strParzelleTitel)
 
-        ' A. Verarbeitung f?r Strom
+        ' A. Verarbeitung für Strom
         With wsStrom.Cells(zielZeileStrom, "A")
             .value = GesamtText
             .WrapText = True
@@ -270,7 +270,7 @@ Sub AktualisiereZaehlerTabellenSpalteA()
             End If
         End With
 
-        ' B. Verarbeitung f?r Wasser
+        ' B. Verarbeitung für Wasser
         With wsWasser.Cells(zielZeileWasser, "A")
             .value = GesamtText
             .WrapText = True
@@ -299,7 +299,7 @@ Sub AktualisiereZaehlerTabellenSpalteA()
     
 End Sub
 
-' HISTORIE PR?FUNG & ERSTELLUNG
+' HISTORIE PRÜFUNG & ERSTELLUNG
 Public Sub PruefeUndErstelleZaehlerhistorie()
     Dim ws As Worksheet
     Dim foundSheet As Boolean
@@ -329,12 +329,12 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
         ws.Range("A1:K1").value = Array( _
             "lfd. Nr. (ID)", _
             "Datum (Wechsel)", _
-            "Parzelle/Z?hler", _
+            "Parzelle/Zähler", _
             "Medium", _
-            "Z?hler-Nr. (ID) alt", _
+            "Zähler-Nr. (ID) alt", _
             "Z?hlerstand (alt) aus der letzten Ablesung", _
             "Stand alt (Ende)", _
-            "Z?hler-Nr. (ID) neu", _
+            "Zähler-Nr. (ID) neu", _
             "Stand neu (Start)", _
             "Verbrauch", _
             "Bemerkungen")
@@ -395,9 +395,9 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
                 lo.Resize ws.Range("A1:K" & lo.Range.Rows.count)
             End If
             
-            ws.Range("E1").value = "Z?hler-Nr. (ID) alt"
+            ws.Range("E1").value = "Zähler-Nr. (ID) alt"
             ws.Range("F1").value = "Z?hlerstand (alt) aus der letzten Ablesung"
-            ws.Range("H1").value = "Z?hler-Nr. (ID) neu"
+            ws.Range("H1").value = "Zähler-Nr. (ID) neu"
             ws.Range("K1").value = "Bemerkungen"
             ws.Range("J1").value = "Verbrauch"
             
@@ -446,7 +446,7 @@ End Sub
 
 
 ' ==========================================================
-' DATUM PR?FUNG
+' DATUM PRÜFUNG
 ' ==========================================================
 Public Function PlausiDatum(datString As String) As Boolean
     On Error GoTo ErrHandler
@@ -471,7 +471,7 @@ End Function
 
 
 ' ==========================================================
-' 4. KENNZAHLEN F?R STARTSEITE
+' 4. KENNZAHLEN FÜR STARTSEITE
 ' ==========================================================
 Sub Ermittle_Kennzahlen_Mitgliederliste()
 

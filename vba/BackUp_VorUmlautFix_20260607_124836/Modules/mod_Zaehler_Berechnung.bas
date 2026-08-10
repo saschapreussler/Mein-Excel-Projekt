@@ -1,10 +1,10 @@
-Attribute VB_Name = "mod_Zaehler_Berechnung"
+﻿Attribute VB_Name = "mod_Zaehler_Berechnung"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Zaehler_Berechnung
 ' Ausgelagert aus mod_ZaehlerLogik
-' Enth?lt: CalculateAllZaehlerVerbrauch, CalculateSingleZaehler
+' Enthält: CalculateAllZaehlerVerbrauch, CalculateSingleZaehler
 ' ===============================================================
 
 ' --- Konstanten (lokal dupliziert) ---
@@ -30,7 +30,7 @@ Private Const RGB_GEWECHSELT As Long = 4980735
 
 
 ' ==========================================================
-' HAUPTPROZEDUR: Berechnung aller Z?hler einer Seite
+' HAUPTPROZEDUR: Berechnung aller Zähler einer Seite
 ' ==========================================================
 Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     
@@ -91,7 +91,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
             Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, r + 9)
         Next r
         
-        ' STROM: Feste Z?hler
+        ' STROM: Feste Zähler
         Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Clubwagen", 24)
         wsTarget.Rows(24).AutoFit
         Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 24)
@@ -273,7 +273,7 @@ Private Sub CalculateSingleZaehler( _
         End If
         
         ' ***************************************************************
-        ' LOGIK F?R SPALTE E (BEMERKUNG BEI Z?HLERWECHSEL)
+        ' LOGIK FÜR SPALTE E (BEMERKUNG BEI Z?HLERWECHSEL)
         ' ***************************************************************
         Dim oldBemerkung As String
         Dim newHistoryText As String
@@ -281,8 +281,8 @@ Private Sub CalculateSingleZaehler( _
         
         newHistoryText = "Letzter Z?hlerwechsel am: " & Format(lastDate, "dd.mm.yyyy") & vbLf & _
                              "Anzahl der Wechsel: " & zyklen & vbLf & _
-                             "Gesamtverbrauch gewechselte Z?hler: " & Format(verbrauchAltHistorie_Summe, "#,##0.00") & " " & einheit & vbLf & _
-                             "Verbrauch derzeitiger Z?hler: " & Format(verbrauchNeuAktuell, "#,##0.00") & " " & einheit
+                             "Gesamtverbrauch gewechselte Zähler: " & Format(verbrauchAltHistorie_Summe, "#,##0.00") & " " & einheit & vbLf & _
+                             "Verbrauch derzeitiger Zähler: " & Format(verbrauchNeuAktuell, "#,##0.00") & " " & einheit
         
         oldBemerkung = Trim(CStr(targetBemerkung.value))
         

@@ -1,20 +1,20 @@
-Attribute VB_Name = "mod_Banking_Report"
+﻿Attribute VB_Name = "mod_Banking_Report"
 Option Explicit
 
 ' ===============================================================
 ' MODUL: mod_Banking_Report
 ' Ausgelagert aus mod_Banking_Data
-' Enth?lt: Import Report ListBox (ActiveX) Verwaltung
+' Enthält: Import Report ListBox (ActiveX) Verwaltung
 '          Protokoll-Speicher (Daten!Y500), Farbcodierung
 ' ===============================================================
 
-' Farb-Konstanten f?r ListBox-Hintergrund (OLE_COLOR / BGR)
+' Farb-Konstanten für ListBox-Hintergrund (OLE_COLOR / BGR)
 Private Const LB_COLOR_GRUEN As Long = &HC0FFC0     ' hellgr?n
 Private Const LB_COLOR_GELB As Long = &HC0FFFF      ' hellgelb
 Private Const LB_COLOR_ROT As Long = &HC0C0FF       ' hellrot
 Private Const LB_COLOR_WEISS As Long = &HFFFFFF     ' wei?
 
-' Trennzeichen f?r Serialisierung in Zelle Y500
+' Trennzeichen für Serialisierung in Zelle Y500
 Private Const PROTO_SEP As String = "||"
 
 ' Protokoll-Speicher: Zelle Y500 auf dem Daten-Blatt
@@ -28,9 +28,9 @@ Private Const MAX_ZEILEN As Long = 500
 
 
 ' ---------------------------------------------------------------
-' Initialize: Liest Y500, bef?llt ActiveX ListBox,
+' Initialize: Liest Y500, befüllt ActiveX ListBox,
 '     setzt Hintergrundfarbe.
-'     Aufruf: Workbook_Open, Worksheet_Activate, nach L?schen
+'     Aufruf: Workbook_Open, Worksheet_Activate, nach Löschen
 ' ---------------------------------------------------------------
 Public Sub Initialize_ImportReport_ListBox()
     
@@ -52,7 +52,7 @@ Public Sub Initialize_ImportReport_ListBox()
     
     If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
     
-    ' OLEObject holen und Position/Gr??e VORHER sichern
+    ' OLEObject holen und Position/Größe VORHER sichern
     On Error Resume Next
     Set oleObj = wsBK.OLEObjects(FORM_LISTBOX_NAME)
     On Error GoTo 0
@@ -94,7 +94,7 @@ Public Sub Initialize_ImportReport_ListBox()
         lb.AddItem "vorhanden."
         lb.BackColor = LB_COLOR_WEISS
     Else
-        ' Protokoll-Zeilen aus Y500 deserialisieren und einf?gen
+        ' Protokoll-Zeilen aus Y500 deserialisieren und einfügen
         zeilen = Split(gespeichert, PROTO_SEP)
         anzahl = UBound(zeilen) + 1
         If anzahl > MAX_ZEILEN Then anzahl = MAX_ZEILEN
@@ -107,7 +107,7 @@ Public Sub Initialize_ImportReport_ListBox()
         Call FaerbeListBoxAusProtokoll(lb, zeilen)
     End If
     
-    ' Position und Gr??e WIEDERHERSTELLEN (AddItem kann sie ?ndern)
+    ' Position und Größe WIEDERHERSTELLEN (AddItem kann sie ändern)
     On Error Resume Next
     oleObj.Left = savLeft
     oleObj.Top = savTop
@@ -123,7 +123,7 @@ Public Sub Initialize_ImportReport_ListBox()
 End Sub
 
 ' ---------------------------------------------------------------
-' Update: Neuen 5-Zeilen-Block OBEN einf?gen,
+' Update: Neuen 5-Zeilen-Block OBEN einfügen,
 '     in Y500 serialisiert speichern, ListBox aktualisieren.
 ' ---------------------------------------------------------------
 Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported As Long, _
@@ -150,7 +150,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     
     If wsBK Is Nothing Or wsDaten Is Nothing Then Exit Sub
     
-    ' OLEObject holen und Position/Gr??e VORHER sichern
+    ' OLEObject holen und Position/Größe VORHER sichern
     On Error Resume Next
     Set oleObj = wsBK.OLEObjects(FORM_LISTBOX_NAME)
     On Error GoTo 0
@@ -174,7 +174,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     ' --- 5-Zeilen-Block zusammenbauen ---
     neuerBlock = "Import: " & Format(Now, "DD.MM.YYYY  HH:MM:SS") & _
                  PROTO_SEP & _
-                 imported & " / " & totalRows & " Datens?tze importiert" & _
+                 imported & " / " & totalRows & " Datensätze importiert" & _
                  PROTO_SEP & _
                  dupes & " Duplikate erkannt" & _
                  PROTO_SEP & _
@@ -214,7 +214,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
     ' --- In Y500 speichern (eine einzige Zelle!) ---
     wsDaten.Cells(PROTO_ZEILE, PROTO_SPALTE).value = gesamt
     
-    ' --- Daten-Blatt sch?tzen ---
+    ' --- Daten-Blatt schützen ---
     On Error Resume Next
     wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
@@ -238,7 +238,7 @@ Public Sub Update_ImportReport_ListBox(ByVal totalRows As Long, ByVal imported A
         Call FaerbeListBoxNachImport(lb, imported, dupes, failed)
     End If
     
-    ' Position und Gr??e WIEDERHERSTELLEN (AddItem kann sie ?ndern)
+    ' Position und Größe WIEDERHERSTELLEN (AddItem kann sie ändern)
     On Error Resume Next
     oleObj.Left = savLeft
     oleObj.Top = savTop
@@ -255,7 +255,7 @@ End Sub
 
 ' ---------------------------------------------------------------
 ' Farbcodierung nach Import-Ergebnis (direkt auf ListBox)
-'     GR?N   = Alles OK (dupes = 0, failed = 0)
+'     GRÜN   = Alles OK (dupes = 0, failed = 0)
 '     GELB   = Duplikate vorhanden (dupes > 0, failed = 0)
 '     ROT    = Fehler vorhanden (failed > 0)
 ' ---------------------------------------------------------------

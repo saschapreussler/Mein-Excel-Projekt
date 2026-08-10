@@ -1,4 +1,4 @@
-VERSION 1.0 CLASS
+﻿VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
@@ -117,8 +117,8 @@ End Sub
 
 ' ===============================================================
 ' SheetActivate: Gitternetzlinien je Blatt korrekt setzen
-' Startmen?, Finanz-?bersicht und Dashboard ohne Gitternetz,
-' alle anderen Bl?tter (BK, VK, Strom, Wasser, ?bersicht etc.) MIT Gitternetz
+' Startmenü, Finanz-Übersicht und Dashboard ohne Gitternetz,
+' alle anderen Blätter (BK, VK, Strom, Wasser, Übersicht etc.) MIT Gitternetz
 ' ===============================================================
 Private Sub Workbook_SheetActivate(ByVal Sh As Object)
     On Error Resume Next

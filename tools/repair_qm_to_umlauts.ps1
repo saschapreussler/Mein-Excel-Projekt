@@ -22,7 +22,11 @@
 #   mod_Repo_Sync.bas
 #   mod_VBA_Export.bas
 # ============================================================================
-param([switch]$DryRun)
+param(
+    [switch]$DryRun,
+    [switch]$IncludeBackups,
+    [switch]$IncludeExcluded
+)
 
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path -Parent $PSScriptRoot)
@@ -97,6 +101,10 @@ function Fix-Text {
     # UTF-8. Wie "?" als Umlaut-Platzhalter behandeln, damit BEIDE
     # Korruptionsarten ueber das Woerterbuch repariert werden.
     $result = $text.Replace([char]0xFFFD, '?')
+    # Falls EF BF BD in ANSI-Dateien als 3-Zeichen-Mojibake erscheint,
+    # Platzhalter behandeln.
+    $moji3 = ([char]0x00EF).ToString() + ([char]0x00BF).ToString() + ([char]0x00BD).ToString()
+    $result = $result.Replace($moji3, '?')
     foreach ($r in $regexList) { $result = $r[0].Replace($result, $r[1]) }
     return $result
 }
@@ -143,9 +151,11 @@ function Fix-Line {
 # tatsaechlichen Ordner gefunden werden (z.B. liegen .cls-Dateien real im
 # Ordner vba\UserForms). BackUp-Ordner werden ausgeschlossen.
 $targets = @(
-    Get-ChildItem "vba" -Recurse -File -Include *.bas, *.cls, *.frm |
-        Where-Object { $_.FullName -notmatch '\\BackUp' }
+    Get-ChildItem "vba" -Recurse -File -Include *.bas, *.cls, *.frm
 )
+If (-not $IncludeBackups) {
+    $targets = @($targets | Where-Object { $_.FullName -notmatch '\\BackUp' })
+}
 
 Write-Host "`n=== '?' -> Umlaute Recovery ===" -ForegroundColor Cyan
 $modus = if ($DryRun) { 'DRY-RUN' } else { 'LIVE' }
@@ -158,7 +168,7 @@ $totalChanged = 0
 $fileChanges  = @{}
 
 foreach ($f in $targets) {
-    if ($excluded -contains $f.Name) {
+    if ((-not $IncludeExcluded) -and ($excluded -contains $f.Name)) {
         Write-Host ("  SKIP  {0}" -f $f.Name) -ForegroundColor DarkGray
         continue
     }

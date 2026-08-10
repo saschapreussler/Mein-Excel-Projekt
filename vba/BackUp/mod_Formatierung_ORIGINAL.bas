@@ -1,4 +1,4 @@
-Attribute VB_Name = "mod_Formatierung"
+﻿Attribute VB_Name = "mod_Formatierung"
 Option Explicit
 
 ' ***************************************************************
@@ -1349,8 +1349,8 @@ End Sub
 
 ' ===============================================================
 ' BANKKONTO-BLATT FORMATIEREN
-' FIX v5.4: DropDown-Listen f�r Spalte H (Kategorie) und
-'           Spalte I (Monat/Periode) hinzugef�gt
+' FIX v5.4: DropDown-Listen für Spalte H (Kategorie) und
+'           Spalte I (Monat/Periode) hinzugefügt
 ' ===============================================================
 Public Sub FormatiereBlattBankkonto()
     
@@ -1389,19 +1389,19 @@ Public Sub FormatiereBlattBankkonto()
              ws.Cells(lastRow, BK_COL_AUSZAHL_KASSE)).NumberFormat = euroFormat
     
     ' =============================================================
-    ' NEU v5.4: DropDown-Listen f�r Spalte H (Kategorie)
+    ' NEU v5.4: DropDown-Listen für Spalte H (Kategorie)
     ' Alle Zellen ab BK_START_ROW bis lastRow bekommen ein DropDown
     ' mit ALLEN Kategorien (Einnahmen + Ausgaben) + Sammelzahlung
     ' =============================================================
     
-    ' Pr�fen ob die Named Ranges existieren
+    ' Prüfen ob die Named Ranges existieren
     Dim hatEinnahmen As Boolean
     Dim hatAusgaben As Boolean
     hatEinnahmen = NamedRangeExists("lst_KategorienEinnahmen")
     hatAusgaben = NamedRangeExists("lst_KategorienAusgaben")
     
     If hatEinnahmen Or hatAusgaben Then
-        ' Kategorie-DropDown f�r JEDE Datenzeile in Spalte H setzen
+        ' Kategorie-DropDown für JEDE Datenzeile in Spalte H setzen
         ' Kombination aus Einnahmen + Ausgaben (INDIRECT-Formel)
         ' Da Excel keine 2 Named Ranges in einer Validation erlaubt,
         ' bauen wir die Liste manuell aus den Kategorien auf dem Daten-Blatt
@@ -1443,8 +1443,8 @@ Public Sub FormatiereBlattBankkonto()
                 ws.Cells(r, BK_COL_KATEGORIE).Validation.Delete
                 On Error GoTo ErrorHandler
                 
-                ' Pr�fe ob die Zelle leer oder bef�llt ist
-                ' DropDown wird IMMER gesetzt, damit der Nutzer �ndern kann
+                ' Prüfe ob die Zelle leer oder befüllt ist
+                ' DropDown wird IMMER gesetzt, damit der Nutzer ändern kann
                 With ws.Cells(r, BK_COL_KATEGORIE).Validation
                     .Add Type:=xlValidateList, _
                          AlertStyle:=xlValidAlertWarning, _
@@ -1462,7 +1462,7 @@ Public Sub FormatiereBlattBankkonto()
     End If
     
     ' =============================================================
-    ' NEU v5.4: DropDown-Listen f�r Spalte I (Monat/Periode)
+    ' NEU v5.4: DropDown-Listen für Spalte I (Monat/Periode)
     ' Nur die 12 Monate (Januar - Dezember)
     ' =============================================================
     Dim hatMonatListe As Boolean

@@ -1,19 +1,19 @@
-Attribute VB_Name = "mod_Mapping_Tools"
+﻿Attribute VB_Name = "mod_Mapping_Tools"
 Option Explicit
 
 ' ==========================================================
 ' MODUL: mod_Mapping_Tools (FINAL KORRIGIERT)
-' Zweck: Bereitstellung von Hilfsfunktionen f?r Normalisierung und Fuzzy-Suche
+' Zweck: Bereitstellung von Hilfsfunktionen für Normalisierung und Fuzzy-Suche
 ' **********************************************************
 
-' Definitionen f?r Match-Typen (Intern)
+' Definitionen für Match-Typen (Intern)
 Private Const MATCH_NONE As Long = 0
 Private Const MATCH_PARTIAL As Long = 1 ' Nur Vor- ODER Nachname gefunden (Gelb)
-Private Const MATCH_FULL As Long = 2 ' Vor- UND Nachname gefunden (Gr?n)
+Private Const MATCH_FULL As Long = 2 ' Vor- UND Nachname gefunden (Grün)
 
 
 Private Function NormalizeString(ByVal inputStr As String) As String
-    ' Normalisiert Strings f?r tolerante Vergleiche (Umlaute, Gro?-/Kleinschreibung, ?)
+    ' Normalisiert Strings für tolerante Vergleiche (Umlaute, Gro?-/Kleinschreibung, ?)
     
     Dim tempStr As String
     tempStr = LCase(Trim(inputStr))
@@ -46,8 +46,8 @@ Private Function NormalizeString(ByVal inputStr As String) As String
 End Function
 
 Public Function FuzzyMemberSearch(ByVal nameToSearch As String, ByVal wsMembers As Worksheet, ByRef parzelleRange As Range) As String
-    ' Sucht nach einem Mitglied und gibt den besten Match zur?ck.
-    ' R?ckgabe: String mit nur den besten, einzigartigen Treffern (mit vbLf getrennt).
+    ' Sucht nach einem Mitglied und gibt den besten Match zurück.
+    ' Rückgabe: String mit nur den besten, einzigartigen Treffern (mit vbLf getrennt).
     
     Dim lastRowM As Long
     Dim r As Long
@@ -102,23 +102,23 @@ Public Function FuzzyMemberSearch(ByVal nameToSearch As String, ByVal wsMembers 
         ' LOGIK: STATUS BESTIMMEN
         ' -------------------------------------------------------------
         
-        ' --- PR?FUNG: Voll-Match (Vor- UND Nachname enthalten) ---
+        ' --- PRÜFUNG: Voll-Match (Vor- UND Nachname enthalten) ---
         If InStr(normSearchName, normMemberLast) > 0 And normMemberLast <> "" And _
            InStr(normSearchName, normMemberFirst) > 0 And normMemberFirst <> "" Then
             
             currentMatchStatus = MATCH_FULL
-            matchFoundName = currentMemberFullnameString ' R?ckgabe des kompletten Originalnamens
+            matchFoundName = currentMemberFullnameString ' Rückgabe des kompletten Originalnamens
             
-        ' --- PR?FUNG: Teil-Match (Nur Vor- ODER Nachname enthalten) ---
+        ' --- PRÜFUNG: Teil-Match (Nur Vor- ODER Nachname enthalten) ---
         ElseIf InStr(normSearchName, normMemberLast) > 0 And normMemberLast <> "" Then
             ' Nur Nachname gefunden
             currentMatchStatus = MATCH_PARTIAL
-            matchFoundName = memberLastName ' R?ckgabe des Original-Nachnamens
+            matchFoundName = memberLastName ' Rückgabe des Original-Nachnamens
         
         ElseIf InStr(normSearchName, normMemberFirst) > 0 And normMemberFirst <> "" Then
             ' Nur Vorname gefunden
             currentMatchStatus = MATCH_PARTIAL
-            matchFoundName = memberFirstName ' R?ckgabe des Original-Vornamens
+            matchFoundName = memberFirstName ' Rückgabe des Original-Vornamens
         End If
         
         
@@ -129,14 +129,14 @@ Public Function FuzzyMemberSearch(ByVal nameToSearch As String, ByVal wsMembers 
                 bestMatchStatus = currentMatchStatus
             End If
             
-            ' Alle Matches speichern, damit wir sp?ter nur die besten aggregieren k?nnen
+            ' Alle Matches speichern, damit wir sp?ter nur die besten aggregieren können
             If Not dictAllMatches.exists(matchFoundName) Then
                 dictAllMatches.Add matchFoundName, currentMatchStatus
             End If
             
-            ' Parzelle(n) zum Mitglied hinzuf?gen (f?r Spalte W)
+            ' Parzelle(n) zum Mitglied hinzufügen (für Spalte W)
             If dictParzellenMap.exists(matchFoundName) Then
-                 ' Wenn bereits ein Eintrag existiert, Parzelle mit Komma/vbLf anh?ngen
+                 ' Wenn bereits ein Eintrag existiert, Parzelle mit Komma/vbLf anhängen
                 If InStr(dictParzellenMap.item(matchFoundName), parzelle) = 0 Then
                     dictParzellenMap.item(matchFoundName) = dictParzellenMap.item(matchFoundName) & vbLf & parzelle
                 End If
@@ -179,7 +179,7 @@ EndSearch:
                 listUniqueNames.Add memberName, True
             End If
             
-            ' Parzellen f?r W sammeln (aus dem Parzellen-Dictionary)
+            ' Parzellen für W sammeln (aus dem Parzellen-Dictionary)
             If dictParzellenMap.exists(memberName) Then
                  Dim parts() As String
                  parts = Split(dictParzellenMap.item(memberName), vbLf)
