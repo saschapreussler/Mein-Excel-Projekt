@@ -49,7 +49,7 @@ Private Const REPO_PATH_MODULES As String = "C:\Users\DELL Latitude 7490\Desktop
 
 ' Temporärer Unterordner für ANSI-konvertierte Dateien
 Private Const TEMP_SUBFOLDER As String = "VBA_Repo_Sync_Temp"
-Private Const SYNC_VERSION As String = "3.4"
+Private Const SYNC_VERSION As String = "3.5"
 
 
 ' ===============================================================
@@ -809,7 +809,7 @@ Private Function LeseDateiMitEncodingErkennung(dateipfad As String) As String
     ' WICHTIG: Beim Fehllesen einer ANSI-Datei als UTF-8 erzeugt ADODB
     ' NICHT "?" (0x3F), sondern das Unicode-Ersatzzeichen U+FFFD.
     ' Sobald U+FFFD auftritt (und keine BOM vorhanden ist), behandeln
-    ' wir die Datei als ANSI. Das verhindert die "?"-Kette nach Sync.
+    ' wir die Datei als ANSI.
     Dim hatErsatzzeichen As Boolean
     hatErsatzzeichen = (InStr(utf8Inhalt, ChrW(&HFFFD)) > 0)
 
@@ -828,41 +828,11 @@ Private Function LeseDateiMitEncodingErkennung(dateipfad As String) As String
         LeseDateiMitEncodingErkennung = ansiDirekt
         Exit Function
     End If
-    
-    ' Wenn kein "?" im UTF-8-Ergebnis -> UTF-8/ASCII
-    If InStr(utf8Inhalt, "?") = 0 Then
-        LeseDateiMitEncodingErkennung = utf8Inhalt
-        Exit Function
-    End If
-    
-    ' Versuch 2: Als Windows-1252 (ANSI) lesen
-    Dim ansiInhalt As String
-    With stream
-        .Charset = "windows-1252"
-        .Open
-        .LoadFromFile dateipfad
-        ansiInhalt = .ReadText(-1)
-        .Close
-    End With
-    
-    ' Vergleiche: Welches Encoding hat weniger Korruptions-Zeichen
-    ' (sowohl "?" als auch das Ersatzzeichen U+FFFD zaehlen).
-    Dim qmUTF8 As Long
-    Dim qmANSI As Long
-    qmUTF8 = (Len(utf8Inhalt) - Len(Replace(utf8Inhalt, "?", ""))) _
-           + (Len(utf8Inhalt) - Len(Replace(utf8Inhalt, ChrW(&HFFFD), "")))
-    qmANSI = Len(ansiInhalt) - Len(Replace(ansiInhalt, "?", ""))
-    
-    If qmANSI < qmUTF8 Then
-        ' ANSI hat weniger "?" -> Datei ist ANSI-kodiert
-        ' (UTF-8 hat Umlaute zu "?" korrumpiert)
-        Debug.Print "[Sync] Encoding-Erkennung: ANSI fuer " & _
-                    mid(dateipfad, InStrRev(dateipfad, "\") + 1)
-        LeseDateiMitEncodingErkennung = ansiInhalt
-    Else
-        ' Gleich viele oder weniger "?" -> Datei ist UTF-8
-        LeseDateiMitEncodingErkennung = utf8Inhalt
-    End If
+
+    ' Deterministisch: Ohne BOM und ohne U+FFFD bleibt UTF-8/ASCII.
+    ' Die alte "?"-Heuristik hat in der Praxis valide UTF-8-Dateien
+    ' gelegentlich als ANSI fehlklassifiziert und damit Umlaute zerst?rt.
+    LeseDateiMitEncodingErkennung = utf8Inhalt
     
 End Function
 
