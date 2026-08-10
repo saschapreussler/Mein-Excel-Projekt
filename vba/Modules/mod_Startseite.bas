@@ -458,6 +458,59 @@ Public Sub DiagnoseStartseiteUeberlappung()
 End Sub
 
 
+' ===============================================================
+' DIAGNOSE: Ruft NavigiereZu_Einstellungen DIREKT auf und misst,
+' auf welchem Blatt man landet. Trennt so die Frage "Button-Link
+' kaputt?" von "Makro/Blatt kaputt?". Listet zusaetzlich alle
+' Blaetter mit Name + CodeName, um vertauschte Blattnamen zu
+' erkennen (Blatt heisst 'Einstellungen', ist aber inhaltlich Daten).
+' ===============================================================
+Public Sub DiagnoseEinstellungenSprung()
+    Dim vorher As String, nachher As String
+    Dim gefunden As String
+
+    vorher = "(kein aktives Blatt)"
+    On Error Resume Next
+    vorher = ActiveSheet.Name
+    On Error GoTo 0
+
+    ' Existiert ein Blatt mit dem Namen aus WS_EINSTELLUNGEN?
+    Dim wsE As Worksheet
+    On Error Resume Next
+    Set wsE = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    If wsE Is Nothing Then
+        gefunden = "NEIN - kein Blatt namens '" & WS_EINSTELLUNGEN & "'!"
+    Else
+        gefunden = "JA - Name='" & wsE.Name & "', CodeName='" & wsE.CodeName & "', Index=" & wsE.Index
+    End If
+
+    ' Makro direkt aufrufen (umgeht den Button komplett)
+    On Error Resume Next
+    mod_Navigation.NavigiereZu_Einstellungen
+    On Error GoTo 0
+    nachher = "(unbekannt)"
+    On Error Resume Next
+    nachher = ActiveSheet.Name
+    On Error GoTo 0
+
+    Dim liste As String, ws As Worksheet
+    For Each ws In ThisWorkbook.Worksheets
+        liste = liste & "  '" & ws.Name & "'  (CodeName=" & ws.CodeName & _
+                ", Index=" & ws.Index & ")" & vbCrLf
+    Next ws
+
+    MsgBox "WS_EINSTELLUNGEN = '" & WS_EINSTELLUNGEN & "'" & vbCrLf & _
+           "WS_DATEN         = '" & WS_DATEN & "'" & vbCrLf & vbCrLf & _
+           "Blatt '" & WS_EINSTELLUNGEN & "' vorhanden? " & gefunden & vbCrLf & vbCrLf & _
+           "DIREKTAUFRUF NavigiereZu_Einstellungen:" & vbCrLf & _
+           "  aktiv vorher:  " & vorher & vbCrLf & _
+           "  aktiv nachher: " & nachher & vbCrLf & vbCrLf & _
+           "Alle Blaetter (Reihenfolge):" & vbCrLf & liste, _
+           vbInformation, "Einstellungen-Sprung-Diagnose"
+End Sub
+
+
 Private Function HoleOnActionSafe(ByVal shp As Shape) As String
     On Error Resume Next
     HoleOnActionSafe = shp.OnAction
