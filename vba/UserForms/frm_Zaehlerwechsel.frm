@@ -1,6 +1,6 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frm_Zaehlerwechsel 
-   Caption         =   "neuer Zaehler"
+   Caption         =   "neuer Zähler"
    ClientHeight    =   4700
    ClientLeft      =   110
    ClientTop       =   450
@@ -91,7 +91,7 @@ Option Explicit
 ' ==========================================================
 Public m_Medium As String
 Private m_targetRow As Long
-' Der Dezimaltrenner muss hier bekannt sein ffuer die Formatierung
+' Der Dezimaltrenner muss hier bekannt sein für die Formatierung
 Private Const DECIMAL_SEP As String = "," ' Standard ffuer DE-Excel-UI
 
 ' ==========================================================
@@ -126,7 +126,7 @@ Public Sub InitForm_Runtime(ByVal Medium As String)
     Me.fra_Header.Caption = "Z" & ChrW(228) & "hlerwechsel erfassen (" & Medium & ")"
     Me.fra_Header.ForeColor = color
 
-    ' Zuweisung der Einheit ffuer das ALT-Feld und das NEU-Start-Feld
+    ' Zuweisung der Einheit für das ALT-Feld und das NEU-Start-Feld
     Me.lbl_EinheitAlt.Caption = einheit
     Me.lbl_EinheitNeuStart.Caption = einheit
  
@@ -219,7 +219,7 @@ Private Sub cmb_Parzelle_Change()
 End Sub
 
 ' ==========================================================
-' NEU: ERWEITERTE FORMATIERUNG Ffuer ZAHLEN UND DEZIMALEN
+' NEU: ERWEITERTE FORMATIERUNG Für ZAHLEN UND DEZIMALEN
 ' (Ersetzt FormatTausender und FormatNumberInput)
 ' ==========================================================
 Private Function CleanAndFormatNumber(ByVal v As Variant) As String
@@ -232,7 +232,7 @@ Private Function CleanAndFormatNumber(ByVal v As Variant) As String
         cleanStr = Replace(cleanStr, Application.International(xlDecimalSeparator), DECIMAL_SEP)
     End If
     
-    ' 3. Fuehre Tausender-Formatierung nur ffuer den Vorkomma-Teil durch (optional)
+    ' 3. Führe Tausender-Formatierung nur für den Vorkomma-Teil durch (optional)
     Dim parts() As String
     Dim preDecimal As String
     Dim postDecimal As String
@@ -246,7 +246,7 @@ Private Function CleanAndFormatNumber(ByVal v As Variant) As String
         postDecimal = ""
     End If
     
-    ' Tausenderformatierung ffuer den Vorkomma-Teil
+    ' Tausenderformatierung für den Vorkomma-Teil
     Dim i As Long
     Dim tempPreDecimal As String
     tempPreDecimal = ""
@@ -318,7 +318,7 @@ Private Sub chk_Bemerkung_Click()
 End Sub
 
 ' ==========================================================
-' SPEICHERN (KORRIGIERT: Logik ffuer editierbaren Alt-Stand und PlausibilitaetsPruefung)
+' SPEICHERN (KORRIGIERT: Logik für editierbaren Alt-Stand und PlausibilitaetsPruefung)
 ' ==========================================================
 Private Sub Btn_Speichern_Click()
 
@@ -341,7 +341,7 @@ Private Sub Btn_Speichern_Click()
         Exit Sub
     End If
     
-    ' 1. PlausibilitaetsPruefungen (unveraendert)
+    ' 1. PlausibilitaetsPruefungen (unverändert)
     If Me.cmb_Parzelle.value = "" Then
         MsgBox "Bitte w" & ChrW(228) & "hlen Sie eine Parzelle/einen Z" & ChrW(228) & "hler aus.", vbExclamation
         Me.cmb_Parzelle.SetFocus
@@ -364,7 +364,7 @@ Private Sub Btn_Speichern_Click()
     ' 2. Daten einlesen und konvertieren (KERNKORREKTUREN)
     
     ' a) Originaler Stand Alt: Liest den Endstand des alten Zaehlers (der in C steht)
-    ' Dient als Grundlage ffuer die PlausibilitaetsPruefung des User-korrigierten Wertes.
+    ' Dient als Grundlage für die PlausibilitaetsPruefung des User-korrigierten Wertes.
     standAltOriginal = ws.Cells(m_targetRow, "C").value
     
     ' b) Korrigierter Stand Alt: Liest den Wert aus der Textbox txt_StandAlt und bereinigt ihn
@@ -410,7 +410,7 @@ Private Sub Btn_Speichern_Click()
     Me.txt_StandNeuStart.text = CleanAndFormatNumber(standNeuStart_Final)
     
     
-    ' 3. PlausibilitaetsPruefung ffuer Staende (NEU GEGEN KORRIGIERTEN ALT)
+    ' 3. PlausibilitaetsPruefung für Staende (NEU GEGEN KORRIGIERTEN ALT)
     If standNeuStart_Final < 0 Then
         MsgBox "Der Startstand des neuen Zaehlers darf nicht negativ sein.", vbExclamation
         Me.txt_StandNeuStart.SetFocus
@@ -427,7 +427,7 @@ Private Sub Btn_Speichern_Click()
     End If
     
     ' 4. Aufruf der Logik (Argumente sind korrekt)
-    ' WICHTIG: Wir uebergeben standAltUser (den korrigierten Wert) als AltEnde.
+    ' WICHTIG: Wir übergeben standAltUser (den korrigierten Wert) als AltEnde.
     Call mod_Zaehler_Historie.SchreibeHistorie( _
         parzelle:=Me.cmb_Parzelle.value, _
         DatumW:=CDate(Me.txt_Datum.text), _
@@ -438,7 +438,7 @@ Private Sub Btn_Speichern_Click()
         bem:=Me.txt_Bemerkung.text, _
         Medium:=m_Medium)
 
-    ' Wenn SchreibeHistorie KEINEN Fehler ausgeloest hat, kommt der Code hier an.
+    ' Wenn SchreibeHistorie KEINEN Fehler ausgelöst hat, kommt der Code hier an.
     MsgBox "Zaehlerwechsel erfolgreich gespeichert.", vbInformation
     Unload Me
     

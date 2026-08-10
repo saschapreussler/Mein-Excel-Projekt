@@ -1,4 +1,4 @@
-VERSION 1.0 CLASS
+﻿VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
@@ -10,7 +10,7 @@ Attribute VB_Exposed = True
 Option Explicit
 
 ' Haelt Zebra/AutoFit/Ausblenden der Mitgliederhistorie nach manuellen
-' Aenderungen konsistent.
+' Änderungen konsistent.
 Private Sub Worksheet_Change(ByVal Target As Range)
     On Error GoTo Fehler
     If Intersect(Target, Me.Range("A:J")) Is Nothing Then Exit Sub

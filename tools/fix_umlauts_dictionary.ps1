@@ -105,9 +105,10 @@ function Fix-Line {
 }
 
 
-$targets = @()
-$targets += Get-ChildItem "vba\Modules" -Filter *.bas -File
-$targets += Get-ChildItem "vba\Classes" -Filter *.cls -File
+$targets = @(
+    Get-ChildItem "vba" -Recurse -File -Include *.bas, *.cls, *.frm |
+        Where-Object { $_.FullName -notmatch '\\BackUp' }
+)
 
 Write-Host "`n=== ae/oe/ue -> Umlaute (Kommentare + Strings) ===" -ForegroundColor Cyan
 $modus = if ($DryRun) { 'DRY-RUN' } else { 'LIVE' }
@@ -116,6 +117,7 @@ Write-Host "Modus: $modus | Ziele: $($targets.Count) (davon ausgeschlossen: $($e
 $totalChanged = 0
 $fileChanges = @{}
 $utf8Bom = New-Object System.Text.UTF8Encoding($true)
+$win1252 = [System.Text.Encoding]::GetEncoding(1252)
 
 foreach ($f in $targets) {
     if ($excluded -contains $f.Name) {
@@ -124,8 +126,14 @@ foreach ($f in $targets) {
     }
 
     $originalBytes = [System.IO.File]::ReadAllBytes($f.FullName)
-    $original = [System.Text.Encoding]::UTF8.GetString($originalBytes)
-    $original = $original.TrimStart([char]0xFEFF)
+    $isFrm = ($f.Extension -eq ".frm")
+
+    if ($isFrm) {
+        $original = $win1252.GetString($originalBytes)
+    } else {
+        $original = [System.Text.Encoding]::UTF8.GetString($originalBytes)
+        $original = $original.TrimStart([char]0xFEFF)
+    }
 
     $lines = $original -split "`r?`n"
     $changedCount = 0
@@ -141,7 +149,11 @@ foreach ($f in $targets) {
         $fileChanges[$f.Name] = $changedCount
         if (-not $DryRun) {
             $result = ($newLines -join "`r`n")
-            [System.IO.File]::WriteAllText($f.FullName, $result, $utf8Bom)
+            if ($isFrm) {
+                [System.IO.File]::WriteAllBytes($f.FullName, $win1252.GetBytes($result))
+            } else {
+                [System.IO.File]::WriteAllText($f.FullName, $result, $utf8Bom)
+            }
         }
         Write-Host ("  FIX   {0,4} Zeilen  {1}" -f $changedCount, $f.Name) -ForegroundColor Green
     }

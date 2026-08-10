@@ -121,7 +121,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         stichtagWert = Trim(CStr(Target.value))
         
         If stichtagWert <> "" Then
-            ' F vs D/E Sperre: Wenn F geFuellt, duerfen D und E NICHT geFuellt sein
+            ' F vs D/E Sperre: Wenn F geFuellt, dürfen D und E NICHT geFuellt sein
             Dim dWert As String
             Dim eWert As String
             dWert = Trim(CStr(Me.Cells(rowES, ES_COL_SOLL_TAG).value))
@@ -260,7 +260,7 @@ End Function
 
 
 ' ===============================================================
-' KONFIG-AENDERUNG: Reaktion auf Eingaben im Config-Bereich
+' KONFIG-ÄNDERUNG: Reaktion auf Eingaben im Config-Bereich
 ' ===============================================================
 Private Sub VerarbeiteKonfigAenderung(ByVal Target As Range)
     On Error GoTo CfgExit

@@ -242,7 +242,7 @@ End Sub
 ' auch wenn das Blatt geschützt ist.
 '
 ' WICHTIG: Die Zelle A26 ist bewusst leer (kein Spaltentitel).
-'          AutoFilter wuerde mit einer leeren ersten Header-Zelle
+'          AutoFilter würde mit einer leeren ersten Header-Zelle
 '          fehlschlagen, deshalb startet der Bereich bei Spalte B.
 '
 ' Wird von Workbook_Open NACH Aktiviere_BankkontoFilter aufgerufen.

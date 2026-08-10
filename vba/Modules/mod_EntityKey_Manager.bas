@@ -343,7 +343,7 @@ ErrorHandler:
 End Sub
 
 ' ===============================================================
-' Prüft ob Zeile bereits gueltige Daten hat
+' Prüft ob Zeile bereits gültige Daten hat
 ' ===============================================================
 Private Function HatBereitsGueltigeDaten(ByVal entityKey As String, _
                                           ByVal zuordnung As String, _

@@ -397,7 +397,7 @@ Public Sub GruppiereParzellen(ByVal mitglieder As Collection, _
             Dim ix As Long
             ix = dict(pKey)
             If InStr(tempArr(ix).entityKeys, m("EntityKey")) = 0 Then
-                ' Neuer EntityKey für diese Parzelle -> hinzufuegen
+                ' Neuer EntityKey für diese Parzelle -> hinzufügen
                 tempArr(ix).entityKeys = tempArr(ix).entityKeys & "," & m("EntityKey")
                 tempArr(ix).roles = tempArr(ix).roles & "," & m("Role")
                 ' v5.2: Eintrittsdatum parallel speichern

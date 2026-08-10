@@ -329,12 +329,12 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
         ws.Range("A1:K1").value = Array( _
             "lfd. Nr. (ID)", _
             "Datum (Wechsel)", _
-            "Parzelle/Zaehler", _
+            "Parzelle/Zähler", _
             "Medium", _
-            "Zaehler-Nr. (ID) alt", _
+            "Zähler-Nr. (ID) alt", _
             "Zaehlerstand (alt) aus der letzten Ablesung", _
             "Stand alt (Ende)", _
-            "Zaehler-Nr. (ID) neu", _
+            "Zähler-Nr. (ID) neu", _
             "Stand neu (Start)", _
             "Verbrauch", _
             "Bemerkungen")
@@ -395,9 +395,9 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
                 lo.Resize ws.Range("A1:K" & lo.Range.Rows.count)
             End If
             
-            ws.Range("E1").value = "Zaehler-Nr. (ID) alt"
+            ws.Range("E1").value = "Zähler-Nr. (ID) alt"
             ws.Range("F1").value = "Zaehlerstand (alt) aus der letzten Ablesung"
-            ws.Range("H1").value = "Zaehler-Nr. (ID) neu"
+            ws.Range("H1").value = "Zähler-Nr. (ID) neu"
             ws.Range("K1").value = "Bemerkungen"
             ws.Range("J1").value = "Verbrauch"
             

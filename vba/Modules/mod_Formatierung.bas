@@ -361,7 +361,7 @@ Public Sub FormatKategorieTableComplete(ByRef ws As Worksheet)
     End If
     
     ' Jeder Schritt einzeln abgesichert - Fehler in einem Schritt
-    ' duerfen die folgenden Schritte NICHT blockieren
+    ' dürfen die folgenden Schritte NICHT blockieren
     Call mod_Format_Spalten.VerdichteSpalteOhneLuecken(ws, DATA_CAT_COL_KATEGORIE, DATA_CAT_COL_START, DATA_CAT_COL_END)
     If Err.Number <> 0 Then
         Debug.Print "FormatKatComplete: Verdichte fehlgeschlagen: " & Err.Description
@@ -646,7 +646,7 @@ Public Sub FormatiereMitgliederlisteKomplett()
               wsM.Cells(lastRow, M_COL_PACHTENDE)).HorizontalAlignment = xlLeft  ' I-Q
 
     ' Altformatierung unterhalb der belegten Zeilen entfernen, damit
-    ' beim Loeschen von Zeilen kein Rest-Zebra/Rahmen stehen bleibt.
+    ' beim Löschen von Zeilen kein Rest-Zebra/Rahmen stehen bleibt.
     Dim cleanEnd As Long
     cleanEnd = lastRow + 50
     With wsM.Range(wsM.Cells(lastRow + 1, 1), wsM.Cells(cleanEnd, lastCol))
@@ -692,7 +692,7 @@ Public Sub FormatiereMitgliederlisteKomplett()
     On Error GoTo CleanExit
 
     ' Spaltenbreiten: reines AutoFit nach laengstem Eintrag (keine
-    ' Mindestbreite). AutoFit VOR dem Ausblenden, sonst wuerde AutoFit
+    ' Mindestbreite). AutoFit VOR dem Ausblenden, sonst würde AutoFit
     ' die versteckten Spalten wieder einblenden.
     wsM.Range(wsM.Cells(M_HEADER_ROW, 1), wsM.Cells(lastRow, lastCol)) _
         .Columns.AutoFit
@@ -730,7 +730,7 @@ End Sub
 '   - Vertikale Zentrierung; Header zentriert
 '   - Spalte A zentriert, alle anderen Spalten linksbuendig
 '   - Reines AutoFit aller Spalten (nach laengstem Eintrag)
-'   - Spalte B (Member ID alt) und G (ID neuer Paechter) ausgeblendet
+'   - Spalte B (Member ID alt) und G (ID neuer Pächter) ausgeblendet
 '   - Zebra-Streifen (weiss / hellgrau alternierend)
 ' ===============================================================
 Public Sub FormatiereMitgliederhistorie()
@@ -794,10 +794,17 @@ Public Sub FormatiereMitgliederhistorie()
         End If
     Next r
 
+    ' Duenne schwarze Rahmenlinien für jede Zelle (innen + aussen)
+    With datenBereich.Borders
+        .LineStyle = xlContinuous
+        .Color = RGB(0, 0, 0)
+        .Weight = xlThin
+    End With
+
     ' Reines AutoFit aller Spalten (A-J) VOR dem Ausblenden
     wsH.Range(wsH.Cells(H_HEADER_ROW, 1), wsH.Cells(lastRow, lastCol)).Columns.AutoFit
 
-    ' Spalte B (Member ID alt) und G (ID neuer Paechter) ausblenden
+    ' Spalte B (Member ID alt) und G (ID neuer Pächter) ausblenden
     wsH.Columns(H_COL_MEMBER_ID_ALT).Hidden = True
     wsH.Columns(H_COL_NACHPAECHTER_ID).Hidden = True
 

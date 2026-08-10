@@ -546,7 +546,7 @@ Private Sub SammleDaten(ByRef dictEinn As Object, _
     On Error GoTo 0
     If wsBK Is Nothing Then Exit Sub
     
-    ' Gueltige Kategorien aus Daten!J laden
+    ' Gültige Kategorien aus Daten!J laden
     Dim dictGueltig As Object
     Set dictGueltig = CreateObject("Scripting.Dictionary")
     dictGueltig.CompareMode = vbTextCompare
@@ -610,7 +610,7 @@ Private Sub SammleDaten(ByRef dictEinn As Object, _
             If InStr(1, bem, m_FilterName, vbTextCompare) = 0 Then GoTo nextRow
         End If
         
-        ' Nur gueltige Kategorien aus Daten!J verwenden
+        ' Nur gültige Kategorien aus Daten!J verwenden
         If dictGueltig.count > 1 And Not dictGueltig.exists(kategorie) Then GoTo nextRow
         
         Dim betrag As Double
@@ -1193,14 +1193,14 @@ End Function
 
 ' ===============================================================
 ' LEER-ANSICHT (v8.3):
-' Wird ausschliesslich dann gerendert, wenn Bankkonto und Verein-
+' Wird ausschließlich dann gerendert, wenn Bankkonto und Verein-
 ' kasse noch keine Buchungen enthalten. Zeigt NUR den zuletzt
 ' bekannten Kontostand aus dem Vorjahr (Blatt "Einstellungen") an,
 ' plus einen kurzen Hinweistext.
 ' ===============================================================
 Private Sub BaueFinanzUebersicht_NurKontostand(ByVal ws As Worksheet)
 
-    ' Blatt aufraeumen (breiter als sonst, damit Reste weg sind)
+    ' Blatt aufräumen (breiter als sonst, damit Reste weg sind)
     ws.Range("A1:K200").ClearContents
     ws.Range("A1:K200").ClearFormats
     ws.Range("A1:K200").Interior.color = CLR_WHITE

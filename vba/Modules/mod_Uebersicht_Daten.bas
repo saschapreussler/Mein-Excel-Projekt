@@ -304,7 +304,7 @@ End Function
 
 
 ' ===============================================================
-' Ermittelt das haeufigste Jahr aus Bankkonto-Daten
+' Ermittelt das häufigste Jahr aus Bankkonto-Daten
 ' Scannt Spalte A (Datum) und zaehlt welches Jahr am meisten
 ' vorkommt. Gibt 0 zurück wenn keine Daten vorhanden.
 ' ===============================================================
@@ -795,7 +795,7 @@ Public Function ZaehleAktiveMitgliederGesamt() As Long
         funktion = Trim(CStr(wsML.Cells(r, M_COL_FUNKTION).value))
         If StrComp(funktion, AUSTRITT_STATUS, vbTextCompare) = 0 Then GoTo NextMR
 
-        ' Nur gueltige Parzellen 1-14 zaehlen
+        ' Nur gültige Parzellen 1-14 zaehlen
         Dim parzStr As String
         parzStr = Trim(CStr(wsML.Cells(r, M_COL_PARZELLE).value))
         If Not IsNumeric(parzStr) Then GoTo NextMR

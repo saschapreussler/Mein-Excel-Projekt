@@ -289,7 +289,7 @@ End Function
 ' Hilfsfunktion: prüft ob ein Monat (1-12) in einer
 ' kommaseparierten Monatsliste enthalten ist.
 ' z.B. IstMonatInListe(3, "03, 06, 09, 12") -> True
-' PUBLIC (wird auch in mod_Zahlungspruefung benoetigt)
+' PUBLIC (wird auch in mod_Zahlungspruefung benötigt)
 ' =====================================================
 Public Function IstMonatInListe(ByVal monat As Long, ByVal monatListe As String) As Boolean
     Dim teile() As String

@@ -9,11 +9,11 @@ Option Explicit
 ' Spezifikation:
 '   Zahlungsübersicht          : Zeile 2 = 35.00 (70 px)
 '   Dashboard Mitgliederzahlungen: Zeile 2 = 35.00, Zeile 3 = 18.50, Zeile 4 = 18.50
-'   Bankkonto                   : Zeile 2 unveraendert
+'   Bankkonto                   : Zeile 2 unverändert
 '   Vereinskasse                : Zeile 1 = 50.00, Zeile 2 = 20.00, Zeile 3 = 20.00
-'   Strom + Wasser              : Zeile 2 unveraendert
+'   Strom + Wasser              : Zeile 2 unverändert
 '   Mitgliederliste             : Zeile 2 = 18.00
-'   Mitgliederhistorie + Einstellungen: unveraendert
+'   Mitgliederhistorie + Einstellungen: unverändert
 '   Daten                       : Zeile 2 = 24.00
 ' ===============================================================
 

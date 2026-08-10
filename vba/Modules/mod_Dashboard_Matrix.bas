@@ -762,7 +762,7 @@ End Function
 
 
 ' ============================================================
-'  FÄLLIGKEIT PRUEFEN
+'  FÄLLIGKEIT PRÜFEN
 ' ============================================================
 Public Function IstKatImMonatFaellig(ByRef kat As UebKategorie, _
                                        ByVal monat As Long) As Boolean

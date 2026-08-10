@@ -377,12 +377,12 @@ Public Sub PruefeKontostandVorjahr()
     Dim wert As Variant
     wert = ws.Cells(ES_CFG_KONTOSTAND_ROW, ES_CFG_VALUE_COL).value
     
-    ' Wenn gueltig -> nichts tun
+    ' Wenn gültig -> nichts tun
     If IsNumeric(wert) And wert <> "" Then
         If CDbl(wert) <> 0 Then Exit Sub
     End If
     
-    ' Nutzer nach Kontostand fragen (mit Schleife bis gueltig oder Abbruch)
+    ' Nutzer nach Kontostand fragen (mit Schleife bis gültig oder Abbruch)
     Dim eingabe As String
     Dim dblWert As Double
     Dim gueltig As Boolean
@@ -476,7 +476,7 @@ Public Sub PruefeAbrechnungsjahr()
     Dim wert As Variant
     wert = ws.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL).value
     
-    ' Wenn gueltig -> nichts tun
+    ' Wenn gültig -> nichts tun
     If IsNumeric(wert) And wert <> "" Then
         If CLng(wert) >= 2000 And CLng(wert) <= 2100 Then Exit Sub
     End If
@@ -678,7 +678,7 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     eventsWaren = Application.EnableEvents
 
     ' Aktives Blatt sichern: diese Routine darf die Blattauswahl NICHT
-    ' veraendern. Die Cross-Sheet-Datenpruefung (SetzeDropDowns ->
+    ' verändern. Die Cross-Sheet-Datenpruefung (SetzeDropDowns ->
     ' 'Daten'!$BA$..) laesst sonst das Daten-Blatt aktiv.
     Dim aktivVorher As Object
     On Error Resume Next

@@ -30,7 +30,7 @@ Private Const RGB_GEWECHSELT As Long = 4980735
 
 
 ' ==========================================================
-' HAUPTPROZEDUR: Berechnung aller Zaehler einer Seite
+' HAUPTPROZEDUR: Berechnung aller Zähler einer Seite
 ' ==========================================================
 Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     
@@ -51,7 +51,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     On Error GoTo Fehler_Handler_Berechnung
     
     ' --- Formatierung (v8.2: defensiv, einzelne Bloecke gekapselt) ---
-    ' Formatierungs-Fehler (z.B. wegen verbundener Zellen) duerfen die
+    ' Formatierungs-Fehler (z.B. wegen verbundener Zellen) dürfen die
     ' Berechnung NICHT abbrechen. Daher jeweils On Error Resume Next.
     On Error Resume Next
     wsTarget.Range("10:25").RowHeight = 50
@@ -91,7 +91,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
             Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, r + 9)
         Next r
         
-        ' STROM: Feste Zaehler
+        ' STROM: Feste Zähler
         Call CalculateSingleZaehler(wsTarget, wsHist, "Strom", "Clubwagen", 24)
         wsTarget.Rows(24).AutoFit
         Call mod_ZaehlerLogik.EnsureMinRowHeight(wsTarget, 24)
@@ -281,8 +281,8 @@ Private Sub CalculateSingleZaehler( _
         
         newHistoryText = "Letzter Zaehlerwechsel am: " & Format(lastDate, "dd.mm.yyyy") & vbLf & _
                              "Anzahl der Wechsel: " & zyklen & vbLf & _
-                             "Gesamtverbrauch gewechselte Zaehler: " & Format(verbrauchAltHistorie_Summe, "#,##0.00") & " " & einheit & vbLf & _
-                             "Verbrauch derzeitiger Zaehler: " & Format(verbrauchNeuAktuell, "#,##0.00") & " " & einheit
+                             "Gesamtverbrauch gewechselte Zähler: " & Format(verbrauchAltHistorie_Summe, "#,##0.00") & " " & einheit & vbLf & _
+                             "Verbrauch derzeitiger Zähler: " & Format(verbrauchNeuAktuell, "#,##0.00") & " " & einheit
         
         oldBemerkung = Trim(CStr(targetBemerkung.value))
         

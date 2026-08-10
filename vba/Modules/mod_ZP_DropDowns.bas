@@ -31,7 +31,7 @@ Public Sub SetzeBankkontoDropDowns(ByVal wsBK As Worksheet)
     ' Hilfsspalten auf Daten-Blatt aktualisieren (AF + AG)
     Call AktualisiereKategorieHilfsspalten
     
-    ' Blattschutz aufheben (noetig für Data Validation)
+    ' Blattschutz aufheben (nötig für Data Validation)
     On Error Resume Next
     wsBK.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0

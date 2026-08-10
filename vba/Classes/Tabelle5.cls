@@ -268,8 +268,8 @@ Private Sub RechneAlleZeilen(modus As String)
             mwstSatz = mwstSatz / 100
         End If
     Else
-        ' Dieser Fehler wuerde nicht 1004 auslösen
-        ' MsgBox "Der MwSt-Satz in B7 ist ungueltig. Bitte korrigieren Sie ihn.", vbExclamation
+        ' Dieser Fehler würde nicht 1004 auslösen
+        ' MsgBox "Der MwSt-Satz in B7 ist ungültig. Bitte korrigieren Sie ihn.", vbExclamation
         Exit Sub
     End If
     

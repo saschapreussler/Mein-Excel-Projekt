@@ -119,7 +119,7 @@ End Property
 
 Private Sub UserForm_Initialize()
     Me.StartUpPosition = 1
-    Me.Caption = "Austrittsgrund waehlen"
+    Me.Caption = "Austrittsgrund wählen"
     
     Me.opt_Nachpaechter.value = False
     Me.opt_Tod.value = False
@@ -173,23 +173,23 @@ End Sub
 
 Private Sub cmd_OK_Click()
     If Me.opt_Nachpaechter.value Then
-        ' Pruefe ob Nachpaechter ausgewaehlt wurde
+        ' Prüfe ob Nachpächter ausgewählt wurde
         If Trim(Me.cbo_Nachpaechter.value) = "" Then
-            ' Frage ob Nachpaechter bereits im System ist
+            ' Frage ob Nachpächter bereits im System ist
             Dim antwort As VbMsgBoxResult
-            antwort = MsgBox("Ist der Nachpaechter bereits im System registriert?", vbYesNoCancel + vbQuestion, "Nachpaechter registriert?")
+            antwort = MsgBox("Ist der Nachpächter bereits im System registriert?", vbYesNoCancel + vbQuestion, "Nachpächter registriert?")
             
             If antwort = vbYes Then
-                ' Ja - Nachpaechter muss ausgewaehlt werden
+                ' Ja - Nachpächter muss ausgewählt werden
                 MsgBox "Bitte w" & ChrW(228) & "hlen Sie den Nachp" & ChrW(228) & "chter aus der Liste aus.", vbExclamation
                 Me.cbo_Nachpaechter.SetFocus
                 Exit Sub
             ElseIf antwort = vbNo Then
-                ' Nein - Neuer Nachpaechter muss angelegt werden
-                MsgBox "Es muss ein neuer Nachpaechter erfasst werden.", vbInformation, "Nachpaechter erfassen"
+                ' Nein - Neuer Nachpächter muss angelegt werden
+                MsgBox "Es muss ein neuer Nachpächter erfasst werden.", vbInformation, "Nachpächter erfassen"
                 
                 m_SelectedOption = 1
-                m_CustomReason = "uebergabe an Nachpaechter"
+                m_CustomReason = "uebergabe an Nachpächter"
                 m_NachpaechterID = "NACHPAECHTER_NEU"
                 m_NachpaechterName = ""
                 Me.Hide
@@ -199,9 +199,9 @@ Private Sub cmd_OK_Click()
                 Exit Sub
             End If
         Else
-            ' Nachpaechter wurde ausgewaehlt
+            ' Nachpächter wurde ausgewählt
             m_SelectedOption = 1
-            m_CustomReason = "uebergabe an Nachpaechter"
+            m_CustomReason = "uebergabe an Nachpächter"
             
             ' Hole Member ID aus ComboBox (versteckte Spalte)
             Dim ws As Worksheet
@@ -232,7 +232,7 @@ Private Sub cmd_OK_Click()
         
     ElseIf Me.opt_Kuendigung.value Then
         m_SelectedOption = 3
-        m_CustomReason = "Kuendigung"
+        m_CustomReason = "Kündigung"
         
     ' ENTFERNT: ElseIf Me.opt_Parzellenwechsel.value Then
     '     m_SelectedOption = 4
@@ -268,7 +268,7 @@ Private Sub FuelleNachpaechterComboBox()
     Dim lastRow As Long
     Dim fullName As String
     
-    ' Dictionary ffuer eindeutige Namen (verhindert Duplikate
+    ' Dictionary für eindeutige Namen (verhindert Duplikate
     ' wenn ein Mitglied mehrere Parzellen hat)
     Dim dictNamen As Object
     Set dictNamen = CreateObject("Scripting.Dictionary")
@@ -289,7 +289,7 @@ Private Sub FuelleNachpaechterComboBox()
             fullName = Trim(ws.Cells(lRow, M_COL_NACHNAME).value) & ", " & _
                         Trim(ws.Cells(lRow, M_COL_VORNAME).value)
             
-            ' Nur Hinzufuegen wenn Name noch nicht in der Liste ist
+            ' Nur Hinzufügen wenn Name noch nicht in der Liste ist
             If Not dictNamen.exists(fullName) Then
                 dictNamen.Add fullName, True
                 Me.cbo_Nachpaechter.AddItem fullName

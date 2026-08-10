@@ -12,7 +12,7 @@ Private Const TEMP_WS_NAME As String = "TEMP_LISTEN"
 ' PROZEDUR: AktualisiereNamedRange_MitgliederNamen
 ' Erstellt oder aktualisiert einen benannten Bereich
 ' mit den Namen aller aktiven Mitglieder.
-' WICHTIG: Das Temporaere Worksheet wird am Ende IMMER gelöscht!
+' WICHTIG: Das Temporäre Worksheet wird am Ende IMMER gelöscht!
 ' **********************************************************
 Public Sub AktualisiereNamedRange_MitgliederNamen()
     
@@ -72,7 +72,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
         
         For i = LBound(copyCols) To UBound(copyCols)
             wsM.Columns(copyCols(i)).SpecialCells(xlCellTypeVisible).Copy
-            ' Fuegen Sie in die Temporaere Tabelle in Spalten A, B, C ein
+            ' Fuegen Sie in die Temporäre Tabelle in Spalten A, B, C ein
             wsTemp.Cells(tempRow, i + 1).PasteSpecial xlPasteValues
         Next i
         
@@ -122,7 +122,7 @@ End Sub
 
 ' **********************************************************
 ' PROZEDUR: LoescheTempWorksheet
-' Loescht das Temporaere Worksheet sicher
+' Loescht das Temporäre Worksheet sicher
 ' **********************************************************
 Private Sub LoescheTempWorksheet()
     Dim wsTemp As Worksheet
@@ -141,7 +141,7 @@ End Sub
 
 ' **********************************************************
 ' PROZEDUR: BereinigeTempWorksheets
-' oeffentliche Prozedur zum Bereinigen aller Temporaeren Worksheets
+' oeffentliche Prozedur zum Bereinigen aller Temporären Worksheets
 ' Kann manuell oder beim öffnen der Arbeitsmappe aufgerufen werden
 ' **********************************************************
 Public Sub BereinigeTempWorksheets()

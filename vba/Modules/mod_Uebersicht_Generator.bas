@@ -51,7 +51,7 @@ Option Explicit
 '             HoleManuellSollAusVormonat() nutzt gesicherte Werte
 '             Gelb->Grün wenn Ist = manueller Soll
 '           - Zebra basiert auf sichtbaren Zeilen (nach Filter)
-' NEU v4.4: - Ehrenmitglied: kein Mitgliedsbeitrag noetig
+' NEU v4.4: - Ehrenmitglied: kein Mitgliedsbeitrag nötig
 '           - Partner-Mitgliedsbeitrag: Doppelzahlung erkennen
 '             (15 EUR statt 7.50 EUR -> deckt beide Parzellen-Mitgl.)
 '           - Zahlungsdatum in Bemerkung (Spalte H)
@@ -516,7 +516,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 ' (Spalte P "Mitglieds-/Pachtbeginn"), zahlt es weder
                 ' Mitgliedsbeitrag noch Pacht noch Brauchwasser-Abschlaege
                 ' noch sonstige Gebühren VOR seinem Eintrittsmonat.
-                ' Beispiel: Parzelle 10 ohne Paechter bis 30.06.2025,
+                ' Beispiel: Parzelle 10 ohne Pächter bis 30.06.2025,
                 ' neues Mitglied ab 01.07.2025 -> keine Pacht/MB/Wasser
                 ' für Januar-Juni 2025.
                 ' (Spalte P leer = ganzes Jahr aktiv -> eintrittMonat=0 -> Filter inaktiv)
@@ -1174,7 +1174,7 @@ Private Function SammleManuelleSollWerte(ByVal wsUeb As Worksheet) As Object
         Dim parzelle As String
         parzelle = CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)
         
-        ' v4.4: Keine Gruppenblock-Logik mehr noetig, jede Zeile hat Parzelle
+        ' v4.4: Keine Gruppenblock-Logik mehr nötig, jede Zeile hat Parzelle
         If parzelle = "" Then GoTo NextSollRow
         
         ' Nur variable Soll-Zellen (hell-gelb oder grün) beruecksichtigen
@@ -1386,7 +1386,7 @@ End Function
 
 
 ' ===============================================================
-' v5.4: VORJAHR-GELB-PRUEFUNG
+' v5.4: VORJAHR-GELB-PRÜFUNG
 ' Scannt die Zahlungsübersicht nach GELB-Eintraegen im Januar
 ' wo "Keine Vorjahr-Daten" in der Bemerkung steht.
 ' Fragt den Nutzer ob die Zahlungen im Vorjahr erfolgt sind.

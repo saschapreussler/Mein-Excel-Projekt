@@ -7,7 +7,7 @@ Option Explicit
 ' VERSION: 2.8 - 11.02.2026
 ' änderung v2.8: WS_UEBERSICHT von "übersicht" auf "übersicht"
 '                geändert (Tabellenblatt heisst "übersicht")
-' änderung v2.7: ES_COL_SOLL_MONATE hinzugefuegt (Spalte E),
+' änderung v2.7: ES_COL_SOLL_MONATE hinzugefügt (Spalte E),
 '           alle folgenden ES-Spalten +1 verschoben,
 '           ES_COL_END von 8 auf 9 geändert
 ' ***************************************************************
@@ -285,7 +285,7 @@ Public Const FUNKTION_MITGLIED_MIT_PACHT As String = "Mitglied mit Pacht"
 Public Const FUNKTION_1_VORSITZENDER As String = "1. Vorsitzende(r)"
 Public Const FUNKTION_2_VORSITZENDER As String = "2. Vorsitzende(r)"
 Public Const FUNKTION_KASSIERER As String = "Kassierer"
-Public Const FUNKTION_SCHRIFTFUEHRER As String = "Schriftfuehrer"
+Public Const FUNKTION_SCHRIFTFUEHRER As String = "Schriftführer"
 
 ' ===============================================================
 ' P. EINSTELLUNGEN - KONFIGURATIONSBEREICH (Zeilen 3-21)

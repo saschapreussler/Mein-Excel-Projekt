@@ -337,6 +337,86 @@ Public Function ZeigeAdressAuswahl(ByRef mitglieder As Collection) As Long
     End If
 End Function
 
+' Findet die aktuelle Zeile eines Mitglieds auf einer konkreten Parzelle.
+Public Function FindeMitgliedsZeile(ByVal memberID As String, ByVal parzelle As String) As Long
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+
+    Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    lastRow = ws.Cells(ws.Rows.count, M_COL_NACHNAME).End(xlUp).Row
+
+    For r = M_START_ROW To lastRow
+        If ws.Cells(r, M_COL_MEMBER_ID).value = memberID Then
+            If StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), Trim(parzelle), vbTextCompare) = 0 Then
+                FindeMitgliedsZeile = r
+                Exit Function
+            End If
+        End If
+    Next r
+
+    FindeMitgliedsZeile = 0
+End Function
+
+' Zaehlt weitere aktive Mitglieder auf einer Parzelle exklusive der uebergebenen Member-IDs.
+Public Function AnzahlWeitereMitgliederAufParzelle(ByVal parzelle As String, _
+                                                   ByVal ausschlussMemberID As String, _
+                                                   Optional ByVal ausschlussMemberID2 As String = "") As Long
+    Dim ws As Worksheet
+    Dim r As Long
+    Dim lastRow As Long
+    Dim mid As String
+
+    Set ws = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    lastRow = ws.Cells(ws.Rows.count, M_COL_NACHNAME).End(xlUp).Row
+
+    For r = M_START_ROW To lastRow
+        If StrComp(Trim(ws.Cells(r, M_COL_PARZELLE).value), Trim(parzelle), vbTextCompare) = 0 Then
+            mid = Trim(CStr(ws.Cells(r, M_COL_MEMBER_ID).value))
+            If mid <> "" Then
+                If StrComp(mid, Trim(ausschlussMemberID), vbTextCompare) <> 0 And _
+                   StrComp(mid, Trim(ausschlussMemberID2), vbTextCompare) <> 0 Then
+                    AnzahlWeitereMitgliederAufParzelle = AnzahlWeitereMitgliederAufParzelle + 1
+                End If
+            End If
+        End If
+    Next r
+End Function
+
+' Verschiebt weitere Mitglieder auf derselben Parzelle gesammelt in die Historie.
+Public Function VerschiebeWeitereMitgliederAufParzelleInHistorie(ByVal parzelle As String, _
+                                                                  ByVal ausschlussMemberID As String, _
+                                                                  ByVal austrittsDatum As Date, _
+                                                                  ByVal grund As String, _
+                                                                  Optional ByVal nachpaechterName As String = "", _
+                                                                  Optional ByVal nachpaechterID As String = "", _
+                                                                  Optional ByVal ausschlussMemberID2 As String = "") As Long
+    Dim wsM As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim mid As String
+    Dim nm As String
+    Dim vn As String
+
+    Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    lastRow = wsM.Cells(wsM.Rows.count, M_COL_NACHNAME).End(xlUp).Row
+
+    For r = lastRow To M_START_ROW Step -1
+        If StrComp(Trim(wsM.Cells(r, M_COL_PARZELLE).value), Trim(parzelle), vbTextCompare) = 0 Then
+            mid = Trim(CStr(wsM.Cells(r, M_COL_MEMBER_ID).value))
+            If mid <> "" Then
+                If StrComp(mid, Trim(ausschlussMemberID), vbTextCompare) <> 0 And _
+                   StrComp(mid, Trim(ausschlussMemberID2), vbTextCompare) <> 0 Then
+                    nm = CStr(wsM.Cells(r, M_COL_NACHNAME).value)
+                    vn = CStr(wsM.Cells(r, M_COL_VORNAME).value)
+                    Call VerschiebeInHistorie(r, parzelle, mid, nm, vn, austrittsDatum, grund, nachpaechterName, nachpaechterID, False)
+                    VerschiebeWeitereMitgliederAufParzelleInHistorie = VerschiebeWeitereMitgliederAufParzelleInHistorie + 1
+                End If
+            End If
+        End If
+    Next r
+End Function
+
 ' =============================================================================
 ' HISTORIE-OPERATIONEN
 ' =============================================================================
@@ -349,7 +429,8 @@ Public Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, By
                                    ByVal nachname As String, ByVal vorname As String, _
                                    ByVal austrittsDatum As Date, ByVal grund As String, _
                                    Optional ByVal nachpaechterName As String = "", _
-                                   Optional ByVal nachpaechterID As String = "")
+                                   Optional ByVal nachpaechterID As String = "", _
+                                   Optional ByVal zeigeBestaetigung As Boolean = True)
     
     Dim wsM As Worksheet
     Dim wsH As Worksheet
@@ -414,8 +495,10 @@ Public Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, By
         nachpaechterInfo = ""
     End If
     
-    MsgBox "Mitglied " & nachname & " wurde in die Mitgliederhistorie verschoben." & vbCrLf & _
-           "Grund: " & grund & nachpaechterInfo, vbInformation
+    If zeigeBestaetigung Then
+        MsgBox "Mitglied " & nachname & " wurde in die Mitgliederhistorie verschoben." & vbCrLf & _
+               "Grund: " & grund & nachpaechterInfo, vbInformation
+    End If
     
     Exit Sub
 ErrorHandler:

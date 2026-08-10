@@ -192,7 +192,7 @@ End Sub
 
 ' ===============================================================
 ' v8.1: Defensiver Cleanup beim Schliessen
-' Verhindert, dass Excel nach dem Schliessen "haengt", indem
+' Verhindert, dass Excel nach dem Schliessen "hängt", indem
 ' ALS ERSTES alle Events deaktiviert werden, damit während des
 ' Teardowns keine SheetActivate / SheetChange / Worksheet_Calculate
 ' Handler mehr feuern. Anschliessend werden Clipboard, offene
@@ -223,7 +223,7 @@ Private Sub Workbook_BeforeClose(Cancel As Boolean)
     Application.DisplayFormulaBar = True
     Application.DisplayStatusBar = True
     
-    ' (4) Alle UserForms entladen (haengen sonst im Speicher)
+    ' (4) Alle UserForms entladen (hängen sonst im Speicher)
     Dim frm As Object
     For Each frm In VBA.UserForms
         Unload frm
@@ -281,7 +281,7 @@ End Sub
 
 ' ===============================================================
 ' Punkt 10: Snapshot der IST-Zelle bei Selektion auf übersicht
-' Wird benoetigt für Rollback bei Abbruch der Datums-Inputbox
+' Wird benötigt für Rollback bei Abbruch der Datums-Inputbox
 ' ===============================================================
 Private Sub Workbook_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Range)
     On Error Resume Next

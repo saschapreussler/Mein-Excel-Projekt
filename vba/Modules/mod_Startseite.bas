@@ -158,7 +158,7 @@ End Sub
 ' ===============================================================
 ' Stellt die normale Excel-Ansicht wieder her (Menueband, Register,
 ' Bearbeitungsleiste, Ueberschriften) - Gegenstueck zum Vollbild
-' des Startmenues.
+' des Startmenüs.
 ' ===============================================================
 Public Sub StelleNormaleAnsichtWiederHer()
     On Error Resume Next
@@ -224,7 +224,7 @@ End Sub
 
 
 ' ===============================================================
-' Liefert das direkte Ziel-Makro fuer eine Kachel anhand ihres
+' Liefert das direkte Ziel-Makro für eine Kachel anhand ihres
 ' Namens. Leerer Rueckgabewert = keine bekannte Kachel.
 ' ===============================================================
 Private Function KachelZielMakro(ByVal shapeName As String) As String
@@ -652,7 +652,7 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         CLR_BTN_SERIENBR, "'mod_Startseite.StartseitenKachelDispatcher'")
     
     ' Punkt 13: Neues Kalenderjahr starten - direkt unter "Mitgliederverwaltung"
-    ' (Spalte 3 = col3Left), auf gleicher Hoehe wie Finanz-Uebersicht /
+    ' (Spalte 3 = col3Left), auf gleicher Höhe wie Finanz-Übersicht /
     ' Normale Ansicht (Zeile 18).
     Call ErstelleKachel(ws, "kachel_NeuesJahr", _
         ChrW(9654) & " Neues Kalenderjahr", _

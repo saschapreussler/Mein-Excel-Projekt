@@ -31,7 +31,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     ' ------------------------------------------------------------
     ' Prüfung & INITIALISIERUNG
     ' ------------------------------------------------------------
-    ' Auf JEDE Aenderung im Tabellenbereich (Spalten B-R) reagieren, damit
+    ' Auf JEDE Änderung im Tabellenbereich (Spalten B-R) reagieren, damit
     ' Zebra/Rahmen/AutoFit auch bei manuellen Eingaben (z.B. Name in Spalte E)
     ' sofort neu gesetzt werden. Die B/D/O-Spezial-Logik bleibt intern gegated.
     ' Spalte A (Member ID) ist ausgeblendet/gesperrt -> bewusst nicht getriggert.

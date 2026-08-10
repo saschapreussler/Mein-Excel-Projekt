@@ -94,7 +94,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     ' Events deaktivieren (verhindert Endlosschleife)
     Application.EnableEvents = False
     
-    ' Blattschutz temporaer entfernen
+    ' Blattschutz temporär entfernen
     On Error Resume Next
     wsUeb.Unprotect PASSWORD:=PASSWORD
     On Error GoTo ErrorHandler
@@ -109,7 +109,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     bemerkung = EntferneTeilBemerkung(bemerkung, "Soll-Betrag variabel")
     bemerkung = EntferneTeilBemerkung(bemerkung, "Soll aus Vormonat")
     
-    ' Neuen Hinweis hinzufuegen
+    ' Neuen Hinweis hinzufügen
     Dim manuellHinweis As String
     manuellHinweis = "Soll manuell gesetzt (" & Format(neuerWert, "#,##0.00") & _
                      " " & ChrW(8364) & ")"
@@ -299,7 +299,7 @@ End Sub
 ' - Inputbox: Wann wurde gezahlt? (Datum)
 ' - Bei gueltigem Datum: Status GRÜN, Bemerkung "manuell geändert,
 '   Zahlungsdatum TT.MM.JJJJ", Dashboard updaten
-' - Bei Abbruch / ungueltig: ALLES zurücksetzen aus Snapshot
+' - Bei Abbruch / ungültig: ALLES zurücksetzen aus Snapshot
 ' ===============================================================
 Private Sub VerarbeiteIstAenderung(ByVal Target As Range)
     On Error GoTo ErrorHandler

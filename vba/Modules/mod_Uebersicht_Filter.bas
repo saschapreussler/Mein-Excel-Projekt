@@ -55,7 +55,7 @@ Public Sub ErstelleMonatsRegister()
     On Error GoTo 0
     If wsUeb Is Nothing Then Exit Sub
 
-    ' Blattschutz temporaer entfernen
+    ' Blattschutz temporär entfernen
     On Error Resume Next
     wsUeb.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
@@ -156,7 +156,7 @@ Public Sub FilterUebersichtNachMonat(ByVal monatIndex As Long)
 
     Application.ScreenUpdating = False
 
-    ' Blattschutz temporaer entfernen
+    ' Blattschutz temporär entfernen
     On Error Resume Next
     wsUeb.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
