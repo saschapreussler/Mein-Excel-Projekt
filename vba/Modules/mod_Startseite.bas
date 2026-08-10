@@ -584,6 +584,82 @@ Public Sub KlickTracer()
 End Sub
 
 
+' ===============================================================
+' REPARATUR + SELBSTPRUEFUNG fuer die Einstellungen-Kachel.
+' Liest die IST-OnAction, verdrahtet OHNE Apostrophe neu und
+' fuehrt danach GENAU die gespeicherte OnAction aus (= das, was
+' ein echter Klick tut) und meldet, auf welchem Blatt man landet.
+' So wird sichtbar, ob die alte OnAction faelschlich auf Daten
+' zeigte und ob die Neuverdrahtung greift.
+' ===============================================================
+Public Sub RepariereUndPruefeEinstellungen()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
+    On Error GoTo 0
+    If ws Is Nothing Then
+        MsgBox "Startseite nicht gefunden.", vbExclamation, "Reparatur+Pruefung"
+        Exit Sub
+    End If
+
+    Dim shp As Shape
+    On Error Resume Next
+    Set shp = ws.Shapes("kachel_Einstellungen")
+    On Error GoTo 0
+    If shp Is Nothing Then
+        MsgBox "Shape 'kachel_Einstellungen' nicht gefunden.", vbExclamation, "Reparatur+Pruefung"
+        Exit Sub
+    End If
+
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+
+    Dim vorAct As String
+    vorAct = HoleOnActionSafe(shp)
+
+    ' OHNE Apostrophe direkt verdrahten
+    On Error Resume Next
+    shp.OnAction = "mod_Navigation.NavigiereZu_Einstellungen"
+    On Error GoTo 0
+
+    Dim nachAct As String
+    nachAct = HoleOnActionSafe(shp)
+
+    On Error Resume Next
+    ws.EnableSelection = xlNoSelection
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+
+    ' Klick simulieren: exakt die gespeicherte OnAction ausfuehren
+    ws.Activate
+    Dim vorher As String
+    vorher = ActiveSheet.Name
+
+    Dim runName As String
+    runName = nachAct
+    If Len(runName) > 0 Then
+        If Left$(runName, 1) = "'" Then runName = Mid$(runName, 2)
+        If Len(runName) > 0 Then
+            If Right$(runName, 1) = "'" Then runName = Left$(runName, Len(runName) - 1)
+        End If
+    End If
+
+    On Error Resume Next
+    Application.Run runName
+    On Error GoTo 0
+    Dim nachher As String
+    nachher = ActiveSheet.Name
+
+    MsgBox "OnAction VORHER : '" & vorAct & "'" & vbCrLf & _
+           "OnAction NACHHER: '" & nachAct & "'" & vbCrLf & vbCrLf & _
+           "Klick-Simulation (Application.Run '" & runName & "'):" & vbCrLf & _
+           "  " & vorher & "  ->  " & nachher & vbCrLf & vbCrLf & _
+           "Erwartet NACHHER-Blatt: Einstellungen", _
+           vbInformation, "Reparatur + Pruefung"
+End Sub
+
+
 Private Function HoleOnActionSafe(ByVal shp As Shape) As String
     On Error Resume Next
     HoleOnActionSafe = shp.OnAction
