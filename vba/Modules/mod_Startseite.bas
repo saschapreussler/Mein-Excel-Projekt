@@ -511,6 +511,79 @@ Public Sub DiagnoseEinstellungenSprung()
 End Sub
 
 
+' ===============================================================
+' KLICK-TRACER: Verknuepft die Einstellungen-Kachel voruebergehend
+' mit KlickTracer. Beim naechsten echten Klick wird der NAME des
+' tatsaechlich getroffenen Shapes (Application.Caller) angezeigt.
+' So wird bewiesen, ob wirklich 'kachel_Einstellungen' geklickt
+' wird oder ein anderes Objekt an gleicher Stelle.
+' Danach mit FixNurEinstellungenButtonSofort wiederherstellen.
+' ===============================================================
+Public Sub SetzeKlickTracerAufEinstellungen()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Sub
+
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+
+    ' Alle Kacheln voruebergehend auf den Tracer legen, damit jeder
+    ' Klick - egal welche Kachel - seinen wahren Namen meldet.
+    Dim shp As Shape
+    Dim n As Long
+    For Each shp In ws.Shapes
+        If Left$(shp.Name, 7) = "kachel_" Then
+            On Error Resume Next
+            shp.OnAction = "mod_Startseite.KlickTracer"
+            On Error GoTo 0
+            n = n + 1
+        End If
+    Next shp
+
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+
+    MsgBox "Klick-Tracer aktiv (" & n & " Kacheln)." & vbCrLf & vbCrLf & _
+           "Bitte jetzt auf die 'Einstellungen'-Kachel klicken." & vbCrLf & vbCrLf & _
+           "WICHTIG: Kommt danach KEIN Tracer-Fenster und du landest auf " & _
+           "'Daten', dann ist die angeklickte Flaeche gar keine 'kachel_'-" & _
+           "Kachel, sondern ein anderes Objekt (Alt-Button/Verknuepfung).", _
+           vbInformation, "Klick-Tracer"
+End Sub
+
+
+Public Sub KlickTracer()
+    Dim callerName As String
+    callerName = "(unbekannt)"
+    On Error Resume Next
+    callerName = CStr(Application.Caller)
+    On Error GoTo 0
+
+    Dim act As String
+    act = "(nicht lesbar)"
+    Dim txt As String
+    txt = ""
+    On Error Resume Next
+    act = ThisWorkbook.Worksheets(WS_STARTMENUE()).Shapes(callerName).OnAction
+    txt = Trim$(ThisWorkbook.Worksheets(WS_STARTMENUE()).Shapes(callerName).TextFrame2.TextRange.text)
+    On Error GoTo 0
+
+    MsgBox "Physisch geklicktes Shape:" & vbCrLf & _
+           "  Name (Application.Caller) = '" & callerName & "'" & vbCrLf & _
+           "  Beschriftung             = '" & txt & "'" & vbCrLf & _
+           "  dessen OnAction          = " & act & vbCrLf & vbCrLf & _
+           "Erwartet waere 'kachel_Einstellungen'." & vbCrLf & _
+           "Weicht der Name ab, ist DAS die falsch verknuepfte Kachel." & vbCrLf & vbCrLf & _
+           "Danach 'FixNurEinstellungenButtonSofort' ausfuehren, um die " & _
+           "richtige Verknuepfung wiederherzustellen.", _
+           vbInformation, "Klick-Tracer Ergebnis"
+End Sub
+
+
 Private Function HoleOnActionSafe(ByVal shp As Shape) As String
     On Error Resume Next
     HoleOnActionSafe = shp.OnAction
