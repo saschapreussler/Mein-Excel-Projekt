@@ -719,6 +719,104 @@ CleanExit:
 End Sub
 
 
+' ===============================================================
+' FormatiereMitgliederhistorie
+' ---------------------------------------------------------------
+' Konsistentes Layout der Mitgliederhistorie. Gerufen von:
+'   - Workbook_Open
+'   - Worksheet_Change auf Mitgliederhistorie (Tabelle11)
+'
+' Setzt:
+'   - Vertikale Zentrierung; Header zentriert
+'   - Spalte A zentriert, alle anderen Spalten linksbuendig
+'   - Reines AutoFit aller Spalten (nach laengstem Eintrag)
+'   - Spalte B (Member ID alt) und G (ID neuer Paechter) ausgeblendet
+'   - Zebra-Streifen (weiss / hellgrau alternierend)
+' ===============================================================
+Public Sub FormatiereMitgliederhistorie()
+
+    Dim wsH As Worksheet
+    Dim lastRow As Long
+    Dim lastCol As Long
+    Dim r As Long
+    Dim warEnableEvents As Boolean
+    Dim warScreenUpdating As Boolean
+
+    On Error GoTo CleanExit
+
+    Set wsH = Nothing
+    On Error Resume Next
+    Set wsH = ThisWorkbook.Worksheets(WS_MITGLIEDER_HISTORIE)
+    On Error GoTo CleanExit
+    If wsH Is Nothing Then Exit Sub
+
+    warEnableEvents = Application.EnableEvents
+    warScreenUpdating = Application.ScreenUpdating
+    Application.EnableEvents = False
+    Application.ScreenUpdating = False
+
+    On Error Resume Next
+    wsH.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo CleanExit
+
+    lastCol = H_COL_SYSTEMZEIT   ' Tabelle A..J (10 Spalten)
+    lastRow = wsH.Cells(wsH.Rows.count, H_COL_NAME_EHEM_PAECHTER).End(xlUp).Row
+    If lastRow < H_START_ROW Then lastRow = H_START_ROW
+
+    ' Ausrichtung: alles vertikal zentriert. Spalte A zentriert,
+    ' alle anderen Spalten linksbuendig (Nutzerwunsch).
+    Dim datenBereich As Range
+    Set datenBereich = wsH.Range(wsH.Cells(H_START_ROW, 1), wsH.Cells(lastRow, lastCol))
+    datenBereich.VerticalAlignment = xlCenter
+    datenBereich.HorizontalAlignment = xlLeft
+    wsH.Range(wsH.Cells(H_START_ROW, H_COL_PARZELLE), _
+              wsH.Cells(lastRow, H_COL_PARZELLE)).HorizontalAlignment = xlCenter
+
+    ' Header zentriert
+    With wsH.Range(wsH.Cells(H_HEADER_ROW, 1), wsH.Cells(H_HEADER_ROW, lastCol))
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+
+    ' Altformatierung unterhalb der belegten Zeilen entfernen
+    Dim cleanEnd As Long
+    cleanEnd = lastRow + 50
+    wsH.Range(wsH.Cells(lastRow + 1, 1), wsH.Cells(cleanEnd, lastCol)).Interior.ColorIndex = xlNone
+
+    ' Zebra: ungerade Datenzeile = weiss, gerade = hellgrau
+    For r = H_START_ROW To lastRow
+        Dim rowRange As Range
+        Set rowRange = wsH.Range(wsH.Cells(r, 1), wsH.Cells(r, lastCol))
+        If ((r - H_START_ROW) Mod 2) = 0 Then
+            rowRange.Interior.color = RGB(255, 255, 255)
+        Else
+            rowRange.Interior.color = RGB(242, 242, 242)
+        End If
+    Next r
+
+    ' Reines AutoFit aller Spalten (A-J) VOR dem Ausblenden
+    wsH.Range(wsH.Cells(H_HEADER_ROW, 1), wsH.Cells(lastRow, lastCol)).Columns.AutoFit
+
+    ' Spalte B (Member ID alt) und G (ID neuer Paechter) ausblenden
+    wsH.Columns(H_COL_MEMBER_ID_ALT).Hidden = True
+    wsH.Columns(H_COL_NACHPAECHTER_ID).Hidden = True
+
+    On Error Resume Next
+    wsH.Rows(H_HEADER_ROW & ":" & lastRow).AutoFit
+    On Error GoTo CleanExit
+
+CleanExit:
+    On Error Resume Next
+    wsH.Protect PASSWORD:=PASSWORD, _
+                UserInterfaceOnly:=True, _
+                AllowFiltering:=True, _
+                AllowSorting:=True
+    Application.EnableEvents = warEnableEvents
+    Application.ScreenUpdating = warScreenUpdating
+    On Error GoTo 0
+End Sub
+
+
 
 
 

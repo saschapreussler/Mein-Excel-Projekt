@@ -200,7 +200,9 @@ Public Sub Sortiere_Mitgliederliste_Nach_Parzelle()
     End With
     
     Call Reapply_Data_Validation
-    Call mod_Formatierung.Formatiere_Alle_Tabellen_Neu
+    ' Nur die Mitgliederliste neu formatieren (nicht die gesamte Mappe) -
+    ' spart beim Speichern/Sortieren viel Zeit.
+    Call mod_Formatierung.FormatiereMitgliederlisteKomplett
     
 CleanUp:
     If Not ws Is Nothing Then

@@ -136,6 +136,11 @@ Private Sub Workbook_Open()
     Call mod_Formatierung.FormatiereMitgliederlisteKomplett
     On Error GoTo 0
 
+    ' Mitgliederhistorie durchgängig formatieren
+    On Error Resume Next
+    Call mod_Formatierung.FormatiereMitgliederhistorie
+    On Error GoTo 0
+
 End Sub
 
 Private Sub Workbook_NewSheet(ByVal Sh As Object)
