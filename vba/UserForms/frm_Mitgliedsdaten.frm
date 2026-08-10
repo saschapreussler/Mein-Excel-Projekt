@@ -1080,7 +1080,7 @@ Private Sub NachpaechterZusaetzlicheParzelle(ByVal nachpaechterID As String, ByV
     wsM.Cells(newRow, M_COL_EMAIL).value = wsM.Cells(vorlagenRow, M_COL_EMAIL).value
     wsM.Cells(newRow, M_COL_FUNKTION).value = wsM.Cells(vorlagenRow, M_COL_FUNKTION).value
     
-    ' Pachtbeginn = ?bernahmedatum (AustrittsDatum) - MIT FEHLERBEHANDLUNG
+    ' Pachtbeginn = Übernahmedatum (AustrittsDatum) - MIT FEHLERBEHANDLUNG
     On Error Resume Next
     wsM.Cells(newRow, M_COL_PACHTANFANG).value = austrittsDatum
     If Err.Number = 0 Then
@@ -1393,7 +1393,7 @@ Private Sub cmd_Uebernehmen_Click()
         End If
         
     Else
-        ' === NORMALE ?NDERUNG (kein Parzellenwechsel) ===
+        ' === NORMALE ÄNDERUNG (kein Parzellenwechsel) ===
         Call SpeichereMitgliedsdaten(wsM, lRow, NewParzelle)
         
         ' Normale änderung - nur Sortierung und Formatierung
@@ -1503,7 +1503,7 @@ Private Sub ErstelleZusaetzlicheParzelleZeile(ByRef wsM As Worksheet, ByVal vorl
     wsM.Cells(newRow, M_COL_EMAIL).value = Me.txt_Email.value
     wsM.Cells(newRow, M_COL_FUNKTION).value = Me.cbo_Funktion.value
     
-    ' Pachtbeginn = heute (?bernahmedatum)
+    ' Pachtbeginn = heute (Übernahmedatum)
     On Error Resume Next
     wsM.Cells(newRow, M_COL_PACHTANFANG).value = Date
     wsM.Cells(newRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"

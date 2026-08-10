@@ -139,10 +139,13 @@ function Fix-Line {
 
 
 # ---- Ziel-Dateien sammeln (bas/cls/frm) -----------------------------------
-$targets = @()
-$targets += Get-ChildItem "vba\Modules"   -Filter *.bas -File
-$targets += Get-ChildItem "vba\Classes"   -Filter *.cls -File
-$targets += Get-ChildItem "vba\UserForms" -Filter *.frm -File
+# Rekursiv unter vba\ sammeln, damit .cls/.bas/.frm unabhaengig vom
+# tatsaechlichen Ordner gefunden werden (z.B. liegen .cls-Dateien real im
+# Ordner vba\UserForms). BackUp-Ordner werden ausgeschlossen.
+$targets = @(
+    Get-ChildItem "vba" -Recurse -File -Include *.bas, *.cls, *.frm |
+        Where-Object { $_.FullName -notmatch '\\BackUp' }
+)
 
 Write-Host "`n=== '?' -> Umlaute Recovery ===" -ForegroundColor Cyan
 $modus = if ($DryRun) { 'DRY-RUN' } else { 'LIVE' }

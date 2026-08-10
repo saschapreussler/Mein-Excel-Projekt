@@ -33,6 +33,7 @@ ueberpruefe|überprüfe
 Ueberprueft|Überprüft
 ueberprueft|überprüft
 Ueberpruefer|Überprüfer
+Uebernahmedatum|Übernahmedatum
 Uebernahme|Übernahme
 Uebernehmen|Übernehmen
 uebernehmen|übernehmen
@@ -67,6 +68,7 @@ UEBERPRUEFEN|ÜBERPRÜFEN
 UEBER|ÜBER
 Ueber|Über
 ueber|über
+AENDERUNG|ÄNDERUNG
 Aenderungen|Änderungen
 Aenderung|Änderung
 aenderungen|änderungen
