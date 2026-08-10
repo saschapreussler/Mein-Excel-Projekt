@@ -170,6 +170,22 @@ Private Function ListeWeitereMitgliederAufParzelle(ByVal parzelle As String, ByV
     End If
 End Function
 
+Private Function FrageEndabrechnungStatus(ByVal parzelle As String, ByVal vorname As String, ByVal nachname As String) As String
+    Dim antwort As VbMsgBoxResult
+
+    antwort = MsgBox("Soll fuer " & vorname & " " & nachname & " auf Parzelle " & parzelle & _
+                     " eine Endabrechnung erstellt werden?", _
+                     vbYesNoCancel + vbQuestion, "Endabrechnung")
+
+    If antwort = vbYes Then
+        FrageEndabrechnungStatus = "JA"
+    ElseIf antwort = vbNo Then
+        FrageEndabrechnungStatus = "NEIN"
+    Else
+        FrageEndabrechnungStatus = "ABBRUCH"
+    End If
+End Function
+
 Private Function HolePachtbeginnVonMemberID(ByVal memberID As String, ByRef eintritt As Date) As Boolean
     Dim ws As Worksheet
     Dim r As Long
@@ -289,6 +305,11 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
     Next ctl
     
     If CStr(Me.tag) = "NEU" Or InStr(CStr(Me.tag), "NACHPAECHTER_NEU") > 0 Then
+        If InStr(CStr(Me.tag), "NACHPAECHTER_NEU") > 0 Then
+            Me.cmd_Anlegen.Caption = "Nachpaechter aufnehmen"
+        Else
+            Me.cmd_Anlegen.Caption = "Mitglied anlegen"
+        End If
         Me.cmd_Bearbeiten.Visible = False
         Me.cmd_Entfernen.Visible = False
         Me.cmd_Uebernehmen.Visible = False
@@ -581,7 +602,9 @@ Private Sub cmd_Entfernen_Click()
     
     Select Case auswahlOption
         Case 1 ' Nachpächter
-            If ChangeReason = "" Then ChangeReason = "Übergabe an Nachpächter"
+            If ChangeReason = "" Then
+                ChangeReason = ChrW(220) & "bergabe an Nachp" & ChrW(228) & "chter"
+            End If
 
             ' Die Frage nach weiteren Mitgliedern gehÃ¶rt direkt an den Austrittsbeginn.
             weitereMitgliederFlag = FrageWeitereMitgliederAustritt(OldParzelle, OldMemberID)
@@ -643,6 +666,7 @@ Private Sub cmd_Entfernen_Click()
                     End If
                 Else
                     Me.tag = lRow
+                    Me.Show
                     Exit Sub
                 End If
 
@@ -650,18 +674,20 @@ Private Sub cmd_Entfernen_Click()
                     MsgBox "Der neue Nachp" & ChrW(228) & "chter wurde nicht korrekt " & _
                            "angelegt. Der Austritt wurde abgebrochen.", vbExclamation
                     Me.tag = lRow
+                    Me.Show
                     Exit Sub
                 End If
                 
                 ' AufrÃ¤umen erfolgt erst nach der RÃ¼ckgabe
                 Unload frmNachpaechter
                 Set frmNachpaechter = Nothing
-                
-                ' Zeige aktuelles Formular wieder
-                Me.Show
-                
-                ' Nach Rückkehr: Austritt mit neuem Nachpächter direkt abschliessen
-                Call VerarbeiteAustrittNachNachpaechterErfassung(lRow, OldParzelle, OldMemberID, nachname, vorname, Date, ChangeReason, neuerNachpaechterID, neuerNachpaechterName)
+
+                ' WICHTIG: Direkt weiterverarbeiten (ohne erneutes Me.Show), damit
+                ' der Austritt sofort abgeschlossen wird und kein manueller
+                ' Zwischenklick noetig ist.
+                Call VerarbeiteAustrittNachNachpaechterErfassung( _
+                    lRow, OldParzelle, OldMemberID, nachname, vorname, Date, ChangeReason, _
+                    neuerNachpaechterID, neuerNachpaechterName, weitereMitgliederFlag)
                 Exit Sub
             Else
                 ' Bestehender Nachpächter: in den normalen Austrittsablauf mit Datumsbestaetigung
@@ -1227,7 +1253,8 @@ Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVa
                                                           ByVal vorname As String, ByVal austrittsDatum As Date, _
                                                           ByVal grund As String, _
                                                           Optional ByVal forcedNachpaechterID As String = "", _
-                                                          Optional ByVal forcedNachpaechterName As String = "")
+                                                          Optional ByVal forcedNachpaechterName As String = "", _
+                                                          Optional ByVal forcedWeitereMitgliederFlag As String = "")
     
     Dim wsM As Worksheet
     Dim newMemberID As String
@@ -1245,6 +1272,8 @@ Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVa
     Dim weitereAustritte As Boolean
     Dim weitereAnzahl As Long
     Dim weitereAntwort As VbMsgBoxResult
+    Dim endabrechnungStatus As String
+    Dim nachpaechterRow As Long
     
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     
@@ -1285,15 +1314,30 @@ Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVa
         Next r
     End If
 
-    weitereMitgliederFlag = ""
-    If InStr(CStr(Me.tag), "|") > 0 Then
-        teile = Split(CStr(Me.tag), "|")
-        If UBound(teile) >= 4 Then weitereMitgliederFlag = UCase$(Trim$(teile(4)))
+    weitereMitgliederFlag = UCase$(Trim$(forcedWeitereMitgliederFlag))
+    If weitereMitgliederFlag = "" Then
+        If InStr(CStr(Me.tag), "|") > 0 Then
+            teile = Split(CStr(Me.tag), "|")
+            If UBound(teile) >= 4 Then weitereMitgliederFlag = UCase$(Trim$(teile(4)))
+        End If
     End If
 
     If newMemberID = "" Then
         MsgBox "Der neu angelegte Nachp" & ChrW(228) & "chter konnte nicht zugeordnet werden.", vbCritical
         Exit Sub
+    End If
+
+    ' Sicherheitsnetz: Nachpaechter muss einen gueltigen Pachtbeginn/Mitgliedsbeginn haben.
+    nachpaechterRow = mod_Mitglieder_Logik.FindeMitgliedsZeile(newMemberID, parzelle)
+    If nachpaechterRow > 0 Then
+        If Not IsDate(wsM.Cells(nachpaechterRow, M_COL_PACHTANFANG).value) Then
+            wsM.Unprotect PASSWORD:=PASSWORD
+            wsM.Cells(nachpaechterRow, M_COL_PACHTANFANG).value = Date
+            wsM.Cells(nachpaechterRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
+            wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+            nachpaechterEintritt = Date
+            nachpaechterEintrittTag = Format(nachpaechterEintritt, "dd.mm.yyyy")
+        End If
     End If
 
     If nachpaechterEintrittTag <> "" Then
@@ -1323,7 +1367,14 @@ Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVa
         Exit Sub
     End If
 
-    Call mod_Mitglieder_Logik.VerschiebeInHistorie(zielRow, parzelle, memberID, nachname, vorname, austrittsDatumFinal, grund, newMemberName, newMemberID)
+    endabrechnungStatus = FrageEndabrechnungStatus(parzelle, vorname, nachname)
+    If endabrechnungStatus = "ABBRUCH" Then
+        Me.tag = lRow
+        Me.Show
+        Exit Sub
+    End If
+
+    Call mod_Mitglieder_Logik.VerschiebeInHistorie(zielRow, parzelle, memberID, nachname, vorname, austrittsDatumFinal, grund, newMemberName, newMemberID, True, endabrechnungStatus)
 
     ' Bei neu angelegtem Nachpaechter sollen weitere Vorpaechter standardmaessig mit austreten.
     ' Falls der alte Flag fehlt oder uneindeutig ist, wird sicherheitshalber nachgefragt.
@@ -1758,6 +1809,7 @@ Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As Strin
     Dim weitereAustritte As Boolean
     Dim weitereVerschoben As Long
     Dim grundFuerWeitere As String
+    Dim endabrechnungStatus As String
     
     On Error GoTo ErrorHandler
     
@@ -1844,11 +1896,14 @@ Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As Strin
         grundFuerWeitere = "P" & ChrW(228) & "chterwechsel"
     End If
 
+    endabrechnungStatus = FrageEndabrechnungStatus(OldParzelle, vorname, nachname)
+    If endabrechnungStatus = "ABBRUCH" Then Exit Sub
+
     ' Bei Austritt mit Nachpächter erfolgt KEIN Parzellenwechsel des Nachpächters
     ' in diesem Ablauf. Der Nachpächter bleibt unverändert, Vorpächter gehen in Historie.
     
     ' Verschiebe Mitglied in Mitgliederhistorie
-    Call mod_Mitglieder_Logik.VerschiebeInHistorie(zielRow, OldParzelle, OldMemberID, nachname, vorname, austrittsDatum, grund, nachpaechterName, nachpaechterID)
+    Call mod_Mitglieder_Logik.VerschiebeInHistorie(zielRow, OldParzelle, OldMemberID, nachname, vorname, austrittsDatum, grund, nachpaechterName, nachpaechterID, True, endabrechnungStatus)
 
     If weitereAustritte Then
         weitereVerschoben = mod_Mitglieder_Logik.VerschiebeWeitereMitgliederAufParzelleInHistorie( _
@@ -1957,10 +2012,13 @@ Private Sub cmd_Anlegen_Click()
     Dim lastRow As Long
     Dim funktion_in_zeile As String
     Dim newMemberID As String
+    Dim istNachpaechterNeu As Boolean
+    Dim pachtbeginnText As String
     
     On Error GoTo ErrorHandler
     
     Set wsM = ThisWorkbook.Worksheets(WS_NAME_MITGLIEDER)
+    istNachpaechterNeu = (InStr(CStr(Me.tag), "NACHPAECHTER_NEU") > 0)
     
     ' === PFLICHTFELDER VALIDIERUNG ===
     If Trim(Me.txt_Nachname.value) = "" Or Trim(Me.txt_Vorname.value) = "" Then
@@ -2092,6 +2150,14 @@ Private Sub cmd_Anlegen_Click()
     wsM.Cells(lRow, M_COL_GEBURTSTAG).value = Me.txt_Geburtstag.value
     wsM.Cells(lRow, M_COL_EMAIL).value = Me.txt_Email.value
     wsM.Cells(lRow, M_COL_FUNKTION).value = Me.cbo_Funktion.value
+
+    If istNachpaechterNeu Then
+        pachtbeginnText = Trim$(CStr(Me.txt_Pachtbeginn.value))
+        If pachtbeginnText = "" Or Not IsDate(pachtbeginnText) Then
+            pachtbeginnText = Format(Date, "dd.mm.yyyy")
+            Me.txt_Pachtbeginn.value = pachtbeginnText
+        End If
+    End If
     
     ' Pachtbeginn mit Fehlerbehandlung
     If Me.txt_Pachtbeginn.value <> "" Then
@@ -2100,6 +2166,9 @@ Private Sub cmd_Anlegen_Click()
             wsM.Cells(lRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
         End If
         Err.Clear
+    ElseIf istNachpaechterNeu Then
+        wsM.Cells(lRow, M_COL_PACHTANFANG).value = Date
+        wsM.Cells(lRow, M_COL_PACHTANFANG).NumberFormat = "dd.mm.yyyy"
     End If
     
     ' Pachtende mit Fehlerbehandlung

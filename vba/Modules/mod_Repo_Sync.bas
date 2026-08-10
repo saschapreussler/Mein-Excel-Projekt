@@ -49,7 +49,7 @@ Private Const REPO_PATH_MODULES As String = "C:\Users\DELL Latitude 7490\Desktop
 
 ' Temporärer Unterordner für ANSI-konvertierte Dateien
 Private Const TEMP_SUBFOLDER As String = "VBA_Repo_Sync_Temp"
-Private Const SYNC_VERSION As String = "3.5"
+Private Const SYNC_VERSION As String = "3.6"
 
 
 ' ===============================================================
@@ -86,6 +86,17 @@ Public Sub SyncVBAVomRepository()
     On Error GoTo ErrorHandler
     
     Set fso = CreateObject("Scripting.FileSystemObject")
+
+    ' ---------------------------------------------------------
+    ' 2b. Harte Vorpruefung: Korruptions-/Encoding-Guards
+    ' ---------------------------------------------------------
+    If Not PruefeRepoDateienVorImport(fso, fehlerListe) Then
+        MsgBox "Sync abgebrochen: Es wurden problematische Dateien im Repository erkannt." & vbCrLf & vbCrLf & _
+               fehlerListe & vbCrLf & _
+               "Bitte zuerst reparieren und erneut synchronisieren.", _
+               vbCritical, "Sync abgebrochen (Encoding-Schutz)"
+        Exit Sub
+    End If
     
     ' ---------------------------------------------------------
     ' 2. Prüfe ob Quellordner existieren
@@ -489,6 +500,224 @@ Private Function LeseFrmCode(dateipfad As String) As String
     End If
 
     LeseFrmCode = ausgabe
+End Function
+
+' ===============================================================
+' Prueft alle relevanten Repo-Dateien vor dem Import auf
+' bekannte Korruptionsmuster und Encoding-Verstoesse.
+' - Blockiert EF BF BD (U+FFFD) und C3 AF C2 BF C2 BD ("?")
+' - Erzwingt .bas/.cls mit UTF-8 BOM
+' - Erzwingt .frm ohne BOM und nicht als UTF-8 mit High-Bytes
+' ===============================================================
+Private Function PruefeRepoDateienVorImport(fso As Object, ByRef fehler As String) As Boolean
+    Dim ok As Boolean
+    ok = True
+
+    If Not PruefeDateiGruppe(fso, REPO_PATH_MODULES, "bas", ok, fehler) Then ok = False
+    If Not PruefeDateiGruppe(fso, REPO_PATH_CLASSES, "cls", ok, fehler) Then ok = False
+    If Not PruefeDateiGruppe(fso, REPO_PATH_USERFORMS, "frm", ok, fehler) Then ok = False
+
+    PruefeRepoDateienVorImport = ok
+End Function
+
+Private Function PruefeDateiGruppe(fso As Object, ByVal pfad As String, ByVal ext As String, _
+                                   ByRef ok As Boolean, ByRef fehler As String) As Boolean
+    Dim folder As Object
+    Dim file As Object
+    Dim bytes As Variant
+    Dim nameOnly As String
+
+    On Error GoTo Fehlerfall
+
+    Set folder = fso.GetFolder(pfad)
+    For Each file In folder.Files
+        If LCase(fso.GetExtensionName(file.Name)) = LCase(ext) Then
+            nameOnly = file.Name
+            bytes = LeseDateiBytes(file.Path)
+            If IstLeererBytePuffer(bytes) Then GoTo NaechsteDatei
+
+            If EnthaeltByteMuster(bytes, Array(&HEF, &HBF, &HBD)) Then
+                fehler = fehler & "- U+FFFD-Marker in " & nameOnly & vbCrLf
+                ok = False
+            End If
+
+            If EnthaeltByteMuster(bytes, Array(&HC3, &HAF, &HC2, &HBF, &HC2, &HBD)) Then
+                fehler = fehler & "- Sichtbares Mojibake in " & nameOnly & vbCrLf
+                ok = False
+            End If
+
+            If ext = "bas" Or ext = "cls" Then
+                If Not HatUtf8Bom(bytes) Then
+                    fehler = fehler & "- Fehlendes UTF-8 BOM in " & nameOnly & vbCrLf
+                    ok = False
+                End If
+            ElseIf ext = "frm" Then
+                If HatUtf8Bom(bytes) Then
+                    fehler = fehler & "- .frm mit UTF-8 BOM in " & nameOnly & vbCrLf
+                    ok = False
+                End If
+                If HatHighBytes(bytes) And IstValidesUtf8(bytes) Then
+                    fehler = fehler & "- .frm wirkt UTF-8-kodiert (erwartet ANSI) in " & nameOnly & vbCrLf
+                    ok = False
+                End If
+            End If
+        End If
+NaechsteDatei:
+    Next file
+
+    PruefeDateiGruppe = ok
+    Exit Function
+
+Fehlerfall:
+    fehler = fehler & "- Pruefung fehlgeschlagen in " & pfad & ": " & Err.Description & vbCrLf
+    ok = False
+    PruefeDateiGruppe = False
+End Function
+
+Private Function LeseDateiBytes(ByVal dateipfad As String) As Variant
+    Dim st As Object
+    Set st = CreateObject("ADODB.Stream")
+    st.Type = 1 ' adTypeBinary
+    st.Open
+    st.LoadFromFile dateipfad
+    LeseDateiBytes = st.Read
+    st.Close
+End Function
+
+Private Function IstLeererBytePuffer(ByVal bytes As Variant) As Boolean
+    On Error GoTo Leer
+    If IsArray(bytes) Then
+        IstLeererBytePuffer = (UBound(bytes) < LBound(bytes))
+    Else
+        IstLeererBytePuffer = True
+    End If
+    Exit Function
+Leer:
+    IstLeererBytePuffer = True
+End Function
+
+Private Function HatUtf8Bom(ByVal bytes As Variant) As Boolean
+    On Error GoTo Ende
+    If UBound(bytes) - LBound(bytes) + 1 < 3 Then Exit Function
+    HatUtf8Bom = (bytes(LBound(bytes)) = &HEF And _
+                  bytes(LBound(bytes) + 1) = &HBB And _
+                  bytes(LBound(bytes) + 2) = &HBF)
+Ende:
+End Function
+
+Private Function HatHighBytes(ByVal bytes As Variant) As Boolean
+    Dim i As Long
+    On Error GoTo Ende
+    For i = LBound(bytes) To UBound(bytes)
+        If bytes(i) >= &H80 Then
+            HatHighBytes = True
+            Exit Function
+        End If
+    Next i
+Ende:
+End Function
+
+Private Function EnthaeltByteMuster(ByVal bytes As Variant, ByVal muster As Variant) As Boolean
+    Dim i As Long
+    Dim j As Long
+    Dim startIdx As Long
+    Dim endIdx As Long
+    Dim mLen As Long
+
+    On Error GoTo Ende
+
+    mLen = UBound(muster) - LBound(muster) + 1
+    If mLen <= 0 Then Exit Function
+
+    startIdx = LBound(bytes)
+    endIdx = UBound(bytes)
+    If (endIdx - startIdx + 1) < mLen Then Exit Function
+
+    For i = startIdx To endIdx - mLen + 1
+        For j = 0 To mLen - 1
+            If bytes(i + j) <> muster(LBound(muster) + j) Then GoTo NextI
+        Next j
+        EnthaeltByteMuster = True
+        Exit Function
+NextI:
+    Next i
+
+Ende:
+End Function
+
+Private Function IstValidesUtf8(ByVal bytes As Variant) As Boolean
+    Dim i As Long
+    Dim b0 As Long
+    Dim b1 As Long
+    Dim b2 As Long
+    Dim b3 As Long
+    Dim lb As Long
+    Dim ub As Long
+
+    On Error GoTo Ungueltig
+
+    lb = LBound(bytes)
+    ub = UBound(bytes)
+    i = lb
+
+    Do While i <= ub
+        b0 = bytes(i)
+        If b0 < &H80 Then
+            i = i + 1
+        ElseIf b0 >= &HC2 And b0 <= &HDF Then
+            If i + 1 > ub Then GoTo Ungueltig
+            b1 = bytes(i + 1)
+            If b1 < &H80 Or b1 > &HBF Then GoTo Ungueltig
+            i = i + 2
+        ElseIf b0 = &HE0 Then
+            If i + 2 > ub Then GoTo Ungueltig
+            b1 = bytes(i + 1): b2 = bytes(i + 2)
+            If b1 < &HA0 Or b1 > &HBF Then GoTo Ungueltig
+            If b2 < &H80 Or b2 > &HBF Then GoTo Ungueltig
+            i = i + 3
+        ElseIf (b0 >= &HE1 And b0 <= &HEC) Or (b0 >= &HEE And b0 <= &HEF) Then
+            If i + 2 > ub Then GoTo Ungueltig
+            b1 = bytes(i + 1): b2 = bytes(i + 2)
+            If b1 < &H80 Or b1 > &HBF Then GoTo Ungueltig
+            If b2 < &H80 Or b2 > &HBF Then GoTo Ungueltig
+            i = i + 3
+        ElseIf b0 = &HED Then
+            If i + 2 > ub Then GoTo Ungueltig
+            b1 = bytes(i + 1): b2 = bytes(i + 2)
+            If b1 < &H80 Or b1 > &H9F Then GoTo Ungueltig
+            If b2 < &H80 Or b2 > &HBF Then GoTo Ungueltig
+            i = i + 3
+        ElseIf b0 = &HF0 Then
+            If i + 3 > ub Then GoTo Ungueltig
+            b1 = bytes(i + 1): b2 = bytes(i + 2): b3 = bytes(i + 3)
+            If b1 < &H90 Or b1 > &HBF Then GoTo Ungueltig
+            If b2 < &H80 Or b2 > &HBF Then GoTo Ungueltig
+            If b3 < &H80 Or b3 > &HBF Then GoTo Ungueltig
+            i = i + 4
+        ElseIf b0 >= &HF1 And b0 <= &HF3 Then
+            If i + 3 > ub Then GoTo Ungueltig
+            b1 = bytes(i + 1): b2 = bytes(i + 2): b3 = bytes(i + 3)
+            If b1 < &H80 Or b1 > &HBF Then GoTo Ungueltig
+            If b2 < &H80 Or b2 > &HBF Then GoTo Ungueltig
+            If b3 < &H80 Or b3 > &HBF Then GoTo Ungueltig
+            i = i + 4
+        ElseIf b0 = &HF4 Then
+            If i + 3 > ub Then GoTo Ungueltig
+            b1 = bytes(i + 1): b2 = bytes(i + 2): b3 = bytes(i + 3)
+            If b1 < &H80 Or b1 > &H8F Then GoTo Ungueltig
+            If b2 < &H80 Or b2 > &HBF Then GoTo Ungueltig
+            If b3 < &H80 Or b3 > &HBF Then GoTo Ungueltig
+            i = i + 4
+        Else
+            GoTo Ungueltig
+        End If
+    Loop
+
+    IstValidesUtf8 = True
+    Exit Function
+
+Ungueltig:
+    IstValidesUtf8 = False
 End Function
 
 

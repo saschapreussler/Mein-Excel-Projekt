@@ -431,7 +431,8 @@ Public Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, By
                                    ByVal austrittsDatum As Date, ByVal grund As String, _
                                    Optional ByVal nachpaechterName As String = "", _
                                    Optional ByVal nachpaechterID As String = "", _
-                                   Optional ByVal zeigeBestaetigung As Boolean = True)
+                                   Optional ByVal zeigeBestaetigung As Boolean = True, _
+                                   Optional ByVal endabrechnungStatus As String = "")
     
     Dim wsM As Worksheet
     Dim wsH As Worksheet
@@ -473,7 +474,7 @@ Public Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, By
     wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = nachpaechterName         ' F: Name neuer Paechter
     wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = nachpaechterID             ' G: ID neuer Paechter
     wsH.Cells(nextHistRow, H_COL_KOMMENTAR).value = ""                               ' H: Kommentar (leer)
-    wsH.Cells(nextHistRow, H_COL_ENDABRECHNUNG).value = ""                           ' I: Endabrechnung (leer)
+    wsH.Cells(nextHistRow, H_COL_ENDABRECHNUNG).value = Trim$(endabrechnungStatus)   ' I: Endabrechnung-Status
     
     On Error Resume Next
     wsH.Cells(nextHistRow, H_COL_SYSTEMZEIT).value = Now                             ' J: Systemzeit
