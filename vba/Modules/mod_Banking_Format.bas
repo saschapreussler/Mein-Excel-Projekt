@@ -229,49 +229,6 @@ End Sub
 
 
 ' ===============================================================
-' Diagnose für Bankkonto-Filterzustand (Direktfenster).
-' Aufruf: mod_Banking_Format.Diagnose_BankkontoFilter
-' ===============================================================
-Public Sub Diagnose_BankkontoFilter()
-    Dim ws As Worksheet
-    Dim lastRow As Long
-    Dim c As Long
-    Dim hdr As String
-    Dim leereHeader As Long
-    
-    On Error Resume Next
-    Set ws = ThisWorkbook.Worksheets(WS_BANKKONTO)
-    On Error GoTo 0
-    If ws Is Nothing Then
-        Debug.Print "[Diagnose_BankkontoFilter] Blatt nicht gefunden: " & WS_BANKKONTO
-        Exit Sub
-    End If
-    
-    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
-    If lastRow < BK_HEADER_ROW Then lastRow = BK_HEADER_ROW
-    
-    Debug.Print "[Diagnose_BankkontoFilter] -----------------------------"
-    Debug.Print "  Blatt:              " & ws.Name
-    Debug.Print "  ProtectContents:    " & ws.ProtectContents
-    Debug.Print "  AutoFilterMode:     " & ws.AutoFilterMode
-    Debug.Print "  FilterMode:         " & ws.FilterMode
-    Debug.Print "  ListObjects.Count:  " & ws.ListObjects.count
-    Debug.Print "  Datenbereich:       A" & BK_HEADER_ROW & ":Z" & lastRow
-    
-    leereHeader = 0
-    For c = 1 To 26
-        hdr = Trim(CStr(ws.Cells(BK_HEADER_ROW, c).value))
-        If Len(hdr) = 0 Then leereHeader = leereHeader + 1
-        If ws.Cells(BK_HEADER_ROW, c).MergeCells Then
-            Debug.Print "  Merge in Header:    " & ws.Cells(BK_HEADER_ROW, c).Address(False, False)
-        End If
-    Next c
-    Debug.Print "  Leere Headerzellen: " & leereHeader
-    Debug.Print "[Diagnose_BankkontoFilter] -----------------------------"
-End Sub
-
-
-' ===============================================================
 ' Standard-Blattschutz für Bankkonto-aehnliche Blätter mit
 ' aktivierten AutoFilter-/Sortier-Rechten. Verwenden statt
 ' direktem ws.Protect, damit die Filter-Pfeile nutzbar bleiben.

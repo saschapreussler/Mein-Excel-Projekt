@@ -14,8 +14,6 @@ Option Explicit
 '          - Migration des alten Layouts (Tabelle von Zeile 3 nach 20)
 ' AUSGELAGERT:
 '   - mod_Einstellungen_DropDowns: SetzeDropDowns, HoleAlleKategorien
-'   - mod_Einstellungen_Debug: DebugDropDownLogik, DebugValidation,
-'                              DebugSetzeDropDownsUndPruefe
 ' ===============================================================
 
 ' Farben
