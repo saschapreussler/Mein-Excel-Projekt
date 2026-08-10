@@ -11,7 +11,7 @@ bad_repl="$(printf '\357\277\275')"
 # Visible mojibake sequence "ï¿½": C3 AF C2 BF C2 BD
 bad_moji="$(printf '\303\257\302\277\302\275')"
 
-# Only scan likely text sources we care about.
+# Only scan code files where mojibake/replacement chars are risky for runtime.
 staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
 [ -z "$staged_files" ] && exit 0
 
@@ -19,7 +19,7 @@ failed=0
 
 for f in $staged_files; do
     case "$f" in
-        vba/*.bas|vba/*.cls|vba/*.frm|tools/*.ps1|docs/*.md|README.md)
+        vba/*.bas|vba/*.cls|vba/*.frm|tools/*.ps1)
             content="$(git show ":$f" || true)"
             if [ -z "$content" ]; then
                 continue

@@ -241,3 +241,37 @@ Die Struktur ist bewusst so ausgelegt, dass:
 ---
 
 *Dieses Projekt befindet sich in aktiver Weiterentwicklung.*
+
+---
+
+## Stabiler Sync-Workflow (Umlaut-sicher)
+
+Dieser Ablauf ist verbindlich, damit Umlaute stabil bleiben und VS Code/Git immer konsistent sind.
+
+### 1) Wenn in Excel/VBA geaendert wurde (Excel -> Repo)
+
+1. In Excel ausfuehren: `ExportiereAlleVBAKomponenten`
+2. Im Repo-Terminal ausfuehren:
+  - `powershell -ExecutionPolicy Bypass -File tools/prepare_repo_after_excel_edit.ps1`
+3. Aenderungen pruefen:
+  - `git status`
+  - `git diff`
+4. Commit und Push:
+  - `git add vba tools`
+  - `git commit -m "VBA-Module aktualisiert"`
+  - `git push origin main`
+
+### 2) Wenn im Repo geaendert wurde (KI/VS Code) (Repo -> Excel)
+
+1. Im Repo-Terminal ausfuehren:
+  - `git pull origin main`
+2. In Excel ausfuehren: `SyncVBAVomRepository`
+3. Optional in VBE: `Debuggen -> Kompilieren von VBAProject`
+
+### 3) Wichtige Regeln
+
+1. `SyncVBAVomRepository` ist nur Import (Repo -> Excel), kein Export.
+2. Nicht blind `git add .` direkt nach einem reinen Sync ausfuehren.
+3. Vor Commit nach Excel-Aenderungen immer den Vorbereitungsschritt laufen lassen:
+  - `tools/prepare_repo_after_excel_edit.ps1`
+4. Der Pre-Commit-Hook blockiert kaputte Zeichen (`ï¿½`/`�`) automatisch.
