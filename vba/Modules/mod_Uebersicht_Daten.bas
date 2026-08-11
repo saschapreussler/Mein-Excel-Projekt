@@ -810,6 +810,32 @@ NextMR:
 End Function
 
 
+' ===============================================================
+' DEBUG: Harte Zaehlwerte fuer Startmenu/Dashboard pruefen
+' Aufruf im Direktfenster: Call DebugMitgliederZaehlung
+' ===============================================================
+Public Sub DebugMitgliederZaehlung()
+    Dim cntGesamt As Long
+    Dim cntStart As Long
+    Dim cntParz As Long
+
+    cntGesamt = ZaehleAktiveMitgliederGesamt()
+    cntStart = mod_Startseite.ZaehleMitglieder()
+    cntParz = mod_Startseite.ZaehleBelegteParzellen()
+
+    Debug.Print "[DEBUG] Workbook: " & ThisWorkbook.FullName
+    Debug.Print "[DEBUG] ZaehleAktiveMitgliederGesamt = " & cntGesamt
+    Debug.Print "[DEBUG] mod_Startseite.ZaehleMitglieder = " & cntStart
+    Debug.Print "[DEBUG] mod_Startseite.ZaehleBelegteParzellen = " & cntParz
+
+    MsgBox "Debug-Zaehlung:" & vbCrLf & vbCrLf & _
+           "ZaehleAktiveMitgliederGesamt: " & cntGesamt & vbCrLf & _
+           "Startseite-Zaehler: " & cntStart & vbCrLf & _
+           "Belegte Parzellen: " & cntParz, _
+           vbInformation, "Debug Mitgliederzaehlung"
+End Sub
+
+
 
 
 

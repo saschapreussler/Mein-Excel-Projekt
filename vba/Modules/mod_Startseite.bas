@@ -901,6 +901,10 @@ Public Sub AktualisiereParzellenAnzeigen()
     Call SchreibeParzellenZelleSicher("Wasser", "A4", anzahl)
     Call SchreibeParzellenZelleSicher(WS_STARTMENUE(), "I8:J8", anzahl)
     Call SchreibeParzellenZelleSicher(WS_STARTMENUE(), "G8:H8", anzMitglieder)
+
+    On Error Resume Next
+    Call mod_Uebersicht_Dashboard.SynchronisiereDashboardKpiSofort
+    On Error GoTo 0
 End Sub
 
 

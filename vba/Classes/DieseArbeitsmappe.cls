@@ -141,6 +141,18 @@ Private Sub Workbook_Open()
     Call mod_Formatierung.FormatiereMitgliederhistorie
     On Error GoTo 0
 
+    ' FINALER UI-FIX: Startmenue sichtbar stabilisieren (kein weisser Balken)
+    On Error Resume Next
+    ThisWorkbook.Worksheets(WS_STARTMENUE()).Activate
+    ThisWorkbook.Worksheets(WS_STARTMENUE()).Range("A1").Select
+    DoEvents
+    Call mod_Vollbild.SetzeVollbildModus(False)
+    DoEvents
+    Call mod_Vollbild.SetzeVollbildModus(True)
+    Call mod_Startseite.AktualisiereParzellenAnzeigen
+    Call mod_Uebersicht_Dashboard.SynchronisiereDashboardKpiSofort
+    On Error GoTo 0
+
 End Sub
 
 Private Sub Workbook_NewSheet(ByVal Sh As Object)

@@ -28,6 +28,19 @@ function Resolve-WorkbookPath {
     return $candidates[0].FullName
 }
 
+function Test-WorkbookLocked {
+    param([string]$Path)
+
+    try {
+        $fs = [System.IO.File]::Open($Path, 'Open', 'ReadWrite', 'None')
+        $fs.Close()
+        return $false
+    }
+    catch {
+        return $true
+    }
+}
+
 function Get-CodeBody {
     param([string]$Path)
 
@@ -50,6 +63,9 @@ function Get-CodeBody {
 }
 
 $targetWorkbook = Resolve-WorkbookPath -InputPath $WorkbookPath
+if (Test-WorkbookLocked -Path $targetWorkbook) {
+    throw "Workbook is currently open/locked. Please close it first: $targetWorkbook"
+}
 Write-Host "Applying hotfix modules to workbook:" -ForegroundColor Cyan
 Write-Host "  $targetWorkbook" -ForegroundColor Cyan
 
@@ -105,17 +121,17 @@ try {
     Write-Host "Workbook saved successfully." -ForegroundColor Green
 }
 finally {
-    if ($workbook -ne $null) {
+    if ($null -ne $workbook) {
         try { $workbook.Close($true) } catch {}
     }
-    if ($excel -ne $null) {
+    if ($null -ne $excel) {
         try { $excel.Quit() } catch {}
     }
 
-    if ($workbook -ne $null) {
+    if ($null -ne $workbook) {
         [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($workbook)
     }
-    if ($excel -ne $null) {
+    if ($null -ne $excel) {
         [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($excel)
     }
 

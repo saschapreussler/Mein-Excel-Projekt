@@ -285,6 +285,42 @@ End Sub
 
 
 ' ============================================================
+'  KPI-SYNC OHNE NEUGENERIERUNG
+'  Schreibt die Mitglieder-/Parzellen-KPI direkt in ein
+'  bereits vorhandenes Dashboard-Blatt.
+' ============================================================
+Public Sub SynchronisiereDashboardKpiSofort()
+    Dim wsDash As Worksheet
+    On Error Resume Next
+    Set wsDash = ThisWorkbook.Worksheets("Dashboard Mitgliederzahlungen")
+    On Error GoTo 0
+    If wsDash Is Nothing Then Exit Sub
+
+    Dim anzahlParzellen As Long
+    Dim anzahlMitglieder As Long
+    anzahlParzellen = mod_Startseite.ZaehleBelegteParzellen()
+    anzahlMitglieder = mod_Uebersicht_Daten.ZaehleAktiveMitgliederGesamt()
+    If anzahlMitglieder <= 0 Then anzahlMitglieder = mod_Startseite.ZaehleMitglieder()
+
+    Dim warGeschuetzt As Boolean
+    warGeschuetzt = wsDash.ProtectContents
+
+    On Error Resume Next
+    If warGeschuetzt Then wsDash.Unprotect PASSWORD:=PASSWORD
+
+    wsDash.Range(wsDash.Cells(DASH_KPI_WERT_ROW, 1), wsDash.Cells(DASH_KPI_WERT_ROW, 2)).value = _
+        CStr(anzahlParzellen) & " Parzellen"
+    wsDash.Range(wsDash.Cells(DASH_KPI_DETAIL_ROW, 1), wsDash.Cells(DASH_KPI_DETAIL_ROW, 2)).value = _
+        CStr(anzahlMitglieder) & " Mitglieder"
+
+    If warGeschuetzt Then
+        wsDash.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    End If
+    On Error GoTo 0
+End Sub
+
+
+' ============================================================
 '  JAHR ERMITTELN
 ' ============================================================
 Private Function ErmittleDashboardJahr(Optional ByVal stummModus As Boolean = False) As Long
