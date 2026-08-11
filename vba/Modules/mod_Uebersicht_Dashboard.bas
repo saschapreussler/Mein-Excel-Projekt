@@ -273,8 +273,12 @@ ErrorHandler:
     End If
     On Error GoTo 0
     
-    MsgBox "Fehler beim Erstellen des Dashboards:" & vbLf & vbLf & _
-           Err.Description, vbCritical, "Dashboard-Fehler"
+            If Not stummModus Then
+             MsgBox "Fehler beim Erstellen des Dashboards:" & vbLf & vbLf & _
+                 "Nr. " & Err.Number & vbLf & _
+                 "Beschreibung: " & IIf(Trim$(Err.Description) = "", "(leer)", Err.Description), _
+                 vbCritical, "Dashboard-Fehler"
+            End If
     Debug.Print "[Dashboard] FEHLER: " & Err.Number & " - " & Err.Description
     
 End Sub

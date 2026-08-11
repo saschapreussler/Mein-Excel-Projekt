@@ -174,9 +174,6 @@ Private Sub Workbook_SheetActivate(ByVal Sh As Object)
         Case "Dashboard Mitgliederzahlungen"
             ohneGitter = True
             vollbild = True
-            On Error Resume Next
-            Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
-            On Error GoTo 0
         Case WS_FINANZ_UEBERSICHT()
             ohneGitter = True
             vollbild = False
