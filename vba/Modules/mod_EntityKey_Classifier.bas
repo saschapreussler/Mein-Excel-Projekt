@@ -10,6 +10,7 @@ Option Explicit
 '   - DarfParzelleHaben: Prüft ob Role eine Parzelle haben darf
 '   - IstShop: Shop-Erkennung Über Keyword-Liste
 '   - ErmittleVersorgerZweck: Versorger-Erkennung mit Zweck-Rückgabe
+'   - IstGewerbeDienstleister: Erkennung von Handwerks-/Servicebetrieben
 '   - IstBank: Bank-Erkennung Über Keyword-Liste
 '   - IstGeldautomatAbhebung: GA-Erkennung
 '   - IstBankAbschluss: Bankabschluss-Erkennung
@@ -240,6 +241,35 @@ Public Function ErmittleVersorgerZweck(ByVal kontoname As String) As String
     
     ' Kein Versorger erkannt
     ErmittleVersorgerZweck = ""
+End Function
+
+' ===============================================================
+' IstGewerbeDienstleister - Keyword-Liste für Handwerk/Dienstleistung
+' ===============================================================
+Public Function IstGewerbeDienstleister(ByVal kontoname As String) As Boolean
+    Dim n As String
+    Dim keywords As Variant
+    Dim i As Long
+
+    n = UCase(Trim(kontoname))
+    IstGewerbeDienstleister = False
+    If Len(n) = 0 Then Exit Function
+
+    keywords = Array( _
+        "ELEKTRO", "ELEKTRIK", "ELEKTRIKER", "ELEKTROTECHNIK", _
+        "GAERTNER", "GARTENBAU", "GALABAU", "GALA BAU", "LANDSCHAFTSBAU", _
+        "BAUMPFLEGE", "HAUSMEISTER", "HANDWERK", "SANITAER", "HEIZUNGSBAU", _
+        "KLEMPNER", "INSTALLATION", "MALER", "TISCHLER", "ZIMMEREI", _
+        "SCHLOSSER", "DACHDECKER", "MAURER", "REINIGUNG", "WINTERDIENST", _
+        "DIENSTLEISTER", "HANDWERKSBETRIEB" _
+    )
+
+    For i = LBound(keywords) To UBound(keywords)
+        If InStr(n, CStr(keywords(i))) > 0 Then
+            IstGewerbeDienstleister = True
+            Exit Function
+        End If
+    Next i
 End Function
 
 ' ===============================================================

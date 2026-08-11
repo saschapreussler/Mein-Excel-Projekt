@@ -18,6 +18,7 @@ Option Explicit
 ' ===============================================================
 Private Const PREFIX_SHARE As String = "SHARE-"
 Private Const PREFIX_VERSORGER As String = "VERS-"
+Private Const PREFIX_DIENSTLEISTER As String = "DL-"
 Private Const PREFIX_BANK As String = "BANK-"
 Private Const PREFIX_SHOP As String = "SHOP-"
 Private Const PREFIX_EHEMALIG As String = "EX-"
@@ -27,6 +28,7 @@ Private Const ROLE_MITGLIED_MIT_PACHT As String = "MITGLIED MIT PACHT"
 Private Const ROLE_MITGLIED_OHNE_PACHT As String = "MITGLIED OHNE PACHT"
 Private Const ROLE_EHEMALIGES_MITGLIED As String = "EHEMALIGES MITGLIED"
 Private Const ROLE_VERSORGER As String = "VERSORGER"
+Private Const ROLE_GEWERBE_DIENSTLEISTER As String = "GEWERBE DIENSTLEISTER"
 Private Const ROLE_BANK As String = "BANK"
 Private Const ROLE_SHOP As String = "SHOP"
 Private Const ROLE_SONSTIGE As String = "SONSTIGE"
@@ -161,6 +163,18 @@ Public Sub VerarbeiteManuelleRoleAenderung(ByVal Target As Range)
             neueZuordnung = mod_EntityKey_Normalize.ExtrahiereAnzeigeName(kontoname)
             neueParzelle = ""
             neuerDebug = "Manuell: VERSORGER (" & Format(Now, "dd.mm.yyyy") & ")"
+            ampelStatus = 1
+
+        Case ROLE_GEWERBE_DIENSTLEISTER
+            correctPrefix = PREFIX_DIENSTLEISTER
+            If Left(UCase(currentEntityKey), Len(correctPrefix)) <> UCase(correctPrefix) Then
+                neuerEntityKey = correctPrefix & mod_EntityKey_Manager.CreateGUID()
+            Else
+                neuerEntityKey = currentEntityKey
+            End If
+            neueZuordnung = mod_EntityKey_Normalize.ExtrahiereAnzeigeName(kontoname)
+            neueParzelle = ""
+            neuerDebug = "Manuell: GEWERBE DIENSTLEISTER (" & Format(Now, "dd.mm.yyyy") & ")"
             ampelStatus = 1
             
         Case "BANK"

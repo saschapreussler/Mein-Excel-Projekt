@@ -28,10 +28,16 @@ Public Function NormalizeText(ByVal inputText As String) As String
 
     ' Typische Tippfehler korrigieren
     txt = Replace(txt, "mitgliets", "mitglieds")
+    txt = Replace(txt, "mitgliedbeitrag", "mitgliedsbeitrag")
     txt = Replace(txt, "mitgliedbetrag", "mitgliedsbeitrag")
     txt = Replace(txt, "mitglied beitrag", "mitgliedsbeitrag")
+    txt = Replace(txt, "mitglieds beitrag", "mitgliedsbeitrag")
     txt = Replace(txt, "beitragsgeb hr", "beitragsgebuehr")
     txt = Replace(txt, "entgelt abschluss", "entgeltabschluss")
+    txt = Replace(txt, "paz.", "parz ")
+    txt = Replace(txt, "paz ", "parz ")
+    txt = Replace(txt, "parz.", "parz ")
+    txt = Replace(txt, "parzelle ", "parz ")
 
     ' WICHTIG: "abschlag" -> "abschlagszahlung" Expansion
     ' ABER: Nur wenn "abschlagszahlung" noch NICHT im Text steht!
@@ -54,6 +60,12 @@ Public Function NormalizeText(ByVal inputText As String) As String
     Do While InStr(txt, "  ") > 0
         txt = Replace(txt, "  ", " ")
     Loop
+
+    ' Token-Form vereinheitlichen (nur ganze Worte)
+    txt = " " & txt & " "
+    txt = Replace(txt, " paz ", " parz ")
+    txt = Replace(txt, " parzelle ", " parz ")
+    txt = Trim(txt)
 
     NormalizeText = Trim(txt)
 End Function

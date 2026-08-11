@@ -108,7 +108,8 @@ Public Function BuildKategorieContext(ByVal wsBK As Worksheet, _
     
     ctx("IsEhemaligesMitglied") = (entityRole = "EHEMALIGES MITGLIED")
     
-    ctx("IsVersorger") = (entityRole = "VERSORGER")
+    ctx("IsVersorger") = (entityRole = "VERSORGER" Or _
+                          entityRole = "GEWERBE DIENSTLEISTER")
     ctx("IsBank") = (entityRole = "BANK")
 
     ctx("IsEntgeltabschluss") = _

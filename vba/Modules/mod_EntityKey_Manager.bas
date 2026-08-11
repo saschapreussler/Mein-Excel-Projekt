@@ -30,6 +30,7 @@ Private Const EK_ROLE_DROPDOWN_COL As Long = 30
 
 Private Const PREFIX_SHARE As String = "SHARE-"
 Private Const PREFIX_VERSORGER As String = "VERS-"
+Private Const PREFIX_DIENSTLEISTER As String = "DL-"
 Private Const PREFIX_BANK As String = "BANK-"
 Private Const PREFIX_SHOP As String = "SHOP-"
 Private Const PREFIX_EHEMALIG As String = "EX-"
@@ -40,6 +41,7 @@ Private Const ROLE_MITGLIED_MIT_PACHT As String = "MITGLIED MIT PACHT"
 Private Const ROLE_MITGLIED_OHNE_PACHT As String = "MITGLIED OHNE PACHT"
 Private Const ROLE_EHEMALIGES_MITGLIED As String = "EHEMALIGES MITGLIED"
 Private Const ROLE_VERSORGER As String = "VERSORGER"
+Private Const ROLE_GEWERBE_DIENSTLEISTER As String = "GEWERBE DIENSTLEISTER"
 Private Const ROLE_BANK As String = "BANK"
 Private Const ROLE_SHOP As String = "SHOP"
 Private Const ROLE_SONSTIGE As String = "SONSTIGE"
@@ -422,6 +424,15 @@ Private Sub GeneriereEntityKeyUndZuordnung(ByRef mitglieder As Collection, _
             outEntityRole = ROLE_VERSORGER
             outZuordnung = mod_EntityKey_Normalize.ExtrahiereAnzeigeName(kontoname)
             outDebugInfo = "Automatisch als VERSORGER erkannt (" & versorgerZweck & ")"
+            outAmpelStatus = 1
+            Exit Sub
+        End If
+
+        If mod_EntityKey_Classifier.IstGewerbeDienstleister(kontoname) Then
+            outEntityKey = PREFIX_DIENSTLEISTER & CreateGUID()
+            outEntityRole = ROLE_GEWERBE_DIENSTLEISTER
+            outZuordnung = mod_EntityKey_Normalize.ExtrahiereAnzeigeName(kontoname)
+            outDebugInfo = "Automatisch als GEWERBE DIENSTLEISTER erkannt"
             outAmpelStatus = 1
             Exit Sub
         End If
