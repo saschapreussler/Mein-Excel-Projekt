@@ -795,21 +795,8 @@ Public Function ZaehleAktiveMitgliederGesamt() As Long
         funktion = Trim(CStr(wsML.Cells(r, M_COL_FUNKTION).value))
         If StrComp(funktion, AUSTRITT_STATUS, vbTextCompare) = 0 Then GoTo NextMR
 
-        ' Rolle/Funktion: alle echten Mitglieder zählen
-        ' (mit Pacht, ohne Pacht, Ehrenmitglied, Vorstand).
-        ' Fallback: auch sonstige nicht-ausgetretene Personen mitzählen,
-        ' damit die Anzeige vollständig bleibt.
-        Dim funktionUpper As String
-        funktionUpper = UCase$(funktion)
-
-        Dim istZaehlbar As Boolean
-        istZaehlbar = (InStr(1, funktionUpper, "MITGLIED MIT PACHT", vbTextCompare) > 0) Or _
-                      (InStr(1, funktionUpper, "OHNE PACHT", vbTextCompare) > 0) Or _
-                      (InStr(1, funktionUpper, "EHRENMITGLIED", vbTextCompare) > 0) Or _
-                      (InStr(1, funktionUpper, "VORSTAND", vbTextCompare) > 0) Or _
-                      (funktionUpper = "")
-
-        If Not istZaehlbar Then GoTo NextMR
+        ' Alle realen Mitglieder zählen, unabhängig von der Rollenbezeichnung.
+        ' Ausschluss erfolgt nur über KGA/Systemzeilen und "Ehemaliges Mitglied".
 
         ' Jede gueltige Personenzeile ist ein Mitglied.
         ' KEIN Deduplizieren nach Member-ID: In Bestandsdateien wird
