@@ -795,24 +795,25 @@ Public Function ZaehleAktiveMitgliederGesamt() As Long
         funktion = Trim(CStr(wsML.Cells(r, M_COL_FUNKTION).value))
         If StrComp(funktion, AUSTRITT_STATUS, vbTextCompare) = 0 Then GoTo NextMR
 
-        ' Nur gültige Parzellen 1-14 zaehlen
-        Dim parzStr As String
-        parzStr = Trim(CStr(wsML.Cells(r, M_COL_PARZELLE).value))
-        If Not IsNumeric(parzStr) Then GoTo NextMR
-        If CLng(parzStr) < 1 Or CLng(parzStr) > 14 Then GoTo NextMR
-        
-        ' Pachtanfang muss vorhanden sein (= aktives Mitglied)
-        Dim paWert As Variant
-        paWert = wsML.Cells(r, M_COL_PACHTANFANG).value
-        If Not IsDate(paWert) Then GoTo NextMR
-        
-        ' Pachtende: leer ODER in der Zukunft = aktiv
-        Dim peWert As Variant
-        peWert = wsML.Cells(r, M_COL_PACHTENDE).value
-        If IsDate(peWert) Then
-            If CDate(peWert) < Date Then GoTo NextMR
-        End If
-        
+        ' Rolle/Funktion: alle echten Mitglieder zählen
+        ' (mit Pacht, ohne Pacht, Ehrenmitglied, Vorstand).
+        ' Fallback: auch sonstige nicht-ausgetretene Personen mitzählen,
+        ' damit die Anzeige vollständig bleibt.
+        Dim funktionUpper As String
+        funktionUpper = UCase$(funktion)
+
+        Dim istZaehlbar As Boolean
+        istZaehlbar = (InStr(1, funktionUpper, "MITGLIED MIT PACHT", vbTextCompare) > 0) Or _
+                      (InStr(1, funktionUpper, "OHNE PACHT", vbTextCompare) > 0) Or _
+                      (InStr(1, funktionUpper, "EHRENMITGLIED", vbTextCompare) > 0) Or _
+                      (InStr(1, funktionUpper, "VORSTAND", vbTextCompare) > 0) Or _
+                      (funktionUpper = "")
+
+        If Not istZaehlbar Then GoTo NextMR
+
+        ' Jede gueltige Personenzeile ist ein Mitglied.
+        ' KEIN Deduplizieren nach Member-ID: In Bestandsdateien wird
+        ' dieselbe ID teils von zwei Personen einer Parzelle genutzt.
         cnt = cnt + 1
 NextMR:
     Next r

@@ -569,7 +569,7 @@ Private Sub SchreibeKPI(ByVal ws As Worksheet, _
     Call SchreibeKPIKarte(ws, DASH_KPI_LABEL_ROW, 1, 2, _
                           "PARZELLEN & MITGLIEDER", _
                           CStr(anzParzellen) & " Parzellen", _
-                          CStr(anzMitglieder) & " Mitglieder aktiv", _
+                          CStr(anzMitglieder) & " Mitglieder", _
                           m_CLR_KPI_BLAU)
     
     ' Karte 2: Eingegangen

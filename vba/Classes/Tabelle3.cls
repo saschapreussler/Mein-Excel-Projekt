@@ -60,10 +60,8 @@ Private Sub Worksheet_Activate()
 
     Call mod_Banking_Report.Initialize_ImportReport_ListBox
 
-    ' Hinweispruefung beim öffnen: Januar-Fehlbetraege ohne Vorjahrdaten.
-    On Error Resume Next
-    Call mod_Uebersicht_Generator.PruefeVorjahrHinweisBeimOeffnen
-    On Error GoTo 0
+    ' Keine automatischen Hinweis-MsgBoxen beim reinen Blattwechsel.
+    ' Wichtige Pflicht-Hinweise laufen im Import-Workflow selbst.
 
     ' Fenster fixieren: Zeilen 1-3 bleiben stehen, ab Zeile 4 scrollbar.
     On Error Resume Next

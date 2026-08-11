@@ -467,7 +467,10 @@ Private Sub SchreibeKPIBereich(ByVal ws As Worksheet)
     ' Spalte F bleibt leer (Trennung)
     ws.Range("F8:F9").Interior.color = CLR_SECTION_BG
     
-    Call SchreibeKPIKarte(ws, "G", "H", 8, 9, CStr(ZaehleMitglieder()), "Mitglieder", RGB(39, 174, 96))
+    Dim anzMitgliederGesamt As Long
+    anzMitgliederGesamt = mod_Uebersicht_Daten.ZaehleAktiveMitgliederGesamt()
+    If anzMitgliederGesamt <= 0 Then anzMitgliederGesamt = ZaehleMitglieder()
+    Call SchreibeKPIKarte(ws, "G", "H", 8, 9, CStr(anzMitgliederGesamt), "Mitglieder", RGB(39, 174, 96))
     
     Call SchreibeKPIKarte(ws, "I", "J", 8, 9, CStr(ZaehleBelegteParzellen()), "Parzellen", RGB(142, 68, 173))
     
@@ -889,16 +892,21 @@ End Function
 ' ===============================================================
 Public Sub AktualisiereParzellenAnzeigen()
     Dim anzahl As Long
+    Dim anzMitglieder As Long
     anzahl = ZaehleBelegteParzellen()
+    anzMitglieder = mod_Uebersicht_Daten.ZaehleAktiveMitgliederGesamt()
+    If anzMitglieder <= 0 Then anzMitglieder = ZaehleMitglieder()
 
     Call SchreibeParzellenZelleSicher("Strom", "B6", anzahl)
     Call SchreibeParzellenZelleSicher("Wasser", "A4", anzahl)
+    Call SchreibeParzellenZelleSicher(WS_STARTMENUE(), "I8:J8", anzahl)
+    Call SchreibeParzellenZelleSicher(WS_STARTMENUE(), "G8:H8", anzMitglieder)
 End Sub
 
 
 Private Sub SchreibeParzellenZelleSicher(ByVal blattName As String, _
                                           ByVal zellAdresse As String, _
-                                          ByVal wert As Long)
+                                          ByVal wert As Variant)
     Dim ws As Worksheet
     On Error Resume Next
     Set ws = ThisWorkbook.Worksheets(blattName)

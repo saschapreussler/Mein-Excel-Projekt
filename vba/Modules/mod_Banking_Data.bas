@@ -364,6 +364,17 @@ ImportAbschluss:
 
     Err.Clear
     On Error GoTo 0
+
+    ' 4c. Harter Workflow-Gate: fehlende EntityRole MUSS vor Kategorie/Periode geklaert werden
+    If rowsProcessed > 0 Then
+        If PruefeUnvollstaendigeEntityKeys() Then
+            Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsZiel)
+            Application.DisplayAlerts = True
+            Application.ScreenUpdating = True
+            Application.EnableEvents = True
+            Exit Sub
+        End If
+    End If
     
     ' 5. Kategorie-Engine nur bei neuen Zeilen
     ' WICHTIG: On Error GoTo 0 MUSS vorher stehen,
@@ -376,6 +387,24 @@ ImportAbschluss:
     Call mod_ZP_Periode.SetzeMonatPeriode(wsZiel)
     Err.Clear
     On Error GoTo 0
+
+    ' 6b. Ampel/Konflikt-Hinweise fuer Kategorie + Monat/Periode vereinheitlichen
+    Call SynchronisiereKategorieMonatAmpel(wsZiel)
+
+    ' 6c. Workflow-Gate: Ohne klares H+I KEINE Zahlungsuebersicht / KEIN Dashboard
+    If HatOffeneKategorieOderPeriode(wsZiel) Then
+        Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsZiel)
+        Application.DisplayAlerts = True
+        Application.ScreenUpdating = True
+        Application.EnableEvents = True
+
+        MsgBox "Import abgeschlossen, aber noch offene Zuordnungen in Bankkonto." & vbCrLf & vbCrLf & _
+               "Bitte klaeren Sie zuerst alle markierten Felder in Kategorie (H) " & _
+               "und Monat/Periode (I)." & vbCrLf & _
+               "Danach die Zahlungsuebersicht und das Dashboard neu erzeugen.", _
+               vbExclamation, "Offene Zuordnungen"
+        Exit Sub
+    End If
     
     ' 7. Übersicht IMMER aktualisieren (fasst ALLE vorhandenen Daten zusammen)
     '    v4.0: NEU - Uebersichtsblatt nach jedem Import generieren
@@ -449,14 +478,6 @@ ImportAbschluss:
     
     MsgBox msgText, msgIcon, msgTitle
     
-    ' ============================================================
-    ' ENTITYKEY-Prüfung: Spalte W (EntityRole) vollständig?
-    ' Nur Prüfen wenn tatsächlich neue Datensätze importiert wurden
-    ' ============================================================
-    If rowsProcessed > 0 Then
-        Call PruefeUnvollstaendigeEntityKeys
-    End If
-    
     ' Kontostand auf Startseite aktualisieren
     Call mod_Startseite.AktualisiereKontostandKPI
     
@@ -472,9 +493,9 @@ End Sub
 ' 1b. ENTITYKEY-Prüfung NACH IMPORT
 '     prüft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
 '     eine vollstaendige Zuordnung in Spalte W (EntityRole) haben.
-'     Bei fehlenden Eintraegen: MsgBox mit Angebot zur Navigation.
+'     Rückgabe: True = unvollständig (Import-Ablauf anhalten)
 ' ===============================================================
-Private Sub PruefeUnvollstaendigeEntityKeys()
+Private Function PruefeUnvollstaendigeEntityKeys() As Boolean
     
     Dim wsDaten As Worksheet
     Dim lastRow As Long
@@ -483,13 +504,15 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
     Dim anzahlOhneRole As Long
     Dim ibanOhneRole As String
     
+    PruefeUnvollstaendigeEntityKeys = False
+
     On Error Resume Next
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     On Error GoTo 0
-    If wsDaten Is Nothing Then Exit Sub
+    If wsDaten Is Nothing Then Exit Function
     
     lastRow = wsDaten.Cells(wsDaten.Rows.count, EK_COL_IBAN).End(xlUp).Row
-    If lastRow < EK_START_ROW Then Exit Sub
+    If lastRow < EK_START_ROW Then Exit Function
     
     ersteLeereZeile = 0
     anzahlOhneRole = 0
@@ -522,7 +545,9 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
     Next r
     
     ' Keine fehlenden Einträge -> nichts tun
-    If anzahlOhneRole = 0 Then Exit Sub
+    If anzahlOhneRole = 0 Then Exit Function
+
+    PruefeUnvollstaendigeEntityKeys = True
     
     ' MsgBox zusammenbauen
     Dim hinweis As String
@@ -535,9 +560,9 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
     End If
     
     hinweis = hinweis & vbCrLf & vbCrLf & _
-              "Ohne diese Zuordnung kann die Kategorie-Engine die Buchungen " & _
-              "nicht korrekt verarbeiten." & vbCrLf & vbCrLf & _
-              "Möchten Sie die fehlenden Angaben jetzt vervollständigen?"
+              "Ohne diese Zuordnung wird der Import-Ablauf jetzt angehalten." & vbCrLf & _
+              "Bitte erst die EntityRole(s) in Daten!W vervollstaendigen." & vbCrLf & vbCrLf & _
+              "Moechten Sie direkt zur ersten offenen Zeile springen?"
     
     Dim antwort As VbMsgBoxResult
     antwort = MsgBox(hinweis, vbYesNo + vbExclamation, _
@@ -555,8 +580,101 @@ Private Sub PruefeUnvollstaendigeEntityKeys()
         
         wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     End If
-    
-End Sub
+
+    End Function
+
+
+    ' ===============================================================
+    ' 1c. Synchronisiert Ampelstatus von Kategorie (H) auf Monat/Periode (I)
+    ' und ergaenzt klare Hinweise in Bemerkung (L).
+    ' ===============================================================
+    Private Sub SynchronisiereKategorieMonatAmpel(ByVal wsBK As Worksheet)
+        Dim lastRow As Long
+        Dim r As Long
+        Dim katText As String
+        Dim bem As String
+        Dim katColor As Long
+
+        If wsBK Is Nothing Then Exit Sub
+
+        lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+        If lastRow < BK_START_ROW Then Exit Sub
+
+        For r = BK_START_ROW To lastRow
+            If Trim(CStr(wsBK.Cells(r, BK_COL_BETRAG).value)) = "" Then GoTo NextRowSync
+
+            katText = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
+            katColor = wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color
+            bem = Trim(CStr(wsBK.Cells(r, BK_COL_BEMERKUNG).value))
+
+            If katText = "" Or katColor = RGB(255, 199, 206) Then
+                wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color = RGB(255, 199, 206)
+                wsBK.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 199, 206)
+                If InStr(1, bem, "Kategorie/Monat offen", vbTextCompare) = 0 Then
+                    If bem = "" Then
+                        wsBK.Cells(r, BK_COL_BEMERKUNG).value = "Kategorie/Monat offen: bitte manuell zuordnen"
+                    Else
+                        wsBK.Cells(r, BK_COL_BEMERKUNG).value = bem & " | Kategorie/Monat offen: bitte manuell zuordnen"
+                    End If
+                End If
+            ElseIf katColor = RGB(255, 235, 156) Then
+                wsBK.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 235, 156)
+                If InStr(1, bem, "Kategorie/Monat pruefen", vbTextCompare) = 0 Then
+                    If bem = "" Then
+                        wsBK.Cells(r, BK_COL_BEMERKUNG).value = "Kategorie/Monat pruefen und bestaetigen"
+                    Else
+                        wsBK.Cells(r, BK_COL_BEMERKUNG).value = bem & " | Kategorie/Monat pruefen und bestaetigen"
+                    End If
+                End If
+            End If
+    NextRowSync:
+        Next r
+    End Sub
+
+
+    ' ===============================================================
+    ' 1d. Prüft ob es noch offene oder unsichere H/I-Zuordnungen gibt.
+    ' True = offene Punkte vorhanden.
+    ' ===============================================================
+    Private Function HatOffeneKategorieOderPeriode(ByVal wsBK As Worksheet) As Boolean
+        Dim lastRow As Long
+        Dim r As Long
+        Dim kat As String
+        Dim mon As String
+        Dim colorH As Long
+        Dim colorI As Long
+
+        HatOffeneKategorieOderPeriode = False
+        If wsBK Is Nothing Then Exit Function
+
+        lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+        If lastRow < BK_START_ROW Then Exit Function
+
+        For r = BK_START_ROW To lastRow
+            If Trim(CStr(wsBK.Cells(r, BK_COL_BETRAG).value)) = "" Then GoTo NextRowOpen
+
+            kat = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
+            mon = Trim(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
+            colorH = wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color
+            colorI = wsBK.Cells(r, BK_COL_MONAT_PERIODE).Interior.color
+
+            If kat = "" Or mon = "" Then
+                HatOffeneKategorieOderPeriode = True
+                Exit Function
+            End If
+
+            If colorH = RGB(255, 199, 206) Or colorH = RGB(255, 235, 156) Then
+                HatOffeneKategorieOderPeriode = True
+                Exit Function
+            End If
+
+            If colorI = RGB(255, 199, 206) Or colorI = RGB(255, 235, 156) Then
+                HatOffeneKategorieOderPeriode = True
+                Exit Function
+            End If
+    NextRowOpen:
+        Next r
+    End Function
 
 
 ' ===============================================================
@@ -609,6 +727,8 @@ Public Sub LoescheAlleBankkontoZeilen()
     Application.EnableEvents = eventsWaren
     
     Call mod_Banking_Report.Initialize_ImportReport_ListBox
+    Call mod_Startseite.AktualisiereKontostandKPI
+    Call mod_Startseite.AktualisiereParzellenAnzeigen
     
     MsgBox "Alle Daten wurden gel" & ChrW(246) & "scht.", vbInformation
     

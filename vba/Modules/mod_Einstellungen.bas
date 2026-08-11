@@ -348,7 +348,7 @@ Public Sub AktualisiereParzellen(Optional ByVal ws As Worksheet)
     End If
     
     Dim aktParzellen As Long
-    aktParzellen = mod_Startseite.ZaehleBelegteParzellen()
+    aktParzellen = ErmittleBelegteParzellenAusMitgliederliste()
     
     If aktParzellen > 0 And aktParzellen <= 14 Then
         On Error Resume Next
@@ -361,6 +361,109 @@ Public Sub AktualisiereParzellen(Optional ByVal ws As Worksheet)
         ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
         On Error GoTo 0
     End If
+End Sub
+
+
+' ===============================================================
+' 0c2. PARZELLEN AUTO: Distinkte belegte Parzellen aus Mitgliederliste
+' (ohne KGA/System und ohne ehemalige Mitglieder)
+' ===============================================================
+Public Function ErmittleBelegteParzellenAusMitgliederliste() As Long
+    Dim wsM As Worksheet
+    On Error Resume Next
+    Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    On Error GoTo 0
+    If wsM Is Nothing Then
+        ErmittleBelegteParzellenAusMitgliederliste = 0
+        Exit Function
+    End If
+
+    Dim lastRow As Long
+    lastRow = wsM.Cells(wsM.Rows.count, M_COL_PARZELLE).End(xlUp).Row
+    If lastRow < M_START_ROW Then
+        ErmittleBelegteParzellenAusMitgliederliste = 0
+        Exit Function
+    End If
+
+    Dim dictParz As Object
+    Set dictParz = CreateObject("Scripting.Dictionary")
+    dictParz.CompareMode = vbTextCompare
+
+    Dim r As Long
+    For r = M_START_ROW To lastRow
+        Dim vn As String, nn As String
+        vn = Trim(CStr(wsM.Cells(r, M_COL_VORNAME).value))
+        nn = Trim(CStr(wsM.Cells(r, M_COL_NACHNAME).value))
+        If vn = "" And nn = "" Then GoTo NextParz
+
+        Dim anrede As String
+        anrede = Trim(CStr(wsM.Cells(r, M_COL_ANREDE).value))
+        If StrComp(anrede, ANREDE_KGA, vbTextCompare) = 0 Then GoTo NextParz
+
+        Dim funktion As String
+        funktion = Trim(CStr(wsM.Cells(r, M_COL_FUNKTION).value))
+        If StrComp(funktion, AUSTRITT_STATUS, vbTextCompare) = 0 Then GoTo NextParz
+
+        Dim parz As String
+        parz = Trim(CStr(wsM.Cells(r, M_COL_PARZELLE).value))
+        If Not IsNumeric(parz) Then GoTo NextParz
+        If CLng(parz) < 1 Or CLng(parz) > 14 Then GoTo NextParz
+
+        If Not dictParz.exists(parz) Then dictParz.Add parz, True
+NextParz:
+    Next r
+
+    ErmittleBelegteParzellenAusMitgliederliste = dictParz.count
+End Function
+
+
+' ===============================================================
+' 0c3. C14 vs Automatik prüfen + Zielanzeigen synchronisieren
+' - Nutzer darf C14 manuell pflegen
+' - Beim Aufruf von Einstellungen wird auf Abweichungen hingewiesen
+' - C14-Wert wird auf Startmenü/Strom/Wasser gespiegelt
+' ===============================================================
+Public Sub PruefeParzellenwertUndSynchronisiere(Optional ByVal zeigeHinweis As Boolean = True)
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Sub
+
+    Dim autoParz As Long
+    autoParz = ErmittleBelegteParzellenAusMitgliederliste()
+
+    Dim cfgParz As Long
+    cfgParz = 0
+    If IsNumeric(ws.Cells(ES_CFG_PARZELLEN_ROW, ES_CFG_VALUE_COL).value) Then
+        cfgParz = CLng(ws.Cells(ES_CFG_PARZELLEN_ROW, ES_CFG_VALUE_COL).value)
+    End If
+
+    If cfgParz <= 0 And autoParz > 0 Then
+        On Error Resume Next
+        ws.Unprotect PASSWORD:=PASSWORD
+        On Error GoTo 0
+        ws.Cells(ES_CFG_PARZELLEN_ROW, ES_CFG_VALUE_COL).value = autoParz
+        cfgParz = autoParz
+        On Error Resume Next
+        ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+        On Error GoTo 0
+    End If
+
+    If zeigeHinweis Then
+        If cfgParz > 0 And autoParz > 0 And cfgParz <> autoParz Then
+            MsgBox "Hinweis: Die manuelle Parzellenanzahl in Einstellungen!C14 weicht von der Mitgliederliste ab." & vbCrLf & vbCrLf & _
+                   "Einstellungen!C14: " & cfgParz & vbCrLf & _
+                   "Automatik (Mitgliederliste): " & autoParz & vbCrLf & vbCrLf & _
+                   "C14 bleibt bewusst unveraendert und wird als Steuerwert verwendet.", _
+                   vbExclamation, "Parzellenanzahl pruefen"
+        End If
+    End If
+
+    On Error Resume Next
+    Call mod_Startseite.AktualisiereParzellenAnzeigen
+    Call mod_ZaehlerLogik.AktualisiereZaehlerTabellenSpalteA
+    On Error GoTo 0
 End Sub
 
 

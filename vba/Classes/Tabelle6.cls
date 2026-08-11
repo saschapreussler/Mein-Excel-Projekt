@@ -60,6 +60,8 @@ Public Sub UpdateWasserblatt()
     
     ' Fuehrt Berechnung und Formatierung durch (in mod_Zaehler_Berechnung)
     Call mod_Zaehler_Berechnung.CalculateAllZaehlerVerbrauch(Me)
+    Call mod_Startseite.AktualisiereParzellenAnzeigen
+    Call mod_ZaehlerLogik.AktualisiereZaehlerTabellenSpalteA
     
     Application.ScreenUpdating = True
     Exit Sub

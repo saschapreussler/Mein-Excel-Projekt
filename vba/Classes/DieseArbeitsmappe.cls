@@ -126,9 +126,9 @@ Private Sub Workbook_Open()
     Call mod_Vereinskasse_Filter.Aktiviere_VereinskasseFilter
     On Error GoTo 0
 
-    ' v8.2: Aktuelle Parzellen-Anzahl in Strom!B6 und Wasser!A4
+    ' v8.2: Aktuelle Parzellen-Anzahl in Strom/Wasser/Startmenue
     On Error Resume Next
-    Call mod_Startseite.AktualisiereParzellenAnzeigen
+    Call mod_Einstellungen.PruefeParzellenwertUndSynchronisiere(False)
     On Error GoTo 0
 
     ' v8.2: Mitgliederliste durchgängig formatieren
@@ -168,9 +168,15 @@ Private Sub Workbook_SheetActivate(ByVal Sh As Object)
     vollbild = False
     
     Select Case shName
-        Case WS_STARTMENUE(), "Dashboard Mitgliederzahlungen"
+        Case WS_STARTMENUE()
             ohneGitter = True
             vollbild = True
+        Case "Dashboard Mitgliederzahlungen"
+            ohneGitter = True
+            vollbild = True
+            On Error Resume Next
+            Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
+            On Error GoTo 0
         Case WS_FINANZ_UEBERSICHT()
             ohneGitter = True
             vollbild = False

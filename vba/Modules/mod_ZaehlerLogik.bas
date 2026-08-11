@@ -60,21 +60,47 @@ End Sub
 ' Hole Namen für Parzelle
 Public Function HoleNamenFuerParzelle(ws As Worksheet, suchParzelle As String, maxZ As Long) As String
     Dim r As Long
-    Dim sTemp As String
+    Dim sMitPacht As String
+    Dim sWeitere As String
     Dim PVal As String
+    Dim funktion As String
+    Dim anrede As String
+    Dim vollname As String
     
-    sTemp = ""
+    sMitPacht = ""
+    sWeitere = ""
     
-    For r = 6 To maxZ
+    For r = M_START_ROW To maxZ
         PVal = Trim(CStr(ws.Cells(r, 2).value))
         
         If StrComp(PVal, suchParzelle, vbTextCompare) = 0 Then
-            If sTemp <> "" Then sTemp = sTemp & vbLf
-            sTemp = sTemp & Trim(ws.Cells(r, 6).value) & " " & Trim(ws.Cells(r, 5).value)
+            anrede = Trim(CStr(ws.Cells(r, M_COL_ANREDE).value))
+            If StrComp(anrede, ANREDE_KGA, vbTextCompare) = 0 Then GoTo NextName
+
+            funktion = Trim(CStr(ws.Cells(r, M_COL_FUNKTION).value))
+            If StrComp(funktion, AUSTRITT_STATUS, vbTextCompare) = 0 Then GoTo NextName
+
+            vollname = Trim(CStr(ws.Cells(r, M_COL_VORNAME).value) & " " & CStr(ws.Cells(r, M_COL_NACHNAME).value))
+            If vollname = "" Then GoTo NextName
+
+            If StrComp(funktion, FUNKTION_MITGLIED_MIT_PACHT, vbTextCompare) = 0 Then
+                If sMitPacht <> "" Then sMitPacht = sMitPacht & vbLf
+                sMitPacht = sMitPacht & vollname
+            Else
+                If sWeitere <> "" Then sWeitere = sWeitere & vbLf
+                sWeitere = sWeitere & vollname
+            End If
         End If
+NextName:
     Next r
     
-    HoleNamenFuerParzelle = sTemp
+    If sMitPacht <> "" And sWeitere <> "" Then
+        HoleNamenFuerParzelle = sMitPacht & vbLf & sWeitere
+    ElseIf sMitPacht <> "" Then
+        HoleNamenFuerParzelle = sMitPacht
+    Else
+        HoleNamenFuerParzelle = sWeitere
+    End If
 End Function
 
 ' Ermittlung der Zielzeile
@@ -254,45 +280,64 @@ Sub AktualisiereZaehlerTabellenSpalteA()
         With wsStrom.Cells(zielZeileStrom, "A")
             .value = GesamtText
             .WrapText = True
-            .VerticalAlignment = xlCenter
+            .VerticalAlignment = xlTop
             .HorizontalAlignment = xlLeft
+            .Font.Name = "Aptos Narrow"
             
             With .Characters(Start:=1, Length:=LaengeParzelleTitel).Font
+                .Name = "Aptos Narrow"
                 .Size = 11
                 .Bold = True
             End With
             
             If Len(nameGefunden) > 0 Then
                 With .Characters(Start:=LaengeParzelleTitel + 2, Length:=Len(nameGefunden)).Font
+                    .Name = "Aptos Narrow"
                     .Size = 10
                     .Bold = False
                 End With
             End If
         End With
+        wsStrom.Rows(zielZeileStrom).AutoFit
 
         ' B. Verarbeitung für Wasser
         With wsWasser.Cells(zielZeileWasser, "A")
             .value = GesamtText
             .WrapText = True
-            .VerticalAlignment = xlCenter
+            .VerticalAlignment = xlTop
             .HorizontalAlignment = xlLeft
+            .Font.Name = "Aptos Narrow"
             
             With .Characters(Start:=1, Length:=LaengeParzelleTitel).Font
+                .Name = "Aptos Narrow"
                 .Size = 11
                 .Bold = True
             End With
             
             If Len(nameGefunden) > 0 Then
                 With .Characters(Start:=LaengeParzelleTitel + 2, Length:=Len(nameGefunden)).Font
+                    .Name = "Aptos Narrow"
                     .Size = 10
                     .Bold = False
                 End With
             End If
         End With
+        wsWasser.Rows(zielZeileWasser).AutoFit
 
         zielZeileStrom = zielZeileStrom + 1
         zielZeileWasser = zielZeileWasser + 1
     Next ParzellenID
+
+    With wsStrom.Range("A25")
+        .value = "Unterz" & ChrW(228) & "hler Clubwagen K" & ChrW(252) & "hltruhe"
+        .WrapText = True
+        .VerticalAlignment = xlTop
+        .HorizontalAlignment = xlLeft
+        .Font.Name = "Aptos Narrow"
+        .Font.Size = 11
+        .Font.Bold = True
+    End With
+    wsStrom.Rows(25).AutoFit
     
     wsStrom.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True
     wsWasser.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True

@@ -18,6 +18,7 @@ Option Explicit
 
 Private Sub Worksheet_Activate()
     Call mod_Einstellungen.FormatiereZahlungsterminTabelle(Me)
+    Call mod_Einstellungen.PruefeParzellenwertUndSynchronisiere(True)
 End Sub
 
 Private Sub Worksheet_Change(ByVal Target As Range)
@@ -285,6 +286,7 @@ Private Sub VerarbeiteKonfigAenderung(ByVal Target As Range)
             ' Parzellen-Anzahl geändert -> Pacht aktualisiert sich per Formel
             Application.Calculate
             Call mod_Einstellungen.SyncPachtZuTabelle(Me)
+            Call mod_Einstellungen.PruefeParzellenwertUndSynchronisiere(False)
     End Select
     
     Me.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True

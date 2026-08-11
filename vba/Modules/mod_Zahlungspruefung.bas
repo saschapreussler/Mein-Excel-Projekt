@@ -267,7 +267,11 @@ NextZahlRow:
             If Date >= sollDatum Then
                 If HatMitbezahltInParzelleZP(entityKey, entityIBAN, kategorie, monat, jahr, soll, _
                                              erwarteterMonat, istMonatlich, wsBK, bemerkung) Then
-                    status = "GELB"
+                    If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                        status = "GELB"
+                    Else
+                        status = "GR" & ChrW(220) & "N"
+                    End If
                 Else
                     status = "ROT"
                     If nachlauf > 0 And Date <= sollDatum + nachlauf Then
@@ -294,7 +298,11 @@ NextZahlRow:
             If Date >= sollDatum Then
                 If HatMitbezahltInParzelleZP(entityKey, entityIBAN, kategorie, monat, jahr, soll, _
                                              erwarteterMonat, istMonatlich, wsBK, bemerkung) Then
-                    status = "GELB"
+                    If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                        status = "GELB"
+                    Else
+                        status = "GR" & ChrW(220) & "N"
+                    End If
                 Else
                     status = "ROT"
                 End If
@@ -483,7 +491,23 @@ Private Function HatMitbezahltInParzelleZP(ByVal entityKey As String, _
         If StrComp(ek, entityKey, vbTextCompare) = 0 Then GoTo NextMap
 
         Call ZaehleZahlungenZP(ek, kategorie, monat, jahr, partnerCount, partnerSumme)
-        If partnerCount = 1 And partnerSumme >= soll * 2 - 0.01 Then
+
+        Dim mindestbetrag As Double
+        If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+            If soll > 0 Then
+                mindestbetrag = soll * 2
+            Else
+                mindestbetrag = 0.01
+            End If
+        Else
+            If soll > 0 Then
+                mindestbetrag = soll
+            Else
+                mindestbetrag = 0.01
+            End If
+        End If
+
+        If partnerCount > 0 And partnerSumme >= mindestbetrag - 0.01 Then
             partnerName = Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_KTONAME).value))
             If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                 outBemerkung = ""
