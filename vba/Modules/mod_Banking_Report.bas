@@ -58,11 +58,26 @@ Public Sub Initialize_ImportReport_ListBox()
     reportText = ""
     reportFarbe = LB_COLOR_WEISS
     
+    ' Wenn kein Bankkonto-Auszug vorhanden ist, immer den
+    ' gewünschten Leerstates-Text anzeigen.
+    If Not HatBankkontoDaten(wsBK) Then
+        reportText = "Bisher kein Import durchgef" & ChrW(252) & "hrt."
+        reportFarbe = LB_COLOR_WEISS
+        Call SchreibeReportNachH8(wsBK, reportText, reportFarbe)
+
+        On Error Resume Next
+        Call mod_Uebersicht_Dashboard.LeereDashboardWennKeineDaten
+        On Error GoTo 0
+
+        Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsBK)
+        Exit Sub
+    End If
+
     ' Gespeichertes Protokoll aus Y500 lesen
     gespeichert = CStr(wsDaten.Cells(PROTO_ZEILE, PROTO_SPALTE).value)
     
     If gespeichert = "" Or gespeichert = "0" Then
-        reportText = "Kein Status Report" & vbLf & "vorhanden."
+        reportText = "Bisher kein Import durchgef" & ChrW(252) & "hrt."
     Else
         ' Protokoll-Zeilen aus Y500 lesen (neuester Block zuerst)
         zeilen = Split(gespeichert, PROTO_SEP)
@@ -81,11 +96,39 @@ Public Sub Initialize_ImportReport_ListBox()
     End If
 
     Call SchreibeReportNachH8(wsBK, reportText, reportFarbe)
+
+    ' Wenn weder Bankkonto noch Zahlungsübersicht Daten haben,
+    ' darf auch das Dashboard keine alten Einträge mehr zeigen.
+    On Error Resume Next
+    Call mod_Uebersicht_Dashboard.LeereDashboardWennKeineDaten
+    On Error GoTo 0
     
     ' Blattschutz wiederherstellen (mit AllowFiltering für Zeile 29)
     Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsBK)
     
 End Sub
+
+' ---------------------------------------------------------------
+' True, wenn mindestens eine Datenzeile im Bankkonto vorhanden ist.
+' ---------------------------------------------------------------
+Private Function HatBankkontoDaten(ByVal wsBK As Worksheet) As Boolean
+    HatBankkontoDaten = False
+    If wsBK Is Nothing Then Exit Function
+
+    Dim lastRow As Long
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Function
+
+    Dim r As Long
+    For r = BK_START_ROW To lastRow
+        If Trim(CStr(wsBK.Cells(r, BK_COL_DATUM).value)) <> "" Or _
+           Trim(CStr(wsBK.Cells(r, BK_COL_BETRAG).value)) <> "" Or _
+           Trim(CStr(wsBK.Cells(r, BK_COL_VERWENDUNGSZWECK).value)) <> "" Then
+            HatBankkontoDaten = True
+            Exit Function
+        End If
+    Next r
+End Function
 
 ' ---------------------------------------------------------------
 ' Update: Neuen 5-Zeilen-Block OBEN einfügen,

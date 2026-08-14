@@ -420,6 +420,16 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     Dim geschriebeneParzKat As Object
     Set geschriebeneParzKat = CreateObject("Scripting.Dictionary")
     geschriebeneParzKat.CompareMode = vbTextCompare
+
+    ' Merkt Zielzeile + Ist-Wert für bereits geschriebene Parzelle/Monat/Kategorie,
+    ' damit bei Gemeinschafts-Parzellen der zahlende EntityKey die Anzeige bekommt.
+    Dim geschriebeneParzKatRow As Object
+    Set geschriebeneParzKatRow = CreateObject("Scripting.Dictionary")
+    geschriebeneParzKatRow.CompareMode = vbTextCompare
+
+    Dim geschriebeneParzKatIst As Object
+    Set geschriebeneParzKatIst = CreateObject("Scripting.Dictionary")
+    geschriebeneParzKatIst.CompareMode = vbTextCompare
     
     ' v5.0: Dictionary für kumulierte Ist-Summen pro Parzelle+Kategorie
     ' Key = "Parzelle|Kategorie", Value = kumulierter Ist-Betrag
@@ -540,18 +550,6 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
-                ' v4.5: Parzelle-basierte Kategorien nur 1x pro Parzelle anzeigen
-                ' Nur Mitgliedsbeitrag wird pro Mitglied angezeigt,
-                ' alle anderen Kategorien (Pacht, Fixkosten, Abschlagszahlungen,
-                ' Endabrechnung, Betriebskosten) nur 1x pro Parzelle.
-                If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) <> 0 Then
-                    Dim parzKatKey As String
-                    parzKatKey = CStr(parzelleWert) & "|" & monat & "|" & kategorie
-                    If geschriebeneParzKat.exists(parzKatKey) Then
-                        GoTo NextKat
-                    End If
-                End If
-                
                 ' Zahlung prüfen (mod_Zahlungspruefung)
                 ergebnis = mod_Zahlungspruefung.PruefeZahlungen(entityKey, kategorie, monat, jahr)
                 
@@ -654,10 +652,59 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 
                 ' Wenn nicht relevant -> nächste Kategorie
                 If Not zeigeEintrag Then GoTo NextKat
+
+                ' Parzelle-basierte Kategorien (alles außer Mitgliedsbeitrag)
+                ' sollen nur 1x erscheinen. Wenn eine spätere Zeile den Ist-Wert
+                ' trägt und die erste Zeile 0 hatte, wird die bestehende Zeile
+                ' mit dem zahlenden EntityKey aktualisiert statt eine zweite
+                ' Zeile anzulegen.
+                Dim istParzellenKategorie As Boolean
+                Dim parzKatKey As String
+                istParzellenKategorie = (StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) <> 0)
+                parzKatKey = CStr(parzelleWert) & "|" & monat & "|" & kategorie
+
+                If istParzellenKategorie And geschriebeneParzKat.exists(parzKatKey) Then
+                    If geschriebeneParzKatIst.exists(parzKatKey) Then
+                        If CDbl(geschriebeneParzKatIst(parzKatKey)) <= 0 And ist > 0 Then
+                            Dim updateRow As Long
+                            updateRow = CLng(geschriebeneParzKatRow(parzKatKey))
+
+                            wsUeb.Cells(updateRow, UEB_COL_MITGLIED).value = mitgliedName & " [" & entityKey & "]"
+                            wsUeb.Cells(updateRow, UEB_COL_IST).value = ist
+                            wsUeb.Cells(updateRow, UEB_COL_STATUS).value = status
+                            wsUeb.Cells(updateRow, UEB_COL_BEMERKUNG).value = _
+                                "Zahlung zugeordnet über EntityKey: " & entityKey
+
+                            If StrComp(status, m_STATUS_GRUEN, vbTextCompare) = 0 Then
+                                wsUeb.Cells(updateRow, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
+                            ElseIf StrComp(status, "GELB", vbTextCompare) = 0 Then
+                                wsUeb.Cells(updateRow, UEB_COL_STATUS).Interior.color = AMPEL_GELB
+                            Else
+                                wsUeb.Cells(updateRow, UEB_COL_STATUS).Interior.color = AMPEL_ROT
+                            End If
+
+                            geschriebeneParzKat(parzKatKey) = entityKey
+                            geschriebeneParzKatIst(parzKatKey) = ist
+
+                            Dim sumKeyUpdate As String
+                            sumKeyUpdate = CStr(parzelleWert) & "|" & kategorie
+                            If summeIstDict.exists(sumKeyUpdate) Then
+                                summeIstDict(sumKeyUpdate) = summeIstDict(sumKeyUpdate) + ist
+                            Else
+                                summeIstDict(sumKeyUpdate) = ist
+                            End If
+                        End If
+                    End If
+                    GoTo NextKat
+                End If
                 
                 ' Zeile schreiben
                 wsUeb.Cells(rowIdx, UEB_COL_PARZELLE).value = parzelleWert
-                wsUeb.Cells(rowIdx, UEB_COL_MITGLIED).value = mitgliedName
+                If istParzellenKategorie And ist > 0 Then
+                    wsUeb.Cells(rowIdx, UEB_COL_MITGLIED).value = mitgliedName & " [" & entityKey & "]"
+                Else
+                    wsUeb.Cells(rowIdx, UEB_COL_MITGLIED).value = mitgliedName
+                End If
                 ' v4.3: Monat als Text schreiben (verhindert Excel-Datumserkennung)
                 wsUeb.Cells(rowIdx, UEB_COL_MONAT).NumberFormat = "@"
                 wsUeb.Cells(rowIdx, UEB_COL_MONAT).value = MonthName(monat) & " " & jahr
@@ -798,8 +845,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 wsUeb.Cells(rowIdx, UEB_COL_BEMERKUNG).value = bemerkung
                 
                 ' v4.5: Parzelle-basierte Kategorie als geschrieben markieren
-                If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) <> 0 Then
-                    geschriebeneParzKat(CStr(parzelleWert) & "|" & monat & "|" & kategorie) = entityKey
+                If istParzellenKategorie Then
+                    geschriebeneParzKat(parzKatKey) = entityKey
+                    geschriebeneParzKatRow(parzKatKey) = rowIdx
+                    geschriebeneParzKatIst(parzKatKey) = ist
                 End If
                 
                 ' v5.0: Kumulierten Ist-Betrag tracken

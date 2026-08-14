@@ -59,6 +59,7 @@ Private Sub Worksheet_Activate()
     Application.EnableEvents = True
 
     Call mod_Banking_Report.Initialize_ImportReport_ListBox
+    Call mod_Banking_Format.Aktiviere_BankkontoFilter
 
     ' Keine automatischen Hinweis-MsgBoxen beim reinen Blattwechsel.
     ' Wichtige Pflicht-Hinweise laufen im Import-Workflow selbst.
@@ -292,6 +293,18 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     End Select
     
+    ' Nur weitergenerieren wenn alle H/I-Zuordnungen vollständig und bestätigt sind.
+    Dim offeneZelle As Range
+    Set offeneZelle = Nothing
+    If HatOffeneKategorieOderPeriodeImBankkonto(Target.Row, offeneZelle) Then
+        If Not offeneZelle Is Nothing Then
+            On Error Resume Next
+            offeneZelle.Select
+            On Error GoTo 0
+        End If
+        Exit Sub
+    End If
+
     ' v3.0: übersicht nach manueller änderung in H/I automatisch aktualisieren
     ' v5.1: Kein hardcoded Year(Date) mehr - Jahr wird aus Startmenü!F1 / Bankkonto ermittelt
     On Error Resume Next
@@ -926,6 +939,78 @@ Private Function EntferneBemerkungsZeile(ByVal bemerkung As String, _
     Next zz
     
     EntferneBemerkungsZeile = ergebnis
+End Function
+
+' ===============================================================
+' Prüft offene H/I-Zuordnungen und liefert die erste zu fokusierende
+' Zelle zurück. Startet die Suche ab bevorzugter Zeile und läuft
+' danach von oben weiter.
+' ===============================================================
+Private Function HatOffeneKategorieOderPeriodeImBankkonto(ByVal bevorzugteZeile As Long, _
+                                                          ByRef firstOpenCell As Range) As Boolean
+    Dim lastRow As Long
+    Dim r As Long
+    Dim pass As Long
+    Dim startRow As Long
+    Dim endRow As Long
+
+    HatOffeneKategorieOderPeriodeImBankkonto = False
+    Set firstOpenCell = Nothing
+
+    lastRow = Me.Cells(Me.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Function
+
+    For pass = 1 To 2
+        If pass = 1 Then
+            startRow = IIf(bevorzugteZeile < BK_START_ROW, BK_START_ROW, bevorzugteZeile)
+            endRow = lastRow
+        Else
+            startRow = BK_START_ROW
+            endRow = IIf(bevorzugteZeile <= BK_START_ROW, BK_START_ROW - 1, bevorzugteZeile - 1)
+        End If
+
+        If endRow < startRow Then GoTo NextPass
+
+        For r = startRow To endRow
+            If Trim(CStr(Me.Cells(r, BK_COL_BETRAG).value)) = "" Then GoTo NextRowOpen
+
+            Dim kat As String
+            Dim mon As String
+            Dim colorH As Long
+            Dim colorI As Long
+
+            kat = Trim(CStr(Me.Cells(r, BK_COL_KATEGORIE).value))
+            mon = Trim(CStr(Me.Cells(r, BK_COL_MONAT_PERIODE).value))
+            colorH = Me.Cells(r, BK_COL_KATEGORIE).Interior.color
+            colorI = Me.Cells(r, BK_COL_MONAT_PERIODE).Interior.color
+
+            If kat = "" Then
+                Set firstOpenCell = Me.Cells(r, BK_COL_KATEGORIE)
+                HatOffeneKategorieOderPeriodeImBankkonto = True
+                Exit Function
+            End If
+
+            If colorH = RGB(255, 199, 206) Or colorH = RGB(255, 235, 156) Then
+                Set firstOpenCell = Me.Cells(r, BK_COL_KATEGORIE)
+                HatOffeneKategorieOderPeriodeImBankkonto = True
+                Exit Function
+            End If
+
+            If mon = "" Then
+                Set firstOpenCell = Me.Cells(r, BK_COL_MONAT_PERIODE)
+                HatOffeneKategorieOderPeriodeImBankkonto = True
+                Exit Function
+            End If
+
+            If colorI = RGB(255, 199, 206) Or colorI = RGB(255, 235, 156) Then
+                Set firstOpenCell = Me.Cells(r, BK_COL_MONAT_PERIODE)
+                HatOffeneKategorieOderPeriodeImBankkonto = True
+                Exit Function
+            End If
+NextRowOpen:
+        Next r
+NextPass:
+    Next pass
 End Function
 
 

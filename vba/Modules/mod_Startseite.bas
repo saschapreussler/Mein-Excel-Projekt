@@ -198,16 +198,18 @@ Public Sub FixNurEinstellungenButtonSofort(Optional ByVal zeigeMeldung As Boolea
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
 
-    ' Jede Kachel DIREKT auf ihr eigenes Navigations-Makro verdrahten.
-    ' Kein Dispatcher, keine Textlogik - eindeutig und nachweislich korrekt
-    ' (die Makros funktionieren, siehe direkter Aufruf-Test).
+    ' Nur bekannte Kachel-Shapes verdrahten, keine Text-Heuristik.
     For Each shp In ws.Shapes
+        If Left$(LCase$(shp.Name), 7) <> "kachel_" Then GoTo NextShape
+
         ziel = KachelZielMakro(shp.Name)
         If ziel <> "" Then
             On Error Resume Next
-            shp.OnAction = ziel
+            shp.OnAction = QualifiziereMakroFuerDiesesWorkbook(ziel)
+            shp.ZOrder msoBringToFront
             On Error GoTo 0
         End If
+NextShape:
     Next shp
 
     ' Keine Zellauswahl auf der Startseite zulassen
@@ -222,6 +224,166 @@ Public Sub FixNurEinstellungenButtonSofort(Optional ByVal zeigeMeldung As Boolea
     End If
 End Sub
 
+' ===============================================================
+' Öffentlicher Hard-Repair-Einstieg: korrigiert alle Startseiten-
+' Verknüpfungen deterministisch (Name + Text + Z-Order).
+' ===============================================================
+Public Sub RepariereStartseitenNavigation()
+    Dim ws As Worksheet
+
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Sub
+
+    ' Falls die Startseite inkonsistent ist (z.B. fehlende/falsch verdrahtete
+    ' Kacheln), komplette Neu-Erstellung erzwingen.
+    If IstStartseitenNavigationInkonsistent(ws) Then
+        Call InitialisiereStartseite
+        Exit Sub
+    End If
+
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+
+    On Error Resume Next
+    ws.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+
+    Call FixNurEinstellungenButtonSofort(False)
+
+    On Error Resume Next
+    ws.EnableSelection = xlNoSelection
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+
+    Application.EnableEvents = True
+    Application.ScreenUpdating = True
+End Sub
+
+Private Function ZaehleNavigationsKacheln(ByVal ws As Worksheet) As Long
+    Dim shp As Shape
+    Dim cnt As Long
+
+    cnt = 0
+    For Each shp In ws.Shapes
+        If Left$(LCase$(shp.Name), 7) = "kachel_" Then cnt = cnt + 1
+    Next shp
+
+    ZaehleNavigationsKacheln = cnt
+End Function
+
+Private Function IstStartseitenNavigationInkonsistent(ByVal ws As Worksheet) As Boolean
+    Dim names As Variant
+    Dim i As Long
+    Dim shp As Shape
+    Dim expectedRaw As String
+    Dim expectedClean As String
+    Dim actionClean As String
+
+    IstStartseitenNavigationInkonsistent = True
+
+    If ZaehleNavigationsKacheln(ws) < 14 Then Exit Function
+
+    names = Array( _
+        "kachel_Uebersicht", "kachel_Bankkonto", "kachel_Vereinskasse", _
+        "kachel_Dashboard", "kachel_Strom", "kachel_Wasser", _
+        "kachel_Einstellungen", "kachel_Daten", "kachel_Mitglieder", _
+        "kachel_FinanzUebersicht", "kachel_Betriebskosten", "kachel_Endabrechnung", _
+        "kachel_NeuesJahr", "kachel_NormaleAnsicht")
+
+    For i = LBound(names) To UBound(names)
+        Set shp = Nothing
+        On Error Resume Next
+        Set shp = ws.Shapes(CStr(names(i)))
+        On Error GoTo 0
+        If shp Is Nothing Then Exit Function
+
+        expectedRaw = KachelZielMakro(CStr(names(i)))
+        If Len(expectedRaw) = 0 Then Exit Function
+
+        expectedClean = Replace(expectedRaw, "'", "")
+        actionClean = Replace(CStr(shp.OnAction), "'", "")
+        If Len(actionClean) = 0 Then Exit Function
+        If InStr(1, actionClean, expectedClean, vbTextCompare) = 0 Then Exit Function
+    Next i
+
+    IstStartseitenNavigationInkonsistent = False
+End Function
+
+' ===============================================================
+' Setzt OnAction anhand des sichtbaren Kacheltexts.
+' Nutzt Keyword-Mapping und bringt erkannte Kacheln nach vorn.
+' ===============================================================
+Private Sub RepariereStartseitenButtonsNachText(ByVal ws As Worksheet)
+    Dim shp As Shape
+    Dim t As String
+    Dim ziel As String
+
+    For Each shp In ws.Shapes
+        ziel = ""
+        t = ""
+
+        On Error Resume Next
+        t = LCase$(Trim$(CStr(shp.TextFrame2.TextRange.Text)))
+        On Error GoTo 0
+
+        If t <> "" Then
+            If InStr(t, "bankkonto") > 0 Then
+                ziel = "mod_Startseite.Startseite_Nav_Bankkonto_Direct"
+            ElseIf InStr(t, "zahlungs") > 0 Then
+                ziel = "mod_Navigation.NavigiereZu_Uebersicht"
+            ElseIf InStr(t, "vereinskasse") > 0 Then
+                ziel = "mod_Navigation.NavigiereZu_Vereinskasse"
+            ElseIf InStr(t, "dashboard") > 0 Then
+                ziel = "mod_Navigation.NavigiereZu_Dashboard"
+            ElseIf InStr(t, "strom") > 0 Then
+                ziel = "mod_Startseite.Startseite_Nav_Strom_Direct"
+            ElseIf InStr(t, "wasser") > 0 Then
+                ziel = "mod_Startseite.Startseite_Nav_Wasser_Direct"
+            ElseIf InStr(t, "einstellung") > 0 Then
+                ziel = "mod_Navigation.NavigiereZu_Einstellungen"
+            ElseIf t = "■ daten" Or InStr(t, " daten") > 0 Then
+                ziel = "mod_Navigation.NavigiereZu_Daten"
+            ElseIf InStr(t, "mitglieder") > 0 Then
+                ziel = "mod_Navigation.ZeigeMitgliederverwaltung"
+            ElseIf InStr(t, "finanz") > 0 Then
+                ziel = "mod_Navigation.NavigiereZu_FinanzUebersicht"
+            ElseIf InStr(t, "betriebskosten") > 0 Then
+                ziel = "mod_Navigation.ZeigeSerienbrief_Betriebskosten"
+            ElseIf InStr(t, "endabrechnung") > 0 Then
+                ziel = "mod_Navigation.ZeigeSerienbrief_Endabrechnung"
+            ElseIf InStr(t, "neues kalenderjahr") > 0 Then
+                ziel = "mod_Jahreswechsel.StarteNeuesJahr"
+            ElseIf InStr(t, "normale ansicht") > 0 Then
+                ziel = "mod_Startseite.StelleNormaleAnsichtWiederHer"
+            End If
+        End If
+
+        If ziel <> "" Then
+            On Error Resume Next
+            shp.OnAction = QualifiziereMakroFuerDiesesWorkbook(ziel)
+            shp.ZOrder msoBringToFront
+            On Error GoTo 0
+        End If
+    Next shp
+End Sub
+
+' ===============================================================
+' Erzwingt, dass OnAction-Makros IMMER aus dieser Arbeitsmappe
+' aufgerufen werden (wichtig bei mehreren offenen xlsm-Dateien).
+' ===============================================================
+Private Function QualifiziereMakroFuerDiesesWorkbook(ByVal makroName As String) As String
+    Dim cleanMakro As String
+    cleanMakro = Replace(makroName, "'", "")
+
+    If InStr(1, cleanMakro, "!", vbTextCompare) > 0 Then
+        QualifiziereMakroFuerDiesesWorkbook = cleanMakro
+    Else
+        QualifiziereMakroFuerDiesesWorkbook = "'" & ThisWorkbook.Name & "'!" & cleanMakro
+    End If
+End Function
+
 
 ' ===============================================================
 ' Liefert das direkte Ziel-Makro für eine Kachel anhand ihres
@@ -230,11 +392,11 @@ End Sub
 Private Function KachelZielMakro(ByVal shapeName As String) As String
     Select Case shapeName
         Case "kachel_Uebersicht":       KachelZielMakro = "'mod_Navigation.NavigiereZu_Uebersicht'"
-        Case "kachel_Bankkonto":        KachelZielMakro = "'mod_Navigation.NavigiereZu_Bankkonto'"
+        Case "kachel_Bankkonto":        KachelZielMakro = "'mod_Startseite.Startseite_Nav_Bankkonto_Direct'"
         Case "kachel_Vereinskasse":     KachelZielMakro = "'mod_Navigation.NavigiereZu_Vereinskasse'"
         Case "kachel_Dashboard":        KachelZielMakro = "'mod_Navigation.NavigiereZu_Dashboard'"
-        Case "kachel_Strom":            KachelZielMakro = "'mod_Navigation.NavigiereZu_Strom'"
-        Case "kachel_Wasser":           KachelZielMakro = "'mod_Navigation.NavigiereZu_Wasser'"
+        Case "kachel_Strom":            KachelZielMakro = "'mod_Startseite.Startseite_Nav_Strom_Direct'"
+        Case "kachel_Wasser":           KachelZielMakro = "'mod_Startseite.Startseite_Nav_Wasser_Direct'"
         Case "kachel_Einstellungen":    KachelZielMakro = "'mod_Navigation.NavigiereZu_Einstellungen'"
         Case "kachel_Daten":            KachelZielMakro = "'mod_Navigation.NavigiereZu_Daten'"
         Case "kachel_Mitglieder":       KachelZielMakro = "'mod_Navigation.ZeigeMitgliederverwaltung'"
@@ -246,24 +408,34 @@ Private Function KachelZielMakro(ByVal shapeName As String) As String
     End Select
 End Function
 
+' ===============================================================
+' HART-FIX Navigation: direkte Blattaktivierung ohne Dispatcher /
+' Navigationsumweg, damit Startseitenkacheln stabil bleiben.
+' ===============================================================
+Public Sub Startseite_Nav_Bankkonto_Direct()
+    AktiviereBlattRobust WS_BANKKONTO, "Bankkonto"
+End Sub
+
+Public Sub Startseite_Nav_Strom_Direct()
+    AktiviereBlattRobust "Strom", "Strom"
+End Sub
+
+Public Sub Startseite_Nav_Wasser_Direct()
+    AktiviereBlattRobust "Wasser", "Wasser"
+End Sub
+
 
 Private Sub AktiviereBlattRobust(ByVal blattName As String, ByVal fallbackName As String)
     Dim ws As Worksheet
 
-    On Error Resume Next
-    Set ws = ThisWorkbook.Worksheets(blattName)
-    If ws Is Nothing And fallbackName <> "" Then Set ws = ThisWorkbook.Worksheets(fallbackName)
-    On Error GoTo 0
+    Set ws = mod_Navigation.FindeTabellenblattRobust(blattName, fallbackName)
 
     If ws Is Nothing Then
         MsgBox "Tabellenblatt '" & blattName & "' nicht gefunden.", vbExclamation, "Startseite"
         Exit Sub
     End If
 
-    ws.Activate
-    On Error Resume Next
-    ws.Range("A1").Select
-    On Error GoTo 0
+    mod_Navigation.AktiviereZielblattStabil ws
 End Sub
 
 
@@ -581,55 +753,55 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     Call ErstelleKachel(ws, "kachel_Uebersicht", _
         ChrW(9654) & " Zahlungs" & ChrW(252) & "bersicht", _
         col1Left, ws.Range("C15").Top + 4, kachelW, kachelH, _
-        CLR_BTN_FINANCE, "'mod_Startseite.StartseitenKachelDispatcher'")
+        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Uebersicht'")
     
     Call ErstelleKachel(ws, "kachel_Bankkonto", _
         ChrW(9733) & " Bankkonto", _
         col1Left, ws.Range("C16").Top + 4, kachelW, kachelH, _
-        CLR_BTN_FINANCE, "'mod_Startseite.StartseitenKachelDispatcher'")
+        CLR_BTN_FINANCE, "'mod_Startseite.Startseite_Nav_Bankkonto_Direct'")
     
     Call ErstelleKachel(ws, "kachel_Vereinskasse", _
         ChrW(9830) & " Vereinskasse", _
         col1Left, ws.Range("C17").Top + 4, kachelW, kachelH, _
-        CLR_BTN_FINANCE, "'mod_Startseite.StartseitenKachelDispatcher'")
+        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Vereinskasse'")
     
     ' --- Spalte 2: Verbrauch & Verwaltung ---
     Call ErstelleKachel(ws, "kachel_Dashboard", _
         ChrW(9650) & " Dashboard", _
         col2Left, ws.Range("F15").Top + 4, kachelW, kachelH, _
-        CLR_BTN_FINANCE, "'mod_Startseite.StartseitenKachelDispatcher'")
+        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Dashboard'")
     
     Call ErstelleKachel(ws, "kachel_Strom", _
         ChrW(9889) & " Strom", _
         col2Left, ws.Range("F16").Top + 4, kachelW, kachelH, _
-        CLR_BTN_METER, "'mod_Startseite.StartseitenKachelDispatcher'")
+        CLR_BTN_METER, "'mod_Startseite.Startseite_Nav_Strom_Direct'")
     
     Call ErstelleKachel(ws, "kachel_Wasser", _
         ChrW(8776) & " Wasser", _
         col2Left, ws.Range("F17").Top + 4, kachelW, kachelH, _
-        CLR_BTN_METER, "'mod_Startseite.StartseitenKachelDispatcher'")
+        CLR_BTN_METER, "'mod_Startseite.Startseite_Nav_Wasser_Direct'")
     
     ' --- Spalte 3: Admin ---
     Call ErstelleKachel(ws, "kachel_Einstellungen", _
         ChrW(9881) & " Einstellungen", _
         col3Left, ws.Range("I15").Top + 4, kachelW, kachelH, _
-        CLR_BTN_ADMIN, "'mod_Startseite.StartseitenKachelDispatcher'")
+        CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Einstellungen'")
     
     Call ErstelleKachel(ws, "kachel_Daten", _
         ChrW(9632) & " Daten", _
         col3Left, ws.Range("I16").Top + 4, kachelW, kachelH, _
-        CLR_BTN_ADMIN, "'mod_Startseite.StartseitenKachelDispatcher'")
+        CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Daten'")
     
     Call ErstelleKachel(ws, "kachel_Mitglieder", _
         ChrW(9679) & " Mitgliederverwaltung", _
         col3Left, ws.Range("I17").Top + 4, kachelW, kachelH, _
-        CLR_BTN_MITGL, "'mod_Startseite.StartseitenKachelDispatcher'")
+        CLR_BTN_MITGL, "'mod_Navigation.ZeigeMitgliederverwaltung'")
     
     ' --- Zeile 4: Finanz-übersicht ---
     Call ErstelleKachel(ws, "kachel_FinanzUebersicht", _
         ChrW(9654) & " Finanz-" & ChrW(220) & "bersicht", _
         col1Left, ws.Range("C18").Top + 4, kachelW, kachelH, _
-        CLR_BTN_FINANCE, "'mod_Startseite.StartseitenKachelDispatcher'")
+        CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_FinanzUebersicht'")
     
     ' --- Serienbrief-Bereich ---
     With ws.Range("B19:J19")
@@ -647,12 +819,12 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     Call ErstelleKachel(ws, "kachel_Betriebskosten", _
         ChrW(9633) & " Betriebskostenabrechnung", _
         col1Left, ws.Range("C21").Top + 4, kachelW, kachelH, _
-        CLR_BTN_SERIENBR, "'mod_Startseite.StartseitenKachelDispatcher'")
+        CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Betriebskosten'")
     
     Call ErstelleKachel(ws, "kachel_Endabrechnung", _
         ChrW(9633) & " Endabrechnung", _
         col2Left, ws.Range("F21").Top + 4, kachelW, kachelH, _
-        CLR_BTN_SERIENBR, "'mod_Startseite.StartseitenKachelDispatcher'")
+        CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Endabrechnung'")
     
     ' Punkt 13: Neues Kalenderjahr starten - direkt unter "Mitgliederverwaltung"
     ' (Spalte 3 = col3Left), auf gleicher Höhe wie Finanz-Übersicht /
@@ -742,7 +914,7 @@ Private Sub ErstelleKachel(ByVal ws As Worksheet, _
             End With
         End With
         
-        .OnAction = makroName
+        .OnAction = QualifiziereMakroFuerDiesesWorkbook(makroName)
         .Placement = xlFreeFloating
     End With
     
@@ -981,9 +1153,17 @@ Private Function HoleAktuellerKontostand() As Double
         Exit Function
     End If
     
+    If Not HatBankkontoAuszuege(wsBK) Then
+        HoleAktuellerKontostand = vorjahr
+        Exit Function
+    End If
+
+    Dim lastRow As Long
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+
     Dim summe As Double
     On Error Resume Next
-    summe = Application.WorksheetFunction.Sum(wsBK.Range("B" & BK_START_ROW & ":B5000"))
+    summe = Application.WorksheetFunction.Sum(wsBK.Range("B" & BK_START_ROW & ":B" & lastRow))
     On Error GoTo 0
     
     HoleAktuellerKontostand = vorjahr + summe
@@ -1045,7 +1225,19 @@ Public Sub AktualisiereKontostandKPI()
     
     ' Aktueller Kontostand aktualisieren
     Dim kontostand As Double
-    kontostand = HoleAktuellerKontostand()
+    Dim hatAuszuege As Boolean
+    Dim wsBK As Worksheet
+    Set wsBK = Nothing
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    On Error GoTo 0
+
+    hatAuszuege = HatBankkontoAuszuege(wsBK)
+    If hatAuszuege Then
+        kontostand = HoleAktuellerKontostand()
+    Else
+        kontostand = kontoVorjahr
+    End If
     Dim kontoText As String
     kontoText = Format$(kontostand, "#,##0.00") & " " & ChrW(8364)
     Dim kontoFarbe As Long
@@ -1055,13 +1247,39 @@ Public Sub AktualisiereKontostandKPI()
     ws.Range("G10:J10").value = kontoText
     ws.Range("G10:J10").Font.color = CLR_DARK_TEXT
     ws.Range("G10:J10").Borders(xlEdgeBottom).color = kontoFarbe
-    ws.Range("G11:J11").value = "Kontostand Aktuell | " & HoleLetztesBuchungsdatum()
+    If hatAuszuege Then
+        ws.Range("G11:J11").value = "Kontostand Aktuell | " & HoleLetztesBuchungsdatum()
+    Else
+        ws.Range("G11:J11").value = "Kontostand Aktuell | keine Buchungen"
+    End If
     On Error GoTo 0
     
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
+
+' ===============================================================
+' True, wenn im Bankkonto mindestens eine echte Auszugszeile
+' vorhanden ist (Datum oder Betrag gefüllt).
+' ===============================================================
+Private Function HatBankkontoAuszuege(ByVal wsBK As Worksheet) As Boolean
+    HatBankkontoAuszuege = False
+    If wsBK Is Nothing Then Exit Function
+
+    Dim lastRow As Long
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Function
+
+    Dim r As Long
+    For r = BK_START_ROW To lastRow
+        If Trim(CStr(wsBK.Cells(r, BK_COL_DATUM).value)) <> "" Or _
+           Trim(CStr(wsBK.Cells(r, BK_COL_BETRAG).value)) <> "" Then
+            HatBankkontoAuszuege = True
+            Exit Function
+        End If
+    Next r
+End Function
 
 
 Private Function HoleVereinsStrasse() As String

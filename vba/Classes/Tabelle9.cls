@@ -17,8 +17,7 @@ Option Explicit
 ' ===============================================================
 
 Private Sub Worksheet_Activate()
-    Call mod_Einstellungen.FormatiereZahlungsterminTabelle(Me)
-    Call mod_Einstellungen.PruefeParzellenwertUndSynchronisiere(True)
+    ' Kein Auto-Workflow beim bloßen Blattwechsel.
 End Sub
 
 Private Sub Worksheet_Change(ByVal Target As Range)

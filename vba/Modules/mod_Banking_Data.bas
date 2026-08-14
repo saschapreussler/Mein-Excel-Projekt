@@ -393,15 +393,25 @@ ImportAbschluss:
 
     ' 6c. Workflow-Gate: Ohne klares H+I KEINE Zahlungsuebersicht / KEIN Dashboard
     If HatOffeneKategorieOderPeriode(wsZiel) Then
+        Dim offeneBankZelle As Range
+        Set offeneBankZelle = FindeErsteOffeneZuordnung(wsZiel)
+
+        If Not offeneBankZelle Is Nothing Then
+            On Error Resume Next
+            wsZiel.Activate
+            offeneBankZelle.Select
+            On Error GoTo 0
+        End If
+
         Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsZiel)
         Application.DisplayAlerts = True
         Application.ScreenUpdating = True
         Application.EnableEvents = True
 
         MsgBox "Import abgeschlossen, aber noch offene Zuordnungen in Bankkonto." & vbCrLf & vbCrLf & _
-               "Bitte klaeren Sie zuerst alle markierten Felder in Kategorie (H) " & _
+               "Bitte kl" & ChrW(228) & "ren Sie zuerst alle markierten Felder in Kategorie (H) " & _
                "und Monat/Periode (I)." & vbCrLf & _
-               "Danach die Zahlungsuebersicht und das Dashboard neu erzeugen.", _
+               "Danach die Zahlungs" & ChrW(252) & "bersicht und das Dashboard neu erzeugen.", _
                vbExclamation, "Offene Zuordnungen"
         Exit Sub
     End If
@@ -727,12 +737,52 @@ Public Sub LoescheAlleBankkontoZeilen()
     Application.EnableEvents = eventsWaren
     
     Call mod_Banking_Report.Initialize_ImportReport_ListBox
+    Call mod_Uebersicht_Dashboard.LeereDashboardWennKeineDaten(force:=True)
     Call mod_Startseite.AktualisiereKontostandKPI
     Call mod_Startseite.AktualisiereParzellenAnzeigen
     
     MsgBox "Alle Daten wurden gel" & ChrW(246) & "scht.", vbInformation
     
 End Sub
+
+' ===============================================================
+' Liefert die erste offene H/I-Zelle mit Priorität: H vor I.
+' ===============================================================
+Private Function FindeErsteOffeneZuordnung(ByVal wsBK As Worksheet) As Range
+    Dim lastRow As Long
+    Dim r As Long
+
+    Set FindeErsteOffeneZuordnung = Nothing
+    If wsBK Is Nothing Then Exit Function
+
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Function
+
+    For r = BK_START_ROW To lastRow
+        If Trim(CStr(wsBK.Cells(r, BK_COL_BETRAG).value)) = "" Then GoTo NextRowOpen
+
+        Dim kat As String
+        Dim mon As String
+        Dim colorH As Long
+        Dim colorI As Long
+
+        kat = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
+        mon = Trim(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
+        colorH = wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color
+        colorI = wsBK.Cells(r, BK_COL_MONAT_PERIODE).Interior.color
+
+        If kat = "" Or colorH = RGB(255, 199, 206) Or colorH = RGB(255, 235, 156) Then
+            Set FindeErsteOffeneZuordnung = wsBK.Cells(r, BK_COL_KATEGORIE)
+            Exit Function
+        End If
+
+        If mon = "" Or colorI = RGB(255, 199, 206) Or colorI = RGB(255, 235, 156) Then
+            Set FindeErsteOffeneZuordnung = wsBK.Cells(r, BK_COL_MONAT_PERIODE)
+            Exit Function
+        End If
+NextRowOpen:
+    Next r
+End Function
 
 ' ---------------------------------------------------------------
 ' 8c. Formatierung Bankkonto aktualisieren

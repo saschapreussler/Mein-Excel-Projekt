@@ -227,6 +227,7 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
     ' --- 12b. Home-Button setzen (Dashboard wird neu erstellt -> Button fehlt sonst) ---
     On Error Resume Next
     Call mod_Navigation.ErstelleHomeButton(wsDash)
+    Call mod_Startseite.FixNurEinstellungenButtonSofort(False)
     On Error GoTo ErrorHandler
     
     ' --- 13. Blatt schützen ---
@@ -314,6 +315,78 @@ Public Sub SynchronisiereDashboardKpiSofort()
         CStr(anzahlMitglieder) & " Mitglieder"
 
     If warGeschuetzt Then
+        wsDash.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    End If
+    On Error GoTo 0
+End Sub
+
+
+' ============================================================
+'  LEERZUSTAND: Wenn Bankkonto und Zahlungsübersicht leer sind,
+'  wird das Dashboard ebenfalls geleert, damit keine Altwerte
+'  sichtbar bleiben.
+' ============================================================
+Public Sub LeereDashboardWennKeineDaten(Optional ByVal force As Boolean = False)
+    On Error GoTo SafeExit
+
+    Dim wsDash As Worksheet
+    Dim wsBK As Worksheet
+    Dim wsUeb As Worksheet
+    Dim bankLeer As Boolean
+    Dim uebLeer As Boolean
+
+    On Error Resume Next
+    Set wsDash = ThisWorkbook.Worksheets("Dashboard Mitgliederzahlungen")
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo SafeExit
+
+    If wsDash Is Nothing Then Exit Sub
+
+    If force Then
+        bankLeer = True
+        uebLeer = True
+    Else
+        bankLeer = True
+        If Not wsBK Is Nothing Then
+            bankLeer = (wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row < BK_START_ROW)
+        End If
+
+        uebLeer = True
+        If Not wsUeb Is Nothing Then
+            uebLeer = (wsUeb.Cells(wsUeb.Rows.count, 1).End(xlUp).Row < 4)
+        End If
+    End If
+
+    If Not (bankLeer And uebLeer) Then Exit Sub
+
+    Dim warGeschuetzt As Boolean
+    warGeschuetzt = wsDash.ProtectContents
+
+    On Error Resume Next
+    If warGeschuetzt Then wsDash.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo SafeExit
+
+    wsDash.Cells.Clear
+    wsDash.Cells.Interior.color = RGB(255, 255, 255)
+
+    With wsDash.Range("A2:H2")
+        .Merge
+        .value = "ZAHLUNGS-DASHBOARD"
+        .Font.Name = "Calibri"
+        .Font.Size = 20
+        .Font.Bold = True
+        .Font.color = RGB(23, 37, 84)
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+
+    wsDash.Range("A4").value = "Keine Eintr" & ChrW(228) & "ge vorhanden."
+    wsDash.Range("A5").value = "Bitte zuerst Kontoausz" & ChrW(252) & "ge importieren."
+
+SafeExit:
+    On Error Resume Next
+    If Not wsDash Is Nothing Then
         wsDash.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     End If
     On Error GoTo 0

@@ -17,14 +17,9 @@ Private Const HOME_BTN_NAME As String = "btn_Home"
 ' NAVIGATION: Startseite aktivieren
 ' ===============================================================
 Public Sub NavigiereZuStartseite()
-    On Error Resume Next
     Dim ws As Worksheet
-    Set ws = ThisWorkbook.Worksheets(WS_STARTMENUE())
-    If Not ws Is Nothing Then
-        ws.Activate
-        ws.Range("A1").Select
-    End If
-    On Error GoTo 0
+    Set ws = FindeTabellenblattRobust(WS_STARTMENUE(), "Startseite")
+    AktiviereZielblattStabil ws
 End Sub
 
 
@@ -66,33 +61,116 @@ Public Sub NavigiereZu_FinanzUebersicht()
         ' Blatt wird beim ersten Aufruf erstellt
         mod_FinanzUebersicht.ErstelleFinanzUebersicht
     Else
-        ws.Activate
-        ws.Range("A1").Select
+        AktiviereZielblattStabil ws
     End If
 End Sub
 
 Public Sub NavigiereZu_Uebersicht()
-    AktiviereTabellenblatt WS_UEBERSICHT()
+    Dim wsUeb As Worksheet
+    Set wsUeb = FindeTabellenblattRobust(WS_UEBERSICHT(), "Uebersicht")
+
+    If wsUeb Is Nothing Then
+        On Error Resume Next
+        Call mod_Uebersicht_Generator.GeneriereUebersicht
+        On Error GoTo 0
+        Set wsUeb = FindeTabellenblattRobust(WS_UEBERSICHT(), "Uebersicht")
+    End If
+
+    If wsUeb Is Nothing Then
+        MsgBox "Zahlungs" & ChrW(252) & "bersicht konnte nicht gefunden oder erzeugt werden.", _
+               vbExclamation, "Navigation"
+        Exit Sub
+    End If
+
+    AktiviereZielblattStabil wsUeb
 End Sub
 
 Public Sub NavigiereZu_Dashboard()
     ' Dashboard wird dynamisch erzeugt - Name kann variieren
     Dim ws As Worksheet
     On Error Resume Next
-    Set ws = ThisWorkbook.Worksheets("Dashboard Mitgliederzahlungen")
+    Set ws = FindeTabellenblattRobust("Dashboard Mitgliederzahlungen", "Dashboard")
     On Error GoTo 0
     
     If ws Is Nothing Then
-        MsgBox "Das Dashboard wurde noch nicht erstellt." & vbLf & vbLf & _
-               "Bitte zuerst die Zahlungs" & ChrW(252) & "bersicht " & _
-               "oder das Dashboard generieren.", _
-               vbInformation, "Dashboard nicht vorhanden"
-        Exit Sub
+        On Error Resume Next
+        Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(True)
+        On Error GoTo 0
+        Set ws = FindeTabellenblattRobust("Dashboard Mitgliederzahlungen", "Dashboard")
+        If ws Is Nothing Then
+            MsgBox "Das Dashboard wurde noch nicht erstellt." & vbLf & vbLf & _
+                   "Bitte zuerst die Zahlungs" & ChrW(252) & "bersicht " & _
+                   "oder das Dashboard generieren.", _
+                   vbInformation, "Dashboard nicht vorhanden"
+            Exit Sub
+        End If
     End If
     
-    ws.Activate
-    ws.Range("A1").Select
+    AktiviereZielblattStabil ws
 End Sub
+
+' ===============================================================
+' Failsafe gegen vertauschte Startseiten-Button-Verknuepfungen.
+' Wenn ein Navigationsmakro durch eine andere Startkachel ausgeloest
+' wurde, wird auf das richtige Ziel umgeleitet.
+' Rueckgabe: True = Umleitung ausgefuehrt, Aufrufer soll Exit Sub.
+' ===============================================================
+Private Function LeiteBeiFehlverdrahtungWeiter(ByVal erwarteteKachel As String) As Boolean
+    LeiteBeiFehlverdrahtungWeiter = False
+
+    Dim callerName As String
+    callerName = ""
+    On Error Resume Next
+    callerName = LCase$(Trim$(CStr(Application.Caller)))
+    On Error GoTo 0
+
+    If callerName = "" Then Exit Function
+    If Left$(callerName, 7) <> "kachel_" Then Exit Function
+    If callerName = erwarteteKachel Then Exit Function
+
+    If RouteStartkachelDirekt(callerName) Then
+        LeiteBeiFehlverdrahtungWeiter = True
+    End If
+End Function
+
+' ===============================================================
+' Direkte Zielzuordnung nach Startkachel-Name.
+' ===============================================================
+Private Function RouteStartkachelDirekt(ByVal callerName As String) As Boolean
+    RouteStartkachelDirekt = True
+
+    Select Case callerName
+        Case "kachel_bankkonto"
+            AktiviereTabellenblatt WS_BANKKONTO
+        Case "kachel_strom"
+            AktiviereTabellenblatt "Strom"
+        Case "kachel_wasser"
+            AktiviereTabellenblatt "Wasser"
+        Case "kachel_einstellungen"
+            AktiviereTabellenblatt WS_EINSTELLUNGEN
+        Case "kachel_daten"
+            AktiviereTabellenblatt WS_DATEN
+        Case "kachel_vereinskasse"
+            AktiviereTabellenblatt WS_VEREINSKASSE
+        Case "kachel_uebersicht"
+            AktiviereTabellenblatt WS_UEBERSICHT()
+        Case "kachel_dashboard"
+            Dim wsDash As Worksheet
+            Set wsDash = Nothing
+            Set wsDash = FindeTabellenblattRobust("Dashboard Mitgliederzahlungen", "Dashboard")
+            If Not wsDash Is Nothing Then
+                AktiviereZielblattStabil wsDash
+            Else
+                MsgBox "Das Dashboard wurde noch nicht erstellt.", vbInformation, "Dashboard"
+            End If
+        Case "kachel_finanzuebersicht"
+            NavigiereZu_FinanzUebersicht
+        Case "kachel_mitglieder"
+            frm_Mitgliederverwaltung.Show
+        Case Else
+            RouteStartkachelDirekt = False
+    End Select
+End Function
 
 Public Sub ZeigeMitgliederverwaltung()
     frm_Mitgliederverwaltung.Show
@@ -117,18 +195,148 @@ End Sub
 ' HILFSFUNKTION: Tabellenblatt aktivieren (intern)
 ' ===============================================================
 Private Sub AktiviereTabellenblatt(ByVal blattName As String)
-    On Error Resume Next
     Dim ws As Worksheet
-    Set ws = ThisWorkbook.Worksheets(blattName)
+    Set ws = FindeTabellenblattRobust(blattName)
+
     If Not ws Is Nothing Then
-        ws.Activate
-        ws.Range("A1").Select
+        AktiviereZielblattStabil ws
     Else
         MsgBox "Tabellenblatt """ & blattName & """ nicht gefunden.", _
                vbExclamation, "Navigation"
     End If
+End Sub
+
+' ===============================================================
+' STABILE AKTIVIERUNG (Sicherheitsnetz gegen falsche Zielblaetter):
+' Aktiviert das Zielblatt und laesst dessen Worksheet_Activate-Logik
+' einmal laufen. Falls ein Nebeneffekt (z.B. Cross-Sheet-DropDowns)
+' danach ein ANDERES Blatt aktiv laesst, wird das gewuenschte Ziel
+' OHNE erneute Events zwingend wiederhergestellt. So landet ein
+' Button-Klick garantiert auf dem richtigen Tabellenblatt.
+' ===============================================================
+Public Sub AktiviereZielblattStabil(ByVal ws As Worksheet)
+    If ws Is Nothing Then Exit Sub
+
+    On Error Resume Next
+    ws.Activate
+    DoEvents
+
+    If Not IstAktivesBlatt(ws) Then
+        Application.EnableEvents = False
+        ws.Activate
+        Application.EnableEvents = True
+    End If
+
+    ws.Range("A1").Select
     On Error GoTo 0
 End Sub
+
+Private Function IstAktivesBlatt(ByVal ws As Worksheet) As Boolean
+    IstAktivesBlatt = False
+    On Error Resume Next
+    IstAktivesBlatt = (Not ActiveSheet Is Nothing) And (ActiveSheet Is ws)
+    On Error GoTo 0
+End Function
+
+Public Function FindeTabellenblattRobust(ByVal blattName As String, Optional ByVal fallbackName As String = "") As Worksheet
+    Dim ws As Worksheet
+    Dim aliases As Variant
+    Dim i As Long
+
+    Set FindeTabellenblattRobust = Nothing
+
+    Set ws = FindeTabellenblattExakt(blattName)
+    If Not ws Is Nothing Then
+        Set FindeTabellenblattRobust = ws
+        Exit Function
+    End If
+
+    If Len(fallbackName) > 0 Then
+        Set ws = FindeTabellenblattExakt(fallbackName)
+        If Not ws Is Nothing Then
+            Set FindeTabellenblattRobust = ws
+            Exit Function
+        End If
+    End If
+
+    aliases = HoleBlattAliase(blattName, fallbackName)
+    For i = LBound(aliases) To UBound(aliases)
+        Set ws = FindeTabellenblattExakt(CStr(aliases(i)))
+        If Not ws Is Nothing Then
+            Set FindeTabellenblattRobust = ws
+            Exit Function
+        End If
+    Next i
+
+    For i = LBound(aliases) To UBound(aliases)
+        Set ws = FindeTabellenblattEnthaelt(CStr(aliases(i)))
+        If Not ws Is Nothing Then
+            Set FindeTabellenblattRobust = ws
+            Exit Function
+        End If
+    Next i
+End Function
+
+Private Function FindeTabellenblattExakt(ByVal blattName As String) As Worksheet
+    Dim ws As Worksheet
+
+    Set FindeTabellenblattExakt = Nothing
+
+    If Len(blattName) = 0 Then Exit Function
+
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(blattName)
+    On Error GoTo 0
+    If Not ws Is Nothing Then
+        Set FindeTabellenblattExakt = ws
+        Exit Function
+    End If
+
+    For Each ws In ThisWorkbook.Worksheets
+        If StrComp(ws.Name, blattName, vbTextCompare) = 0 Then
+            Set FindeTabellenblattExakt = ws
+            Exit Function
+        End If
+    Next ws
+End Function
+
+Private Function FindeTabellenblattEnthaelt(ByVal teil As String) As Worksheet
+    Dim ws As Worksheet
+
+    Set FindeTabellenblattEnthaelt = Nothing
+    If Len(teil) = 0 Then Exit Function
+
+    For Each ws In ThisWorkbook.Worksheets
+        If InStr(1, ws.Name, teil, vbTextCompare) > 0 Then
+            Set FindeTabellenblattEnthaelt = ws
+            Exit Function
+        End If
+    Next ws
+End Function
+
+Private Function HoleBlattAliase(ByVal blattName As String, ByVal fallbackName As String) As Variant
+    Dim key As String
+
+    key = LCase$(Trim$(blattName & "|" & fallbackName))
+
+    Select Case True
+        Case InStr(1, key, "zahlungs", vbTextCompare) > 0 Or InStr(1, key, "uebersicht", vbTextCompare) > 0
+            HoleBlattAliase = Array("Zahlungs" & Chr$(252) & "bersicht", "Zahlungsuebersicht", _
+                                    Chr$(220) & "bersicht", "Uebersicht")
+        Case InStr(1, key, "startmen", vbTextCompare) > 0 Or InStr(1, key, "startseite", vbTextCompare) > 0
+            HoleBlattAliase = Array("Startmen" & Chr$(252), "Startmenue", "Startseite")
+        Case InStr(1, key, "finanz", vbTextCompare) > 0
+            HoleBlattAliase = Array("Finanz-" & Chr$(220) & "bersicht", "Finanz-Uebersicht", "Finanz" & Chr$(252) & "bersicht")
+        Case InStr(1, key, "dashboard", vbTextCompare) > 0
+            HoleBlattAliase = Array("Dashboard Mitgliederzahlungen", "Dashboard")
+        Case InStr(1, key, "strom", vbTextCompare) > 0
+            HoleBlattAliase = Array("Strom")
+        Case InStr(1, key, "wasser", vbTextCompare) > 0
+            HoleBlattAliase = Array("Wasser")
+        Case Else
+            HoleBlattAliase = Array(blattName, fallbackName)
+    End Select
+End Function
 
 
 ' ===============================================================
@@ -224,7 +432,7 @@ Public Sub ErstelleHomeButton(ByVal ws As Worksheet)
             End With
         End With
         
-        .OnAction = "'mod_Navigation.NavigiereZuStartseite'"
+        .OnAction = "'" & ThisWorkbook.Name & "'!mod_Navigation.NavigiereZuStartseite"
         .Placement = xlFreeFloating
     End With
     

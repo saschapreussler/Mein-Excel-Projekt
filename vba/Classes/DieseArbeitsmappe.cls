@@ -69,6 +69,7 @@ Private Sub Workbook_Open()
     On Error Resume Next
     Call mod_Startseite.InitialisiereStartseite
     Call mod_Startseite.FixNurEinstellungenButtonSofort(False)
+    Call mod_Startseite.RepariereStartseitenNavigation
     On Error GoTo 0
     
     ' v6.0: Home-Buttons auf allen Blättern setzen
@@ -185,7 +186,7 @@ Private Sub Workbook_SheetActivate(ByVal Sh As Object)
             vollbild = True
         Case "Dashboard Mitgliederzahlungen"
             ohneGitter = True
-            vollbild = True
+            vollbild = False
         Case WS_FINANZ_UEBERSICHT()
             ohneGitter = True
             vollbild = False
