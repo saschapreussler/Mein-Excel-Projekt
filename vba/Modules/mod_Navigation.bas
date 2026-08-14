@@ -60,7 +60,12 @@ Public Sub NavigiereZu_FinanzUebersicht()
     If ws Is Nothing Then
         ' Blatt wird beim ersten Aufruf erstellt
         mod_FinanzUebersicht.ErstelleFinanzUebersicht
+        Set ws = FindeTabellenblattRobust(WS_FINANZ_UEBERSICHT(), "Finanz-" & Chr$(220) & "bersicht")
     Else
+        AktiviereZielblattStabil ws
+    End If
+
+    If Not ws Is Nothing Then
         AktiviereZielblattStabil ws
     End If
 End Sub
@@ -217,18 +222,17 @@ End Sub
 Public Sub AktiviereZielblattStabil(ByVal ws As Worksheet)
     If ws Is Nothing Then Exit Sub
 
+    Dim eventsWaren As Boolean
+    eventsWaren = Application.EnableEvents
+
     On Error Resume Next
+    Application.EnableEvents = False
     ws.Activate
-    DoEvents
-
-    If Not IstAktivesBlatt(ws) Then
-        Application.EnableEvents = False
-        ws.Activate
-        Application.EnableEvents = True
-    End If
-
     ws.Range("A1").Select
+    Application.EnableEvents = eventsWaren
     On Error GoTo 0
+
+    Call SetzeAnsichtFuerBlatt(ws)
 End Sub
 
 Private Function IstAktivesBlatt(ByVal ws As Worksheet) As Boolean
@@ -237,6 +241,34 @@ Private Function IstAktivesBlatt(ByVal ws As Worksheet) As Boolean
     IstAktivesBlatt = (Not ActiveSheet Is Nothing) And (ActiveSheet Is ws)
     On Error GoTo 0
 End Function
+
+Private Sub SetzeAnsichtFuerBlatt(ByVal ws As Worksheet)
+    Dim ohneGitter As Boolean
+    Dim vollbild As Boolean
+
+    ohneGitter = False
+    vollbild = False
+
+    Select Case ws.Name
+        Case WS_STARTMENUE()
+            ohneGitter = True
+            vollbild = True
+        Case "Dashboard Mitgliederzahlungen"
+            ohneGitter = True
+            vollbild = False
+        Case WS_FINANZ_UEBERSICHT()
+            ohneGitter = True
+            vollbild = False
+    End Select
+
+    If Not ActiveWindow Is Nothing Then
+        ActiveWindow.DisplayGridlines = Not ohneGitter
+    End If
+
+    On Error Resume Next
+    Call mod_Vollbild.SetzeVollbildModus(vollbild)
+    On Error GoTo 0
+End Sub
 
 Public Function FindeTabellenblattRobust(ByVal blattName As String, Optional ByVal fallbackName As String = "") As Worksheet
     Dim ws As Worksheet
