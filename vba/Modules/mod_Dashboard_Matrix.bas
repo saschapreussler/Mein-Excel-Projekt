@@ -264,7 +264,7 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                         If Len(eEintritt) = 8 Then
                             Dim eJahr As Long, eMon As Long
                             eJahr = val(Left(eEintritt, 4))
-                            eMon = val(Mid(eEintritt, 5, 2))
+                            eMon = val(mid(eEintritt, 5, 2))
                             If eJahr = jahr And monat < eMon Then GoTo NextEKDash
                         End If
                     End If
@@ -1005,6 +1005,8 @@ Public Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

@@ -71,7 +71,10 @@ Public Sub StarteNeuesJahr()
         Exit Sub
     End If
 
-    ' --- 2) Bankkonto leeren (ausser Okt-Dez altJahr) ---
+    ' --- 2) Kassenbestand in das neue Vorjahresfeld übernehmen ---
+    Call UebernehmeKassenbestandVorjahr
+
+    ' --- 2a) Bankkonto leeren (ausser Okt-Dez altJahr) ---
     Call LeereBankkonto(altJahr)
 
     ' --- 2b) Vereinskasse leeren (ausser Okt-Dez altJahr) ---
@@ -84,6 +87,8 @@ Public Sub StarteNeuesJahr()
 
     ' --- 4) Abrechnungsjahr +1 ---
     Call SetzeAbrechnungsjahr(neuJahr)
+    Call mod_Einstellungen.AktualisiereKassenbestandVorjahrBeschriftung
+    Call mod_Vereinskasse_Filter.AktualisiereVereinskasseKassenbestand
 
     Application.Calculation = xlCalculationAutomatic
     Application.EnableEvents = True
@@ -275,6 +280,29 @@ Private Sub SetzeAbrechnungsjahr(ByVal jahr As Long)
         On Error GoTo 0
     End If
 End Sub
+
+Private Sub UebernehmeKassenbestandVorjahr()
+    Dim wsVK As Worksheet
+    Dim wsEinst As Worksheet
+    Dim kassenbestand As Variant
+
+    On Error Resume Next
+    Set wsVK = ThisWorkbook.Worksheets(WS_VEREINSKASSE)
+    Set wsEinst = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    If wsVK Is Nothing Or wsEinst Is Nothing Then Exit Sub
+
+    kassenbestand = wsVK.Range("D4").value
+    If Not IsNumeric(kassenbestand) Then Exit Sub
+
+    On Error Resume Next
+    wsEinst.Unprotect PASSWORD:=PASSWORD
+    wsEinst.Cells(ES_CFG_KASSENBESTAND_ROW, ES_CFG_VALUE_COL).value = CDbl(kassenbestand)
+    wsEinst.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+End Sub
+
+
 
 
 

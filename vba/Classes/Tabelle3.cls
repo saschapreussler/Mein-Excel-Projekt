@@ -281,8 +281,9 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             neuerWertI = Trim(CStr(Target.value))
             
             If neuerWertI = m_AlterWertI Then
-                ' Keine änderung -> nichts tun
-                Exit Sub
+                ' Eine rote Automatik-Zuordnung darf mit demselben
+                ' Listenwert ausdrücklich bestätigt werden.
+                If Target.Interior.color <> RGB(255, 199, 206) Then Exit Sub
             End If
             
             Call VerarbeiteMonatAenderung(Target)
@@ -384,6 +385,7 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
     
     ' 3. Bemerkung setzen
     ws.Cells(rowBK, BK_COL_BEMERKUNG).value = "manuell zugeordnet"
+    Call AktualisiereManuelleZuordnungBemerkung(ws, rowBK)
     
     ' 4. Monat/Periode setzen (falls leer)
     If Trim(ws.Cells(rowBK, BK_COL_MONAT_PERIODE).value) = "" Then
@@ -415,7 +417,7 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
             If Left(ergebnis, 5) = "GELB|" Then
                 ' GELB-Fall: Monat extrahieren und setzen
                 Dim monatName As String
-                monatName = Mid(ergebnis, 6) ' alles nach "GELB|"
+                monatName = mid(ergebnis, 6) ' alles nach "GELB|"
                 
                 ws.Cells(rowBK, BK_COL_MONAT_PERIODE).value = monatName
                 
@@ -579,6 +581,8 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
         ws.Cells(rowBK, BK_COL_BEMERKUNG).Interior.ColorIndex = xlNone
     End If
 
+    Call AktualisiereManuelleZuordnungBemerkung(ws, rowBK)
+
 MonatCleanup:
     On Error Resume Next
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
@@ -594,6 +598,21 @@ MonatError:
     If Err.Number <> 0 Then
         MsgBox "Fehler in Worksheet_Change (Monat): " & Err.Description, vbExclamation
         Err.Clear
+    End If
+End Sub
+
+Private Sub AktualisiereManuelleZuordnungBemerkung(ByVal ws As Worksheet, ByVal rowBK As Long)
+    Dim bemerkung As String
+    Dim zeitstempel As String
+
+    bemerkung = Trim$(CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value))
+    bemerkung = EntferneBemerkungsZeile(bemerkung, "manuell zugeordnet am")
+    zeitstempel = "Manuell zugeordnet am " & Format$(Now, "dd.mm.yyyy HH:nn")
+
+    If bemerkung = "" Then
+        ws.Cells(rowBK, BK_COL_BEMERKUNG).value = zeitstempel
+    Else
+        ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bemerkung & vbLf & zeitstempel
     End If
 End Sub
 
@@ -786,7 +805,7 @@ NextKatRow:
         eingabeKuerzel = UCase(Left(eingabe, trennPos - 1))
         
         Dim teilBetragStr As String
-        teilBetragStr = Mid(eingabe, trennPos + 1)
+        teilBetragStr = mid(eingabe, trennPos + 1)
         ' Komma -> Punkt für Val() (Komma ist Dezimalzeichen)
         teilBetragStr = Replace(teilBetragStr, ",", ".")
         
@@ -795,7 +814,7 @@ NextKatRow:
         teilBetrag = Round(teilBetrag, 2)
         
         If teilBetrag <= 0 Then
-            MsgBox "Ung" & ChrW(252) & "ltiger Betrag: " & Mid(eingabe, trennPos + 1), vbExclamation
+            MsgBox "Ung" & ChrW(252) & "ltiger Betrag: " & mid(eingabe, trennPos + 1), vbExclamation
             GoTo WeiterEingabe
         End If
         
@@ -1012,6 +1031,8 @@ NextRowOpen:
 NextPass:
     Next pass
 End Function
+
+
 
 
 

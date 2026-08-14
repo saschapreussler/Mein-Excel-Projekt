@@ -49,7 +49,7 @@ Public Function NormalizeText(ByVal inputText As String) As String
     ' Sonderzeichen entfernen (nur a-z, 0-9, Leerzeichen behalten)
     Dim i As Long
     For i = 1 To Len(txt)
-        Select Case Mid$(txt, i, 1)
+        Select Case mid$(txt, i, 1)
             Case "a" To "z", "0" To "9", " "
             Case Else
                 Mid$(txt, i, 1) = " "
@@ -69,6 +69,8 @@ Public Function NormalizeText(ByVal inputText As String) As String
 
     NormalizeText = Trim(txt)
 End Function
+
+
 
 
 

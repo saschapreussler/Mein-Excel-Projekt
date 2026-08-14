@@ -1,5 +1,4 @@
 ﻿Attribute VB_Name = "mod_Mitglieder_UI"
-Attribute VB_Name = "mod_Mitglieder_UI"
 Option Explicit
 
 ' ***************************************************************
@@ -431,6 +430,8 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False
     
 End Function
+
+
 
 
 

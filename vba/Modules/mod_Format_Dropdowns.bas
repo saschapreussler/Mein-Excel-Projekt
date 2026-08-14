@@ -98,32 +98,34 @@ Private Sub ErstelleKategorieNamedRanges(ByRef ws As Worksheet, ByVal lastRowE A
     
     On Error Resume Next
     
-    ThisWorkbook.Names("lst_KategorienEinnahmen").Delete
-    ThisWorkbook.Names("lst_KategorienAusgaben").Delete
-    ThisWorkbook.Names("lst_MonatPeriode").Delete
+    ThisWorkbook.names("lst_KategorienEinnahmen").Delete
+    ThisWorkbook.names("lst_KategorienAusgaben").Delete
+    ThisWorkbook.names("lst_MonatPeriode").Delete
     
     If lastRowE >= 4 Then
-        ThisWorkbook.Names.Add Name:="lst_KategorienEinnahmen", _
+        ThisWorkbook.names.Add Name:="lst_KategorienEinnahmen", _
             RefersTo:="=" & ws.Name & "!$AF$4:$AF$" & lastRowE
     Else
-        ThisWorkbook.Names.Add Name:="lst_KategorienEinnahmen", _
+        ThisWorkbook.names.Add Name:="lst_KategorienEinnahmen", _
             RefersTo:="=" & ws.Name & "!$AF$4"
     End If
     
     If lastRowA >= 4 Then
-        ThisWorkbook.Names.Add Name:="lst_KategorienAusgaben", _
+        ThisWorkbook.names.Add Name:="lst_KategorienAusgaben", _
             RefersTo:="=" & ws.Name & "!$AG$4:$AG$" & lastRowA
     Else
-        ThisWorkbook.Names.Add Name:="lst_KategorienAusgaben", _
+        ThisWorkbook.names.Add Name:="lst_KategorienAusgaben", _
             RefersTo:="=" & ws.Name & "!$AG$4"
     End If
     
-    ThisWorkbook.Names.Add Name:="lst_MonatPeriode", _
+    ThisWorkbook.names.Add Name:="lst_MonatPeriode", _
         RefersTo:="=" & ws.Name & "!$AH$4:$AH$15"
     
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

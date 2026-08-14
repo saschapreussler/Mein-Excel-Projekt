@@ -118,9 +118,17 @@ Public Sub SchreibeKonfigurationsBereich(Optional ByVal ws As Worksheet)
         .Locked = False
     End With
     
-    ' Kontostand Vorjahr
-    Call SchreibeCfgLabel(ws, ES_CFG_KONTOSTAND_ROW, "Kontostand Vorjahr (31.12.):")
+    ' Kontostand Sparkasse Vorjahr
+    Call SchreibeCfgLabel(ws, ES_CFG_KONTOSTAND_ROW, BeschriftungSparkasseVorjahr())
     With ws.Cells(ES_CFG_KONTOSTAND_ROW, ES_CFG_VALUE_COL)
+        .NumberFormat = euroFmt
+        .HorizontalAlignment = xlRight
+        .Locked = False
+    End With
+
+    ' Kassenbestand Vereinskasse Vorjahr
+    Call SchreibeCfgLabel(ws, ES_CFG_KASSENBESTAND_ROW, BeschriftungKassenbestandVorjahr())
+    With ws.Cells(ES_CFG_KASSENBESTAND_ROW, ES_CFG_VALUE_COL)
         .NumberFormat = euroFmt
         .HorizontalAlignment = xlRight
         .Locked = False
@@ -275,6 +283,8 @@ Private Sub AktualisiereKonfigLabels(ByVal ws As Worksheet)
     euroFmt = "#,##0.00 " & ChrW(8364)
     
     ' Labels aktualisieren
+    Call SchreibeCfgLabel(ws, ES_CFG_KONTOSTAND_ROW, BeschriftungSparkasseVorjahr())
+    Call SchreibeCfgLabel(ws, ES_CFG_KASSENBESTAND_ROW, BeschriftungKassenbestandVorjahr())
     Call SchreibeCfgLabel(ws, ES_CFG_MITGLIEDSBEITRAG_ROW, "Mitgliedsbeitrag (monatlich):")
     Call SchreibeCfgLabel(ws, ES_CFG_MIETE_ROW, "Miete / Pacht (j" & ChrW(228) & "hrlich):")
     Call SchreibeCfgLabel(ws, ES_CFG_GRUNDSTEUER_ROW, "Grundsteuer (j" & ChrW(228) & "hrlich):")
@@ -282,6 +292,9 @@ Private Sub AktualisiereKonfigLabels(ByVal ws As Worksheet)
     ' Editierbare Felder entsperren
     ws.Cells(ES_CFG_ABRECHNUNGSJAHR_ROW, ES_CFG_VALUE_COL).Locked = False
     ws.Cells(ES_CFG_KONTOSTAND_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Cells(ES_CFG_KASSENBESTAND_ROW, ES_CFG_VALUE_COL).Locked = False
+    ws.Cells(ES_CFG_KASSENBESTAND_ROW, ES_CFG_VALUE_COL).NumberFormat = euroFmt
+    ws.Cells(ES_CFG_KASSENBESTAND_ROW, ES_CFG_VALUE_COL).HorizontalAlignment = xlRight
     ws.Cells(ES_CFG_MITGLIEDSBEITRAG_ROW, ES_CFG_VALUE_COL).Locked = False
     ws.Cells(ES_CFG_MIETE_ROW, ES_CFG_VALUE_COL).Locked = False
     ws.Cells(ES_CFG_GRUNDSTEUER_ROW, ES_CFG_VALUE_COL).Locked = False
@@ -304,6 +317,38 @@ Private Sub AktualisiereKonfigLabels(ByVal ws As Worksheet)
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
+
+Public Sub AktualisiereKassenbestandVorjahrBeschriftung()
+    Dim ws As Worksheet
+
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(WS_EINSTELLUNGEN)
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Sub
+
+    Call AktualisiereKonfigLabels(ws)
+End Sub
+
+Private Function BeschriftungSparkasseVorjahr() As String
+    Dim jahr As Long
+
+    jahr = HoleAbrechnungsjahr()
+    If jahr <= 0 Then jahr = Year(Date)
+
+    BeschriftungSparkasseVorjahr = "Kontostand Sparkasse Vorjahr (31.12." & CStr(jahr - 1) & "):"
+End Function
+
+Private Function BeschriftungKassenbestandVorjahr() As String
+    Dim letztesDatum As Date
+
+    letztesDatum = mod_Vereinskasse_Filter.HoleLetztesKassendatumVorjahr()
+    If letztesDatum > 0 Then
+        BeschriftungKassenbestandVorjahr = "Kassenbestand Vereinskasse Vorjahr (" & _
+                                           Format$(letztesDatum, "dd.mm.yyyy") & "):"
+    Else
+        BeschriftungKassenbestandVorjahr = "Kassenbestand Vereinskasse Vorjahr:"
+    End If
+End Function
 
 
 ' --- Hilfs-Sub: Section-Header schreiben ---
@@ -1196,6 +1241,8 @@ Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long
     Call FormatiereZahlungsterminTabelle(ws)
     
 End Sub
+
+
 
 
 

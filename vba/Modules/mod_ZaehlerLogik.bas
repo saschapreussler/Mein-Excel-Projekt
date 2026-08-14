@@ -116,7 +116,7 @@ Public Function GetTargetRow(ByVal ZaehlerName As String, ByVal Medium As String
             GetTargetRow = IIf(Medium = "Strom", 28, 31)
         Case Else
             If Left(ZaehlerName, 8) = "Parzelle" Then
-                idx = val(Mid(ZaehlerName, 10))
+                idx = val(mid(ZaehlerName, 10))
                 GetTargetRow = IIf(Medium = "Strom", idx + 9, idx + 11)
             Else
                 GetTargetRow = 0
@@ -139,7 +139,7 @@ Public Function CleanNumber(ByVal v As Variant) As String
     s = CStr(v)
 
     If InStr(s, decSep) > 0 Then
-        If val(Mid(s, InStr(s, decSep) + 1)) = 0 Then
+        If val(mid(s, InStr(s, decSep) + 1)) = 0 Then
             s = Left(s, InStr(s, decSep) - 1)
         End If
     End If
@@ -596,6 +596,8 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
     wsStart.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True
     
 End Sub
+
+
 
 
 

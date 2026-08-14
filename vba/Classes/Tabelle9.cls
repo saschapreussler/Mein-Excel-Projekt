@@ -271,6 +271,13 @@ Private Sub VerarbeiteKonfigAenderung(ByVal Target As Range)
     On Error GoTo CfgExit
     
     Select Case Target.Row
+        Case ES_CFG_ABRECHNUNGSJAHR_ROW
+            Call mod_Einstellungen.AktualisiereKassenbestandVorjahrBeschriftung
+            Call mod_Vereinskasse_Filter.AktualisiereVereinskasseKassenbestand
+
+        Case ES_CFG_KASSENBESTAND_ROW
+            Call mod_Vereinskasse_Filter.AktualisiereVereinskasseKassenbestand
+
         Case ES_CFG_MITGLIEDSBEITRAG_ROW
             ' Mitgliedsbeitrag -> Zahlungstermine sync
             Call mod_Einstellungen.SyncMitgliedsbeitragZuTabelle(Me)
@@ -300,6 +307,8 @@ CfgExit:
     Application.EnableEvents = True
     If Err.Number <> 0 Then Err.Clear
 End Sub
+
+
 
 
 

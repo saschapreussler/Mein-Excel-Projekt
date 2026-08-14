@@ -225,6 +225,8 @@ Public Sub SetzeVereinskasseFormeln(ByVal wsVK As Worksheet)
         "Vereinskasse!$A$" & VK_START_ROW & ":$A$5000;""<""&DATUM(Einstellungen!$C$6;Daten!$AE$4;1)))"
     
     wsVK.Range("C24").NumberFormat = "#,##0.00 " & ChrW(8364)
+
+    Call AktualisiereVereinskasseKassenbestand(wsVK)
     
     On Error GoTo 0
     
@@ -232,6 +234,80 @@ Public Sub SetzeVereinskasseFormeln(ByVal wsVK As Worksheet)
     wsVK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
+
+Public Sub AktualisiereVereinskasseKassenbestand(Optional ByVal wsVK As Worksheet)
+    Dim letztesDatum As Date
+    Dim beschriftung As String
+
+    If wsVK Is Nothing Then
+        On Error Resume Next
+        Set wsVK = ThisWorkbook.Worksheets(WS_VEREINSKASSE)
+        On Error GoTo 0
+        If wsVK Is Nothing Then Exit Sub
+    End If
+
+    On Error Resume Next
+    wsVK.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+
+    letztesDatum = HoleLetztesKassendatumAktuellesOderVorjahr()
+    beschriftung = "Kassenbestand (neu) in EUR"
+    If letztesDatum > 0 Then beschriftung = beschriftung & " am " & Format$(letztesDatum, "dd.mm.yyyy")
+
+    wsVK.Range("B4").value = beschriftung
+    wsVK.Range("D3").FormulaLocal = "=WENN(Einstellungen!$C$" & ES_CFG_KASSENBESTAND_ROW & "="""";"""";Einstellungen!$C$" & ES_CFG_KASSENBESTAND_ROW & ")"
+    wsVK.Range("D4").FormulaLocal = "=WENN(UND(D3="""";ANZAHL(E" & VK_START_ROW & ":E5000)=0);"""";N(D3)+SUMME(E" & VK_START_ROW & ":E5000))"
+    wsVK.Range("D3:D4").NumberFormat = "#,##0.00 " & ChrW(8364)
+
+    On Error Resume Next
+    wsVK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+End Sub
+
+Public Function HoleLetztesKassendatumVorjahr() As Date
+    HoleLetztesKassendatumVorjahr = HoleLetztesKassendatum(False)
+End Function
+
+Private Function HoleLetztesKassendatumAktuellesOderVorjahr() As Date
+    Dim aktuellesDatum As Date
+
+    aktuellesDatum = HoleLetztesKassendatum(True)
+    If aktuellesDatum > 0 Then
+        HoleLetztesKassendatumAktuellesOderVorjahr = aktuellesDatum
+    Else
+        HoleLetztesKassendatumAktuellesOderVorjahr = HoleLetztesKassendatum(False)
+    End If
+End Function
+
+Private Function HoleLetztesKassendatum(ByVal nurAktuellesJahr As Boolean) As Date
+    Dim wsVK As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim datum As Variant
+    Dim jahr As Long
+
+    HoleLetztesKassendatum = 0
+    jahr = HoleAbrechnungsjahr()
+    If jahr <= 0 Then jahr = Year(Date)
+
+    On Error Resume Next
+    Set wsVK = ThisWorkbook.Worksheets(WS_VEREINSKASSE)
+    On Error GoTo 0
+    If wsVK Is Nothing Then Exit Function
+
+    lastRow = wsVK.Cells(wsVK.Rows.count, VK_COL_DATUM).End(xlUp).Row
+    If lastRow < VK_START_ROW Then Exit Function
+
+    For r = VK_START_ROW To lastRow
+        datum = wsVK.Cells(r, VK_COL_DATUM).value
+        If IsDate(datum) Then
+            If (nurAktuellesJahr And Year(CDate(datum)) = jahr) Or _
+               (Not nurAktuellesJahr And Year(CDate(datum)) < jahr) Then
+                If CDate(datum) > HoleLetztesKassendatum Then HoleLetztesKassendatum = CDate(datum)
+            End If
+        End If
+    Next r
+End Function
 
 
 ' ===============================================================
@@ -372,6 +448,8 @@ Public Sub VereinskasseFilterJetzt()
                vbCritical, "Vereinskasse-Filter: FEHLER"
     End If
 End Sub
+
+
 
 
 

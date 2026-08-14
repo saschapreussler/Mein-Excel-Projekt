@@ -823,7 +823,7 @@ Public Sub DebugMitgliederZaehlung()
     cntStart = mod_Startseite.ZaehleMitglieder()
     cntParz = mod_Startseite.ZaehleBelegteParzellen()
 
-    Debug.Print "[DEBUG] Workbook: " & ThisWorkbook.FullName
+    Debug.Print "[DEBUG] Workbook: " & ThisWorkbook.fullName
     Debug.Print "[DEBUG] ZaehleAktiveMitgliederGesamt = " & cntGesamt
     Debug.Print "[DEBUG] mod_Startseite.ZaehleMitglieder = " & cntStart
     Debug.Print "[DEBUG] mod_Startseite.ZaehleBelegteParzellen = " & cntParz
@@ -834,6 +834,8 @@ Public Sub DebugMitgliederZaehlung()
            "Belegte Parzellen: " & cntParz, _
            vbInformation, "Debug Mitgliederzaehlung"
 End Sub
+
+
 
 
 

@@ -1,5 +1,4 @@
 ﻿Attribute VB_Name = "mod_Repo_Sync"
-Attribute VB_Name = "mod_Repo_Sync"
 Option Explicit
 
 ' ***************************************************************
@@ -123,7 +122,7 @@ Public Sub SyncVBAVomRepository()
     End If
     fso.CreateFolder tempPfad
     On Error GoTo ErrorHandler
-    
+
     ' Zähler initialisieren
     countModules = 0
     countKlassen = 0
@@ -131,6 +130,8 @@ Public Sub SyncVBAVomRepository()
     countDokumente = 0
     countDoubletten = 0
     fehlerListe = ""
+
+    Call StelleVBAExportmodulWiederHer(vbProj, fso, tempPfad, fehlerListe)
     
     ' ---------------------------------------------------------
     ' BEREINIGUNG: Doubletten entfernen
@@ -296,6 +297,65 @@ Private Sub ImportiereStandardDateien(fso As Object, vbProj As Object, _
 NaechsteStandardDatei:
         End If
     Next file
+End Sub
+
+Public Sub RepariereImportExportInfrastruktur()
+    Dim vbProj As Object
+    Dim fso As Object
+    Dim tempPfad As String
+    Dim fehlerListe As String
+
+    On Error GoTo Fehler
+    Set vbProj = ThisWorkbook.VBProject
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    tempPfad = Environ$("TEMP") & "\" & TEMP_SUBFOLDER & "\"
+
+    If Not fso.FolderExists(tempPfad) Then fso.CreateFolder tempPfad
+    Call StelleVBAExportmodulWiederHer(vbProj, fso, tempPfad, fehlerListe)
+
+    If fehlerListe = "" Then
+        MsgBox "Import-/Export-Infrastruktur ist bereit.", vbInformation, "VBA-Repository"
+    Else
+        MsgBox "Exportmodul konnte nicht wiederhergestellt werden:" & vbCrLf & fehlerListe, _
+               vbCritical, "VBA-Repository"
+    End If
+    Exit Sub
+
+Fehler:
+    MsgBox "Import-/Export-Infrastruktur konnte nicht geprüft werden:" & vbCrLf & _
+           Err.Description, vbCritical, "VBA-Repository"
+End Sub
+
+Private Sub StelleVBAExportmodulWiederHer(ByVal vbProj As Object, ByVal fso As Object, _
+                                           ByVal tempPfad As String, ByRef Fehler As String)
+    Dim quellDatei As String
+    Dim ansiDatei As String
+    Dim vbComp As Object
+
+    quellDatei = REPO_PATH_MODULES & "mod_VBA_Export.bas"
+    If Not fso.FileExists(quellDatei) Then
+        Fehler = Fehler & "  mod_VBA_Export.bas fehlt im Repository." & vbCrLf
+        Exit Sub
+    End If
+
+    On Error Resume Next
+    Set vbComp = vbProj.VBComponents("mod_VBA_Export")
+    On Error GoTo 0
+    If Not vbComp Is Nothing Then Exit Sub
+
+    ansiDatei = KonvertiereUTF8zuAnsi(quellDatei, tempPfad & "mod_VBA_Export.bas", fso)
+    If ansiDatei = "" Then
+        Fehler = Fehler & "  mod_VBA_Export.bas konnte nicht nach ANSI konvertiert werden." & vbCrLf
+        Exit Sub
+    End If
+
+    On Error Resume Next
+    vbProj.VBComponents.Import ansiDatei
+    If Err.Number <> 0 Then
+        Fehler = Fehler & "  mod_VBA_Export.bas: " & Err.Description & vbCrLf
+        Err.Clear
+    End If
+    On Error GoTo 0
 End Sub
 
 
@@ -509,19 +569,19 @@ End Function
 ' - Erzwingt .bas/.cls mit UTF-8 BOM
 ' - Erzwingt .frm ohne BOM und nicht als UTF-8 mit High-Bytes
 ' ===============================================================
-Private Function PruefeRepoDateienVorImport(fso As Object, ByRef fehler As String) As Boolean
+Private Function PruefeRepoDateienVorImport(fso As Object, ByRef Fehler As String) As Boolean
     Dim ok As Boolean
     ok = True
 
-    If Not PruefeDateiGruppe(fso, REPO_PATH_MODULES, "bas", ok, fehler) Then ok = False
-    If Not PruefeDateiGruppe(fso, REPO_PATH_CLASSES, "cls", ok, fehler) Then ok = False
-    If Not PruefeDateiGruppe(fso, REPO_PATH_USERFORMS, "frm", ok, fehler) Then ok = False
+    If Not PruefeDateiGruppe(fso, REPO_PATH_MODULES, "bas", ok, Fehler) Then ok = False
+    If Not PruefeDateiGruppe(fso, REPO_PATH_CLASSES, "cls", ok, Fehler) Then ok = False
+    If Not PruefeDateiGruppe(fso, REPO_PATH_USERFORMS, "frm", ok, Fehler) Then ok = False
 
     PruefeRepoDateienVorImport = ok
 End Function
 
 Private Function PruefeDateiGruppe(fso As Object, ByVal pfad As String, ByVal ext As String, _
-                                   ByRef ok As Boolean, ByRef fehler As String) As Boolean
+                                   ByRef ok As Boolean, ByRef Fehler As String) As Boolean
     Dim folder As Object
     Dim file As Object
     Dim bytes As Variant
@@ -537,27 +597,27 @@ Private Function PruefeDateiGruppe(fso As Object, ByVal pfad As String, ByVal ex
             If IstLeererBytePuffer(bytes) Then GoTo NaechsteDatei
 
             If EnthaeltByteMuster(bytes, Array(&HEF, &HBF, &HBD)) Then
-                fehler = fehler & "- U+FFFD-Marker in " & nameOnly & vbCrLf
+                Fehler = Fehler & "- U+FFFD-Marker in " & nameOnly & vbCrLf
                 ok = False
             End If
 
             If EnthaeltByteMuster(bytes, Array(&HC3, &HAF, &HC2, &HBF, &HC2, &HBD)) Then
-                fehler = fehler & "- Sichtbares Mojibake in " & nameOnly & vbCrLf
+                Fehler = Fehler & "- Sichtbares Mojibake in " & nameOnly & vbCrLf
                 ok = False
             End If
 
             If ext = "bas" Or ext = "cls" Then
                 If Not HatUtf8Bom(bytes) Then
-                    fehler = fehler & "- Fehlendes UTF-8 BOM in " & nameOnly & vbCrLf
+                    Fehler = Fehler & "- Fehlendes UTF-8 BOM in " & nameOnly & vbCrLf
                     ok = False
                 End If
             ElseIf ext = "frm" Then
                 If HatUtf8Bom(bytes) Then
-                    fehler = fehler & "- .frm mit UTF-8 BOM in " & nameOnly & vbCrLf
+                    Fehler = Fehler & "- .frm mit UTF-8 BOM in " & nameOnly & vbCrLf
                     ok = False
                 End If
                 If HatHighBytes(bytes) And IstValidesUtf8(bytes) Then
-                    fehler = fehler & "- .frm wirkt UTF-8-kodiert (erwartet ANSI) in " & nameOnly & vbCrLf
+                    Fehler = Fehler & "- .frm wirkt UTF-8-kodiert (erwartet ANSI) in " & nameOnly & vbCrLf
                     ok = False
                 End If
             End If
@@ -569,19 +629,19 @@ NaechsteDatei:
     Exit Function
 
 Fehlerfall:
-    fehler = fehler & "- Pruefung fehlgeschlagen in " & pfad & ": " & Err.Description & vbCrLf
+    Fehler = Fehler & "- Pruefung fehlgeschlagen in " & pfad & ": " & Err.Description & vbCrLf
     ok = False
     PruefeDateiGruppe = False
 End Function
 
 Private Function LeseDateiBytes(ByVal dateipfad As String) As Variant
-    Dim st As Object
-    Set st = CreateObject("ADODB.Stream")
-    st.Type = 1 ' adTypeBinary
-    st.Open
-    st.LoadFromFile dateipfad
-    LeseDateiBytes = st.Read
-    st.Close
+    Dim sT As Object
+    Set sT = CreateObject("ADODB.Stream")
+    sT.Type = 1 ' adTypeBinary
+    sT.Open
+    sT.LoadFromFile dateipfad
+    LeseDateiBytes = sT.Read
+    sT.Close
 End Function
 
 Private Function IstLeererBytePuffer(ByVal bytes As Variant) As Boolean
@@ -1113,6 +1173,8 @@ FallbackKopie:
     End If
     On Error GoTo 0
 End Function
+
+
 
 
 

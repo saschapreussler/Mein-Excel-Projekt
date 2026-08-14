@@ -93,11 +93,11 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
             
             ' Bestehenden benannten Bereich Löschen
             On Error Resume Next
-            ThisWorkbook.Names("rng_MitgliederNamen").Delete
+            ThisWorkbook.names("rng_MitgliederNamen").Delete
             On Error GoTo ErrorHandler
             
             ' Neuen benannten Bereich definieren
-            ThisWorkbook.Names.Add Name:="rng_MitgliederNamen", RefersTo:=rngTarget
+            ThisWorkbook.names.Add Name:="rng_MitgliederNamen", RefersTo:=rngTarget
         End If
     End If
     
@@ -201,6 +201,8 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False ' Formular nicht gefunden
     
 End Function
+
+
 
 
 

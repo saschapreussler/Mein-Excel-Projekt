@@ -189,7 +189,7 @@ Public Sub FilterUebersichtNachMonat(ByVal monatIndex As Long)
     Dim shpMonat As Long
     For Each shp In wsUeb.Shapes
         If Left(shp.Name, Len(REG_SHAPE_PREFIX)) = REG_SHAPE_PREFIX Then
-            shpMonat = CLng(Mid(shp.Name, Len(REG_SHAPE_PREFIX) + 1))
+            shpMonat = CLng(mid(shp.Name, Len(REG_SHAPE_PREFIX) + 1))
 
             If shpMonat = monatIndex Then
                 ' Aktiver Tab
@@ -311,6 +311,8 @@ Public Sub EntferneMonatsRegister()
     On Error GoTo 0
 
 End Sub
+
+
 
 
 

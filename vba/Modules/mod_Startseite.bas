@@ -325,7 +325,7 @@ Private Sub RepariereStartseitenButtonsNachText(ByVal ws As Worksheet)
         t = ""
 
         On Error Resume Next
-        t = LCase$(Trim$(CStr(shp.TextFrame2.TextRange.Text)))
+        t = LCase$(Trim$(CStr(shp.TextFrame2.TextRange.text)))
         On Error GoTo 0
 
         If t <> "" Then
@@ -343,7 +343,7 @@ Private Sub RepariereStartseitenButtonsNachText(ByVal ws As Worksheet)
                 ziel = "mod_Startseite.Startseite_Nav_Wasser_Direct"
             ElseIf InStr(t, "einstellung") > 0 Then
                 ziel = "mod_Navigation.NavigiereZu_Einstellungen"
-            ElseIf t = "■ daten" Or InStr(t, " daten") > 0 Then
+            ElseIf t = "¦ daten" Or InStr(t, " daten") > 0 Then
                 ziel = "mod_Navigation.NavigiereZu_Daten"
             ElseIf InStr(t, "mitglieder") > 0 Then
                 ziel = "mod_Navigation.ZeigeMitgliederverwaltung"
@@ -1310,6 +1310,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 

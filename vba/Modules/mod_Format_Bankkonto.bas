@@ -171,12 +171,14 @@ Public Function NamedRangeExists(ByVal rangeName As String) As Boolean
     NamedRangeExists = False
     
     On Error Resume Next
-    Set nm = ThisWorkbook.Names(rangeName)
+    Set nm = ThisWorkbook.names(rangeName)
     If Not nm Is Nothing Then
         NamedRangeExists = True
     End If
     On Error GoTo 0
 End Function
+
+
 
 
 

@@ -1549,7 +1549,7 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
         ' Alten Vorjahr-Hinweis entfernen
         aktBem = Replace(aktBem, "Keine Vorjahr-Daten: Zahlung evtl. im Vorjahr (Okt-Dez) erfolgt", "")
         aktBem = Replace(aktBem, " | | ", " | ")
-        If Left(aktBem, 3) = " | " Then aktBem = Mid(aktBem, 4)
+        If Left(aktBem, 3) = " | " Then aktBem = mid(aktBem, 4)
         If Right(aktBem, 3) = " | " Then aktBem = Left(aktBem, Len(aktBem) - 3)
         aktBem = Trim(aktBem)
         
@@ -1781,6 +1781,8 @@ NextTeil:
 
     EntferneNegativHinweiseVJ = ergebnis
 End Function
+
+
 
 
 

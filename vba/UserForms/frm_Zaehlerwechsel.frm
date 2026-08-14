@@ -1,6 +1,6 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frm_Zaehlerwechsel 
-   Caption         =   "neuer Zähler"
+   Caption         =   "neuer Zaehler"
    ClientHeight    =   4700
    ClientLeft      =   110
    ClientTop       =   450
@@ -191,7 +191,7 @@ Private Sub cmb_Parzelle_Change()
         Case Else
             If Left(Me.cmb_Parzelle.value, 8) = "Parzelle" Then
                 Dim idx As Long
-                idx = val(Mid(Me.cmb_Parzelle.value, 10))
+                idx = val(mid(Me.cmb_Parzelle.value, 10))
                 m_targetRow = IIf(m_Medium = "Strom", idx + 7, idx + 9)
             Else
                 Exit Sub
@@ -252,8 +252,8 @@ Private Function CleanAndFormatNumber(ByVal v As Variant) As String
     tempPreDecimal = ""
     
     For i = Len(preDecimal) To 1 Step -1
-        tempPreDecimal = Mid$(preDecimal, i, 1) & tempPreDecimal
-        If ((Len(preDecimal) - i + 1) Mod 3 = 0) And i > 1 And Mid$(preDecimal, i, 1) <> "-" Then
+        tempPreDecimal = mid$(preDecimal, i, 1) & tempPreDecimal
+        If ((Len(preDecimal) - i + 1) Mod 3 = 0) And i > 1 And mid$(preDecimal, i, 1) <> "-" Then
             tempPreDecimal = "." & tempPreDecimal
         End If
     Next i
@@ -461,6 +461,8 @@ End Sub
 Private Sub Btn_Abbrechen_Click()
     Unload Me
 End Sub
+
+
 
 
 

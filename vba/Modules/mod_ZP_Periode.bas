@@ -61,7 +61,7 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
                 
                 If Left(ergebnis, 5) = "GELB|" Then
                     Dim monatName As String
-                    monatName = Mid(ergebnis, 6)
+                    monatName = mid(ergebnis, 6)
                     
                     ws.Cells(r, BK_COL_MONAT_PERIODE).value = monatName
                     ws.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 235, 156)
@@ -162,6 +162,8 @@ PruefeDatenBlatt:
     
     HoleFaelligkeitFuerKategorie = "monatlich"
 End Function
+
+
 
 
 

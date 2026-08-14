@@ -591,7 +591,7 @@ Public Sub AktualisiereEntityKeyBeiAustritt(ByVal alteMemberID As String)
             If InStr(currentEK, alteMemberID) > 0 Then
                 ' Gemeinschaftskonto mit diesem Mitglied
                 Dim sharePart As String
-                sharePart = Mid(currentEK, Len(PREFIX_SHARE) + 1)
+                sharePart = mid(currentEK, Len(PREFIX_SHARE) + 1)
                 
                 Dim idParts() As String
                 idParts = Split(sharePart, "_")
@@ -643,6 +643,8 @@ ErrorHandler:
     wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Debug.Print "FEHLER in AktualisiereEntityKeyBeiAustritt: " & Err.Description
 End Sub
+
+
 
 
 

@@ -1,5 +1,4 @@
 ﻿Attribute VB_Name = "mod_Mitglieder_Logik"
-Attribute VB_Name = "mod_Mitglieder_Logik"
 ' =============================================================================
 ' Modul:       mod_Mitglieder_Logik
 ' Beschreibung: Geschaeftslogik für Mitgliederverwaltung
@@ -661,6 +660,8 @@ ErrorHandler:
     If Not wsH Is Nothing Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     MsgBox "Fehler beim Komplett-Austritt: " & Err.Description, vbCritical
 End Sub
+
+
 
 
 

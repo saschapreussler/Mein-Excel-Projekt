@@ -280,8 +280,8 @@ Public Function ExtrahiereZahl(ByVal text As String) As Long
     
     zahlStr = ""
     For i = 1 To Len(text)
-        If Mid(text, i, 1) >= "0" And Mid(text, i, 1) <= "9" Then
-            zahlStr = zahlStr & Mid(text, i, 1)
+        If mid(text, i, 1) >= "0" And mid(text, i, 1) <= "9" Then
+            zahlStr = zahlStr & mid(text, i, 1)
         Else
             If zahlStr <> "" Then Exit For
         End If
@@ -294,6 +294,8 @@ Public Function ExtrahiereZahl(ByVal text As String) As Long
     End If
     
 End Function
+
+
 
 
 

@@ -306,7 +306,7 @@ Private Sub KonvertiereDateiZuUtf8BOM(ByVal pfad As String)
 
     ' Evtl. vorhandenes BOM-Zeichen am Anfang entfernen
     If Len(inhalt) > 0 Then
-        If AscW(Left$(inhalt, 1)) = &HFEFF Then inhalt = Mid$(inhalt, 2)
+        If AscW(Left$(inhalt, 1)) = &HFEFF Then inhalt = mid$(inhalt, 2)
     End If
 
     ' 2) Als UTF-8 MIT BOM zurueckschreiben (ADODB schreibt BOM automatisch)

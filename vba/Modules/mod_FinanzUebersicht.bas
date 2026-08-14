@@ -696,7 +696,7 @@ Private Sub VerteileSammelzahlung(ByVal wsBK As Worksheet, _
             
             ' Betrag extrahieren: alles nach dem Doppelpunkt
             Dim betragStr As String
-            betragStr = Trim(Mid(eineZeile, doppelPunkt + 1))
+            betragStr = Trim(mid(eineZeile, doppelPunkt + 1))
             
             ' Euro-Zeichen und Leerzeichen entfernen
             betragStr = Replace(betragStr, ChrW(8364), "")
@@ -1307,6 +1307,8 @@ Private Sub BaueFinanzUebersicht_NurKontostand(ByVal ws As Worksheet)
     ws.Rows(15).RowHeight = 20
     ws.Rows(16).RowHeight = 20
 End Sub
+
+
 
 
 

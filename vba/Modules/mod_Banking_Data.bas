@@ -637,7 +637,7 @@ Private Function PruefeUnvollstaendigeEntityKeys() As Boolean
                     End If
                 End If
             End If
-    NextRowSync:
+NextRowSync:
         Next r
     End Sub
 
@@ -682,7 +682,7 @@ Private Function PruefeUnvollstaendigeEntityKeys() As Boolean
                 HatOffeneKategorieOderPeriode = True
                 Exit Function
             End If
-    NextRowOpen:
+NextRowOpen:
         Next r
     End Function
 
@@ -853,6 +853,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 

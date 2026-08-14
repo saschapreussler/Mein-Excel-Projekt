@@ -33,6 +33,14 @@ Private Sub Worksheet_Activate()
     On Error GoTo 0
 End Sub
 
+Private Sub Worksheet_Change(ByVal Target As Range)
+    If Intersect(Target, Me.Range(Me.Cells(VK_START_ROW, VK_COL_DATUM), _
+                                  Me.Cells(Me.Rows.count, VK_COL_BETRAG))) Is Nothing Then Exit Sub
+
+    Call mod_Vereinskasse_Filter.AktualisiereVereinskasseKassenbestand(Me)
+    Call mod_Einstellungen.AktualisiereKassenbestandVorjahrBeschriftung
+End Sub
+
 
 Private Sub cbo_MonatFilter_VK_Change()
     ' Filter anwenden basierend auf ComboBox-Auswahl
@@ -48,6 +56,8 @@ Private Sub cbo_MonatFilter_VK_Change()
     
     Call mod_Vereinskasse_Filter.WendeVereinskasseFilterAn(Me, CStr(oleObj.Object.value))
 End Sub
+
+
 
 
 

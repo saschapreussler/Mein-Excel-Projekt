@@ -296,6 +296,7 @@ Public Const ES_CFG_TITEL_ROW As Long = 3
 Public Const ES_CFG_KASSENBUCH_ROW As Long = 5
 Public Const ES_CFG_ABRECHNUNGSJAHR_ROW As Long = 6
 Public Const ES_CFG_KONTOSTAND_ROW As Long = 7
+Public Const ES_CFG_KASSENBESTAND_ROW As Long = 8
 Public Const ES_CFG_BEITRAEGE_ROW As Long = 9
 Public Const ES_CFG_MITGLIEDSBEITRAG_ROW As Long = 10
 Public Const ES_CFG_MIETE_ROW As Long = 11
@@ -402,6 +403,8 @@ Public Function HoleAbrechnungsjahr() As Long
         HoleAbrechnungsjahr = 0
     End If
 End Function
+
+
 
 
 
