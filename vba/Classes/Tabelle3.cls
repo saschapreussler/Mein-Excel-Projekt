@@ -306,11 +306,14 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         Exit Sub
     End If
 
-    ' v3.0: übersicht nach manueller änderung in H/I automatisch aktualisieren
-    ' v5.1: Kein hardcoded Year(Date) mehr - Jahr wird aus Startmenü!F1 / Bankkonto ermittelt
+    ' Zahlungsuebersicht aktualisieren; Dashboard nur bei vollstaendiger Pruefung.
     On Error Resume Next
     Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
-    Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
+    If Not mod_Uebersicht_Generator.HatOffeneZahlungspruefungen() Then
+        Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
+    Else
+        Call mod_Uebersicht_Generator.FokussiereErsteOffeneZahlungspruefung
+    End If
     On Error GoTo 0
     
     ' Punkt 11: BK-/KA-Nummern bei Kategorie-änderung neu vergeben

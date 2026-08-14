@@ -91,6 +91,14 @@ Public Sub NavigiereZu_Uebersicht()
 End Sub
 
 Public Sub NavigiereZu_Dashboard()
+    If mod_Uebersicht_Generator.HatOffeneZahlungspruefungen() Then
+        Call mod_Uebersicht_Generator.FokussiereErsteOffeneZahlungspruefung
+        MsgBox "Das Dashboard wird erst aktualisiert, wenn alle gelben und roten " & _
+               "Zahlungspr" & ChrW(252) & "fungen in der Zahlungs" & ChrW(252) & "bersicht gekl" & ChrW(228) & "rt sind.", _
+               vbExclamation, "Zahlungspr" & ChrW(252) & "fung offen"
+        Exit Sub
+    End If
+
     ' Dashboard wird dynamisch erzeugt - Name kann variieren
     Dim ws As Worksheet
     On Error Resume Next

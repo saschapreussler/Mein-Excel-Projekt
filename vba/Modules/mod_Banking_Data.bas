@@ -425,10 +425,26 @@ ImportAbschluss:
     Debug.Print "[Import] Starte " & ChrW(220) & "bersicht-Generierung..."
     Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
     
-    ' Dashboard (neues Blatt) aktualisieren
-    On Error Resume Next
+    ' 7b. Zahlungspruefungen muessen vor dem Dashboard geklaert sein.
+    If mod_Uebersicht_Generator.HatOffeneZahlungspruefungen() Then
+        Call mod_Uebersicht_Generator.PruefeVorjahrHinweisBeimOeffnen
+        Call mod_Uebersicht_Generator.FokussiereErsteOffeneZahlungspruefung
+        Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsZiel)
+        Application.DisplayAlerts = True
+        Application.ScreenUpdating = True
+        Application.EnableEvents = True
+
+        MsgBox "Die Zahlungs" & ChrW(252) & "bersicht enthält noch gelbe oder rote Zahlungspr" & _
+               ChrW(252) & "fungen." & vbCrLf & vbCrLf & _
+               "Bitte pr" & ChrW(252) & "fen Sie die markierte Zeile. Bei einer Zahlung aus dem Vorjahr " & _
+               "tragen Sie Betrag und Zahlungsdatum in der Spalte IST ein." & vbCrLf & _
+               "Das Dashboard wird erst nach vollst" & ChrW(228) & "ndiger Kl" & ChrW(228) & "rung aktualisiert.", _
+               vbExclamation, "Zahlungspr" & ChrW(252) & "fung offen"
+        Exit Sub
+    End If
+
+    ' Dashboard erst nach vollstaendiger Zahlungspruefung aktualisieren.
     Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
-    On Error GoTo 0
     
     ' Blattschutz wird von der Pipeline selbst verwaltet (Protect am Ende).
     ' Hier nochmals sicherstellen falls Pipeline nicht lief.

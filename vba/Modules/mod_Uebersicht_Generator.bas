@@ -961,6 +961,53 @@ ErrorHandler:
     
 End Sub
 
+Public Function HatOffeneZahlungspruefungen() As Boolean
+    Dim wsUeb As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim status As String
+
+    HatOffeneZahlungspruefungen = False
+
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo 0
+    If wsUeb Is Nothing Then Exit Function
+
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, 1).End(xlUp).Row
+    If lastRow < 4 Then Exit Function
+
+    For r = 4 To lastRow
+        status = UCase$(Trim$(CStr(wsUeb.Cells(r, 7).value)))
+        If status = "GELB" Or status = "ROT" Then
+            HatOffeneZahlungspruefungen = True
+            Exit Function
+        End If
+    Next r
+End Function
+
+Public Sub FokussiereErsteOffeneZahlungspruefung()
+    Dim wsUeb As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim status As String
+
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo 0
+    If wsUeb Is Nothing Then Exit Sub
+
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, 1).End(xlUp).Row
+    For r = 4 To lastRow
+        status = UCase$(Trim$(CStr(wsUeb.Cells(r, 7).value)))
+        If status = "GELB" Or status = "ROT" Then
+            wsUeb.Activate
+            wsUeb.Cells(r, 6).Select
+            Exit Sub
+        End If
+    Next r
+End Sub
+
 
 ' ===============================================================
 ' Beim öffnen der Zahlungsübersicht Hinweisdialog zu Januar-Positionen
