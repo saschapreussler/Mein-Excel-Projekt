@@ -1757,13 +1757,10 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
                          Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value))
             
             If Not gepruefteGruppen.exists(gruppenKey) Then
-                gepruefteGruppen.Add gruppenKey, True
-            Else
-                GoTo NextGelbZeile
-            End If
-
-            If IstVorjahrPruefungNoetig(wsUeb, r) Then
-                gelbZeilen.Add r
+                If IstVorjahrPruefungNoetig(wsUeb, r) Then
+                    gepruefteGruppen.Add gruppenKey, True
+                    gelbZeilen.Add r
+                End If
             End If
         End If
 NextGelbZeile:
