@@ -426,7 +426,7 @@ Public Sub ZaehleZahlungenZP(ByVal entityKey As String, _
         If StrComp(Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)), kategorie, vbTextCompare) <> 0 Then GoTo nextRow
 
         anzahlTreffer = anzahlTreffer + 1
-        summeIst = summeIst + Abs(CDbl(val(CStr(wsBK.Cells(r, BK_COL_BETRAG).value))))
+        summeIst = summeIst + Abs(LeseGeldwertZP(wsBK.Cells(r, BK_COL_BETRAG).value))
 
 nextRow:
     Next r
@@ -437,6 +437,29 @@ Fehler:
     anzahlTreffer = 0
     summeIst = 0
 End Sub
+
+Public Function LeseGeldwertZP(ByVal wert As Variant) As Double
+    Dim textwert As String
+
+    LeseGeldwertZP = 0
+    If IsNumeric(wert) Then
+        LeseGeldwertZP = CDbl(wert)
+        Exit Function
+    End If
+
+    textwert = Trim$(CStr(wert))
+    If textwert = "" Then Exit Function
+    textwert = Replace(textwert, ChrW(8364), "")
+    textwert = Replace(textwert, "EUR", "", 1, -1, vbTextCompare)
+    textwert = Replace(textwert, " ", "")
+
+    If InStr(textwert, ",") > 0 Then
+        textwert = Replace(textwert, ".", "")
+        textwert = Replace(textwert, ",", Application.International(xlDecimalSeparator))
+    End If
+
+    If IsNumeric(textwert) Then LeseGeldwertZP = CDbl(textwert)
+End Function
 
 
 ' ===============================================================

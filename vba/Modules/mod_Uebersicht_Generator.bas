@@ -1443,11 +1443,12 @@ Private Function ErmittleGuthabenMitgliedsbeitrag(ByVal mitglieder As Collection
     ibans.CompareMode = vbTextCompare
     istRepräsentant = True
 
+    zahlendeMitglieder = ZaehleBeitragspflichtigeMitgliederAufParzelle(parzelle)
+
     For Each mitglied In mitglieder
         If CLng(mitglied("Parzelle")) <> parzelle Then GoTo NextMitglied
         If InStr(1, UCase$(CStr(mitglied("Role"))), "EHREN", vbTextCompare) > 0 Then GoTo NextMitglied
 
-        zahlendeMitglieder = zahlendeMitglieder + 1
         iban = Trim$(CStr(mitglied("IBAN")))
         If iban = "" Then GoTo NextMitglied
 
@@ -1479,7 +1480,23 @@ NextMitglied:
     Next key
 
     ErmittleGuthabenMitgliedsbeitrag = Application.Max(0, _
-        eigenerBetrag - Application.Max(0, zahlendeMitglieder * sollProMitglied - andereBetraege))
+        eigenerBetrag - Application.Max(sollProMitglied, _
+        zahlendeMitglieder * sollProMitglied - andereBetraege))
+End Function
+
+Private Function ZaehleBeitragspflichtigeMitgliederAufParzelle(ByVal parzelle As Long) As Long
+    Dim mitgliederListe As Collection
+    Dim mitglied As Object
+
+    ZaehleBeitragspflichtigeMitgliederAufParzelle = 0
+    Set mitgliederListe = mod_Uebersicht_Daten.HoleMitgliederAusMitgliederliste()
+
+    For Each mitglied In mitgliederListe
+        If CLng(mitglied("Parzelle")) = parzelle Then
+            ZaehleBeitragspflichtigeMitgliederAufParzelle = _
+                ZaehleBeitragspflichtigeMitgliederAufParzelle + 1
+        End If
+    Next mitglied
 End Function
 
 
@@ -1503,7 +1520,7 @@ Private Sub BefuelleSummeIstSpalte(ByVal wsUeb As Worksheet, _
               Trim(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value))
           If key <> "||" Then
             If Not sums.exists(key) Then sums.Add key, 0#
-            sums(key) = CDbl(sums(key)) + CDbl(val(CStr(wsUeb.Cells(r, UEB_COL_IST).value)))
+            sums(key) = CDbl(sums(key)) + mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_IST).value)
         End If
     Next r
 
@@ -1701,8 +1718,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
                            infoBlock & vbCrLf & vbCrLf & _
                            "Wurde diese Zahlung im Vorjahr (Okt-Dez) " & _
                            "fristgerecht bezahlt?" & vbCrLf & vbCrLf & _
-                           "  Ja = " & ChrW(10004) & " GR" & ChrW(220) & "N (bezahlt)" & vbCrLf & _
-                           "  Nein = " & ChrW(10008) & " ROT (ausstehend)" & vbCrLf & _
+                           "  Ja = GR" & ChrW(220) & "N (bezahlt)" & vbCrLf & _
+                           "  Nein = ROT (ausstehend)" & vbCrLf & _
                            "  Abbrechen = Rest " & ChrW(252) & "berspringen", _
                            vbYesNoCancel + vbQuestion, _
                            "Vorjahr-Pr" & ChrW(252) & "fung (" & i & "/" & gelbZeilen.count & ")")
@@ -1849,11 +1866,11 @@ NextPos:
     End If
     
     If bestaetigtGruen + bestaetigtRot > 0 Then
-        MsgBox "Vorjahr-Pr" & ChrW(252) & "fung abgeschlossen:" & vbCrLf & vbCrLf & _
-               "  " & ChrW(10004) & " " & bestaetigtGruen & "x als bezahlt best" & _
+         MsgBox "Vorjahr-Pr" & ChrW(252) & "fung abgeschlossen:" & vbCrLf & vbCrLf & _
+             "  " & bestaetigtGruen & "x als bezahlt best" & _
                ChrW(228) & "tigt (GR" & ChrW(220) & "N)" & vbCrLf & _
-               "  " & ChrW(10008) & " " & bestaetigtRot & "x als ausstehend markiert (ROT)" & vbCrLf & _
-               "  " & ChrW(8226) & " " & _
+             "  " & bestaetigtRot & "x als ausstehend markiert (ROT)" & vbCrLf & _
+             "  " & _
                (gelbZeilen.count - bestaetigtGruen - bestaetigtRot) & _
                "x ungepr" & ChrW(252) & "ft (GELB)", _
                vbInformation, "Vorjahr-Pr" & ChrW(252) & "fung"
