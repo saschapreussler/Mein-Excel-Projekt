@@ -37,9 +37,7 @@ Private Const UEB_COL_PARZELLE As Long = 1
 Private Const UEB_COL_SOLL As Long = 5
 Private Const UEB_COL_STATUS As Long = 7
 Private Const UEB_COL_BEMERKUNG As Long = 8
-Private Const UEB_COL_SUMME_IST As Long = 9
-Private Const FARBE_SUMME As Long = 16247773
-Private Const FARBE_SUMME_ZEBRA As Long = 15790320
+Private Const UEB_COL_GUTHABEN As Long = 9
 Private Const UEBERSICHT_START_ROW As Long = 4
 
 
@@ -171,14 +169,14 @@ Public Sub FilterUebersichtNachMonat(ByVal monatIndex As Long)
 
     If monatIndex = 0 Then
         ' "Alle" -> Filter-Kriterien entfernen, AutoFilter-Dropdowns behalten
-        wsUeb.Range("A5:H" & lastRow).AutoFilter
+        wsUeb.Range("A3:I" & lastRow).AutoFilter
     Else
         ' Filter auf Spalte C (Monat) anwenden
         ' Filterkriterium: "*MonatName*" (enthält den Monatsnamen)
         Dim filterMonat As String
         filterMonat = MonthName(monatIndex)
 
-        wsUeb.Range("A5:H" & lastRow).AutoFilter _
+        wsUeb.Range("A3:I" & lastRow).AutoFilter _
             Field:=3, _
             Criteria1:="=*" & filterMonat & "*", _
             Operator:=xlAnd
@@ -238,7 +236,7 @@ Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
         If wsUeb.Rows(r).Hidden = False Then
             If visibleIdx Mod 2 = 1 Then
                 ' Gerade sichtbare Zeile -> Zebra-Farbe
-                For c = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
+                For c = UEB_COL_PARZELLE To UEB_COL_GUTHABEN
                     If c = UEB_COL_STATUS Then
                         ' Status-Spalte behält Ampelfarbe
                     ElseIf c = UEB_COL_SOLL Then
@@ -247,13 +245,13 @@ Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
                             wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                         End If
                     Else
-                        ' Alle uebrigen Spalten inkl. Summe Ist (I): einheitliches Zebra
+                        ' Alle uebrigen Spalten einschliesslich Guthaben.
                         wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                     End If
                 Next c
             Else
                 ' Ungerade sichtbare Zeile -> weiss
-                For c = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
+                For c = UEB_COL_PARZELLE To UEB_COL_GUTHABEN
                     If c = UEB_COL_STATUS Then
                         ' Status-Spalte behält Ampelfarbe
                     ElseIf c = UEB_COL_SOLL Then
@@ -262,7 +260,7 @@ Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
                             wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                         End If
                     Else
-                        ' Alle uebrigen Spalten inkl. Summe Ist (I): einheitlich weiss
+                        ' Alle uebrigen Spalten einschliesslich Guthaben.
                         wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                     End If
                 Next c
