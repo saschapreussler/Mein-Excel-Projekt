@@ -461,6 +461,60 @@ Public Function LeseGeldwertZP(ByVal wert As Variant) As Double
     If IsNumeric(textwert) Then LeseGeldwertZP = CDbl(textwert)
 End Function
 
+Public Function HoleZahlungNachMitgliedsnameZP(ByVal mitgliedName As String, _
+                                                ByVal kategorie As String, _
+                                                ByVal monat As Long, _
+                                                ByVal jahr As Long) As Double
+    Dim wsBK As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim nameNorm As String
+    Dim kontoNorm As String
+    Dim namen() As String
+    Dim nameTeil As Variant
+    Dim zahlDatum As Variant
+    Dim passt As Boolean
+
+    HoleZahlungNachMitgliedsnameZP = 0
+    nameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(mitgliedName)
+    If nameNorm = "" Then Exit Function
+    namen = Split(nameNorm, " ")
+
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    On Error GoTo 0
+    If wsBK Is Nothing Then Exit Function
+
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    For r = BK_START_ROW To lastRow
+        zahlDatum = wsBK.Cells(r, BK_COL_DATUM).value
+        If Not IsDate(zahlDatum) Then GoTo NextNameZahlung
+        If Year(CDate(zahlDatum)) <> jahr Then GoTo NextNameZahlung
+        If StrComp(Trim$(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value)), _
+                   MonthName(monat), vbTextCompare) <> 0 Then GoTo NextNameZahlung
+        If StrComp(Trim$(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)), _
+                   kategorie, vbTextCompare) <> 0 Then GoTo NextNameZahlung
+
+        kontoNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich( _
+            CStr(wsBK.Cells(r, BK_COL_NAME).value))
+        passt = True
+        For Each nameTeil In namen
+            If Len(CStr(nameTeil)) >= 3 Then
+                If InStr(1, kontoNorm, CStr(nameTeil), vbTextCompare) = 0 Then
+                    passt = False
+                    Exit For
+                End If
+            End If
+        Next nameTeil
+
+        If passt Then
+            HoleZahlungNachMitgliedsnameZP = HoleZahlungNachMitgliedsnameZP + _
+                Abs(LeseGeldwertZP(wsBK.Cells(r, BK_COL_BETRAG).value))
+        End If
+NextNameZahlung:
+    Next r
+End Function
+
 
 ' ===============================================================
 ' Hilfsfunktion: Wenn derselbe Betrag Über ein anderes Konto der

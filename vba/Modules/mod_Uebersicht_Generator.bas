@@ -586,6 +586,21 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 If entityKey = "" And StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                     soll = kategorien(k).SollBetrag
                 End If
+
+                ' Fallback für noch unvollständige EntityKey-Zuordnungen:
+                ' Bereits kategorisierte Zahlungen werden anhand des Kontonamens erkannt.
+                If ist = 0 And StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                    Dim namensZahlung As Double
+                    namensZahlung = mod_Zahlungspruefung.HoleZahlungNachMitgliedsnameZP( _
+                        mitgliedName, kategorie, monat, jahr)
+                    If namensZahlung > 0 Then
+                        ist = namensZahlung
+                        If soll > 0 And ist >= soll - 0.01 Then
+                            status = m_STATUS_GRUEN
+                            If UBound(teile) >= 3 Then teile(3) = "Zahlung über Kontoname erkannt"
+                        End If
+                    End If
+                End If
                 
                 ' v4.0: Vorjahr-Zahlungen prüfen (Jan-Maerz)
                 ' Dezember-Zahlung des Vorjahres die für diesen Monat gilt
