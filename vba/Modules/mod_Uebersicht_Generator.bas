@@ -445,6 +445,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     Dim mbMultiplier As Object
     Set mbMultiplier = CreateObject("Scripting.Dictionary")
     mbMultiplier.CompareMode = vbTextCompare
+
+    Dim geschriebeneGemeinschaftskonten As Object
+    Set geschriebeneGemeinschaftskonten = CreateObject("Scripting.Dictionary")
+    geschriebeneGemeinschaftskonten.CompareMode = vbTextCompare
     
     Dim tmpM As Object
     For Each tmpM In mitglieder
@@ -546,8 +550,12 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
-                ' Zahlung prüfen (mod_Zahlungspruefung)
-                ergebnis = mod_Zahlungspruefung.PruefeZahlungen(entityKey, kategorie, monat, jahr)
+                ' Personen ohne eigenes Konto werden über die Partnerzahlung geprüft.
+                If entityKey = "" And StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                    ergebnis = "ROT|Soll:0.00|Ist:0.00"
+                Else
+                    ergebnis = mod_Zahlungspruefung.PruefeZahlungen(entityKey, kategorie, monat, jahr)
+                End If
                 
                 ' Ergebnis parsen: "GRÜN|Soll:50.00|Ist:50.00"
                 soll = 0
@@ -607,7 +615,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     partnerInfo = PruefePartnerMitgliedsbeitrag( _
                         mitglieder, CLng(parzelleWert), entityKey, monat, jahr, soll)
                     If partnerInfo <> "" Then
-                        ist = soll
+                        If entityKey <> "" Then ist = soll
                         status = m_STATUS_GRUEN
                         ' BUGFIX: Säumnis-/Verspaetungs-Bemerkung aus ZP entfernen,
                         ' weil die Zahlung jetzt als bezahlt (durch Partner) gilt
@@ -696,6 +704,16 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                     GoTo NextKat
                 End If
+
+                If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                    If IstGemeinschaftskontoFuerParzelle(mitglieder, CLng(parzelleWert), entityKey) Then
+                        Dim gemeinschaftsKey As String
+                        gemeinschaftsKey = CStr(parzelleWert) & "|" & monat & "|" & _
+                                          Trim$(CStr(mitglied("IBAN")))
+                        If geschriebeneGemeinschaftskonten.exists(gemeinschaftsKey) Then GoTo NextKat
+                        geschriebeneGemeinschaftskonten.Add gemeinschaftsKey, True
+                    End If
+                End If
                 
                 ' Zeile schreiben
                 wsUeb.Cells(rowIdx, UEB_COL_PARZELLE).value = parzelleWert
@@ -715,10 +733,9 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 Dim mbFaktor As Long
                 mbFaktor = 1
                 If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
-                    Dim mbLookup As String
-                    mbLookup = CStr(parzelleWert) & "|" & entityKey
-                    If mbMultiplier.exists(mbLookup) Then
-                        mbFaktor = CLng(mbMultiplier(mbLookup))
+                    If IstGemeinschaftskontoFuerParzelle(mitglieder, CLng(parzelleWert), entityKey) Then
+                        mbFaktor = ZaehleBeitragspflichtigeMitgliederAufParzelle(CLng(parzelleWert))
+                        mitgliedName = HoleBeitragspflichtigeMitgliedsnamen(CLng(parzelleWert))
                     End If
                 End If
                 
@@ -1491,18 +1508,111 @@ Private Function ZaehleMitgliederFuerKonto(ByVal mitglieder As Collection, _
 End Function
 
 Private Function ZaehleBeitragspflichtigeMitgliederAufParzelle(ByVal parzelle As Long) As Long
-    Dim mitgliederListe As Collection
-    Dim mitglied As Object
+    Dim wsMitglieder As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim vorname As String
+    Dim nachname As String
+    Dim anrede As String
+    Dim funktion As String
 
     ZaehleBeitragspflichtigeMitgliederAufParzelle = 0
-    Set mitgliederListe = mod_Uebersicht_Daten.HoleMitgliederAusMitgliederliste()
 
-    For Each mitglied In mitgliederListe
+    On Error Resume Next
+    Set wsMitglieder = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    On Error GoTo 0
+    If wsMitglieder Is Nothing Then Exit Function
+
+    lastRow = wsMitglieder.Cells(wsMitglieder.Rows.count, M_COL_PARZELLE).End(xlUp).Row
+    For r = M_START_ROW To lastRow
+        If CLng(val(CStr(wsMitglieder.Cells(r, M_COL_PARZELLE).value))) <> parzelle Then GoTo NextMitglied
+
+        vorname = Trim$(CStr(wsMitglieder.Cells(r, M_COL_VORNAME).value))
+        nachname = Trim$(CStr(wsMitglieder.Cells(r, M_COL_NACHNAME).value))
+        If vorname = "" And nachname = "" Then GoTo NextMitglied
+
+        anrede = Trim$(CStr(wsMitglieder.Cells(r, M_COL_ANREDE).value))
+        If StrComp(anrede, ANREDE_KGA, vbTextCompare) = 0 Then GoTo NextMitglied
+
+        funktion = Trim$(CStr(wsMitglieder.Cells(r, M_COL_FUNKTION).value))
+        If StrComp(funktion, AUSTRITT_STATUS, vbTextCompare) = 0 Then GoTo NextMitglied
+        If InStr(1, funktion, "Ehren", vbTextCompare) > 0 Then GoTo NextMitglied
+
+        ZaehleBeitragspflichtigeMitgliederAufParzelle = _
+            ZaehleBeitragspflichtigeMitgliederAufParzelle + 1
+NextMitglied:
+    Next r
+End Function
+
+Private Function IstGemeinschaftskontoFuerParzelle(ByVal mitglieder As Collection, _
+                                                     ByVal parzelle As Long, _
+                                                     ByVal entityKey As String) As Boolean
+    Dim mitglied As Object
+    Dim kontoname As String
+    Dim personenNamen As String
+    Dim namen() As String
+    Dim i As Long
+
+    IstGemeinschaftskontoFuerParzelle = False
+    If entityKey = "" Then Exit Function
+
+    For Each mitglied In mitglieder
         If CLng(mitglied("Parzelle")) = parzelle Then
-            ZaehleBeitragspflichtigeMitgliederAufParzelle = _
-                ZaehleBeitragspflichtigeMitgliederAufParzelle + 1
+            If StrComp(CStr(mitglied("EntityKey")), entityKey, vbTextCompare) = 0 Then
+                kontoname = LCase$(Trim$(CStr(mitglied("Kontoname"))))
+                Exit For
+            End If
         End If
     Next mitglied
+    If kontoname = "" Then Exit Function
+
+    personenNamen = HoleBeitragspflichtigeMitgliedsnamen(parzelle)
+    namen = Split(personenNamen, " / ")
+    If UBound(namen) < 1 Then Exit Function
+
+    For i = LBound(namen) To UBound(namen)
+        Dim nameTeile() As String
+        nameTeile = Split(Trim$(namen(i)), ",")
+        If UBound(nameTeile) >= 1 Then
+            If InStr(1, kontoname, LCase$(Trim$(nameTeile(0))), vbTextCompare) = 0 Or _
+               InStr(1, kontoname, LCase$(Trim$(nameTeile(1))), vbTextCompare) = 0 Then Exit Function
+        End If
+    Next i
+
+    IstGemeinschaftskontoFuerParzelle = True
+End Function
+
+Private Function HoleBeitragspflichtigeMitgliedsnamen(ByVal parzelle As Long) As String
+    Dim wsMitglieder As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim name As String
+    Dim anrede As String
+    Dim funktion As String
+
+    HoleBeitragspflichtigeMitgliedsnamen = ""
+    On Error Resume Next
+    Set wsMitglieder = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    On Error GoTo 0
+    If wsMitglieder Is Nothing Then Exit Function
+
+    lastRow = wsMitglieder.Cells(wsMitglieder.Rows.count, M_COL_PARZELLE).End(xlUp).Row
+    For r = M_START_ROW To lastRow
+        If CLng(val(CStr(wsMitglieder.Cells(r, M_COL_PARZELLE).value))) <> parzelle Then GoTo NextName
+        anrede = Trim$(CStr(wsMitglieder.Cells(r, M_COL_ANREDE).value))
+        funktion = Trim$(CStr(wsMitglieder.Cells(r, M_COL_FUNKTION).value))
+        If StrComp(anrede, ANREDE_KGA, vbTextCompare) = 0 Or _
+           StrComp(funktion, AUSTRITT_STATUS, vbTextCompare) = 0 Or _
+           InStr(1, funktion, "Ehren", vbTextCompare) > 0 Then GoTo NextName
+
+        name = Trim$(CStr(wsMitglieder.Cells(r, M_COL_NACHNAME).value)) & ", " & _
+               Trim$(CStr(wsMitglieder.Cells(r, M_COL_VORNAME).value))
+        If Replace(name, ", ", "") = "" Then GoTo NextName
+        If HoleBeitragspflichtigeMitgliedsnamen <> "" Then HoleBeitragspflichtigeMitgliedsnamen = _
+            HoleBeitragspflichtigeMitgliedsnamen & " / "
+        HoleBeitragspflichtigeMitgliedsnamen = HoleBeitragspflichtigeMitgliedsnamen & name
+NextName:
+    Next r
 End Function
 
 

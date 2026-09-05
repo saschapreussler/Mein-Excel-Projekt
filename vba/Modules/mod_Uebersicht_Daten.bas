@@ -261,6 +261,7 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                         dict.Add "Name", zuordnung
                         dict.Add "Role", roleWert
                         dict.Add "IBAN", Replace(Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)), " ", "")
+                        dict.Add "Kontoname", Trim$(CStr(wsDaten.Cells(r, EK_COL_KONTONAME).value))
                         
                         ' v5.2: Eintrittsdatum (Pachtanfang) aus Mitgliederliste
                         Dim eintritt As Date
@@ -297,6 +298,37 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         
 NextDatenRow:
     Next r
+
+    ' Personen ohne eigenen EntityKey bleiben für Mitgliedsbeiträge
+    ' zahlungspflichtig und erhalten deshalb eine eigene Übersichtszeile.
+    If Not wsML Is Nothing Then
+        For rML = M_START_ROW To lastRowML
+            If Trim$(CStr(wsML.Cells(rML, M_COL_ENTITY_KEY).value)) <> "" Then GoTo NextOhneEntityKey
+
+            Dim parzelleOhneEK As String
+            parzelleOhneEK = Trim$(CStr(wsML.Cells(rML, M_COL_PARZELLE).value))
+            If Not IsNumeric(parzelleOhneEK) Then GoTo NextOhneEntityKey
+            If CLng(parzelleOhneEK) < 1 Or CLng(parzelleOhneEK) > 14 Then GoTo NextOhneEntityKey
+
+            Dim vornameOhneEK As String
+            Dim nachnameOhneEK As String
+            vornameOhneEK = Trim$(CStr(wsML.Cells(rML, M_COL_VORNAME).value))
+            nachnameOhneEK = Trim$(CStr(wsML.Cells(rML, M_COL_NACHNAME).value))
+            If vornameOhneEK = "" And nachnameOhneEK = "" Then GoTo NextOhneEntityKey
+
+            Set dict = CreateObject("Scripting.Dictionary")
+            dict.Add "Parzelle", CLng(parzelleOhneEK)
+            dict.Add "EntityKey", ""
+            dict.Add "Name", Trim$(nachnameOhneEK & ", " & vornameOhneEK)
+            dict.Add "Role", "MITGLIED"
+            dict.Add "IBAN", ""
+            dict.Add "Kontoname", ""
+            dict.Add "Eintritt", wsML.Cells(rML, M_COL_PACHTANFANG).value
+            dict.Add "Austritt", wsML.Cells(rML, M_COL_PACHTENDE).value
+            col.Add dict
+NextOhneEntityKey:
+        Next rML
+    End If
     
     Set verarbeiteteKombis = Nothing
     Set HoleAktiveMitglieder = col
