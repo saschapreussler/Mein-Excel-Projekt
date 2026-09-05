@@ -312,6 +312,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     If Not mod_Uebersicht_Generator.HatOffeneZahlungspruefungen() Then
         Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
     Else
+        Call mod_Uebersicht_Generator.PruefeVorjahrHinweisBeimOeffnen
         Call mod_Uebersicht_Generator.FokussiereErsteOffeneZahlungspruefung
     End If
     On Error GoTo 0

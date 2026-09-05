@@ -408,10 +408,12 @@ ImportAbschluss:
         Application.ScreenUpdating = True
         Application.EnableEvents = True
 
-        MsgBox "Import abgeschlossen, aber noch offene Zuordnungen in Bankkonto." & vbCrLf & vbCrLf & _
-               "Bitte kl" & ChrW(228) & "ren Sie zuerst alle markierten Felder in Kategorie (H) " & _
-               "und Monat/Periode (I)." & vbCrLf & _
-               "Danach die Zahlungs" & ChrW(252) & "bersicht und das Dashboard neu erzeugen.", _
+         MsgBox "Der Import ist gespeichert. In der markierten Zeile fehlt noch eine Zuordnung." & vbCrLf & vbCrLf & _
+             "1. Wählen Sie in Spalte H die passende Kategorie." & vbCrLf & _
+             "2. Bestätigen Sie in Spalte I den Monat bzw. die Periode." & vbCrLf & vbCrLf & _
+             "Sobald alle rot oder gelb markierten H/I-Felder bestätigt sind, aktualisiert " & _
+             "das Programm die Zahlungsübersicht automatisch. Das Dashboard folgt erst nach " & _
+             "vollständiger Zahlungsprüfung.", _
                vbExclamation, "Offene Zuordnungen"
         Exit Sub
     End If

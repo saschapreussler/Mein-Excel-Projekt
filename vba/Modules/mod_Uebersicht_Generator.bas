@@ -669,11 +669,14 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                             Dim updateRow As Long
                             updateRow = CLng(geschriebeneParzKatRow(parzKatKey))
 
-                            wsUeb.Cells(updateRow, UEB_COL_MITGLIED).value = mitgliedName & " [" & entityKey & "]"
+                            wsUeb.Cells(updateRow, UEB_COL_MITGLIED).value = mitgliedName
                             wsUeb.Cells(updateRow, UEB_COL_IST).value = ist
                             wsUeb.Cells(updateRow, UEB_COL_STATUS).value = status
-                            wsUeb.Cells(updateRow, UEB_COL_BEMERKUNG).value = _
-                                "Zahlung zugeordnet über EntityKey: " & entityKey
+                            If UBound(teile) >= 3 Then
+                                wsUeb.Cells(updateRow, UEB_COL_BEMERKUNG).value = teile(3)
+                            Else
+                                wsUeb.Cells(updateRow, UEB_COL_BEMERKUNG).ClearContents
+                            End If
 
                             If StrComp(status, m_STATUS_GRUEN, vbTextCompare) = 0 Then
                                 wsUeb.Cells(updateRow, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
@@ -700,11 +703,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 
                 ' Zeile schreiben
                 wsUeb.Cells(rowIdx, UEB_COL_PARZELLE).value = parzelleWert
-                If istParzellenKategorie And ist > 0 Then
-                    wsUeb.Cells(rowIdx, UEB_COL_MITGLIED).value = mitgliedName & " [" & entityKey & "]"
-                Else
-                    wsUeb.Cells(rowIdx, UEB_COL_MITGLIED).value = mitgliedName
-                End If
+                wsUeb.Cells(rowIdx, UEB_COL_MITGLIED).value = mitgliedName
                 ' v4.3: Monat als Text schreiben (verhindert Excel-Datumserkennung)
                 wsUeb.Cells(rowIdx, UEB_COL_MONAT).NumberFormat = "@"
                 wsUeb.Cells(rowIdx, UEB_COL_MONAT).value = MonthName(monat) & " " & jahr
@@ -1606,7 +1605,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
             sollWert = sollWertVorab
 
             Dim defaultDatum As String
-            defaultDatum = "15.12." & CStr(HoleJahrAusMonatstext(wsUeb.Cells(r, UEB_COL_MONAT).value) - 1)
+            defaultDatum = ErmittleVorbelegtesVorjahrZahlungsdatum( _
+                vjKategorie, HoleJahrAusMonatstext(wsUeb.Cells(r, UEB_COL_MONAT).value))
 
             Dim inDatum As String
             inDatum = InputBox("Datum der Vorjahrzahlung eingeben (TT.MM.JJJJ)" & vbCrLf & _
@@ -1721,9 +1721,8 @@ NextPos:
     
     Application.EnableEvents = True
     
-    ' v7.4: Dashboard auf aktuellen Stand bringen, falls Status-änderungen
-    '       vorgenommen wurden (sonst zeigt Dashboard noch alte GELB-Werte).
-    If bestaetigtGruen + bestaetigtRot > 0 Then
+    ' Dashboard nur nach vollständiger Klärung aller Zahlungsprüfungen aktualisieren.
+    If bestaetigtGruen + bestaetigtRot > 0 And Not HatOffeneZahlungspruefungen() Then
         On Error Resume Next
         Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
         On Error GoTo 0
@@ -1741,6 +1740,26 @@ NextPos:
     End If
     
 End Sub
+
+Private Function ErmittleVorbelegtesVorjahrZahlungsdatum(ByVal kategorie As String, _
+                                                           ByVal abrechnungsjahr As Long) As String
+    Dim sollDatum As Date
+    Dim vorlauf As Long
+    Dim nachlauf As Long
+    Dim saeumnis As Double
+    Dim fruehesterTermin As Date
+
+    If abrechnungsjahr <= 0 Then abrechnungsjahr = Year(Date)
+    sollDatum = mod_Zahlungspruefung.BerechneSollDatumZP(kategorie, 1, abrechnungsjahr)
+    Call mod_Zahlungspruefung.HoleToleranzZP(kategorie, vorlauf, nachlauf, saeumnis)
+
+    fruehesterTermin = DateAdd("d", -vorlauf, sollDatum)
+    If Year(fruehesterTermin) >= abrechnungsjahr Then
+        fruehesterTermin = DateSerial(abrechnungsjahr - 1, 12, 31)
+    End If
+
+    ErmittleVorbelegtesVorjahrZahlungsdatum = Format$(fruehesterTermin, "dd.mm.yyyy")
+End Function
 
 
 ' ===============================================================
