@@ -323,6 +323,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         Call mod_BK_KA_Nummern.NeuberechneAlleBKNummern(Me)
         On Error GoTo 0
     End If
+
+    Call mod_FinanzUebersicht.AktualisiereFinanzUebersichtImHintergrund
     
 End Sub
 

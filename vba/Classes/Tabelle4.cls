@@ -39,6 +39,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 
     Call mod_Vereinskasse_Filter.AktualisiereVereinskasseKassenbestand(Me)
     Call mod_Einstellungen.AktualisiereKassenbestandVorjahrBeschriftung
+    Call mod_FinanzUebersicht.AktualisiereFinanzUebersichtImHintergrund
 End Sub
 
 

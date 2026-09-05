@@ -758,6 +758,7 @@ Public Sub LoescheAlleBankkontoZeilen()
     Call mod_Uebersicht_Dashboard.LeereDashboardWennKeineDaten(force:=True)
     Call mod_Startseite.AktualisiereKontostandKPI
     Call mod_Startseite.AktualisiereParzellenAnzeigen
+    Call mod_FinanzUebersicht.AktualisiereFinanzUebersichtImHintergrund
     
     MsgBox "Alle Daten wurden gel" & ChrW(246) & "scht.", vbInformation
     

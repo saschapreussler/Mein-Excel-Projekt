@@ -39,8 +39,16 @@ Private m_FilterDatBis As Date      ' 0 = kein Filter
 ' ===============================================================
 ' HAUPTPROZEDUR: Finanz-übersicht erstellen/aktualisieren
 ' ===============================================================
-Public Sub ErstelleFinanzUebersicht()
+Public Sub ErstelleFinanzUebersicht(Optional ByVal imHintergrund As Boolean = False)
     Dim ws As Worksheet
+    Dim vorherigesBlatt As Worksheet
+
+    If imHintergrund Then
+        On Error Resume Next
+        Set vorherigesBlatt = ActiveSheet
+        On Error GoTo 0
+    End If
+
     Set ws = HoleOderErstelleBlatt()
     If ws Is Nothing Then Exit Sub
     
@@ -62,11 +70,25 @@ Public Sub ErstelleFinanzUebersicht()
     ws.Cells.Locked = True
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
-    ws.Activate
-    ws.Range("A1").Select
+    If imHintergrund Then
+        On Error Resume Next
+        Application.EnableEvents = False
+        If Not vorherigesBlatt Is Nothing Then vorherigesBlatt.Activate
+        Application.EnableEvents = True
+        On Error GoTo 0
+    Else
+        ws.Activate
+        ws.Range("A1").Select
+    End If
     
     Application.EnableEvents = True
     Application.ScreenUpdating = True
+End Sub
+
+Public Sub AktualisiereFinanzUebersichtImHintergrund()
+    On Error Resume Next
+    Call ErstelleFinanzUebersicht(True)
+    On Error GoTo 0
 End Sub
 
 
