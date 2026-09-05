@@ -580,6 +580,12 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 ElseIf UBound(teile) >= 0 Then
                     status = teile(0)
                 End If
+
+                ' Ein Mitglied ohne eigenen EntityKey bleibt beitragspflichtig.
+                ' Der Sollbetrag stammt deshalb trotzdem aus Einstellungen.
+                If entityKey = "" And StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                    soll = kategorien(k).SollBetrag
+                End If
                 
                 ' v4.0: Vorjahr-Zahlungen prüfen (Jan-Maerz)
                 ' Dezember-Zahlung des Vorjahres die für diesen Monat gilt
