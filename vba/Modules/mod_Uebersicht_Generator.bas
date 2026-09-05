@@ -95,6 +95,7 @@ Private Const UEB_COL_IST As Long = 6           ' F - Ist
 Private Const UEB_COL_STATUS As Long = 7        ' G - Status (gruen/GELB/ROT)
 Private Const UEB_COL_BEMERKUNG As Long = 8     ' H - Bemerkung
 Private Const UEB_COL_SUMME_IST As Long = 9     ' I - Summe Ist (kumuliert)
+Private Const UEB_COL_GUTHABEN As Long = 10     ' J - Ueberzahlung je Position
 
 ' Farbe für Summen-Spalte (dezentes Hellblau)
 Private Const FARBE_SUMME As Long = 16247773    ' RGB(189, 215, 248)
@@ -767,6 +768,11 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
                 
                 wsUeb.Cells(rowIdx, UEB_COL_IST).value = ist
+                If soll > 0 And ist > soll Then
+                    wsUeb.Cells(rowIdx, UEB_COL_GUTHABEN).value = ist - soll
+                Else
+                    wsUeb.Cells(rowIdx, UEB_COL_GUTHABEN).value = 0
+                End If
                 wsUeb.Cells(rowIdx, UEB_COL_STATUS).value = status
                 
                 ' Farbe setzen
@@ -885,7 +891,7 @@ NextMitglied:
     ' v4.4: AutoFilter auf Header-Zeile aktivieren (Dropdown-Pfeile immer sichtbar)
     If wsUeb.AutoFilterMode Then wsUeb.AutoFilterMode = False
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_HEADER_ROW, UEB_COL_PARZELLE), _
-                wsUeb.Cells(rowIdx - 1, UEB_COL_SUMME_IST)).AutoFilter
+                wsUeb.Cells(rowIdx - 1, UEB_COL_GUTHABEN)).AutoFilter
     
     ' Monats-Register (Shape-Tabs) erstellen/aktualisieren
     Call mod_Uebersicht_Filter.ErstelleMonatsRegister
@@ -981,6 +987,25 @@ Public Function HatOffeneZahlungspruefungen() As Boolean
         If status = "GELB" Or status = "ROT" Then
             HatOffeneZahlungspruefungen = True
             Exit Function
+        End If
+    Next r
+End Function
+
+Public Function ErmittleGesamtguthaben() As Double
+    Dim wsUeb As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+
+    ErmittleGesamtguthaben = 0
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo 0
+    If wsUeb Is Nothing Then Exit Function
+
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
+    For r = UEBERSICHT_START_ROW To lastRow
+        If IsNumeric(wsUeb.Cells(r, UEB_COL_GUTHABEN).value) Then
+            ErmittleGesamtguthaben = ErmittleGesamtguthaben + CDbl(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
         End If
     Next r
 End Function
@@ -1096,6 +1121,7 @@ Private Sub SetzeUebersichtHeader(ByVal wsUeb As Worksheet)
         .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_STATUS).value = "Status"
         .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_BEMERKUNG).value = "Bemerkung"
         .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_SUMME_IST).value = ChrW(931) & " Ist"
+        .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_GUTHABEN).value = "Guthaben"
         
         ' Header formatieren
         Dim rngHeader As Range
@@ -1130,7 +1156,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     If endRow < startRow Then Exit Sub
     
     Set rngTable = wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_PARZELLE), _
-                                wsUeb.Cells(endRow, UEB_COL_SUMME_IST))
+                                wsUeb.Cells(endRow, UEB_COL_GUTHABEN))
     
     ' Zebramuster (identisch mit Bankkonto/EntityKey-Tabelle)
     ' Ungerade Zeilen (1., 3., 5. Datenzeile) = weiss
@@ -1140,7 +1166,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
         Dim c As Long
         If (r - startRow) Mod 2 = 1 Then
             ' Gerade Datenzeile -> Zebra-Farbe
-            For c = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
+            For c = UEB_COL_PARZELLE To UEB_COL_GUTHABEN
                 If c = UEB_COL_STATUS Then
                     ' Status-Spalte (G) behält IMMER ihre Ampelfarbe
                 ElseIf c = UEB_COL_SOLL Then
@@ -1155,7 +1181,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
             Next c
         Else
             ' Ungerade Datenzeile -> weiss (aber Soll/Status auslassen)
-            For c = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
+            For c = UEB_COL_PARZELLE To UEB_COL_GUTHABEN
                 If c = UEB_COL_STATUS Then
                     ' Status-Spalte behält Ampelfarbe
                 ElseIf c = UEB_COL_SOLL Then
@@ -1184,7 +1210,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     
     ' Spaltenbreiten: AutoFit basierend auf Inhalt
     Dim colAutoFit As Long
-    For colAutoFit = UEB_COL_PARZELLE To UEB_COL_SUMME_IST
+    For colAutoFit = UEB_COL_PARZELLE To UEB_COL_GUTHABEN
         wsUeb.Columns(colAutoFit).AutoFit
         ' Mindestbreite sicherstellen (Header nicht abschneiden)
         If wsUeb.Columns(colAutoFit).ColumnWidth < 10 Then
@@ -1216,6 +1242,8 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
         Debug.Print "[" & ChrW(220) & "bersicht] FEHLER NumberFormat SUMME_IST: " & Err.Number & " - " & Err.Description
         Err.Clear
     End If
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_GUTHABEN), _
+                wsUeb.Cells(endRow, UEB_COL_GUTHABEN)).NumberFormat = "#,##0.00 " & ChrW(8364)
     
     ' Ausrichtung
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_PARZELLE), _
@@ -1722,7 +1750,7 @@ NextPos:
     Application.EnableEvents = True
     
     ' Dashboard nur nach vollständiger Klärung aller Zahlungsprüfungen aktualisieren.
-    If bestaetigtGruen + bestaetigtRot > 0 And Not HatOffeneZahlungspruefungen() Then
+    If bestaetigtGruen + bestaetigtRot > 0 Then
         On Error Resume Next
         Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
         On Error GoTo 0

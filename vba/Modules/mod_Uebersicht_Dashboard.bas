@@ -208,6 +208,12 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
                      kpiAnzahlOffen, kpiAnzahlBezahlt, _
                      kpiAnzahlSaeumnis, kpiOffenOhneSoll, _
                      kpiOffenBetrag)
+
+    Call SchreibeKPIKarte(wsDash, DASH_KPI_LABEL_ROW, 9, 10, _
+                          "GUTHABEN", _
+                          Format(mod_Uebersicht_Generator.ErmittleGesamtguthaben(), "#,##0.00") & " " & ChrW(8364), _
+                          "Summe der Überzahlungen", _
+                          m_CLR_KPI_GRUEN)
     
     ' --- 10. Verzugsdetail ---
     Dim verzugEndRow As Long
