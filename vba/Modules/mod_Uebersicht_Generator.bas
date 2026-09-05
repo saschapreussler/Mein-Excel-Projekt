@@ -1993,46 +1993,26 @@ End Sub
 Private Function IstVorjahrPruefungNoetig(ByVal wsUeb As Worksheet, _
                                            ByVal zeile As Long) As Boolean
     Dim istWert As Double
-    Dim sollWert As Double
-    Dim parzelle As String
     Dim monat As String
     Dim kategorie As String
-    Dim lastRow As Long
-    Dim r As Long
-    Dim parzellenIst As Double
-    Dim parzellenSoll As Double
+    Dim bemerkung As String
 
     IstVorjahrPruefungNoetig = False
 
     istWert = LeseDoubleAusZelleVJ(wsUeb.Cells(zeile, UEB_COL_IST))
     If istWert > 0.004 Then Exit Function
 
-    parzelle = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
     monat = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_MONAT).value))
     kategorie = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value))
+    bemerkung = CStr(wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value)
 
     If InStr(1, monat, MonthName(1), vbTextCompare) = 0 Then Exit Function
     If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
         If IstEhrenmitgliedInUebersicht(wsUeb, zeile) Then Exit Function
+        If InStr(1, bemerkung, "Mitbezahlt durch", vbTextCompare) > 0 Then Exit Function
+        If InStr(1, bemerkung, "Gemeinschaftskonto", vbTextCompare) > 0 Then Exit Function
     End If
 
-    If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) <> 0 Then
-        IstVorjahrPruefungNoetig = True
-        Exit Function
-    End If
-
-    lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
-    For r = UEBERSICHT_START_ROW To lastRow
-        If StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)), parzelle, vbTextCompare) = 0 And _
-           StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value)), monat, vbTextCompare) = 0 And _
-           StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), kategorie, vbTextCompare) = 0 Then
-            parzellenIst = parzellenIst + LeseDoubleAusZelleVJ(wsUeb.Cells(r, UEB_COL_IST))
-            sollWert = LeseDoubleAusZelleVJ(wsUeb.Cells(r, UEB_COL_SOLL))
-            If sollWert > 0 Then parzellenSoll = parzellenSoll + sollWert
-        End If
-    Next r
-
-    If parzellenSoll > 0 And parzellenIst >= parzellenSoll - 0.01 Then Exit Function
     IstVorjahrPruefungNoetig = True
 End Function
 
