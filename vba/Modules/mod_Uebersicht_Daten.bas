@@ -260,6 +260,7 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                         dict.Add "EntityKey", entityKey
                         dict.Add "Name", zuordnung
                         dict.Add "Role", roleWert
+                        dict.Add "IBAN", Replace(Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)), " ", "")
                         
                         ' v5.2: Eintrittsdatum (Pachtanfang) aus Mitgliederliste
                         Dim eintritt As Date

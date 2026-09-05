@@ -86,9 +86,10 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
     colGesamt = 3 + anzMonatlich + IIf(anzJaehrlich > 0, 1, 0)
     ws.Cells(headerRow, colGesamt).value = "Gesamt"
     ws.Cells(headerRow, colGesamt + 1).value = "Quote"
+    ws.Cells(headerRow, colGesamt + 2).value = "Guthaben"
     
     Dim letzteSpalte As Long
-    letzteSpalte = colGesamt + 1
+    letzteSpalte = colGesamt + 2
     
     ' Header formatieren
     With ws.Range(ws.Cells(headerRow, 1), ws.Cells(headerRow, letzteSpalte))
@@ -512,6 +513,19 @@ NextKatDash:
                 .Interior.color = m_CLR_ZELLE_GRAU
             End If
         End With
+
+        With ws.Cells(rowIdx, colGesamt + 2)
+            .value = mod_Uebersicht_Generator.GuthabenTextFuerParzelle(parzellen(p).parzNr)
+            .Font.Name = "Calibri"
+            .Font.Size = 9
+            .WrapText = True
+            .HorizontalAlignment = xlLeft
+            .VerticalAlignment = xlCenter
+            If Len(CStr(.value)) > 0 Then
+                .Interior.color = m_CLR_ZELLE_GRUEN
+                .Font.color = m_CLR_TEXT_GRUEN
+            End If
+        End With
         
         ' Zebra-Streifen
         If p Mod 2 = 0 Then
@@ -569,6 +583,8 @@ NextKatDash:
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
     End With
+    ws.Cells(rowIdx, colGesamt + 2).value = _
+        Format$(mod_Uebersicht_Generator.ErmittleGesamtguthaben(), "#,##0.00") & " " & ChrW(8364)
     
     With ws.Range(ws.Cells(rowIdx, 1), ws.Cells(rowIdx, letzteSpalte))
         .Borders(xlEdgeTop).LineStyle = xlContinuous

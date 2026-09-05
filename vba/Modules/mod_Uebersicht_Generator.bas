@@ -768,8 +768,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
                 
                 wsUeb.Cells(rowIdx, UEB_COL_IST).value = ist
-                If soll > 0 And ist > soll Then
-                    wsUeb.Cells(rowIdx, UEB_COL_GUTHABEN).value = ist - soll
+                If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                    wsUeb.Cells(rowIdx, UEB_COL_GUTHABEN).value = _
+                        ErmittleGuthabenMitgliedsbeitrag(mitglieder, CLng(parzelleWert), _
+                        entityKey, monat, jahr, kategorien(k).SollBetrag)
                 Else
                     wsUeb.Cells(rowIdx, UEB_COL_GUTHABEN).value = 0
                 End If
@@ -1010,6 +1012,36 @@ Public Function ErmittleGesamtguthaben() As Double
     Next r
 End Function
 
+Public Function GuthabenTextFuerParzelle(ByVal parzelle As Long) As String
+    Dim wsUeb As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim name As String
+    Dim guthaben As Double
+
+    GuthabenTextFuerParzelle = ""
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo 0
+    If wsUeb Is Nothing Then Exit Function
+
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
+    For r = UEBERSICHT_START_ROW To lastRow
+        If CLng(val(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value))) = parzelle Then
+            If IsNumeric(wsUeb.Cells(r, UEB_COL_GUTHABEN).value) Then
+                guthaben = CDbl(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
+                If guthaben > 0.004 Then
+                    name = Trim$(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value))
+                    If name = "" Then name = "Mitglied"
+                    If GuthabenTextFuerParzelle <> "" Then GuthabenTextFuerParzelle = GuthabenTextFuerParzelle & vbLf
+                    GuthabenTextFuerParzelle = GuthabenTextFuerParzelle & _
+                        name & ": " & Format$(guthaben, "#,##0.00") & " " & ChrW(8364)
+                End If
+            End If
+        End If
+    Next r
+End Function
+
 Public Sub FokussiereErsteOffeneZahlungspruefung()
     Dim wsUeb As Worksheet
     Dim lastRow As Long
@@ -1120,7 +1152,7 @@ Private Sub SetzeUebersichtHeader(ByVal wsUeb As Worksheet)
         .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_IST).value = "Ist"
         .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_STATUS).value = "Status"
         .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_BEMERKUNG).value = "Bemerkung"
-        .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_SUMME_IST).value = ChrW(931) & " Ist"
+        .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_SUMME_IST).value = "Ist gesamt Monat"
         .Cells(UEBERSICHT_HEADER_ROW, UEB_COL_GUTHABEN).value = "Guthaben"
         
         ' Header formatieren
@@ -1388,6 +1420,68 @@ Private Function PruefePartnerMitgliedsbeitrag( _
     
 End Function
 
+Private Function ErmittleGuthabenMitgliedsbeitrag(ByVal mitglieder As Collection, _
+                                                    ByVal parzelle As Long, _
+                                                    ByVal entityKey As String, _
+                                                    ByVal monat As Long, _
+                                                    ByVal jahr As Long, _
+                                                    ByVal sollProMitglied As Double) As Double
+    Dim ibans As Object
+    Dim mitglied As Object
+    Dim iban As String
+    Dim eigeneIban As String
+    Dim zahlendeMitglieder As Long
+    Dim eigenerBetrag As Double
+    Dim andereBetraege As Double
+    Dim istRepräsentant As Boolean
+    Dim key As Variant
+
+    ErmittleGuthabenMitgliedsbeitrag = 0
+    If sollProMitglied <= 0 Then Exit Function
+
+    Set ibans = CreateObject("Scripting.Dictionary")
+    ibans.CompareMode = vbTextCompare
+    istRepräsentant = True
+
+    For Each mitglied In mitglieder
+        If CLng(mitglied("Parzelle")) <> parzelle Then GoTo NextMitglied
+        If InStr(1, UCase$(CStr(mitglied("Role"))), "EHREN", vbTextCompare) > 0 Then GoTo NextMitglied
+
+        zahlendeMitglieder = zahlendeMitglieder + 1
+        iban = Trim$(CStr(mitglied("IBAN")))
+        If iban = "" Then GoTo NextMitglied
+
+        If Not ibans.exists(iban) Then
+            ibans.Add iban, CStr(mitglied("EntityKey"))
+        End If
+
+        If StrComp(CStr(mitglied("EntityKey")), entityKey, vbTextCompare) = 0 Then
+            eigeneIban = iban
+        End If
+NextMitglied:
+    Next mitglied
+
+    If eigeneIban = "" Then Exit Function
+    istRepräsentant = (StrComp(CStr(ibans(eigeneIban)), entityKey, vbTextCompare) = 0)
+    If Not istRepräsentant Then Exit Function
+
+    For Each key In ibans.keys
+        Dim treffer As Long
+        Dim betrag As Double
+        Call mod_Zahlungspruefung.ZaehleZahlungenZP(CStr(ibans(key)), _
+            "Mitgliedsbeitrag", monat, jahr, treffer, betrag)
+
+        If StrComp(CStr(key), eigeneIban, vbTextCompare) = 0 Then
+            eigenerBetrag = betrag
+        Else
+            andereBetraege = andereBetraege + betrag
+        End If
+    Next key
+
+    ErmittleGuthabenMitgliedsbeitrag = Application.Max(0, _
+        eigenerBetrag - Application.Max(0, zahlendeMitglieder * sollProMitglied - andereBetraege))
+End Function
+
 
 ' ===============================================================
 ' Baut Spalte I (Summe Ist) pro Parzelle+Kategorie auf.
@@ -1404,9 +1498,10 @@ Private Sub BefuelleSummeIstSpalte(ByVal wsUeb As Worksheet, _
     Dim r As Long
     For r = UEBERSICHT_START_ROW To lastRow
         Dim key As String
-        key = Trim(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
+          key = Trim(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
+              Trim(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value)) & "|" & _
               Trim(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value))
-        If key <> "|" Then
+          If key <> "||" Then
             If Not sums.exists(key) Then sums.Add key, 0#
             sums(key) = CDbl(sums(key)) + CDbl(val(CStr(wsUeb.Cells(r, UEB_COL_IST).value)))
         End If
@@ -1594,16 +1689,12 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
             sollText = "(variabel - keine feste Vorgabe)"
         End If
 
-        ' Gemeinsamer Info-Block für MsgBox + beide InputBoxen,
-        ' damit der Nutzer in JEDER Box weiss, für wen / was / wieviel.
-        ' vbTab nutzt die Tab-Stops der MsgBox - so stehen die Werte
-        ' auch in der proportionalen Dialogschrift sauber untereinander.
         Dim infoBlock As String
-        infoBlock = "Parzelle:" & vbTab & vbTab & parzelle & vbCrLf & _
-                    "Mitglied:" & vbTab & vbTab & vjMitglied & vbCrLf & _
-                    "Kategorie:" & vbTab & vbTab & vjKategorie & vbCrLf & _
-                    "Monat:" & vbTab & vbTab & vbTab & monatText & vbCrLf & _
-                    "Soll-Betrag:" & vbTab & vbTab & sollText
+        infoBlock = "Parzelle: " & parzelle & vbCrLf & _
+                "Mitglied: " & vjMitglied & vbCrLf & _
+                "Kategorie: " & vjKategorie & vbCrLf & _
+                "Monat: " & monatText & vbCrLf & _
+                "Soll-Betrag: " & sollText
         
         Dim vjAntwort As VbMsgBoxResult
         vjAntwort = MsgBox("Position " & i & " von " & gelbZeilen.count & ":" & vbCrLf & vbCrLf & _
@@ -1643,7 +1734,8 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
                                "------------------------------------------------------------" & vbCrLf & vbCrLf & _
                                "Wann wurde die Zahlung für obige Position im Vorjahr" & vbCrLf & _
                                "(Oktober bis Dezember) ueberwiesen / verbucht?" & vbCrLf & vbCrLf & _
-                               "Vorbelegt: 15.12. des Vorjahres - bitte ggf. anpassen.", _
+                               "Vorbelegt nach Solltermin und Vorlaufzeit: " & defaultDatum & _
+                               " - bitte ggf. anpassen.", _
                                "Vorjahrzahlung - Datum (Pos. " & i & "/" & gelbZeilen.count & ")", _
                                defaultDatum)
             If LenB(Trim(inDatum)) = 0 Then GoTo NextPos
@@ -1672,7 +1764,7 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
             inBetrag = InputBox("H" & ChrW(246) & "he der Vorjahrzahlung eingeben" & vbCrLf & _
                                 "------------------------------------------------------------" & vbCrLf & _
                                 infoBlock & vbCrLf & _
-                                "Datum:" & vbTab & vbTab & vbTab & Format(zahlDatum, "dd.mm.yyyy") & vbCrLf & _
+                                "Datum: " & Format(zahlDatum, "dd.mm.yyyy") & vbCrLf & _
                                 "------------------------------------------------------------" & vbCrLf & vbCrLf & _
                                 "Welcher Betrag wurde tats" & ChrW(228) & "chlich gezahlt?" & vbCrLf & vbCrLf & _
                                 IIf(sollWert > 0, _
