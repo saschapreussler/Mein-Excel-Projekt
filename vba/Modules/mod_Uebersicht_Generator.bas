@@ -1411,7 +1411,8 @@ Private Function ErmittleGuthabenMitgliedsbeitrag(ByVal mitglieder As Collection
     Dim eigeneIban As String
     Dim zahlendeMitglieder As Long
     Dim eigenerBetrag As Double
-    Dim andereBetraege As Double
+    Dim eigenePflicht As Double
+    Dim anderePflichtErfuellt As Boolean
     Dim istRepräsentant As Boolean
     Dim key As Variant
 
@@ -1421,6 +1422,7 @@ Private Function ErmittleGuthabenMitgliedsbeitrag(ByVal mitglieder As Collection
     Set ibans = CreateObject("Scripting.Dictionary")
     ibans.CompareMode = vbTextCompare
     istRepräsentant = True
+    anderePflichtErfuellt = True
 
     zahlendeMitglieder = ZaehleBeitragspflichtigeMitgliederAufParzelle(parzelle)
 
@@ -1454,13 +1456,38 @@ NextMitglied:
         If StrComp(CStr(key), eigeneIban, vbTextCompare) = 0 Then
             eigenerBetrag = betrag
         Else
-            andereBetraege = andereBetraege + betrag
+            If betrag < ZaehleMitgliederFuerKonto(mitglieder, parzelle, CStr(key)) * _
+                       sollProMitglied - 0.01 Then
+                anderePflichtErfuellt = False
+            End If
         End If
     Next key
 
-    ErmittleGuthabenMitgliedsbeitrag = Application.Max(0, _
-        eigenerBetrag - Application.Max(sollProMitglied, _
-        zahlendeMitglieder * sollProMitglied - andereBetraege))
+    eigenePflicht = ZaehleMitgliederFuerKonto(mitglieder, parzelle, eigeneIban) * sollProMitglied
+    If eigenePflicht <= 0 Then eigenePflicht = sollProMitglied
+
+    ' Ein einzelnes Zahlkonto deckt zuerst die gesamte Parzellenpflicht.
+    If ibans.count = 1 Then
+        ErmittleGuthabenMitgliedsbeitrag = Application.Max(0, _
+            eigenerBetrag - zahlendeMitglieder * sollProMitglied)
+    ElseIf anderePflichtErfuellt Then
+        ErmittleGuthabenMitgliedsbeitrag = Application.Max(0, eigenerBetrag - eigenePflicht)
+    End If
+End Function
+
+Private Function ZaehleMitgliederFuerKonto(ByVal mitglieder As Collection, _
+                                            ByVal parzelle As Long, _
+                                            ByVal iban As String) As Long
+    Dim mitglied As Object
+
+    ZaehleMitgliederFuerKonto = 0
+    For Each mitglied In mitglieder
+        If CLng(mitglied("Parzelle")) = parzelle Then
+            If StrComp(CStr(mitglied("IBAN")), iban, vbTextCompare) = 0 Then
+                ZaehleMitgliederFuerKonto = ZaehleMitgliederFuerKonto + 1
+            End If
+        End If
+    Next mitglied
 End Function
 
 Private Function ZaehleBeitragspflichtigeMitgliederAufParzelle(ByVal parzelle As Long) As Long
