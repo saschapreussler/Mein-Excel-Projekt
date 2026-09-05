@@ -320,7 +320,8 @@ NextDatenRow:
             dict.Add "Parzelle", CLng(parzelleOhneEK)
             dict.Add "EntityKey", ""
             dict.Add "Name", Trim$(nachnameOhneEK & ", " & vornameOhneEK)
-            dict.Add "Role", "MITGLIED"
+            dict.Add "Role", mod_EntityKey_Classifier.ErmittleEntityRoleVonFunktion( _
+                CStr(wsML.Cells(rML, M_COL_FUNKTION).value))
             dict.Add "IBAN", ""
             dict.Add "Kontoname", ""
             dict.Add "Eintritt", wsML.Cells(rML, M_COL_PACHTANFANG).value

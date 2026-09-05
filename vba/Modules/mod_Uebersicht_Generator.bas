@@ -1750,10 +1750,7 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
         Dim statusWert As String
         statusWert = UCase(Trim(CStr(wsUeb.Cells(r, UEB_COL_STATUS).value)))
         
-        If statusWert = "GELB" Then
-            Dim bemWert As String
-            bemWert = CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value)
-
+        If statusWert = "GELB" Or statusWert = "ROT" Then
             Dim gruppenKey As String
             gruppenKey = Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
                          Trim$(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value)) & "|" & _
@@ -1765,8 +1762,7 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
                 GoTo NextGelbZeile
             End If
 
-            If InStr(bemWert, "Keine Vorjahr-Daten") > 0 And _
-               IstVorjahrPruefungNoetig(wsUeb, r) Then
+            If IstVorjahrPruefungNoetig(wsUeb, r) Then
                 gelbZeilen.Add r
             End If
         End If
@@ -2015,6 +2011,11 @@ Private Function IstVorjahrPruefungNoetig(ByVal wsUeb As Worksheet, _
     monat = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_MONAT).value))
     kategorie = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value))
 
+    If InStr(1, monat, MonthName(1), vbTextCompare) = 0 Then Exit Function
+    If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+        If IstEhrenmitgliedInUebersicht(wsUeb, zeile) Then Exit Function
+    End If
+
     If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) <> 0 Then
         IstVorjahrPruefungNoetig = True
         Exit Function
@@ -2033,6 +2034,47 @@ Private Function IstVorjahrPruefungNoetig(ByVal wsUeb As Worksheet, _
 
     If parzellenSoll > 0 And parzellenIst >= parzellenSoll - 0.01 Then Exit Function
     IstVorjahrPruefungNoetig = True
+End Function
+
+Private Function IstEhrenmitgliedInUebersicht(ByVal wsUeb As Worksheet, _
+                                               ByVal zeile As Long) As Boolean
+    Dim wsMitglieder As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim parzelle As String
+    Dim anzeigeName As String
+    Dim nameNorm As String
+    Dim listenName As String
+    Dim funktion As String
+
+    IstEhrenmitgliedInUebersicht = False
+    parzelle = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
+    anzeigeName = CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value)
+    nameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(anzeigeName)
+    If parzelle = "" Or nameNorm = "" Then Exit Function
+
+    On Error Resume Next
+    Set wsMitglieder = ThisWorkbook.Worksheets(WS_MITGLIEDER)
+    On Error GoTo 0
+    If wsMitglieder Is Nothing Then Exit Function
+
+    lastRow = wsMitglieder.Cells(wsMitglieder.Rows.count, M_COL_PARZELLE).End(xlUp).Row
+    For r = M_START_ROW To lastRow
+        If StrComp(Trim$(CStr(wsMitglieder.Cells(r, M_COL_PARZELLE).value)), parzelle, vbTextCompare) <> 0 Then GoTo NextMitglied
+
+        listenName = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich( _
+            CStr(wsMitglieder.Cells(r, M_COL_NACHNAME).value) & " " & _
+            CStr(wsMitglieder.Cells(r, M_COL_VORNAME).value))
+        If InStr(1, nameNorm, listenName, vbTextCompare) = 0 And _
+           InStr(1, listenName, nameNorm, vbTextCompare) = 0 Then GoTo NextMitglied
+
+        funktion = CStr(wsMitglieder.Cells(r, M_COL_FUNKTION).value)
+        If InStr(1, funktion, "Ehren", vbTextCompare) > 0 Then
+            IstEhrenmitgliedInUebersicht = True
+            Exit Function
+        End If
+NextMitglied:
+    Next r
 End Function
 
 Private Function ErmittleVorbelegtesVorjahrZahlungsdatum(ByVal kategorie As String, _
