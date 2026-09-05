@@ -1725,6 +1725,10 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     ' 1) Betroffene Zeilen sammeln
     Dim gelbZeilen As Collection
     Set gelbZeilen = New Collection
+
+    Dim gepruefteGruppen As Object
+    Set gepruefteGruppen = CreateObject("Scripting.Dictionary")
+    gepruefteGruppen.CompareMode = vbTextCompare
     
     Dim r As Long
     For r = UEBERSICHT_START_ROW To LetzteZeile
@@ -1734,12 +1738,24 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
         If statusWert = "GELB" Then
             Dim bemWert As String
             bemWert = CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value)
+
+            Dim gruppenKey As String
+            gruppenKey = Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
+                         Trim$(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value)) & "|" & _
+                         Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value))
             
+            If Not gepruefteGruppen.exists(gruppenKey) Then
+                gepruefteGruppen.Add gruppenKey, True
+            Else
+                GoTo NextGelbZeile
+            End If
+
             If InStr(bemWert, "Keine Vorjahr-Daten") > 0 And _
                IstVorjahrPruefungNoetig(wsUeb, r) Then
                 gelbZeilen.Add r
             End If
         End If
+NextGelbZeile:
     Next r
     
     If gelbZeilen.count = 0 Then Exit Sub
