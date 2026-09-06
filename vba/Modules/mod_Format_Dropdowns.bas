@@ -25,11 +25,24 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
     Dim key As Variant
     Dim nextRowE As Long
     Dim nextRowA As Long
+    Dim eigenePerioden As Object
+    Dim periodenZeile As Long
+    Dim abrechnungsjahr As Long
+    Dim periodenJahr As Long
+    Dim standardPeriode As Variant
     
     If ws Is Nothing Then Set ws = ThisWorkbook.Worksheets(WS_DATEN)
     
     Set dictEinnahmen = CreateObject("Scripting.Dictionary")
     Set dictAusgaben = CreateObject("Scripting.Dictionary")
+    Set eigenePerioden = CreateObject("Scripting.Dictionary")
+    eigenePerioden.CompareMode = vbTextCompare
+
+    For r = 4 To 1000
+        If Trim$(CStr(ws.Cells(r, DATA_COL_MONAT_PERIODE).value)) <> "" Then
+            eigenePerioden(Trim$(CStr(ws.Cells(r, DATA_COL_MONAT_PERIODE).value))) = True
+        End If
+    Next r
     
     lastRow = ws.Cells(ws.Rows.count, DATA_CAT_COL_KATEGORIE).End(xlUp).Row
     If lastRow < DATA_START_ROW Then Exit Sub
@@ -82,6 +95,30 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
     ws.Cells(13, DATA_COL_MONAT_PERIODE).value = "Oktober"
     ws.Cells(14, DATA_COL_MONAT_PERIODE).value = "November"
     ws.Cells(15, DATA_COL_MONAT_PERIODE).value = "Dezember"
+
+    periodenZeile = 16
+    abrechnungsjahr = HoleAbrechnungsjahr()
+    If abrechnungsjahr <= 0 Then abrechnungsjahr = Year(Date)
+    For periodenJahr = abrechnungsjahr - 1 To abrechnungsjahr + 1
+        For Each standardPeriode In Array("Endabrechnung " & periodenJahr, "Pacht " & periodenJahr, _
+                                         "Fixkosten " & periodenJahr, "Q1 " & periodenJahr, "Q2 " & periodenJahr, _
+                                         "Q3 " & periodenJahr, "Q4 " & periodenJahr, "H1 " & periodenJahr, "H2 " & periodenJahr)
+            If not eigenePerioden.exists(CStr(standardPeriode)) Then
+                ws.Cells(periodenZeile, DATA_COL_MONAT_PERIODE).value = CStr(standardPeriode)
+                periodenZeile = periodenZeile + 1
+            End If
+        Next standardPeriode
+    Next periodenJahr
+
+    For Each key In eigenePerioden.keys
+        If periodenZeile <= 1000 Then
+            If InStr(1, "|Januar|Februar|M" & ChrW(228) & "rz|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember|", _
+                     "|" & CStr(key) & "|", vbTextCompare) = 0 Then
+                ws.Cells(periodenZeile, DATA_COL_MONAT_PERIODE).value = CStr(key)
+                periodenZeile = periodenZeile + 1
+            End If
+        End If
+    Next key
     
     Call ErstelleKategorieNamedRanges(ws, nextRowE - 1, nextRowA - 1)
     
@@ -119,7 +156,7 @@ Private Sub ErstelleKategorieNamedRanges(ByRef ws As Worksheet, ByVal lastRowE A
     End If
     
     ThisWorkbook.names.Add Name:="lst_MonatPeriode", _
-        RefersTo:="=" & ws.Name & "!$AH$4:$AH$15"
+        RefersTo:="=" & ws.Name & "!$AH$4:$AH$" & Application.Max(15, periodenZeile - 1)
     
     On Error GoTo 0
     

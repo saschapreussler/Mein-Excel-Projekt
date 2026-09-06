@@ -163,6 +163,41 @@ PruefeDatenBlatt:
     HoleFaelligkeitFuerKategorie = "monatlich"
 End Function
 
+Public Function IstPeriodeFuerMonat(ByVal periode As String, ByVal kategorie As String, _
+                                    ByVal monat As Long, ByVal jahr As Long, _
+                                    ByVal istMonatlich As Boolean) As Boolean
+    Dim text As String
+    Dim erwarteterMonat As String
+    Dim q As Long
+    Dim h As Long
+    Dim bereich As String
+
+    text = LCase$(Trim$(periode))
+    erwarteterMonat = LCase$(MonthName(monat))
+    IstPeriodeFuerMonat = False
+    If text = erwarteterMonat Then IstPeriodeFuerMonat = True: Exit Function
+    If InStr(1, text, LCase$(kategorie), vbTextCompare) > 0 And InStr(text, CStr(jahr)) > 0 Then
+        IstPeriodeFuerMonat = True
+        Exit Function
+    End If
+    If text Like "q# " & CStr(jahr) Then
+        q = CLng(mid$(text, 2, 1))
+        IstPeriodeFuerMonat = (q = Int((monat - 1) / 3) + 1)
+        Exit Function
+    End If
+    If text Like "h# " & CStr(jahr) Then
+        h = CLng(mid$(text, 2, 1))
+        IstPeriodeFuerMonat = ((h = 1 And monat <= 6) Or (h = 2 And monat >= 7))
+        Exit Function
+    End If
+    If InStr(text, CStr(jahr)) > 0 Then
+        If InStr(text, "januar bis m") > 0 Then IstPeriodeFuerMonat = (monat >= 1 And monat <= 3)
+        If InStr(text, "april bis juni") > 0 Then IstPeriodeFuerMonat = (monat >= 4 And monat <= 6)
+        If InStr(text, "juli bis september") > 0 Then IstPeriodeFuerMonat = (monat >= 7 And monat <= 9)
+        If InStr(text, "oktober bis dezember") > 0 Then IstPeriodeFuerMonat = (monat >= 10 And monat <= 12)
+    End If
+End Function
+
 
 
 

@@ -222,6 +222,13 @@ Public Const VJ_MAN_COL_BEMERKUNG As Long = 89   ' CK
 Public Const VJ_MAN_START_ROW As Long = 4
 Public Const VJ_MAN_HEADER_ROW As Long = 3
 
+' Dauerhafte Verrechnung von Guthaben mit offenen Folgeposten.
+Public Const GUTH_VER_COL_KEY As Long = 90       ' CL
+Public Const GUTH_VER_COL_BETRAG As Long = 91   ' CM
+Public Const GUTH_VER_COL_QUELLE As Long = 92   ' CN
+Public Const GUTH_VER_START_ROW As Long = 4
+Public Const GUTH_VER_HEADER_ROW As Long = 3
+
 ' ===============================================================
 ' I. CSV-IMPORT (SPARKASSE)
 ' ===============================================================

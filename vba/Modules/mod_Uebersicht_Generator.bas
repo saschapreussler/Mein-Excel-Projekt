@@ -1008,6 +1008,8 @@ NextMitglied:
     Application.Calculation = xlCalculationAutomatic
     Application.EnableEvents = True
     Application.ScreenUpdating = True
+
+    PruefeUndVerrechneGuthaben wsUeb, rowIdx - 1
     
     ' Die Vorjahr-Hinweispruefung wird gezielt beim Blattwechsel auf
     ' die Zahlungsübersicht gestartet (nicht direkt während Generierung).
@@ -1185,6 +1187,148 @@ Public Sub WendePersistierteVorjahrEntscheidungenAn()
     wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
     Application.EnableEvents = eventsWarenAktiv
     On Error GoTo 0
+End Sub
+
+Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZeile As Long)
+    Dim wsDaten As Worksheet
+    Dim r As Long
+    Dim quelle As Long
+    Dim sollWert As Double
+    Dim istWert As Double
+    Dim verfuegbar As Double
+    Dim offen As Double
+    Dim anwenden As Double
+    Dim zielKey As String
+    Dim quelleKey As String
+    Dim antwort As VbMsgBoxResult
+
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsDaten Is Nothing Then Exit Sub
+    If letzteZeile < UEBERSICHT_START_ROW Then Exit Sub
+
+    LadeGuthabenVerrechnungen wsUeb, wsDaten, letzteZeile
+
+    For r = UEBERSICHT_START_ROW To letzteZeile
+        If UCase$(Trim$(CStr(wsUeb.Cells(r, UEB_COL_STATUS).value))) = "ROT" Then
+            sollWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_SOLL).value)
+            istWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_IST).value)
+            offen = sollWert - istWert
+            If offen > 0.004 Then
+                quelle = FindeGuthabenQuelle(wsUeb, r, letzteZeile)
+                If quelle > 0 Then
+                    verfuegbar = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(quelle, UEB_COL_GUTHABEN).value)
+                    If verfuegbar > 0.004 Then
+                        zielKey = UebersichtEntscheidungsKey(wsUeb, r)
+                        If Not GuthabenVerrechnungVorhanden(wsDaten, zielKey) Then
+                            anwenden = Application.Min(verfuegbar, offen)
+                            antwort = MsgBox("Offene Zahlung für " & CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value) & _
+                                " (" & CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value) & ")" & vbCrLf & vbCrLf & _
+                                "Offener Betrag: " & Format$(offen, "#,##0.00") & " " & ChrW(8364) & vbCrLf & _
+                                "Verfügbares Guthaben: " & Format$(verfuegbar, "#,##0.00") & " " & ChrW(8364) & vbCrLf & vbCrLf & _
+                                "Soll der offene Betrag aus dem Guthaben verrechnet werden?", _
+                                vbYesNo + vbQuestion, "Guthaben verrechnen")
+                            If antwort = vbYes Then
+                                wsUeb.Cells(quelle, UEB_COL_GUTHABEN).value = verfuegbar - anwenden
+                                wsUeb.Cells(r, UEB_COL_IST).value = istWert + anwenden
+                                If anwenden >= offen - 0.01 Then
+                                    wsUeb.Cells(r, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
+                                    wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
+                                Else
+                                    wsUeb.Cells(r, UEB_COL_STATUS).value = "ROT"
+                                    wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_ROT
+                                End If
+                                wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = _
+                                    CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value) & _
+                                    " | Guthaben verrechnet: " & Format$(anwenden, "#,##0.00") & " " & ChrW(8364)
+                                quelleKey = UebersichtEntscheidungsKey(wsUeb, quelle)
+                                SpeichereGuthabenVerrechnung wsDaten, zielKey, anwenden, quelleKey
+                            End If
+                        End If
+                    End If
+                End If
+            End If
+        End If
+    Next r
+End Sub
+
+Private Function FindeGuthabenQuelle(ByVal wsUeb As Worksheet, ByVal zielZeile As Long, ByVal letzteZeile As Long) As Long
+    Dim r As Long
+    Dim zielParzelle As String
+    Dim zielName As String
+    zielParzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
+    zielName = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zielZeile, UEB_COL_MITGLIED).value))
+    For r = UEBERSICHT_START_ROW To letzteZeile
+        If r <> zielZeile And Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = zielParzelle Then
+            If mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = zielName Then
+                If mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value) > 0.004 Then
+                    FindeGuthabenQuelle = r
+                    Exit Function
+                End If
+            End If
+        End If
+    Next r
+End Function
+
+Private Sub LadeGuthabenVerrechnungen(ByVal wsUeb As Worksheet, ByVal wsDaten As Worksheet, ByVal letzteZeile As Long)
+    Dim lastRow As Long, r As Long, ziel As Long, quelle As Long, betrag As Double
+    Dim key As String, quelleKey As String
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row
+    If lastRow < GUTH_VER_START_ROW Then Exit Sub
+    For r = GUTH_VER_START_ROW To lastRow
+        key = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value))
+        quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
+        betrag = mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
+        If key <> "" And betrag > 0 Then
+            ziel = FindeZeileNachEntscheidungsKey(wsUeb, letzteZeile, key)
+            quelle = FindeZeileNachEntscheidungsKey(wsUeb, letzteZeile, quelleKey)
+            If quelle > 0 Then
+                wsUeb.Cells(quelle, UEB_COL_GUTHABEN).value = Application.Max(0, _
+                    mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(quelle, UEB_COL_GUTHABEN).value) - betrag)
+            End If
+            If ziel > 0 Then
+                wsUeb.Cells(ziel, UEB_COL_IST).value = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(ziel, UEB_COL_IST).value) + betrag
+                If mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(ziel, UEB_COL_IST).value) >= mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(ziel, UEB_COL_SOLL).value) - 0.01 Then
+                    wsUeb.Cells(ziel, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
+                    wsUeb.Cells(ziel, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
+                End If
+            End If
+        End If
+    Next r
+End Sub
+
+Private Function FindeZeileNachEntscheidungsKey(ByVal wsUeb As Worksheet, ByVal letzteZeile As Long, ByVal key As String) As Long
+    Dim r As Long
+    For r = UEBERSICHT_START_ROW To letzteZeile
+        If StrComp(UebersichtEntscheidungsKey(wsUeb, r), key, vbTextCompare) = 0 Then FindeZeileNachEntscheidungsKey = r: Exit Function
+    Next r
+End Function
+
+Private Function GuthabenVerrechnungVorhanden(ByVal wsDaten As Worksheet, ByVal key As String) As Boolean
+    GuthabenVerrechnungVorhanden = FindeGuthabenVerrechnungZeile(wsDaten, key) > 0
+End Function
+
+Private Function FindeGuthabenVerrechnungZeile(ByVal wsDaten As Worksheet, ByVal key As String) As Long
+    Dim r As Long, lastRow As Long
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row
+    For r = GUTH_VER_START_ROW To lastRow
+        If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), key, vbTextCompare) = 0 Then FindeGuthabenVerrechnungZeile = r: Exit Function
+    Next r
+End Function
+
+Private Sub SpeichereGuthabenVerrechnung(ByVal wsDaten As Worksheet, ByVal key As String, ByVal betrag As Double, ByVal quelle As String)
+    Dim r As Long
+    r = FindeGuthabenVerrechnungZeile(wsDaten, key)
+    If r = 0 Then r = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row + 1: If r < GUTH_VER_START_ROW Then r = GUTH_VER_START_ROW
+    wsDaten.Unprotect PASSWORD:=PASSWORD
+    wsDaten.Cells(GUTH_VER_HEADER_ROW, GUTH_VER_COL_KEY).value = "Guthaben Verrechnung Key"
+    wsDaten.Cells(GUTH_VER_HEADER_ROW, GUTH_VER_COL_BETRAG).value = "Verrechnet"
+    wsDaten.Cells(GUTH_VER_HEADER_ROW, GUTH_VER_COL_QUELLE).value = "Quelle Key"
+    wsDaten.Cells(r, GUTH_VER_COL_KEY).value = key
+    wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value = betrag
+    wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value = quelle
+    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
 End Sub
 
 Public Function HoleUebersichtMonatswerte(ByVal parzelle As Long, _
@@ -1674,6 +1818,8 @@ Public Sub RepariereStatusDropdown()
     If warGeschuetzt Then wsUeb.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
     endRow = wsUeb.Cells(wsUeb.Rows.Count, UEB_COL_PARZELLE).End(xlUp).Row
+    wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_STATUS), _
+                wsUeb.Cells(endRow, UEB_COL_STATUS)).Locked = False
     RichteStatusDropdownEin wsUeb, UEBERSICHT_START_ROW, endRow
     If warGeschuetzt Then
         On Error Resume Next

@@ -173,28 +173,8 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
         
         ' v4.0: Flexibler Perioden-Vergleich
         Dim monatPasstZP As Boolean
-        monatPasstZP = False
-        
-        If istMonatlich Then
-            ' Monatlich: exakter Vergleich mit MonthName
-            monatPasstZP = (StrComp(monatPeriode, erwarteterMonat, vbTextCompare) = 0)
-        Else
-            ' Nicht-monatlich: Spalte I kann verschiedene Formate haben:
-            ' "Endabrechnung 2025", "Q1 2025", "H1 2025",
-            ' "jährlich", "Kategoriename Jahr" etc.
-            ' -> Prüfen ob Monat/Periode den Kategorienamen enthält
-            '    UND ob das Buchungsdatum im richtigen Zeitfenster liegt
-            If monatPeriode = erwarteterMonat Then
-                ' Direkt-Match (unwahrscheinlich bei nicht-monatlich, aber sicher)
-                monatPasstZP = True
-            ElseIf InStr(1, monatPeriode, kategorie, vbTextCompare) > 0 Then
-                ' Spalte I enthält den Kategorienamen (z.B. "Endabrechnung 2025")
-                monatPasstZP = True
-            ElseIf monatPeriode = "" Then
-                ' Spalte I leer -> Fallback auf Buchungsmonat
-                If Month(zahlDatum) = monat Then monatPasstZP = True
-            End If
-        End If
+        monatPasstZP = mod_ZP_Periode.IstPeriodeFuerMonat(monatPeriode, kategorie, monat, jahr, istMonatlich)
+        If monatPeriode = "" Then monatPasstZP = (Month(zahlDatum) = monat)
         
         If Not monatPasstZP Then GoTo NextZahlRow
         
@@ -410,18 +390,8 @@ Public Sub ZaehleZahlungenZP(ByVal entityKey As String, _
             monatPasstZP = (StrComp(monatPeriode, erwarteterMonat, vbTextCompare) = 0)
         Else
             If monatPeriode = erwarteterMonat Then
-                monatPasstZP = True
-            ElseIf InStr(1, monatPeriode, kategorie, vbTextCompare) > 0 Then
-                monatPasstZP = True
-            ElseIf monatPeriode = "" Then
-                monatPasstZP = (Month(zahlDatum) = monat)
-            End If
-        End If
-
-        If Not monatPasstZP Then GoTo nextRow
-
-        Dim ibanZeileZP As String
-        ibanZeileZP = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
+                monatPasstZP = mod_ZP_Periode.IstPeriodeFuerMonat(monatPeriode, kategorie, monat, jahr, istMonatlich)
+                If monatPeriode = "" Then monatPasstZP = (Month(zahlDatum) = monat)
         If StrComp(ibanZeileZP, entityIBAN, vbTextCompare) <> 0 Then GoTo nextRow
         If StrComp(Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)), kategorie, vbTextCompare) <> 0 Then GoTo nextRow
 
