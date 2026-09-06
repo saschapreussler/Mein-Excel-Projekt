@@ -839,7 +839,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 wsUeb.Cells(rowIdx, UEB_COL_GUTHABEN).value = automatischGuthaben
                 If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                     Dim berechnetesGuthaben As Double
-                    If partnerInfo = "" Then
+                    If partnerInfo = "" And zahlerPartnerInfo = "" Then
                         berechnetesGuthaben = ErmittleGuthabenMitgliedsbeitrag( _
                             mitglieder, CLng(parzelleWert), entityKey, monat, jahr, kategorien(k).SollBetrag)
                     Else
@@ -996,6 +996,7 @@ NextMitglied:
     ' v5.0: Formatierung NACH AutoFilter/MonatsRegister/Locked, aber VOR Protect,
     ' damit nichts NumberFormat / HorizontalAlignment / AutoFit Überschreibt.
     Call FormatiereUebersicht(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
+    Call RichteStatusDropdownEin(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
     Call StelleVorjahrEntscheidungenWiederHer(wsUeb, gespeicherteVorjahrEntscheidungen, rowIdx - 1)
 
     ' Blatt schützen (Soll-Zellen ohne festen Betrag bleiben editierbar)
@@ -1649,18 +1650,6 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                 wsUeb.Cells(endRow, UEB_COL_STATUS)).HorizontalAlignment = xlCenter
     Err.Clear
 
-    Dim listenTrenner As String
-    listenTrenner = Application.International(xlListSeparator)
-    With wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS))
-        .Validation.Delete
-        .Validation.Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
-                        Operator:=xlBetween, Formula1:="GR" & ChrW(220) & "N" & listenTrenner & "GELB" & listenTrenner & "ROT"
-        .Validation.IgnoreBlank = False
-        .Validation.InCellDropdown = True
-        .Validation.ErrorTitle = "Ungültiger Status"
-        .Validation.ErrorMessage = "Bitte GRÜN, GELB oder ROT auswählen."
-        .Validation.ShowError = True
-    End With
     
     ' Vertikale Zentrierung
     rngTable.VerticalAlignment = xlCenter
@@ -1669,6 +1658,43 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     
     Debug.Print "[" & ChrW(220) & "bersicht] FormatiereUebersicht ENDE OK"
     
+End Sub
+
+Private Sub RichteStatusDropdownEin(ByVal wsUeb As Worksheet, ByVal startRow As Long, ByVal endRow As Long)
+    Dim wsDaten As Worksheet
+    Dim statusBereich As String
+    Dim datenWarGeschuetzt As Boolean
+    If endRow < startRow Then Exit Sub
+
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsDaten Is Nothing Then Exit Sub
+
+    datenWarGeschuetzt = wsDaten.ProtectContents
+    On Error Resume Next
+    If datenWarGeschuetzt Then wsDaten.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    wsDaten.Range("BH1:BH3").value = Application.Transpose(Array("GR" & ChrW(220) & "N", "GELB", "ROT"))
+    wsDaten.Columns("BH").Hidden = True
+    On Error Resume Next
+    ThisWorkbook.Names("rngStatusZahlungsuebersicht").Delete
+    On Error GoTo 0
+    ThisWorkbook.Names.Add Name:="rngStatusZahlungsuebersicht", _
+                           RefersTo:="='" & wsDaten.Name & "'!$BH$1:$BH$3"
+
+    statusBereich = "=rngStatusZahlungsuebersicht"
+    On Error Resume Next
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.Delete
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.Add _
+        Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:=statusBereich
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.IgnoreBlank = False
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.InCellDropdown = True
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.ErrorTitle = "Ungültiger Status"
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.ErrorMessage = "Bitte GRÜN, GELB oder ROT auswählen."
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.ShowError = True
+    If datenWarGeschuetzt Then wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
 End Sub
 
 
