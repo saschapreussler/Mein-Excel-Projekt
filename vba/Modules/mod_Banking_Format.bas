@@ -299,17 +299,17 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     
     On Error Resume Next
     
-    ' E4: Kontostand laufend mit Monatsfilter
-    ' v6.1: Abrechnungsjahr aus Einstellungen!C6, Kontostand aus Einstellungen!C7
-    ' Logik: Wenn Monat<=1 (ganzes Jahr/Jan) -> nur Kontostand Vorjahr
-    '        Sonst: Kontostand Vorjahr + Summe aller Buchungen von Jan bis Filtermonat
-    ws.Range("E4").FormulaLocal = _
-        "=WENN(Daten!$AE$4<=1;Einstellungen!$C$7;" & _
-        "Einstellungen!$C$7+SUMMEWENNS(Bankkonto!$B$30:$B$5000;" & _
-        "Bankkonto!$A$30:$A$5000;"">=""&DATUM(Einstellungen!$C$6;1;1);" & _
-        "Bankkonto!$A$30:$A$5000;""<""&DATUM(Einstellungen!$C$6;Daten!$AE$4;1)))"
+    ' C4: Dynamischer Text für den Vorjahres-Kontostand.
+    ws.Range("C4").FormulaLocal = _
+        "=WENN(Daten!$AE$4=0;""Kontostand Sparkasse am 31.12.""&(Einstellungen!$C$6-1);""Kontostand Sparkasse am ""&TEXT(DATUM(Einstellungen!$C$6;Daten!$AE$4;1);""TT.MM.JJJJ""))"
+
+    ' E4: Eröffnungs-/Vorjahreskontostand.
+    ws.Range("E4").FormulaLocal = "=Einstellungen!$C$7"
+
+    ' E5: Kontostand nach Einnahmen und Ausgaben des Filters.
+    ws.Range("E5").FormulaLocal = "=WENN(E25="""";E4+E17+E24;E4+E17+E24+E25)"
     
-    ' C5: Kontostand-Anzeige mit Monatsfilter
+    ' C5: Letzte Buchung im gewählten Monat oder Gesamtjahr.
     ws.Range("C5").FormulaLocal = _
         "=WENN(Daten!$AE$4=0;WENN(ANZAHL(Bankkonto!$A$30:$A$3433)=0;"""";" & _
         """Kontostand nach der letzten Buchung im Monat am: "" & TEXT(MAX(Bankkonto!$A$30:$A$5000);""TT.MM.JJJJ""));" & _

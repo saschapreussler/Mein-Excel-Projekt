@@ -1581,7 +1581,9 @@ Public Function ErmittleGesamtguthaben() As Double
     lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
     For r = UEBERSICHT_START_ROW To lastRow
         If IsNumeric(wsUeb.Cells(r, UEB_COL_GUTHABEN).value) Then
-            ErmittleGesamtguthaben = ErmittleGesamtguthaben + CDbl(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
+            ErmittleGesamtguthaben = ErmittleGesamtguthaben + _
+                Application.Max(0, CDbl(wsUeb.Cells(r, UEB_COL_GUTHABEN).value) - _
+                GuthabenVerrechnetFuerZeile(wsUeb, r))
         End If
     Next r
 End Function
@@ -1603,13 +1605,40 @@ Public Function GuthabenTextFuerParzelle(ByVal parzelle As Long) As String
     For r = UEBERSICHT_START_ROW To lastRow
         If CLng(val(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value))) = parzelle Then
             If IsNumeric(wsUeb.Cells(r, UEB_COL_GUTHABEN).value) Then
-                guthaben = CDbl(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
+                guthaben = Application.Max(0, CDbl(wsUeb.Cells(r, UEB_COL_GUTHABEN).value) - _
+                    GuthabenVerrechnetFuerZeile(wsUeb, r))
                 If guthaben > 0.004 Then
                     name = Trim$(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value))
                     If name = "" Then name = "Mitglied"
                     If GuthabenTextFuerParzelle <> "" Then GuthabenTextFuerParzelle = GuthabenTextFuerParzelle & vbLf
                     GuthabenTextFuerParzelle = GuthabenTextFuerParzelle & _
                         name & ": " & Format$(guthaben, "#,##0.00") & " " & ChrW(8364)
+                End If
+            End If
+        End If
+    Next r
+End Function
+
+Private Function GuthabenVerrechnetFuerZeile(ByVal wsUeb As Worksheet, ByVal zeile As Long) As Double
+    Dim wsDaten As Worksheet
+    Dim lastRow As Long, r As Long
+    Dim quelleKey As String, ownerKey As String
+    Dim teile() As String
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsDaten Is Nothing Then Exit Function
+    ownerKey = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)) & "|" & _
+        mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value))
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
+    For r = GUTH_VER_START_ROW To lastRow
+        quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
+        If Left$(quelleKey, 7) = "SUMME|" Then
+            teile = Split(quelleKey, "|", 3)
+            If UBound(teile) = 2 Then
+                If StrComp(teile(1) & "|" & teile(2), ownerKey, vbTextCompare) = 0 Then
+                    GuthabenVerrechnetFuerZeile = GuthabenVerrechnetFuerZeile + _
+                        mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
                 End If
             End If
         End If
