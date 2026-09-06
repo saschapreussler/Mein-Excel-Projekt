@@ -1011,6 +1011,7 @@ NextMitglied:
 
     VerarbeiteSpaeteNachzahlungen wsUeb, rowIdx - 1
     PruefeUndVerrechneGuthaben wsUeb, rowIdx - 1
+    RepariereStatusDropdown
     
     ' Die Vorjahr-Hinweispruefung wird gezielt beim Blattwechsel auf
     ' die Zahlungsübersicht gestartet (nicht direkt während Generierung).
@@ -1306,7 +1307,6 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
                                 "Soll der offene Betrag aus dem Guthaben verrechnet werden?", _
                                 vbYesNo + vbQuestion, "Guthaben verrechnen")
                             If antwort = vbYes Then
-                                VerbraucheGuthabenFuerMitglied wsUeb, r, letzteZeile, anwenden
                                 wsUeb.Cells(r, UEB_COL_IST).value = istWert + anwenden
                                 If anwenden >= offen - 0.01 Then
                                     wsUeb.Cells(r, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
@@ -1399,6 +1399,11 @@ End Function
 Private Sub LadeGuthabenVerrechnungen(ByVal wsUeb As Worksheet, ByVal wsDaten As Worksheet, ByVal letzteZeile As Long)
     Dim lastRow As Long, r As Long, ziel As Long, quelle As Long, betrag As Double
     Dim key As String, quelleKey As String
+    Dim verbraucht As Object
+    Dim basis As Double
+    Dim anwendbar As Double
+    Set verbraucht = CreateObject("Scripting.Dictionary")
+    verbraucht.CompareMode = vbTextCompare
     lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row
     If lastRow < GUTH_VER_START_ROW Then Exit Sub
     For r = GUTH_VER_START_ROW To lastRow
@@ -1406,27 +1411,56 @@ Private Sub LadeGuthabenVerrechnungen(ByVal wsUeb As Worksheet, ByVal wsDaten As
         quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
         betrag = mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
         If key <> "" And betrag > 0 Then
+            anwendbar = betrag
+            If Left$(quelleKey, 7) = "SUMME|" Then
+                basis = ErmittleBasisGuthabenNachSummenKey(wsUeb, letzteZeile, quelleKey)
+                If verbraucht.exists(quelleKey) Then
+                    anwendbar = Application.Max(0, Application.Min(betrag, basis - CDbl(verbraucht(quelleKey))))
+                Else
+                    anwendbar = Application.Min(betrag, basis)
+                End If
+                If verbraucht.exists(quelleKey) Then
+                    verbraucht(quelleKey) = CDbl(verbraucht(quelleKey)) + anwendbar
+                Else
+                    verbraucht.Add quelleKey, anwendbar
+                End If
+            End If
+            If anwendbar <= 0.004 Then GoTo NaechsteVerrechnung
             ziel = FindeZeileNachEntscheidungsKey(wsUeb, letzteZeile, key)
             If Left$(quelleKey, 7) = "SUMME|" Then
-                VerbraucheGuthabenNachSummenKey wsUeb, letzteZeile, quelleKey, betrag
+                VerbraucheGuthabenNachSummenKey wsUeb, letzteZeile, quelleKey, anwendbar
                 quelle = 0
             Else
                 quelle = FindeZeileNachEntscheidungsKey(wsUeb, letzteZeile, quelleKey)
             End If
-            If quelle > 0 Then
-                wsUeb.Cells(quelle, UEB_COL_GUTHABEN).value = Application.Max(0, _
-                    mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(quelle, UEB_COL_GUTHABEN).value) - betrag)
-            End If
             If ziel > 0 Then
-                wsUeb.Cells(ziel, UEB_COL_IST).value = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(ziel, UEB_COL_IST).value) + betrag
+                wsUeb.Cells(ziel, UEB_COL_IST).value = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(ziel, UEB_COL_IST).value) + anwendbar
                 If mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(ziel, UEB_COL_IST).value) >= mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(ziel, UEB_COL_SOLL).value) - 0.01 Then
                     wsUeb.Cells(ziel, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
                     wsUeb.Cells(ziel, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
                 End If
             End If
         End If
+NaechsteVerrechnung:
     Next r
 End Sub
+
+Private Function ErmittleBasisGuthabenNachSummenKey(ByVal wsUeb As Worksheet, _
+                                                     ByVal letzteZeile As Long, _
+                                                     ByVal summenKey As String) As Double
+    Dim teile() As String
+    Dim r As Long
+    If Left$(summenKey, 7) <> "SUMME|" Then Exit Function
+    teile = Split(summenKey, "|", 2)
+    If UBound(teile) < 1 Then Exit Function
+    For r = UEBERSICHT_START_ROW To letzteZeile
+        If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
+           mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = teile(1) Then
+            ErmittleBasisGuthabenNachSummenKey = ErmittleBasisGuthabenNachSummenKey + _
+                mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
+        End If
+    Next r
+End Function
 
 Private Sub VerbraucheGuthabenNachSummenKey(ByVal wsUeb As Worksheet, _
                                              ByVal letzteZeile As Long, _
@@ -1708,6 +1742,8 @@ Private Function GuthabenVerrechnetFuerZeile(ByVal wsUeb As Worksheet, ByVal zei
     Dim lastRow As Long, r As Long
     Dim quelleKey As String, ownerKey As String
     Dim teile() As String
+    Dim basis As Double
+    Dim verbraucht As Double
     On Error Resume Next
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     On Error GoTo 0
@@ -1715,6 +1751,7 @@ Private Function GuthabenVerrechnetFuerZeile(ByVal wsUeb As Worksheet, ByVal zei
     ownerKey = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)) & "|" & _
         mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value))
     lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
+    basis = CDbl(wsUeb.Cells(zeile, UEB_COL_GUTHABEN).value)
     For r = GUTH_VER_START_ROW To lastRow
         quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
         If Left$(quelleKey, 7) = "SUMME|" Then
@@ -1727,6 +1764,7 @@ Private Function GuthabenVerrechnetFuerZeile(ByVal wsUeb As Worksheet, ByVal zei
             End If
         End If
     Next r
+    GuthabenVerrechnetFuerZeile = Application.Min(basis, GuthabenVerrechnetFuerZeile)
 End Function
 
 Public Sub FokussiereErsteOffeneZahlungspruefung()
