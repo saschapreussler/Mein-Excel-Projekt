@@ -154,6 +154,9 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
     ' Dictionary für bereits verarbeitete EntityKey+Parzelle-Kombinationen
     Dim verarbeiteteKombis As Object
     Set verarbeiteteKombis = CreateObject("Scripting.Dictionary")
+    Dim verarbeiteteNamen As Object
+    Set verarbeiteteNamen = CreateObject("Scripting.Dictionary")
+    verarbeiteteNamen.CompareMode = vbTextCompare
     
     ' v4.7: Funktions-Cache aus Mitgliederliste aufbauen
     ' Schlüssel: EntityKey -> Funktion (Spalte O)
@@ -251,8 +254,12 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                     ' Duplikat-Prüfung: EntityKey+Parzelle nur einmal
                     Dim kombiKey As String
                     kombiKey = entityKey & "_" & parzelleNr
+                          Dim nameKey As String
+                          nameKey = CStr(parzelleNr) & "|" & _
+                                        mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(zuordnung)
                     
-                    If Not verarbeiteteKombis.exists(kombiKey) Then
+                          If Not verarbeiteteKombis.exists(kombiKey) And _
+                              Not verarbeiteteNamen.exists(nameKey) Then
                         verarbeiteteKombis.Add kombiKey, True
                         
                         Set dict = CreateObject("Scripting.Dictionary")
@@ -286,6 +293,7 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                         dict.Add "Austritt", austritt
                         
                         col.Add dict
+                        verarbeiteteNamen(nameKey) = True
                         Debug.Print "[" & ChrW(220) & "bersicht] Mitglied geladen: " & _
                                     "Parz=" & parzelleNr & " | EK=" & entityKey & _
                                     " | Name=" & Replace(zuordnung, vbLf, " / ") & _
@@ -316,10 +324,15 @@ NextDatenRow:
             nachnameOhneEK = Trim$(CStr(wsML.Cells(rML, M_COL_NACHNAME).value))
             If vornameOhneEK = "" And nachnameOhneEK = "" Then GoTo NextOhneEntityKey
 
+            Dim nameOhneEK As String
+            nameOhneEK = Trim$(nachnameOhneEK & ", " & vornameOhneEK)
+            If verarbeiteteNamen.exists(CStr(CLng(parzelleOhneEK)) & "|" & _
+                mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(nameOhneEK)) Then GoTo NextOhneEntityKey
+
             Set dict = CreateObject("Scripting.Dictionary")
             dict.Add "Parzelle", CLng(parzelleOhneEK)
             dict.Add "EntityKey", ""
-            dict.Add "Name", Trim$(nachnameOhneEK & ", " & vornameOhneEK)
+            dict.Add "Name", nameOhneEK
             dict.Add "Role", mod_EntityKey_Classifier.ErmittleEntityRoleVonFunktion( _
                 CStr(wsML.Cells(rML, M_COL_FUNKTION).value))
             dict.Add "IBAN", ""
@@ -327,6 +340,8 @@ NextDatenRow:
             dict.Add "Eintritt", wsML.Cells(rML, M_COL_PACHTANFANG).value
             dict.Add "Austritt", wsML.Cells(rML, M_COL_PACHTENDE).value
             col.Add dict
+            verarbeiteteNamen(CStr(CLng(parzelleOhneEK)) & "|" & _
+                mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(nameOhneEK)) = True
 NextOhneEntityKey:
         Next rML
     End If

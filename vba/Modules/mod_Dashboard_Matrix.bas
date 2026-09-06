@@ -242,8 +242,12 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                 Dim mSoll As Double: mSoll = 0
                 Dim mBestStatus As String: mBestStatus = "ROT"
                 Dim mBem As String: mBem = ""
+                Dim uebersichtHatWerte As Boolean
+                uebersichtHatWerte = mod_Uebersicht_Generator.HoleUebersichtMonatswerte( _
+                    parzellen(p).parzNr, kategorie, monat, jahr, mSoll, mIst, mBestStatus, mBem)
                 
                 Dim eIdx As Long
+                If Not uebersichtHatWerte Then
                 For eIdx = LBound(eKeys) To UBound(eKeys)
                     Dim ek As String
                     ek = Trim(eKeys(eIdx))
@@ -312,11 +316,12 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
                     
 NextEKDash:
                 Next eIdx
+                End If
                 
                 ' v5.4: MB-Soll anpassen für Mitglieder ohne eigenen EntityKey
                 ' Wenn mehr Mitglieder auf der Parzelle sind als zahlende EntityKeys,
                 ' muss der Soll auf die tatsaechliche Mitgliederzahl hochgerechnet werden.
-                If istMB Then
+                If istMB And Not uebersichtHatWerte Then
                     Dim tatsaechlicheMB As Long
                     tatsaechlicheMB = parzellen(p).anzMitglieder - mbEhren
                     If tatsaechlicheMB < 1 Then tatsaechlicheMB = 1
@@ -326,7 +331,7 @@ NextEKDash:
                 End If
                 
                 ' MB: Status aus Summen berechnen
-                If istMB Then
+                If istMB And Not uebersichtHatWerte Then
                     If mSoll > 0 And mIst >= mSoll - 0.01 Then
                         mBestStatus = statusGruen
                     ElseIf mIst > 0 Then
@@ -337,7 +342,7 @@ NextEKDash:
                 End If
                 
                 ' Soll aus übersicht-Blatt nachladen (nur per-Parzelle)
-                If Not istMB And mSoll = 0 Then
+                If Not uebersichtHatWerte And Not istMB And mSoll = 0 Then
                     If Not sollDict Is Nothing Then
                         Dim uKey As String
                         uKey = CStr(parzellen(p).parzNr) & "|" & kategorie

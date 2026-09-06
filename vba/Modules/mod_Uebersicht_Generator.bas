@@ -635,6 +635,8 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 ' bezahlt hat, gilt der Beitrag als mitbezahlt
                 Dim partnerInfo As String
                 partnerInfo = ""
+                Dim zahlerPartnerInfo As String
+                zahlerPartnerInfo = ""
                 If ist = 0 And soll > 0 And StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                     partnerInfo = PruefePartnerMitgliedsbeitrag( _
                         mitglieder, CLng(parzelleWert), entityKey, monat, jahr, soll)
@@ -645,6 +647,10 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                         ' weil die Zahlung jetzt als bezahlt (durch Partner) gilt
                         If UBound(teile) >= 3 Then teile(3) = ""
                     End If
+                End If
+                If ist > 0 And soll > 0 And StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                    zahlerPartnerInfo = PruefeMitbezahltePartnerDurchZahler( _
+                        mitglieder, CLng(parzelleWert), entityKey, monat, jahr, soll)
                 End If
                 
                 ' =============================================
@@ -873,9 +879,17 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                         bemerkung = bemerkung & " | " & partnerInfo
                     End If
                 End If
+                If zahlerPartnerInfo <> "" Then
+                    If bemerkung = "" Then
+                        bemerkung = zahlerPartnerInfo
+                    Else
+                        bemerkung = bemerkung & " | " & zahlerPartnerInfo
+                    End If
+                End If
                 
                 ' v4.6/v5.4: Hinweis NUR für Januar ohne Vorjahr-Daten
-                If monat = 1 And ist = 0 And Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
+                     If monat = 1 And ist = 0 And partnerInfo = "" And _
+                         Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
                     Dim vjHinweis As String
                     vjHinweis = "Keine Vorjahr-Daten: Zahlung evtl. im Vorjahr (Okt-Dez) erfolgt"
                     If bemerkung = "" Then
@@ -916,6 +930,10 @@ NextMonat:
         Next monat
 NextMitglied:
     Next mitglied
+
+    If rowIdx > UEBERSICHT_START_ROW Then
+        SortiereUebersichtNachParzelle wsUeb, rowIdx - 1
+    End If
 
     ' v5.0: Mitgliedsbeitrag NICHT mehr gebuendelt -- jede(s) Mitglied/Parzelle
     ' bekommt eine eigene Zeile, auch wenn mehrere auf derselben Parzelle bezahlt
@@ -998,6 +1016,23 @@ ErrorHandler:
                Err.Description, vbCritical, "Fehler"
     End If
     
+End Sub
+
+Private Sub SortiereUebersichtNachParzelle(ByVal wsUeb As Worksheet, ByVal letzteZeile As Long)
+    If letzteZeile < UEBERSICHT_START_ROW Then Exit Sub
+
+    With wsUeb.Sort
+        .SortFields.Clear
+        .SortFields.Add Key:=wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_PARZELLE), _
+                                        wsUeb.Cells(letzteZeile, UEB_COL_PARZELLE)), _
+                        SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortTextAsNumbers
+        .SetRange wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_PARZELLE), _
+                              wsUeb.Cells(letzteZeile, UEB_COL_GUTHABEN))
+        .Header = xlNo
+        .MatchCase = False
+        .Orientation = xlTopToBottom
+        .Apply
+    End With
 End Sub
 
 Private Function SammleVorjahrEntscheidungen(ByVal wsUeb As Worksheet) As Object
@@ -1114,6 +1149,68 @@ Public Sub WendePersistierteVorjahrEntscheidungenAn()
     Application.EnableEvents = eventsWarenAktiv
     On Error GoTo 0
 End Sub
+
+Public Function HoleUebersichtMonatswerte(ByVal parzelle As Long, _
+                                           ByVal kategorie As String, _
+                                           ByVal monat As Long, _
+                                           ByVal jahr As Long, _
+                                           ByRef soll As Double, _
+                                           ByRef ist As Double, _
+                                           ByRef status As String, _
+                                           ByRef bemerkung As String) As Boolean
+    Dim wsUeb As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim monatText As String
+    Dim statusGruen As String
+    Dim hatGelb As Boolean
+    Dim hatRot As Boolean
+    Dim treffer As Long
+
+    HoleUebersichtMonatswerte = False
+    soll = 0
+    ist = 0
+    status = ""
+    bemerkung = ""
+    monatText = MonthName(monat) & " " & jahr
+    statusGruen = "GR" & ChrW(220) & "N"
+
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo 0
+    If wsUeb Is Nothing Then Exit Function
+
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
+    For r = UEBERSICHT_START_ROW To lastRow
+        If CLng(val(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value))) = parzelle And _
+           StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value)), monatText, vbTextCompare) = 0 And _
+           StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), kategorie, vbTextCompare) = 0 Then
+            treffer = treffer + 1
+            If IsNumeric(wsUeb.Cells(r, UEB_COL_SOLL).value) Then soll = soll + CDbl(wsUeb.Cells(r, UEB_COL_SOLL).value)
+            If IsNumeric(wsUeb.Cells(r, UEB_COL_IST).value) Then ist = ist + CDbl(wsUeb.Cells(r, UEB_COL_IST).value)
+            If Trim$(CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value)) <> "" Then
+                If bemerkung <> "" Then bemerkung = bemerkung & " | "
+                bemerkung = bemerkung & Trim$(CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value))
+            End If
+            Select Case UCase$(Trim$(CStr(wsUeb.Cells(r, UEB_COL_STATUS).value)))
+                Case UCase$(statusGruen)
+                    ' Grün wird erst gesetzt, wenn keine offene Zeile vorhanden ist.
+                Case "GELB": hatGelb = True
+                Case "ROT": hatRot = True
+            End Select
+        End If
+    Next r
+
+    If treffer = 0 Then Exit Function
+    If hatRot Then
+        status = "ROT"
+    ElseIf hatGelb Then
+        status = "GELB"
+    Else
+        status = statusGruen
+    End If
+    HoleUebersichtMonatswerte = True
+End Function
 
 Private Sub SpeichereVorjahrEntscheidung(ByVal wsUeb As Worksheet, ByVal zeile As Long)
     Dim wsDaten As Worksheet
@@ -1626,14 +1723,53 @@ Private Function PruefePartnerMitgliedsbeitrag( _
 
                 ' Nur genau eine passende Zahlung darf als Gemeinschaftszahlung gelten
                 If partnerCount = 1 And partnerIst >= sollProPerson * 2 - 0.01 Then
+                    Dim partnerDatum As Date
+                    partnerDatum = mod_Zahlungspruefung.HoleZahlungsdatumZP( _
+                        CStr(partner("EntityKey")), "Mitgliedsbeitrag", monat, jahr)
                     PruefePartnerMitgliedsbeitrag = _
-                        "Mitbezahlt durch " & CStr(partner("Name"))
+                        "Mitbezahlt durch " & CStr(partner("Name")) & _
+                        IIf(partnerDatum > 0, " am " & Format$(partnerDatum, "dd.mm.yyyy"), "")
                     Exit Function
                 End If
             End If
         End If
     Next partner
     
+End Function
+
+Private Function PruefeMitbezahltePartnerDurchZahler( _
+                    ByVal mitglieder As Collection, _
+                    ByVal parzelle As Long, _
+                    ByVal meineEntityKey As String, _
+                    ByVal monat As Long, _
+                    ByVal jahr As Long, _
+                    ByVal sollProPerson As Double) As String
+    Dim anzahl As Long
+    Dim eigenerBetrag As Double
+    Dim partner As Object
+    Dim ergebnis As String
+    Dim zahlDatum As Date
+
+    PruefeMitbezahltePartnerDurchZahler = ""
+    If meineEntityKey = "" Or sollProPerson <= 0 Then Exit Function
+    Call mod_Zahlungspruefung.ZaehleZahlungenZP(meineEntityKey, "Mitgliedsbeitrag", monat, jahr, anzahl, eigenerBetrag)
+    If anzahl <> 1 Or eigenerBetrag < sollProPerson * 2 - 0.01 Then Exit Function
+    zahlDatum = mod_Zahlungspruefung.HoleZahlungsdatumZP(meineEntityKey, "Mitgliedsbeitrag", monat, jahr)
+
+    For Each partner In mitglieder
+          If CLng(partner("Parzelle")) = parzelle And _
+           StrComp(CStr(partner("EntityKey")), meineEntityKey, vbTextCompare) <> 0 Then
+                If InStr(1, UCase$(CStr(partner("Role"))), "EHREN", vbTextCompare) > 0 Then GoTo NextPartner
+            If ergebnis <> "" Then ergebnis = ergebnis & ", "
+            ergebnis = ergebnis & CStr(partner("Name"))
+        End If
+NextPartner:
+    Next partner
+
+    If ergebnis <> "" Then
+        PruefeMitbezahltePartnerDurchZahler = "Mitbezahlt für " & ergebnis & _
+            IIf(zahlDatum > 0, " am " & Format$(zahlDatum, "dd.mm.yyyy"), "")
+    End If
 End Function
 
 Private Function ErmittleGuthabenMitgliedsbeitrag(ByVal mitglieder As Collection, _
@@ -2172,9 +2308,6 @@ NextGelbZeile:
                 Call FrageUndMarkiereMitbezahlteVorjahrMitglieder(wsUeb, r, zahlDatum, zahlBetrag, vjMitglied, beantwortet, bestaetigtGruen)
             ElseIf istGruen And StrComp(vjKategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                 wsUeb.Cells(r, UEB_COL_GUTHABEN).value = zahlBetrag - sollWert
-                wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = FuegeTeiltextEinmalHinzu( _
-                    CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value), _
-                    "Guthaben aus Vorjahrzahlung: " & Format$(zahlBetrag - sollWert, "#,##0.00") & " " & ChrW(8364), " | ")
             End If
 
             Call SpeichereVorjahrEntscheidung(wsUeb, r)
@@ -2305,8 +2438,7 @@ Private Sub FrageUndMarkiereMitbezahlteVorjahrMitglieder(ByVal wsUeb As Workshee
                         wsUeb.Cells(r, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
                         wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
                         bemerkung = "Mitbezahlt durch " & zahlerName & _
-                                    " (Vorjahrzahlung am " & Format$(zahlDatum, "dd.mm.yyyy") & _
-                                    ", Gesamtbetrag " & Format$(zahlBetrag, "#,##0.00") & " " & ChrW(8364) & ")"
+                                    " am " & Format$(zahlDatum, "dd.mm.yyyy")
                         wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = _
                             FuegeTeiltextEinmalHinzu(CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value), bemerkung, " | ")
                         Call SpeichereVorjahrEntscheidung(wsUeb, r)

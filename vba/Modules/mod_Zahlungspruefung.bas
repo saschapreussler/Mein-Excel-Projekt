@@ -515,6 +515,43 @@ NextNameZahlung:
     Next r
 End Function
 
+Public Function HoleZahlungsdatumZP(ByVal entityKey As String, _
+                                    ByVal kategorie As String, _
+                                    ByVal monat As Long, _
+                                    ByVal jahr As Long) As Date
+    Dim wsBK As Worksheet
+    Dim entityIBAN As String
+    Dim lastRow As Long
+    Dim r As Long
+    Dim buchDatum As Date
+
+    HoleZahlungsdatumZP = 0
+    If Not m_EntityIBANCacheGeladenZP Then Call LadeEntityIBANCacheZP
+    If m_EntityIBANCacheZP Is Nothing Then Exit Function
+    If Not m_EntityIBANCacheZP.exists(entityKey) Then Exit Function
+    entityIBAN = m_EntityIBANCacheZP(entityKey)
+    If entityIBAN = "" Then Exit Function
+
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    On Error GoTo 0
+    If wsBK Is Nothing Then Exit Function
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+
+    For r = BK_START_ROW To lastRow
+        If IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then
+            buchDatum = CDate(wsBK.Cells(r, BK_COL_DATUM).value)
+            If (Year(buchDatum) = jahr Or _
+                (monat = 1 And Month(buchDatum) = 12 And Year(buchDatum) = jahr - 1)) And _
+               StrComp(Replace(Trim$(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", ""), entityIBAN, vbTextCompare) = 0 And _
+               StrComp(Trim$(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)), kategorie, vbTextCompare) = 0 And _
+               StrComp(Trim$(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value)), MonthName(monat), vbTextCompare) = 0 Then
+                If HoleZahlungsdatumZP = 0 Or buchDatum < HoleZahlungsdatumZP Then HoleZahlungsdatumZP = buchDatum
+            End If
+        End If
+    Next r
+End Function
+
 
 ' ===============================================================
 ' Hilfsfunktion: Wenn derselbe Betrag Über ein anderes Konto der
@@ -586,13 +623,17 @@ Private Function HatMitbezahltInParzelleZP(ByVal entityKey As String, _
 
         If partnerCount > 0 And partnerSumme >= mindestbetrag - 0.01 Then
             partnerName = Trim(CStr(wsDaten.Cells(r, DATA_MAP_COL_KTONAME).value))
+            Dim partnerZahlDatum As Date
+            partnerZahlDatum = HoleZahlungsdatumZP(ek, kategorie, monat, jahr)
             If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
-                outBemerkung = ""
+                outBemerkung = "Mitbezahlt durch " & partnerName
             ElseIf partnerName <> "" Then
-                outBemerkung = "Mitbezahlt durch: " & partnerName
+                outBemerkung = "Mitbezahlt durch " & partnerName
             Else
                 outBemerkung = "Mitbezahlt durch Gemeinschaftskonto"
             End If
+            If partnerZahlDatum > 0 Then outBemerkung = outBemerkung & _
+                " am " & Format$(partnerZahlDatum, "dd.mm.yyyy")
             HatMitbezahltInParzelleZP = True
             Exit Function
         End If
