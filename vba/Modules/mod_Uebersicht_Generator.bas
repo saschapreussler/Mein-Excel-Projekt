@@ -452,6 +452,9 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     Dim geschriebeneGemeinschaftskonten As Object
     Set geschriebeneGemeinschaftskonten = CreateObject("Scripting.Dictionary")
     geschriebeneGemeinschaftskonten.CompareMode = vbTextCompare
+
+    Dim gemeinschaftsVertreter As Object
+    Set gemeinschaftsVertreter = ErmittleGemeinschaftsVertreter(mitglieder)
     
     Dim tmpM As Object
     For Each tmpM In mitglieder
@@ -523,6 +526,15 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
                 
                 kategorie = kategorien(k).Name
+
+                If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                    Dim gemeinschaftsParzellenKey As String
+                    gemeinschaftsParzellenKey = CStr(CLng(parzelleWert))
+                    If gemeinschaftsVertreter.exists(gemeinschaftsParzellenKey) Then
+                        If StrComp(CStr(gemeinschaftsVertreter(gemeinschaftsParzellenKey)), _
+                                   entityKey, vbTextCompare) <> 0 Then GoTo NextKat
+                    End If
+                End If
                 
                 ' v7.4: Eintrittsdatum-Filter für ALLE Kategorien
                 ' Wenn ein Mitglied erst im laufenden Jahr eintritt
@@ -765,11 +777,12 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 Dim mbFaktor As Long
                 mbFaktor = 1
                 If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
-                    If HoleGemeinschaftsIban(mitglieder, CLng(parzelleWert), entityKey) <> "" Then
+                    If gemeinschaftsVertreter.exists(CStr(CLng(parzelleWert))) Then
                         mbFaktor = ZaehleBeitragspflichtigeMitgliederAufParzelle(CLng(parzelleWert))
                         mitgliedName = HoleBeitragspflichtigeMitgliedsnamen(CLng(parzelleWert))
                     End If
                 End If
+                wsUeb.Cells(rowIdx, UEB_COL_MITGLIED).value = mitgliedName
                 
                 If kategorien(k).HatFestenSoll Then
                     ' Fester Soll-Betrag aus Einstellungen (ggf. x Mitglieder)
@@ -1938,6 +1951,46 @@ Private Function IstGemeinschaftskontoFuerParzelle(ByVal mitglieder As Collectio
     Next i
 
     IstGemeinschaftskontoFuerParzelle = True
+End Function
+
+Private Function ErmittleGemeinschaftsVertreter(ByVal mitglieder As Collection) As Object
+    Dim result As Object
+    Dim mitglied As Object
+    Dim anderer As Object
+    Dim parzellenKey As String
+    Dim iban As String
+    Dim personenAnzahl As Long
+
+    Set result = CreateObject("Scripting.Dictionary")
+    result.CompareMode = vbTextCompare
+
+    For Each mitglied In mitglieder
+        If Trim$(CStr(mitglied("EntityKey"))) <> "" Then
+            If InStr(1, CStr(mitglied("Name")), vbLf, vbBinaryCompare) > 0 Or _
+               InStr(1, CStr(mitglied("Name")), " / ", vbTextCompare) > 0 Then
+                parzellenKey = CStr(CLng(mitglied("Parzelle")))
+                If Not result.exists(parzellenKey) Then result.Add parzellenKey, CStr(mitglied("EntityKey"))
+            Else
+                iban = Replace(Trim$(CStr(mitglied("IBAN"))), " ", "")
+                If iban <> "" Then
+                    personenAnzahl = 0
+                    For Each anderer In mitglieder
+                        If CLng(anderer("Parzelle")) = CLng(mitglied("Parzelle")) And _
+                           Replace(Trim$(CStr(anderer("IBAN"))), " ", "") = iban And _
+                           Trim$(CStr(anderer("EntityKey"))) <> "" Then
+                            personenAnzahl = personenAnzahl + 1
+                        End If
+                    Next anderer
+                    If personenAnzahl > 1 Then
+                        parzellenKey = CStr(CLng(mitglied("Parzelle")))
+                        If Not result.exists(parzellenKey) Then result.Add parzellenKey, CStr(mitglied("EntityKey"))
+                    End If
+                End If
+            End If
+        End If
+    Next mitglied
+
+    Set ErmittleGemeinschaftsVertreter = result
 End Function
 
 Private Function HoleGemeinschaftsIban(ByVal mitglieder As Collection, _
