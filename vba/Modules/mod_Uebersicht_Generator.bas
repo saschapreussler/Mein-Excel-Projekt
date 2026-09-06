@@ -823,14 +823,27 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                         status = m_STATUS_GRUEN
                     End If
                 End If
+
+                ' Eine Zahlung, die den Soll-Betrag erreicht oder übersteigt,
+                ' ist vollständig bezahlt. Der übersteigende Betrag wird Guthaben.
+                If soll > 0 And ist >= soll - 0.01 Then
+                    status = m_STATUS_GRUEN
+                End If
+                Dim automatischGuthaben As Double
+                automatischGuthaben = 0
+                If soll > 0 And ist > soll + 0.01 Then
+                    automatischGuthaben = ist - soll
+                End If
                 
                 wsUeb.Cells(rowIdx, UEB_COL_IST).value = ist
+                wsUeb.Cells(rowIdx, UEB_COL_GUTHABEN).value = automatischGuthaben
                 If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
-                    wsUeb.Cells(rowIdx, UEB_COL_GUTHABEN).value = _
-                        ErmittleGuthabenMitgliedsbeitrag(mitglieder, CLng(parzelleWert), _
-                        entityKey, monat, jahr, kategorien(k).SollBetrag)
-                Else
-                    wsUeb.Cells(rowIdx, UEB_COL_GUTHABEN).value = 0
+                    Dim berechnetesGuthaben As Double
+                    berechnetesGuthaben = ErmittleGuthabenMitgliedsbeitrag( _
+                        mitglieder, CLng(parzelleWert), entityKey, monat, jahr, kategorien(k).SollBetrag)
+                    If berechnetesGuthaben > automatischGuthaben Then
+                        wsUeb.Cells(rowIdx, UEB_COL_GUTHABEN).value = berechnetesGuthaben
+                    End If
                 End If
                 wsUeb.Cells(rowIdx, UEB_COL_STATUS).value = status
                 
@@ -971,6 +984,8 @@ NextMitglied:
                 wsUeb.Cells(wsUeb.Rows.count, UEB_COL_IST)).Locked = False
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_BEMERKUNG), _
                 wsUeb.Cells(wsUeb.Rows.count, UEB_COL_BEMERKUNG)).Locked = False
+    wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_STATUS), _
+                wsUeb.Cells(wsUeb.Rows.count, UEB_COL_STATUS)).Locked = False
     On Error GoTo ErrorHandler
 
     ' v5.0: Formatierung NACH AutoFilter/MonatsRegister/Locked, aber VOR Protect,
@@ -1065,7 +1080,8 @@ Private Function SammleVorjahrEntscheidungen(ByVal wsUeb As Worksheet) As Object
         bemerkung = CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value)
         If InStr(1, bemerkung, "Vorjahrzahlung", vbTextCompare) > 0 Or _
            InStr(1, bemerkung, "Nicht im Vorjahr bezahlt", vbTextCompare) > 0 Or _
-           InStr(1, bemerkung, "Mitbezahlt durch", vbTextCompare) > 0 Then
+           InStr(1, bemerkung, "Mitbezahlt durch", vbTextCompare) > 0 Or _
+           InStr(1, bemerkung, "Manuell gesetzt: Status", vbTextCompare) > 0 Then
             key = UebersichtEntscheidungsKey(wsUeb, r)
             If key <> "" Then
                 dict(key) = Array(wsUeb.Cells(r, UEB_COL_IST).value, _
@@ -1274,6 +1290,14 @@ Private Sub SpeichereVorjahrEntscheidung(ByVal wsUeb As Worksheet, ByVal zeile A
     On Error Resume Next
     wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
+End Sub
+
+Public Sub SpeichereManuelleUebersichtEntscheidung(ByVal zeile As Long)
+    Dim wsUeb As Worksheet
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo 0
+    If Not wsUeb Is Nothing Then Call SpeichereVorjahrEntscheidung(wsUeb, zeile)
 End Sub
 
 Private Function UebersichtEntscheidungsKey(ByVal wsUeb As Worksheet, ByVal zeile As Long) As String
@@ -1619,6 +1643,17 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), _
                 wsUeb.Cells(endRow, UEB_COL_STATUS)).HorizontalAlignment = xlCenter
     Err.Clear
+
+    With wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS))
+        .Validation.Delete
+        .Validation.Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
+                        Operator:=xlBetween, Formula1:="GR" & ChrW(220) & "N,GELB,ROT"
+        .Validation.IgnoreBlank = False
+        .Validation.InCellDropdown = True
+        .Validation.ErrorTitle = "Ungültiger Status"
+        .Validation.ErrorMessage = "Bitte GRÜN, GELB oder ROT auswählen."
+        .Validation.ShowError = True
+    End With
     
     ' Vertikale Zentrierung
     rngTable.VerticalAlignment = xlCenter

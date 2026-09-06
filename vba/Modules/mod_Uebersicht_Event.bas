@@ -62,6 +62,11 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
         Call VerarbeiteIstAenderung(Target)
         Exit Sub
     End If
+
+    If Target.Column = UEB_COL_STATUS Then
+        Call VerarbeiteStatusAenderung(Target)
+        Exit Sub
+    End If
     
     ' Nur Spalte E (Soll)
     If Target.Column <> UEB_COL_SOLL Then Exit Sub
@@ -179,6 +184,73 @@ ErrorHandler:
     On Error GoTo 0
     Debug.Print "[" & ChrW(220) & "bersicht Event] FEHLER: " & Err.Description
     
+End Sub
+
+Private Sub VerarbeiteStatusAenderung(ByVal Target As Range)
+    Dim ws As Worksheet
+    Dim zeile As Long
+    Dim status As String
+    Dim sollWert As Double
+    Dim istWert As Double
+    Dim guthaben As Double
+
+    On Error GoTo Fehler
+    Set ws = Target.Worksheet
+    zeile = Target.Row
+    status = UCase$(Trim$(CStr(Target.value)))
+    sollWert = mod_Zahlungspruefung.LeseGeldwertZP(ws.Cells(zeile, UEB_COL_SOLL).value)
+    istWert = mod_Zahlungspruefung.LeseGeldwertZP(ws.Cells(zeile, UEB_COL_IST).value)
+
+    Application.EnableEvents = False
+    ws.Unprotect PASSWORD:=PASSWORD
+
+    If status = "GR" & ChrW(220) & "N" Then
+        If sollWert > 0 And istWert < sollWert - 0.01 Then
+            MsgBox "GRÜN ist erst zulässig, wenn der IST-Betrag den SOLL-Betrag erreicht. " & _
+                   "Bitte zuerst den IST-Betrag manuell korrigieren.", vbExclamation, "Status nicht zulässig"
+            If istWert > 0 Then
+                status = "GELB"
+            Else
+                status = "ROT"
+            End If
+        End If
+    ElseIf status = "GELB" Then
+        If istWert <= 0 Then
+            status = "ROT"
+        End If
+    ElseIf status <> "ROT" Then
+        status = "ROT"
+    End If
+
+    Target.value = status
+    Dim manuellBem As String
+    manuellBem = "Manuell gesetzt: Status " & status
+    ws.Cells(zeile, UEB_COL_BEMERKUNG).value = FuegeBemerkungEinmalHinzu( _
+        CStr(ws.Cells(zeile, UEB_COL_BEMERKUNG).value), manuellBem)
+    If status = "GR" & ChrW(220) & "N" Then
+        Target.Interior.color = AMPEL_GRUEN
+        If sollWert > 0 And istWert > sollWert + 0.01 Then
+            guthaben = istWert - sollWert
+        Else
+            guthaben = 0
+        End If
+        ws.Cells(zeile, UEB_COL_GUTHABEN).value = guthaben
+    ElseIf status = "GELB" Then
+        Target.Interior.color = AMPEL_GELB
+        ws.Cells(zeile, UEB_COL_GUTHABEN).value = 0
+    Else
+        Target.Interior.color = AMPEL_ROT
+        ws.Cells(zeile, UEB_COL_GUTHABEN).value = 0
+    End If
+
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
+    Call mod_Uebersicht_Generator.SpeichereManuelleUebersichtEntscheidung(zeile)
+    Application.EnableEvents = True
+    Exit Sub
+Fehler:
+    Application.EnableEvents = True
+    On Error Resume Next
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
 End Sub
 
 
@@ -399,8 +471,6 @@ Private Sub VerarbeiteIstAenderung(ByVal Target As Range)
 
             If neuerIst > sollWert + 0.01 Then
                 ws.Cells(zeile, UEB_COL_GUTHABEN).value = neuerIst - sollWert
-                neuBem = neuBem & " | Guthaben: " & _
-                         Format(neuerIst - sollWert, "#,##0.00") & " " & ChrW(8364)
             End If
         Else
             ws.Cells(zeile, UEB_COL_STATUS).value = "GELB"
