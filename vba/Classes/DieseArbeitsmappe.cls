@@ -184,6 +184,10 @@ Private Sub Workbook_SheetActivate(ByVal Sh As Object)
         Case WS_STARTMENUE()
             ohneGitter = True
             vollbild = True
+        Case WS_UEBERSICHT()
+            On Error Resume Next
+            Call mod_Uebersicht_Generator.RepariereStatusDropdown
+            On Error GoTo 0
         Case "Dashboard Mitgliederzahlungen"
             ohneGitter = True
             vollbild = False

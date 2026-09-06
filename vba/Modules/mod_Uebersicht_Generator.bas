@@ -1660,8 +1660,29 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     
 End Sub
 
+Public Sub RepariereStatusDropdown()
+    Dim wsUeb As Worksheet
+    Dim endRow As Long
+    Dim warGeschuetzt As Boolean
+
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo 0
+    If wsUeb Is Nothing Then Exit Sub
+    warGeschuetzt = wsUeb.ProtectContents
+    On Error Resume Next
+    If warGeschuetzt Then wsUeb.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    endRow = wsUeb.Cells(wsUeb.Rows.Count, UEB_COL_PARZELLE).End(xlUp).Row
+    RichteStatusDropdownEin wsUeb, UEBERSICHT_START_ROW, endRow
+    If warGeschuetzt Then
+        On Error Resume Next
+        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
+        On Error GoTo 0
+    End If
+End Sub
+
 Private Sub RichteStatusDropdownEin(ByVal wsUeb As Worksheet, ByVal startRow As Long, ByVal endRow As Long)
-    Dim statusBereich As String
     If endRow < startRow Then Exit Sub
 
     On Error Resume Next
@@ -1669,14 +1690,10 @@ Private Sub RichteStatusDropdownEin(ByVal wsUeb As Worksheet, ByVal startRow As 
     On Error GoTo 0
     wsUeb.Range("BH1:BH3").value = Application.Transpose(Array("GR" & ChrW(220) & "N", "GELB", "ROT"))
     wsUeb.Columns("BH").Hidden = True
-    ThisWorkbook.Names.Add Name:="rngStatusZahlungsuebersicht", _
-                           RefersTo:="='" & wsUeb.Name & "'!$BH$1:$BH$3"
-
-    statusBereich = "=rngStatusZahlungsuebersicht"
     On Error Resume Next
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.Delete
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.Add _
-        Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:=statusBereich
+        Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=$BH$1:$BH$3"
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.IgnoreBlank = False
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.InCellDropdown = True
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.ErrorTitle = "Ungültiger Status"
@@ -2430,7 +2447,9 @@ NextGelbZeile:
             ElseIf StrComp(vjKategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                 istGruen = True
             Else
-                istGruen = (Abs(zahlBetrag - sollWert) < 0.01)
+                ' Auch bei Brauchwasser, Abschlägen und anderen Kategorien
+                ' gilt eine Überzahlung als vollständig bezahlt.
+                istGruen = (zahlBetrag >= sollWert - 0.01)
             End If
 
             If istGruen Then
@@ -2440,7 +2459,7 @@ NextGelbZeile:
             Else
                 wsUeb.Cells(r, UEB_COL_STATUS).value = "GELB"
                 wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GELB
-                confBem = confBem & " (abweichend vom Soll " & Format(sollWert, "#,##0.00") & " " & ChrW(8364) & ")"
+                confBem = confBem & " (Teilzahlung, Soll " & Format(sollWert, "#,##0.00") & " " & ChrW(8364) & ")"
             End If
 
             wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = FuegeTeiltextEinmalHinzu(aktBem, confBem, " | ")
@@ -2449,6 +2468,9 @@ NextGelbZeile:
                 Call FrageUndMarkiereMitbezahlteVorjahrMitglieder(wsUeb, r, zahlDatum, zahlBetrag, vjMitglied, beantwortet, bestaetigtGruen)
             ElseIf istGruen And StrComp(vjKategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                 wsUeb.Cells(r, UEB_COL_GUTHABEN).value = zahlBetrag - sollWert
+            ElseIf istGruen And sollWert > 0 Then
+                wsUeb.Cells(r, UEB_COL_GUTHABEN).value = _
+                    Application.Max(0, zahlBetrag - sollWert)
             End If
 
             Call SpeichereVorjahrEntscheidung(wsUeb, r)
