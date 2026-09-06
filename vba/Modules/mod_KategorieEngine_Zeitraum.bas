@@ -468,6 +468,8 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
             
             Dim tagBuchung As Long
             tagBuchung = Day(buchungsDatum)
+            folgeMonatNr = monatBuchung + 1
+            If folgeMonatNr > 12 Then folgeMonatNr = 1
 
             If tagBuchung >= 20 And Not wsBK Is Nothing And aktuelleZeile > 0 Then
                 Dim ibanMonatszahlung As String
@@ -490,9 +492,6 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
             
             If istUltimoBereich And tagBuchung >= (letzterTagMonat - 5) And tagBuchung < letzterTagMonat Then
                 
-                folgeMonatNr = monatBuchung + 1
-                If folgeMonatNr > 12 Then folgeMonatNr = 1
-
                 ' Wenn für dieselbe IBAN und Kategorie bereits eine Zahlung
                 ' dem laufenden Monat zugeordnet wurde, ist diese späte
                 ' Monatsendzahlung die nächste Monatszahlung.
