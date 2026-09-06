@@ -1822,6 +1822,10 @@ NextGelbZeile:
     
     For i = 1 To gelbZeilen.count
         r = gelbZeilen(i)
+
+        ' Eine vorherige Zahlung derselben Parzelle kann diese Position
+        ' bereits als mitbezahlt geklärt haben.
+        If Not IstVorjahrPruefungNoetig(wsUeb, r) Then GoTo NextPos
         
         Dim parzelle As String
         parzelle = CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)
@@ -1953,7 +1957,25 @@ NextGelbZeile:
             '  - Fester Soll: Betragsgleichheit innerhalb 1 Cent -> GRÜN
             '  - sonst GELB mit Abweichungs-Hinweis
             Dim istGruen As Boolean
+            Dim zahltFuerPartner As Boolean
+            zahltFuerPartner = False
             If sollWert <= 0 Then
+                istGruen = True
+            ElseIf StrComp(vjKategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 And _
+                   IstVorjahrMitgliedsbeitragParzelleGedeckt(wsUeb, r, zahlBetrag) Then
+                If zahlBetrag > sollWert + 0.01 Then
+                    zahltFuerPartner = (MsgBox( _
+                        "Die Zahlung von " & Format$(zahlBetrag, "#,##0.00") & " " & ChrW(8364) & _
+                        " liegt über dem eigenen Mitgliedsbeitrag von " & _
+                        Format$(sollWert, "#,##0.00") & " " & ChrW(8364) & "." & vbCrLf & vbCrLf & _
+                        "Galt der Mehrbetrag auch für den Mitgliedsbeitrag weiterer Personen auf " & _
+                        "Parzelle " & parzelle & "?" & vbCrLf & vbCrLf & _
+                        "Ja = Partnerbeitrag ist mitbezahlt." & vbCrLf & _
+                        "Nein = Zahlung gilt nur für " & vjMitglied & "; der Mehrbetrag wird als Guthaben geführt.", _
+                        vbYesNo + vbQuestion, "Mitgliedsbeitrag verteilen") = vbYes)
+                Else
+                    zahltFuerPartner = True
+                End If
                 istGruen = True
             Else
                 istGruen = (Abs(zahlBetrag - sollWert) < 0.01)
@@ -1970,6 +1992,12 @@ NextGelbZeile:
             End If
 
             wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = FuegeTeiltextEinmalHinzu(aktBem, confBem, " | ")
+
+            If istGruen And StrComp(vjKategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 And zahltFuerPartner Then
+                Call MarkiereMitbezahlteVorjahrMitglieder(wsUeb, r, zahlDatum, zahlBetrag, vjMitglied)
+            ElseIf istGruen And StrComp(vjKategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                wsUeb.Cells(r, UEB_COL_GUTHABEN).value = zahlBetrag - sollWert
+            End If
             
         Else  ' vbNo
             ' -> ROT
@@ -2013,6 +2041,67 @@ NextPos:
                vbInformation, "Vorjahr-Pr" & ChrW(252) & "fung"
     End If
     
+End Sub
+
+Private Function IstVorjahrMitgliedsbeitragParzelleGedeckt(ByVal wsUeb As Worksheet, _
+                                                             ByVal zeile As Long, _
+                                                             ByVal zahlBetrag As Double) As Boolean
+    Dim parzelle As String
+    Dim monat As String
+    Dim lastRow As Long
+    Dim r As Long
+    Dim sollGesamt As Double
+
+    IstVorjahrMitgliedsbeitragParzelleGedeckt = False
+    parzelle = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
+    monat = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_MONAT).value))
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
+
+    For r = UEBERSICHT_START_ROW To lastRow
+        If StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)), parzelle, vbTextCompare) = 0 And _
+           StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value)), monat, vbTextCompare) = 0 And _
+           StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+            If Not IstEhrenmitgliedInUebersicht(wsUeb, r) Then
+                sollGesamt = sollGesamt + LeseDoubleAusZelleVJ(wsUeb.Cells(r, UEB_COL_SOLL))
+            End If
+        End If
+    Next r
+
+    IstVorjahrMitgliedsbeitragParzelleGedeckt = (sollGesamt > 0 And zahlBetrag >= sollGesamt - 0.01)
+End Function
+
+Private Sub MarkiereMitbezahlteVorjahrMitglieder(ByVal wsUeb As Worksheet, _
+                                                   ByVal zeile As Long, _
+                                                   ByVal zahlDatum As Date, _
+                                                   ByVal zahlBetrag As Double, _
+                                                   ByVal zahlerName As String)
+    Dim parzelle As String
+    Dim monat As String
+    Dim lastRow As Long
+    Dim r As Long
+    Dim bemerkung As String
+
+    parzelle = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
+    monat = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_MONAT).value))
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
+
+    For r = UEBERSICHT_START_ROW To lastRow
+        If r <> zeile Then
+            If StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)), parzelle, vbTextCompare) = 0 And _
+               StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value)), monat, vbTextCompare) = 0 And _
+               StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                If Not IstEhrenmitgliedInUebersicht(wsUeb, r) Then
+                    wsUeb.Cells(r, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
+                    wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
+                    bemerkung = "Mitbezahlt durch " & zahlerName & _
+                                " (Vorjahrzahlung am " & Format$(zahlDatum, "dd.mm.yyyy") & _
+                                ", Gesamtbetrag " & Format$(zahlBetrag, "#,##0.00") & " " & ChrW(8364) & ")"
+                    wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = _
+                        FuegeTeiltextEinmalHinzu(CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value), bemerkung, " | ")
+                End If
+            End If
+        End If
+    Next r
 End Sub
 
 Private Function IstVorjahrPruefungNoetig(ByVal wsUeb As Worksheet, _

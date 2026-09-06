@@ -153,6 +153,7 @@ Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Lon
     '       Buchungen existieren, wird nur der Vorjahres-Kontostand angezeigt.
     If IstAllesLeer() Then
         Call BaueFinanzUebersicht_NurKontostand(ws)
+        Call mod_Startseite.AktualisiereKontostandKPI
         Exit Sub
     End If
 
