@@ -1295,7 +1295,7 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
             If offen > 0.004 Then
                 quelle = FindeGuthabenQuelle(wsUeb, r, letzteZeile)
                 If quelle > 0 Then
-                    verfuegbar = ErmittleGesamtguthabenFuerMitglied(wsUeb, r, letzteZeile)
+                    verfuegbar = VerfuegbaresGuthabenFuerMitglied(wsUeb, r, letzteZeile)
                     If verfuegbar > 0.004 Then
                         zielKey = UebersichtEntscheidungsKey(wsUeb, r)
                         If Not GuthabenVerrechnungVorhanden(wsDaten, zielKey) Then
@@ -1330,6 +1330,59 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
         End If
     Next r
 End Sub
+
+Private Function VerfuegbaresGuthabenFuerMitglied(ByVal wsUeb As Worksheet, _
+                                                   ByVal zielZeile As Long, _
+                                                   ByVal letzteZeile As Long) As Double
+    Dim basis As Double
+    Dim verbraucht As Double
+    basis = ErmittleRohguthabenFuerMitglied(wsUeb, zielZeile, letzteZeile)
+    verbraucht = GuthabenGesamtVerrechnetFuerMitglied(wsUeb, zielZeile)
+    If verbraucht <= 0.004 And BesitzerHatSichtbareGuthabenverrechnung(wsUeb, zielZeile, letzteZeile) Then
+        verbraucht = basis
+    End If
+    VerfuegbaresGuthabenFuerMitglied = Application.Max(0, basis - verbraucht)
+    Debug.Print "[Guthaben] Parzelle=" & CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value) & _
+                " Mitglied=" & CStr(wsUeb.Cells(zielZeile, UEB_COL_MITGLIED).value) & _
+                " Roh=" & Format$(basis, "0.00") & " Verbraucht=" & Format$(verbraucht, "0.00") & _
+                " Verfügbar=" & Format$(VerfuegbaresGuthabenFuerMitglied, "0.00")
+End Function
+
+Private Function BesitzerHatSichtbareGuthabenverrechnung(ByVal wsUeb As Worksheet, _
+                                                          ByVal zielZeile As Long, _
+                                                          ByVal letzteZeile As Long) As Boolean
+    Dim r As Long
+    Dim parzelle As String
+    Dim nameNorm As String
+    parzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
+    nameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zielZeile, UEB_COL_MITGLIED).value))
+    For r = UEBERSICHT_START_ROW To letzteZeile
+        If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
+           mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = nameNorm Then
+            If InStr(1, CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value), "Guthaben verrechnet:", vbTextCompare) > 0 Then
+                BesitzerHatSichtbareGuthabenverrechnung = True
+                Exit Function
+            End If
+        End If
+    Next r
+End Function
+
+Private Function ErmittleRohguthabenFuerMitglied(ByVal wsUeb As Worksheet, _
+                                                  ByVal zielZeile As Long, _
+                                                  ByVal letzteZeile As Long) As Double
+    Dim r As Long
+    Dim parzelle As String
+    Dim nameNorm As String
+    parzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
+    nameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zielZeile, UEB_COL_MITGLIED).value))
+    For r = UEBERSICHT_START_ROW To letzteZeile
+        If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
+           mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = nameNorm Then
+            ErmittleRohguthabenFuerMitglied = ErmittleRohguthabenFuerMitglied + _
+                mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
+        End If
+    Next r
+End Function
 
 Private Function ErmittleGesamtguthabenFuerMitglied(ByVal wsUeb As Worksheet, _
                                                      ByVal zielZeile As Long, _
