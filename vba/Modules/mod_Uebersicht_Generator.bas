@@ -1527,8 +1527,16 @@ Public Function HoleUebersichtMonatswerte(ByVal parzelle As Long, _
            StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value)), monatText, vbTextCompare) = 0 And _
            StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), kategorie, vbTextCompare) = 0 Then
             treffer = treffer + 1
-            If IsNumeric(wsUeb.Cells(r, UEB_COL_SOLL).value) Then soll = soll + CDbl(wsUeb.Cells(r, UEB_COL_SOLL).value)
-            If IsNumeric(wsUeb.Cells(r, UEB_COL_IST).value) Then ist = ist + CDbl(wsUeb.Cells(r, UEB_COL_IST).value)
+            Dim zeilenSoll As Double
+            Dim zeilenIst As Double
+            zeilenSoll = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_SOLL).value)
+            zeilenIst = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_IST).value)
+            soll = soll + zeilenSoll
+            If zeilenSoll > 0 Then
+                ist = ist + Application.Min(zeilenIst, zeilenSoll)
+            Else
+                ist = ist + zeilenIst
+            End If
             If Trim$(CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value)) <> "" Then
                 If bemerkung <> "" Then bemerkung = bemerkung & " | "
                 bemerkung = bemerkung & Trim$(CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value))
