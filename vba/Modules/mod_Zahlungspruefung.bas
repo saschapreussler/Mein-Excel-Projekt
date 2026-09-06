@@ -385,14 +385,14 @@ Public Sub ZaehleZahlungenZP(ByVal entityKey As String, _
         monatPeriode = Trim(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
 
         Dim monatPasstZP As Boolean
-        monatPasstZP = False
-        If istMonatlich Then
-            monatPasstZP = (StrComp(monatPeriode, erwarteterMonat, vbTextCompare) = 0)
-        Else
-            If monatPeriode = erwarteterMonat Then
-                monatPasstZP = mod_ZP_Periode.IstPeriodeFuerMonat(monatPeriode, kategorie, monat, jahr, istMonatlich)
-                If monatPeriode = "" Then monatPasstZP = (Month(zahlDatum) = monat)
-        If StrComp(ibanZeileZP, entityIBAN, vbTextCompare) <> 0 Then GoTo nextRow
+        monatPasstZP = mod_ZP_Periode.IstPeriodeFuerMonat( _
+            monatPeriode, kategorie, monat, jahr, istMonatlich)
+        If monatPeriode = "" Then monatPasstZP = (Month(zahlDatum) = monat)
+        If Not monatPasstZP Then GoTo nextRow
+
+        Dim ibanZeile As String
+        ibanZeile = Replace(Trim$(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
+        If StrComp(ibanZeile, entityIBAN, vbTextCompare) <> 0 Then GoTo nextRow
         If StrComp(Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)), kategorie, vbTextCompare) <> 0 Then GoTo nextRow
 
         anzahlTreffer = anzahlTreffer + 1
