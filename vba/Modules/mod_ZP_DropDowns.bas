@@ -30,6 +30,11 @@ Public Sub SetzeBankkontoDropDowns(ByVal wsBK As Worksheet)
     
     ' Hilfsspalten auf Daten-Blatt aktualisieren (AF + AG)
     Call AktualisiereKategorieHilfsspalten
+    On Error Resume Next
+    Call mod_Format_Dropdowns.AktualisiereKategorieDropdownListen
+    Debug.Print "[BankkontoDropDown] Periodenquelle aktualisiert: Fehler=" & Err.Number & " " & Err.Description
+    Err.Clear
+    On Error GoTo 0
     
     ' Blattschutz aufheben (nötig für Data Validation)
     On Error Resume Next

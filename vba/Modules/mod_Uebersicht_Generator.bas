@@ -1343,7 +1343,8 @@ Private Function ErmittleGesamtguthabenFuerMitglied(ByVal wsUeb As Worksheet, _
         If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
            mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = nameNorm Then
             ErmittleGesamtguthabenFuerMitglied = ErmittleGesamtguthabenFuerMitglied + _
-                mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
+                Application.Max(0, mod_Zahlungspruefung.LeseGeldwertZP( _
+                    wsUeb.Cells(r, UEB_COL_GUTHABEN).value) - GuthabenVerrechnetFuerZeile(wsUeb, r))
         End If
     Next r
 End Function

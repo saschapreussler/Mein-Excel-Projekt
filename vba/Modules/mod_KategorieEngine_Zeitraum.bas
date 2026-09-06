@@ -328,6 +328,7 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
                                      Optional ByVal aktuelleZeile As Long = 0) As String
     
     Dim monatBuchung As Long
+    Dim folgeMonatNr As Long
     monatBuchung = Month(buchungsDatum)
     
     Dim jahrBuchung As Long
@@ -467,10 +468,28 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
             
             Dim tagBuchung As Long
             tagBuchung = Day(buchungsDatum)
+
+            If tagBuchung >= 20 And Not wsBK Is Nothing And aktuelleZeile > 0 Then
+                Dim ibanMonatszahlung As String
+                Dim vorhandeneMonatszahlung As Boolean
+                Dim laufendeZeile As Long
+                ibanMonatszahlung = UCase$(Replace(Trim$(CStr(wsBK.Cells(aktuelleZeile, BK_COL_IBAN).value)), " ", ""))
+                For laufendeZeile = BK_START_ROW To aktuelleZeile - 1
+                    If UCase$(Replace(Trim$(CStr(wsBK.Cells(laufendeZeile, BK_COL_IBAN).value)), " ", "")) = ibanMonatszahlung And _
+                       StrComp(Trim$(CStr(wsBK.Cells(laufendeZeile, BK_COL_KATEGORIE).value)), category, vbTextCompare) = 0 And _
+                       StrComp(Trim$(CStr(wsBK.Cells(laufendeZeile, BK_COL_MONAT_PERIODE).value)), MonthName(monatBuchung), vbTextCompare) = 0 Then
+                        vorhandeneMonatszahlung = True
+                        Exit For
+                    End If
+                Next laufendeZeile
+                If vorhandeneMonatszahlung Then
+                    ErmittleMonatPeriode = MonthName(folgeMonatNr)
+                    Exit Function
+                End If
+            End If
             
             If istUltimoBereich And tagBuchung >= (letzterTagMonat - 5) And tagBuchung < letzterTagMonat Then
                 
-                Dim folgeMonatNr As Long
                 folgeMonatNr = monatBuchung + 1
                 If folgeMonatNr > 12 Then folgeMonatNr = 1
 
