@@ -97,6 +97,8 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
     ws.Cells(15, DATA_COL_MONAT_PERIODE).value = "Dezember"
 
     periodenZeile = 16
+    ws.Cells(periodenZeile, DATA_COL_MONAT_PERIODE).value = "jährlich"
+    periodenZeile = periodenZeile + 1
     abrechnungsjahr = HoleAbrechnungsjahr()
     If abrechnungsjahr <= 0 Then abrechnungsjahr = Year(Date)
     For periodenJahr = abrechnungsjahr - 1 To abrechnungsjahr + 1

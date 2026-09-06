@@ -455,6 +455,7 @@ ImportAbschluss:
     
     ' 8. Formeln wiederherstellen (könnten durch Import/Sort überschrieben sein)
     Call mod_Banking_Format.StelleFormelnWiederHer(wsZiel)
+    Call mod_Uebersicht_Generator.RepariereStatusDropdown
     
     wsZiel.Activate
     

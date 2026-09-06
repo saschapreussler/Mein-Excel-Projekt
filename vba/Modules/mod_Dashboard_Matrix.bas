@@ -358,6 +358,12 @@ NextEKDash:
                         End If
                     End If
                 End If
+
+                ' Die Zahlungsübersicht ist die maßgebliche Quelle: Eine dort
+                ' bestätigte grüne Position gilt vollständig als bezahlt.
+                If StrComp(mBestStatus, statusGruen, vbTextCompare) = 0 And mSoll > 0 Then
+                    mIst = mSoll
+                End If
                 
                 ' Keine Säumnis -> ROT wird zu GELB herabgestuft
                 If StrComp(mBestStatus, "ROT", vbTextCompare) = 0 Then

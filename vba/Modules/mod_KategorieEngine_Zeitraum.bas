@@ -473,6 +473,28 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
                 Dim folgeMonatNr As Long
                 folgeMonatNr = monatBuchung + 1
                 If folgeMonatNr > 12 Then folgeMonatNr = 1
+
+                ' Wenn für dieselbe IBAN und Kategorie bereits eine Zahlung
+                ' dem laufenden Monat zugeordnet wurde, ist diese späte
+                ' Monatsendzahlung die nächste Monatszahlung.
+                If Not wsBK Is Nothing And aktuelleZeile > 0 Then
+                    Dim ibanAktuellMonat As String
+                    Dim bereitsLaufenderMonat As Boolean
+                    Dim pruefZeileMonat As Long
+                    ibanAktuellMonat = UCase$(Replace(Trim$(CStr(wsBK.Cells(aktuelleZeile, BK_COL_IBAN).value)), " ", ""))
+                    For pruefZeileMonat = BK_START_ROW To aktuelleZeile - 1
+                        If UCase$(Replace(Trim$(CStr(wsBK.Cells(pruefZeileMonat, BK_COL_IBAN).value)), " ", "")) = ibanAktuellMonat And _
+                           StrComp(Trim$(CStr(wsBK.Cells(pruefZeileMonat, BK_COL_KATEGORIE).value)), category, vbTextCompare) = 0 And _
+                           StrComp(Trim$(CStr(wsBK.Cells(pruefZeileMonat, BK_COL_MONAT_PERIODE).value)), MonthName(monatBuchung), vbTextCompare) = 0 Then
+                            bereitsLaufenderMonat = True
+                            Exit For
+                        End If
+                    Next pruefZeileMonat
+                    If bereitsLaufenderMonat Then
+                        ErmittleMonatPeriode = MonthName(folgeMonatNr)
+                        Exit Function
+                    End If
+                End If
                 
                 If SollMonate <> "" And Not IstMonatInListe(folgeMonatNr, SollMonate) Then
                     GoTo FallbackMonat

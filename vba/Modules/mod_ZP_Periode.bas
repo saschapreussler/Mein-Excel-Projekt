@@ -85,6 +85,19 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
                     ws.Cells(r, BK_COL_MONAT_PERIODE).value = ergebnis
                     ' Ampelfarbe Grün = Monat eindeutig bestimmt
                     ws.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206)
+                    If IsDate(datumWert) And _
+                       StrComp(ergebnis, MonthName(Month(CDate(datumWert))), vbTextCompare) <> 0 Then
+                        Dim automatischeBemerkung As String
+                        automatischeBemerkung = "Folgemonat automatisch zugeordnet: " & ergebnis
+                        If InStr(1, CStr(ws.Cells(r, BK_COL_BEMERKUNG).value), automatischeBemerkung, vbTextCompare) = 0 Then
+                            If Trim$(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value)) = "" Then
+                                ws.Cells(r, BK_COL_BEMERKUNG).value = automatischeBemerkung
+                            Else
+                                ws.Cells(r, BK_COL_BEMERKUNG).value = _
+                                    CStr(ws.Cells(r, BK_COL_BEMERKUNG).value) & vbLf & automatischeBemerkung
+                            End If
+                        End If
+                    End If
                 End If
             Else
                 ws.Cells(r, BK_COL_MONAT_PERIODE).value = MonthName(Month(datumWert))
