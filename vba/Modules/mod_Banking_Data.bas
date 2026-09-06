@@ -382,11 +382,8 @@ ImportAbschluss:
     ' und nicht das "On Error Resume Next" von oben erbt!
     If rowsProcessed > 0 Then Call KategorieEngine_Pipeline(wsZiel)
     
-    ' 6. Monat/Periode setzen (v3.9: verschoben nach mod_Zahlungspruefung)
-    On Error Resume Next
-    Call mod_ZP_Periode.SetzeMonatPeriode(wsZiel)
-    Err.Clear
-    On Error GoTo 0
+    ' 6. Monat/Periode setzen (mit Diagnose und zweitem Lauf)
+    SetzePeriodenMitDiagnose wsZiel
 
     ' 6b. Ampel/Konflikt-Hinweise fuer Kategorie + Monat/Periode vereinheitlichen
     Call SynchronisiereKategorieMonatAmpel(wsZiel)
@@ -408,7 +405,11 @@ ImportAbschluss:
         Application.ScreenUpdating = True
         Application.EnableEvents = True
 
-         MsgBox "Der Import ist gespeichert. In der markierten Zeile fehlt noch eine Zuordnung." & vbCrLf & vbCrLf & _
+           Dim offeneDetails As String
+           offeneDetails = ErstelleOffeneZuordnungsDetails(wsZiel)
+           Debug.Print "[Import] Offene H/I-Zuordnungen:" & vbCrLf & offeneDetails
+           MsgBox "Der Import ist gespeichert. In folgenden Zeilen fehlt noch eine Zuordnung:" & vbCrLf & vbCrLf & _
+               offeneDetails & vbCrLf & vbCrLf & _
              "1. Wählen Sie in Spalte H die passende Kategorie." & vbCrLf & _
              "2. Bestätigen Sie in Spalte I den Monat bzw. die Periode." & vbCrLf & vbCrLf & _
              "Sobald alle rot oder gelb markierten H/I-Felder bestätigt sind, aktualisiert " & _
@@ -516,6 +517,57 @@ ImportAbschluss:
     On Error GoTo 0
     
 End Sub
+
+Private Sub SetzePeriodenMitDiagnose(ByVal wsBK As Worksheet)
+    Dim durchlauf As Long
+    On Error GoTo Fehler
+    For durchlauf = 1 To 2
+        Debug.Print "[Import] Periodenautomatik Lauf " & durchlauf & " gestartet."
+        Call mod_ZP_Periode.SetzeMonatPeriode(wsBK)
+        Debug.Print "[Import] Periodenautomatik Lauf " & durchlauf & " beendet."
+    Next durchlauf
+    Exit Sub
+Fehler:
+    Debug.Print "[Import] Periodenautomatik FEHLER: " & Err.Number & " - " & Err.Description & _
+                " | Durchlauf=" & durchlauf
+    Err.Clear
+End Sub
+
+Private Function ErstelleOffeneZuordnungsDetails(ByVal wsBK As Worksheet) As String
+    Dim lastRow As Long, r As Long, kat As String, mon As String, grund As String
+    lastRow = wsBK.Cells(wsBK.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    For r = BK_START_ROW To lastRow
+        If Trim$(CStr(wsBK.Cells(r, BK_COL_BETRAG).value)) <> "" Then
+            kat = Trim$(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
+            mon = Trim$(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
+            grund = ""
+            If kat = "" Then grund = "Kategorie H fehlt"
+            If mon = "" Then
+                If grund <> "" Then grund = grund & "; "
+                grund = grund & "Monat/Periode I fehlt"
+            End If
+            If wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color = RGB(255, 199, 206) Or _
+               wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color = RGB(255, 235, 156) Then
+                If grund <> "" Then grund = grund & "; "
+                grund = grund & "Kategorie muss geprüft werden"
+            End If
+            If wsBK.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 199, 206) Or _
+               wsBK.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 235, 156) Then
+                If grund <> "" Then grund = grund & "; "
+                grund = grund & "Monat/Periode muss geprüft werden"
+            End If
+            If grund <> "" Then
+                ErstelleOffeneZuordnungsDetails = ErstelleOffeneZuordnungsDetails & _
+                    "Zeile " & r & ": " & Format$(wsBK.Cells(r, BK_COL_DATUM).value, "dd.mm.yyyy") & _
+                    " | " & Trim$(CStr(wsBK.Cells(r, BK_COL_NAME).value)) & _
+                    " | Kategorie=" & IIf(kat = "", "<leer>", kat) & _
+                    " | Periode=" & IIf(mon = "", "<leer>", mon) & _
+                    " | " & grund & vbCrLf
+            End If
+        End If
+    Next r
+    If ErstelleOffeneZuordnungsDetails = "" Then ErstelleOffeneZuordnungsDetails = "(keine Details ermittelt)"
+End Function
 
 
 ' ===============================================================

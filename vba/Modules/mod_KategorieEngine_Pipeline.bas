@@ -77,7 +77,7 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
         On Error Resume Next
         EvaluateKategorieEngineRow wsBK, r, wsData, lastRuleRow
         If Err.Number <> 0 Then
-            Debug.Print "Evaluator Fehler Zeile " & r & ": " & Err.Description
+            Debug.Print "[KategoriePipeline] Evaluator Fehler Zeile " & r & ": " & Err.Description
             Err.Clear
         End If
         On Error GoTo 0
@@ -88,7 +88,7 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
             ApplyBetragsZuordnung wsBK, r
         End If
         If Err.Number <> 0 Then
-            Debug.Print "Betragszuordnung Fehler Zeile " & r & ": " & Err.Description
+            Debug.Print "[KategoriePipeline] Betragszuordnung Fehler Zeile " & r & ": " & Err.Description
             Err.Clear
         End If
         On Error GoTo 0
@@ -101,6 +101,11 @@ Public Sub KategorieEngine_Pipeline(Optional ByVal wsBK As Worksheet)
         End If
 
 nextRow:
+        If Trim$(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)) = "" Then
+            Debug.Print "[KategoriePipeline] Keine Kategorie für Bankkonto-Zeile " & r & _
+                        " | Datum=" & CStr(wsBK.Cells(r, BK_COL_DATUM).value) & _
+                        " | Name=" & CStr(wsBK.Cells(r, BK_COL_NAME).value)
+        End If
     Next r
 
     ' Einstellungen-Cache freigeben
