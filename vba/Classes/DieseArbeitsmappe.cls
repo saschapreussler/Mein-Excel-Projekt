@@ -289,6 +289,7 @@ Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
         ' v5.1: Dashboard bei manuellen Soll-änderungen aktualisieren
         On Error Resume Next
         Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
+        Call mod_Uebersicht_Generator.WendePersistierteVorjahrEntscheidungenAn
         On Error GoTo 0
     End If
     

@@ -1085,6 +1085,31 @@ Private Sub LadePersistierteVorjahrEntscheidungen(ByVal entscheidungen As Object
     Next r
 End Sub
 
+Public Sub WendePersistierteVorjahrEntscheidungenAn()
+    Dim wsUeb As Worksheet
+    Dim entscheidungen As Object
+    Dim lastRow As Long
+
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo 0
+    If wsUeb Is Nothing Then Exit Sub
+
+    Set entscheidungen = CreateObject("Scripting.Dictionary")
+    entscheidungen.CompareMode = vbTextCompare
+    Call LadePersistierteVorjahrEntscheidungen(entscheidungen)
+    If entscheidungen.count = 0 Then Exit Sub
+
+    On Error Resume Next
+    wsUeb.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
+    Call StelleVorjahrEntscheidungenWiederHer(wsUeb, entscheidungen, lastRow)
+    On Error Resume Next
+    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
+    On Error GoTo 0
+End Sub
+
 Private Sub SpeichereVorjahrEntscheidung(ByVal wsUeb As Worksheet, ByVal zeile As Long)
     Dim wsDaten As Worksheet
     Dim key As String
@@ -1136,7 +1161,8 @@ End Sub
 
 Private Function UebersichtEntscheidungsKey(ByVal wsUeb As Worksheet, ByVal zeile As Long) As String
     UebersichtEntscheidungsKey = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)) & "|" & _
-                              Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value)) & "|" & _
+                              mod_EntityKey_Normalize.NormalisiereStringFuerVergleich( _
+                                  CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value)) & "|" & _
                               Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_MONAT).value)) & "|" & _
                               Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value))
 End Function
@@ -2187,6 +2213,7 @@ NextPos:
     If bestaetigtGruen + bestaetigtRot > 0 Then
         On Error Resume Next
         Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
+        Call WendePersistierteVorjahrEntscheidungenAn
         On Error GoTo 0
     End If
     
