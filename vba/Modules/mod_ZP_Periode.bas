@@ -56,8 +56,10 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
             If kategorie <> "" Then
                 faelligkeit = HoleFaelligkeitFuerKategorie(wsDaten, kategorie)
                 
+                On Error GoTo Zeilenfehler
                 ergebnis = mod_KategorieEngine_Zeitraum.ErmittleMonatPeriode( _
                     kategorie, CDate(datumWert), faelligkeit, ws, r)
+                On Error GoTo SetzeMonatPeriodeError
                 
                 If Left(ergebnis, 5) = "GELB|" Then
                     Dim monatName As String
@@ -103,6 +105,7 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
                 ws.Cells(r, BK_COL_MONAT_PERIODE).value = MonthName(Month(datumWert))
             End If
         End If
+WeiterMitNaechsterZeile:
     Next r
     
     ' Einstellungen-Cache wieder freigeben
@@ -116,6 +119,20 @@ Public Sub SetzeMonatPeriode(ByVal ws As Worksheet)
     Call mod_ZP_DropDowns.SetzeBankkontoDropDowns(ws)
     
     Exit Sub
+
+Zeilenfehler:
+    Debug.Print "[Periodenautomatik] Fehler " & Err.Number & " - " & Err.Description & _
+                " | Zeile=" & r & " | Datum=" & CStr(datumWert) & _
+                " | Kategorie=" & kategorie
+    Err.Clear
+    On Error Resume Next
+    ws.Cells(r, BK_COL_MONAT_PERIODE).value = MonthName(Month(CDate(datumWert)))
+    ws.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 235, 156)
+    ws.Cells(r, BK_COL_BEMERKUNG).value = Trim$(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value)) & _
+        IIf(Trim$(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value)) = "", "", vbLf) & _
+        "Periodenautomatik Fehler - bitte Monat/Periode prüfen"
+    On Error GoTo SetzeMonatPeriodeError
+    GoTo WeiterMitNaechsterZeile
 
 SetzeMonatPeriodeError:
     Application.EnableEvents = eventsWaren
