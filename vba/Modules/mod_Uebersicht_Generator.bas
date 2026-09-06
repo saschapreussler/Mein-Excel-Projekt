@@ -2011,16 +2011,28 @@ Public Sub RepariereStatusDropdown()
     On Error GoTo 0
     If wsUeb Is Nothing Then Exit Sub
     warGeschuetzt = wsUeb.ProtectContents
-    On Error Resume Next
-    If warGeschuetzt Then wsUeb.Unprotect PASSWORD:=PASSWORD
-    On Error GoTo 0
+    If warGeschuetzt Then
+        On Error Resume Next
+        Err.Clear
+        wsUeb.Unprotect PASSWORD:=PASSWORD
+        Debug.Print "[StatusDropdown] Unprotect Fehler=" & Err.Number & " " & Err.Description
+        Err.Clear
+        On Error GoTo 0
+        If wsUeb.ProtectContents Then
+            Debug.Print "[StatusDropdown] ABBRUCH: Blatt bleibt geschützt. Passwort oder Schutzstatus prüfen."
+            Exit Sub
+        End If
+    End If
     endRow = wsUeb.Cells(wsUeb.Rows.Count, UEB_COL_PARZELLE).End(xlUp).Row
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_STATUS), _
                 wsUeb.Cells(endRow, UEB_COL_STATUS)).Locked = False
+    Debug.Print "[StatusDropdown] Statuszellen entsperrt: Locked=" & _
+                wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_STATUS).Locked
     RichteStatusDropdownEin wsUeb, UEBERSICHT_START_ROW, endRow
     If warGeschuetzt Then
         On Error Resume Next
         wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
+        Debug.Print "[StatusDropdown] Reprotect Fehler=" & Err.Number & " " & Err.Description
         On Error GoTo 0
     End If
 End Sub
@@ -2035,6 +2047,7 @@ Public Sub DebugStatusDropdown()
     Debug.Print "[StatusDropdown] Blatt=" & IIf(wsUeb Is Nothing, "NICHT GEFUNDEN", wsUeb.Name)
     If wsUeb Is Nothing Then Exit Sub
     Debug.Print "[StatusDropdown] ProtectContents=" & wsUeb.ProtectContents
+    Debug.Print "[StatusDropdown] Repository-PASSWORD-Länge=" & Len(PASSWORD)
     Debug.Print "[StatusDropdown] Zelle=" & zelle.Address(False, False) & _
                 " Locked=" & zelle.Locked & " Value=" & CStr(zelle.Value)
     On Error Resume Next
@@ -2055,9 +2068,14 @@ Private Sub RichteStatusDropdownEin(ByVal wsUeb As Worksheet, ByVal startRow As 
     wsUeb.Range("BH1:BH3").value = Application.Transpose(Array("GR" & ChrW(220) & "N", "GELB", "ROT"))
     wsUeb.Columns("BH").Hidden = True
     On Error Resume Next
+    Err.Clear
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.Delete
+    Debug.Print "[StatusDropdown] Validation.Delete Fehler=" & Err.Number & " " & Err.Description
+    Err.Clear
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.Add _
         Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=$BH$1:$BH$3"
+    Debug.Print "[StatusDropdown] Validation.Add Fehler=" & Err.Number & " " & Err.Description
+    Err.Clear
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.IgnoreBlank = False
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.InCellDropdown = True
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.ErrorTitle = "Ungültiger Status"
