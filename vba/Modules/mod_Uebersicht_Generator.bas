@@ -2040,6 +2040,8 @@ End Sub
 Public Sub DebugStatusDropdown()
     Dim wsUeb As Worksheet
     Dim zelle As Range
+    Debug.Print "[StatusDropdown] Starte Reparaturtest..."
+    RepariereStatusDropdown
     On Error Resume Next
     Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
     If Not wsUeb Is Nothing Then Set zelle = wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_STATUS)
