@@ -1118,6 +1118,29 @@ Public Sub PruefeVorjahrHinweisBeimOeffnen()
 Ende:
 End Sub
 
+Public Sub DiagnoseVorjahrPruefung()
+    Dim wsUeb As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo 0
+    If wsUeb Is Nothing Then Exit Sub
+
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
+    Debug.Print "--- Vorjahr-Pruefung Januar ---"
+    For r = UEBERSICHT_START_ROW To lastRow
+        If InStr(1, CStr(wsUeb.Cells(r, UEB_COL_MONAT).value), MonthName(1), vbTextCompare) > 0 Then
+            Debug.Print "Zeile " & r & " | " & wsUeb.Cells(r, UEB_COL_PARZELLE).value & _
+                        " | " & wsUeb.Cells(r, UEB_COL_MITGLIED).value & _
+                        " | " & wsUeb.Cells(r, UEB_COL_KATEGORIE).value & _
+                        " | Ist=" & wsUeb.Cells(r, UEB_COL_IST).value & _
+                        " | pruefen=" & IstVorjahrPruefungNoetig(wsUeb, r)
+        End If
+    Next r
+End Sub
+
 
 ' ===============================================================
 ' v4.0: prüft ob eine Kategorie in einem bestimmten Monat Fuellig ist
@@ -1747,14 +1770,19 @@ Private Sub PruefeVorjahrGelbEintraege(ByVal wsUeb As Worksheet, _
     
     Dim r As Long
     For r = UEBERSICHT_START_ROW To LetzteZeile
-        Dim statusWert As String
-        statusWert = UCase(Trim(CStr(wsUeb.Cells(r, UEB_COL_STATUS).value)))
-        
-        If statusWert = "GELB" Or statusWert = "ROT" Then
+        Dim monatWert As String
+        monatWert = Trim$(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value))
+
+        If InStr(1, monatWert, MonthName(1), vbTextCompare) > 0 Then
             Dim gruppenKey As String
             gruppenKey = Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
                          Trim$(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value)) & "|" & _
                          Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value))
+                 If StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), _
+                      "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                  gruppenKey = gruppenKey & "|" & _
+                         Trim$(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value))
+                 End If
             
             If Not gepruefteGruppen.exists(gruppenKey) Then
                 If IstVorjahrPruefungNoetig(wsUeb, r) Then
@@ -1990,9 +2018,11 @@ End Sub
 Private Function IstVorjahrPruefungNoetig(ByVal wsUeb As Worksheet, _
                                            ByVal zeile As Long) As Boolean
     Dim istWert As Double
+    Dim sollWert As Double
     Dim monat As String
     Dim kategorie As String
     Dim bemerkung As String
+    Dim parzelle As Long
 
     IstVorjahrPruefungNoetig = False
 
@@ -2002,15 +2032,94 @@ Private Function IstVorjahrPruefungNoetig(ByVal wsUeb As Worksheet, _
     monat = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_MONAT).value))
     kategorie = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value))
     bemerkung = CStr(wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value)
+    parzelle = CLng(val(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)))
+    sollWert = LeseDoubleAusZelleVJ(wsUeb.Cells(zeile, UEB_COL_SOLL))
 
     If InStr(1, monat, MonthName(1), vbTextCompare) = 0 Then Exit Function
     If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
         If IstEhrenmitgliedInUebersicht(wsUeb, zeile) Then Exit Function
         If InStr(1, bemerkung, "Mitbezahlt durch", vbTextCompare) > 0 Then Exit Function
         If InStr(1, bemerkung, "Gemeinschaftskonto", vbTextCompare) > 0 Then Exit Function
+
+        If parzelle > 0 And sollWert > 0 Then
+            If IstMitgliedsbeitragParzelleGedeckt(parzelle, sollWert, HoleJahrAusMonatstext(monat)) Then Exit Function
+        End If
     End If
 
     IstVorjahrPruefungNoetig = True
+End Function
+
+Private Function IstMitgliedsbeitragParzelleGedeckt(ByVal parzelle As Long, _
+                                                      ByVal sollProMitglied As Double, _
+                                                      ByVal jahr As Long) As Boolean
+    Dim wsBK As Worksheet
+    Dim anzahlMitglieder As Long
+    Dim lastRow As Long
+    Dim r As Long
+    Dim summe As Double
+    Dim datum As Variant
+
+    IstMitgliedsbeitragParzelleGedeckt = False
+    anzahlMitglieder = ZaehleBeitragspflichtigeMitgliederAufParzelle(parzelle)
+    If anzahlMitglieder <= 0 Then Exit Function
+
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    On Error GoTo 0
+    If wsBK Is Nothing Then Exit Function
+
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    For r = BK_START_ROW To lastRow
+        datum = wsBK.Cells(r, BK_COL_DATUM).value
+        If Not IsDate(datum) Then GoTo NextZahlung
+        If Year(CDate(datum)) <> jahr Then GoTo NextZahlung
+        If StrComp(Trim$(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)), _
+                   "Mitgliedsbeitrag", vbTextCompare) <> 0 Then GoTo NextZahlung
+        If StrComp(Trim$(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value)), _
+                   MonthName(1), vbTextCompare) <> 0 Then GoTo NextZahlung
+        If IBANGehortZuParzelle(Trim$(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), parzelle) Then
+            summe = summe + Abs(mod_Zahlungspruefung.LeseGeldwertZP(wsBK.Cells(r, BK_COL_BETRAG).value))
+        End If
+NextZahlung:
+    Next r
+
+    IstMitgliedsbeitragParzelleGedeckt = _
+        (summe >= anzahlMitglieder * sollProMitglied - 0.01)
+End Function
+
+Private Function IBANGehortZuParzelle(ByVal iban As String, ByVal parzelle As Long) As Boolean
+    Dim wsDaten As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim gespeicherteIban As String
+    Dim parzellenText As String
+    Dim parzellen() As String
+    Dim i As Long
+
+    IBANGehortZuParzelle = False
+    iban = Replace(iban, " ", "")
+    If iban = "" Then Exit Function
+
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsDaten Is Nothing Then Exit Function
+
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, EK_COL_IBAN).End(xlUp).Row
+    For r = EK_START_ROW To lastRow
+        gespeicherteIban = Replace(Trim$(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)), " ", "")
+        If StrComp(gespeicherteIban, iban, vbTextCompare) <> 0 Then GoTo NextIBAN
+
+        parzellenText = CStr(wsDaten.Cells(r, EK_COL_PARZELLE).value)
+        parzellen = Split(parzellenText, ",")
+        For i = LBound(parzellen) To UBound(parzellen)
+            If CLng(val(Trim$(parzellen(i)))) = parzelle Then
+                IBANGehortZuParzelle = True
+                Exit Function
+            End If
+        Next i
+NextIBAN:
+    Next r
 End Function
 
 Private Function IstEhrenmitgliedInUebersicht(ByVal wsUeb As Worksheet, _
