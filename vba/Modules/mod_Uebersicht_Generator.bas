@@ -1976,7 +1976,6 @@ NextGelbZeile:
                     vbYesNo + vbQuestion, "Mitgliedsbeitrag verteilen") = vbYes)
                 istGruen = True
             ElseIf StrComp(vjKategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
-                zahltFuerPartner = True
                 istGruen = True
             Else
                 istGruen = (Abs(zahlBetrag - sollWert) < 0.01)
