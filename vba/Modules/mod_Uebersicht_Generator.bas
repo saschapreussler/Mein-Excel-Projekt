@@ -1294,10 +1294,12 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
             istWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_IST).value)
             offen = sollWert - istWert
             If offen > 0.004 Then
-                     If ParzelleHatGuthabenverrechnung(wsUeb, wsDaten, r, letzteZeile) Then GoTo NaechsteGuthabenZeile
                 quelle = FindeGuthabenQuelle(wsUeb, r, letzteZeile)
                 If quelle > 0 Then
-                    verfuegbar = VerfuegbaresGuthabenFuerMitglied(wsUeb, r, letzteZeile)
+                    verfuegbar = VerfuegbaresGuthabenFuerParzelle(wsUeb, r, letzteZeile)
+                    Debug.Print "[Guthaben] Prüfe Dialog: Zeile=" & r & _
+                                " Monat=" & CStr(wsUeb.Cells(r, UEB_COL_MONAT).value) & _
+                                " Quelle=" & quelle & " Verfügbar=" & Format$(verfuegbar, "0.00")
                     If verfuegbar > 0.004 Then
                         zielKey = UebersichtEntscheidungsKey(wsUeb, r)
                         If Not GuthabenVerrechnungVorhanden(wsDaten, zielKey) Then
@@ -1335,6 +1337,24 @@ NaechsteGuthabenZeile:
     Next r
 End Sub
 
+Private Function VerfuegbaresGuthabenFuerParzelle(ByVal wsUeb As Worksheet, _
+                                                   ByVal zielZeile As Long, _
+                                                   ByVal letzteZeile As Long) As Double
+    Dim r As Long
+    Dim parzelle As String
+    Dim roh As Double
+    parzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
+    For r = UEBERSICHT_START_ROW To letzteZeile
+        If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle Then
+            roh = roh + mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
+        End If
+    Next r
+    VerfuegbaresGuthabenFuerParzelle = Application.Max(0, roh - GuthabenGesamtVerrechnetFuerParzelle(wsUeb, zielZeile))
+    Debug.Print "[Guthaben] Parzelle=" & parzelle & " Roh=" & Format$(roh, "0.00") & _
+                " Verrechnet=" & Format$(GuthabenGesamtVerrechnetFuerParzelle(wsUeb, zielZeile), "0.00") & _
+                " Verfügbar=" & Format$(VerfuegbaresGuthabenFuerParzelle, "0.00")
+End Function
+
 Private Function ParzelleHatGuthabenverrechnung(ByVal wsUeb As Worksheet, _
                                                  ByVal wsDaten As Worksheet, _
                                                  ByVal zeile As Long, _
@@ -1356,8 +1376,8 @@ Private Function ParzelleHatGuthabenverrechnung(ByVal wsUeb As Worksheet, _
     For r = GUTH_VER_START_ROW To lastRow
         quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
         If Left$(quelleKey, 7) = "SUMME|" Then
-            teile = Split(quelleKey, "|", 2)
-            If UBound(teile) >= 1 Then
+            teile = Split(quelleKey, "|", 3)
+            If UBound(teile) >= 2 Then
                 If StrComp(teile(1), parzelle, vbTextCompare) = 0 Then
                     ParzelleHatGuthabenverrechnung = True
                     Exit Function
@@ -1366,6 +1386,55 @@ Private Function ParzelleHatGuthabenverrechnung(ByVal wsUeb As Worksheet, _
         End If
     Next r
 End Function
+
+Public Sub DebugGuthabenParzelle(ByVal parzelle As Long)
+    Dim wsUeb As Worksheet
+    Dim wsDaten As Worksheet
+    Dim lastRow As Long, r As Long
+    Dim quelleKey As String
+    Dim teile() As String
+    Dim betrag As Double
+
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    Debug.Print "[GuthabenDebug] Parzelle=" & parzelle
+    If wsUeb Is Nothing Or wsDaten Is Nothing Then
+        Debug.Print "[GuthabenDebug] Übersicht oder Datenblatt fehlt."
+        Exit Sub
+    End If
+
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
+    For r = GUTH_VER_START_ROW To lastRow
+        quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
+        betrag = mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
+        If quelleKey <> "" Then
+            Debug.Print "[GuthabenDebug] Daten Zeile=" & r & " Betrag=" & Format$(betrag, "0.00") & _
+                        " QuelleKey=" & quelleKey
+            If Left$(quelleKey, 7) = "SUMME|" Then
+                teile = Split(quelleKey, "|", 3)
+                If UBound(teile) >= 2 Then
+                    Debug.Print "[GuthabenDebug]   ParzelleKey=" & teile(1) & _
+                                " BesitzerKey=" & teile(2) & _
+                                " Treffer=" & (CLng(Val(teile(1))) = parzelle)
+                End If
+            End If
+        End If
+    Next r
+
+    Debug.Print "[GuthabenDebug] Übersicht sichtbare Verrechnungen:"
+    lastRow = wsUeb.Cells(wsUeb.Rows.Count, UEB_COL_PARZELLE).End(xlUp).Row
+    For r = UEBERSICHT_START_ROW To lastRow
+        If CLng(Val(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value))) = parzelle Then
+            If InStr(1, CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value), "Guthaben verrechnet:", vbTextCompare) > 0 Then
+                Debug.Print "[GuthabenDebug] Übersicht Zeile=" & r & " Monat=" & _
+                            CStr(wsUeb.Cells(r, UEB_COL_MONAT).value) & " Bemerkung=" & _
+                            CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value)
+            End If
+        End If
+    Next r
+End Sub
 
 Private Function VerfuegbaresGuthabenFuerMitglied(ByVal wsUeb As Worksheet, _
                                                    ByVal zielZeile As Long, _
@@ -1878,6 +1947,32 @@ Private Function GuthabenGesamtVerrechnetFuerMitglied(ByVal wsUeb As Worksheet, 
             If UBound(teile) = 2 Then
                 If StrComp(teile(1) & "|" & teile(2), ownerKey, vbTextCompare) = 0 Then
                     GuthabenGesamtVerrechnetFuerMitglied = GuthabenGesamtVerrechnetFuerMitglied + _
+                        mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
+                End If
+            End If
+        End If
+    Next r
+End Function
+
+Private Function GuthabenGesamtVerrechnetFuerParzelle(ByVal wsUeb As Worksheet, _
+                                                       ByVal zeile As Long) As Double
+    Dim wsDaten As Worksheet
+    Dim lastRow As Long, r As Long
+    Dim parzelle As String, quelleKey As String
+    Dim teile() As String
+    parzelle = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsDaten Is Nothing Then Exit Function
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
+    For r = GUTH_VER_START_ROW To lastRow
+        quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
+        If Left$(quelleKey, 7) = "SUMME|" Then
+            teile = Split(quelleKey, "|", 3)
+            If UBound(teile) >= 1 Then
+                If StrComp(teile(1), parzelle, vbTextCompare) = 0 Then
+                    GuthabenGesamtVerrechnetFuerParzelle = GuthabenGesamtVerrechnetFuerParzelle + _
                         mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
                 End If
             End If
