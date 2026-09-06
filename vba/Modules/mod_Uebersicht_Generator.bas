@@ -1089,6 +1089,7 @@ Public Sub WendePersistierteVorjahrEntscheidungenAn()
     Dim wsUeb As Worksheet
     Dim entscheidungen As Object
     Dim lastRow As Long
+    Dim eventsWarenAktiv As Boolean
 
     On Error Resume Next
     Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
@@ -1100,6 +1101,9 @@ Public Sub WendePersistierteVorjahrEntscheidungenAn()
     Call LadePersistierteVorjahrEntscheidungen(entscheidungen)
     If entscheidungen.count = 0 Then Exit Sub
 
+    eventsWarenAktiv = Application.EnableEvents
+    Application.EnableEvents = False
+
     On Error Resume Next
     wsUeb.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
@@ -1107,6 +1111,7 @@ Public Sub WendePersistierteVorjahrEntscheidungenAn()
     Call StelleVorjahrEntscheidungenWiederHer(wsUeb, entscheidungen, lastRow)
     On Error Resume Next
     wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
+    Application.EnableEvents = eventsWarenAktiv
     On Error GoTo 0
 End Sub
 
