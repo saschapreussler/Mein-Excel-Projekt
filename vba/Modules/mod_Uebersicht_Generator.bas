@@ -1342,6 +1342,7 @@ Private Function ParzelleHatGuthabenverrechnung(ByVal wsUeb As Worksheet, _
     Dim parzelle As String
     Dim r As Long, lastRow As Long
     Dim quelleKey As String
+    Dim teile() As String
     parzelle = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
     For r = UEBERSICHT_START_ROW To letzteZeile
         If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle Then
