@@ -206,6 +206,11 @@ Private Sub Workbook_SheetActivate(ByVal Sh As Object)
     
     ' Vollbildmodus + Header/Formelleiste umschalten
     Call mod_Vollbild.SetzeVollbildModus(vollbild)
+    If StrComp(shName, WS_UEBERSICHT(), vbTextCompare) = 0 Then
+        On Error Resume Next
+        Call mod_Uebersicht_Generator.RepariereStatusDropdown
+        On Error GoTo 0
+    End If
 End Sub
 
 

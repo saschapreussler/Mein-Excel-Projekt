@@ -1343,10 +1343,11 @@ Private Function ErmittleGesamtguthabenFuerMitglied(ByVal wsUeb As Worksheet, _
         If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
            mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = nameNorm Then
             ErmittleGesamtguthabenFuerMitglied = ErmittleGesamtguthabenFuerMitglied + _
-                Application.Max(0, mod_Zahlungspruefung.LeseGeldwertZP( _
-                    wsUeb.Cells(r, UEB_COL_GUTHABEN).value) - GuthabenVerrechnetFuerZeile(wsUeb, r))
+                mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
         End If
     Next r
+    ErmittleGesamtguthabenFuerMitglied = Application.Max(0, _
+        ErmittleGesamtguthabenFuerMitglied - GuthabenGesamtVerrechnetFuerMitglied(wsUeb, zielZeile))
 End Function
 
 Private Sub VerbraucheGuthabenFuerMitglied(ByVal wsUeb As Worksheet, _
@@ -1766,6 +1767,33 @@ Private Function GuthabenVerrechnetFuerZeile(ByVal wsUeb As Worksheet, ByVal zei
         End If
     Next r
     GuthabenVerrechnetFuerZeile = Application.Min(basis, GuthabenVerrechnetFuerZeile)
+End Function
+
+Private Function GuthabenGesamtVerrechnetFuerMitglied(ByVal wsUeb As Worksheet, _
+                                                       ByVal zeile As Long) As Double
+    Dim wsDaten As Worksheet
+    Dim lastRow As Long, r As Long
+    Dim ownerKey As String, quelleKey As String
+    Dim teile() As String
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsDaten Is Nothing Then Exit Function
+    ownerKey = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)) & "|" & _
+        mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value))
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
+    For r = GUTH_VER_START_ROW To lastRow
+        quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
+        If Left$(quelleKey, 7) = "SUMME|" Then
+            teile = Split(quelleKey, "|", 3)
+            If UBound(teile) = 2 Then
+                If StrComp(teile(1) & "|" & teile(2), ownerKey, vbTextCompare) = 0 Then
+                    GuthabenGesamtVerrechnetFuerMitglied = GuthabenGesamtVerrechnetFuerMitglied + _
+                        mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
+                End If
+            End If
+        End If
+    Next r
 End Function
 
 Public Sub FokussiereErsteOffeneZahlungspruefung()
