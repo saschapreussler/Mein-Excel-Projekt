@@ -1022,9 +1022,12 @@ Private Function SammleVorjahrEntscheidungen(ByVal wsUeb As Worksheet) As Object
                                   wsUeb.Cells(r, UEB_COL_STATUS).value, _
                                   wsUeb.Cells(r, UEB_COL_GUTHABEN).value, _
                                   bemerkung)
+                Call SpeichereVorjahrEntscheidung(wsUeb, r)
             End If
         End If
     Next r
+
+    Call LadePersistierteVorjahrEntscheidungen(dict)
 
     Set SammleVorjahrEntscheidungen = dict
 End Function
@@ -1054,6 +1057,81 @@ Private Sub StelleVorjahrEntscheidungenWiederHer(ByVal wsUeb As Worksheet, _
             End If
         End If
     Next r
+End Sub
+
+Private Sub LadePersistierteVorjahrEntscheidungen(ByVal entscheidungen As Object)
+    Dim wsDaten As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim key As String
+
+    If entscheidungen Is Nothing Then Exit Sub
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsDaten Is Nothing Then Exit Sub
+
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, VJ_MAN_COL_KEY).End(xlUp).Row
+    If lastRow < VJ_MAN_START_ROW Then Exit Sub
+
+    For r = VJ_MAN_START_ROW To lastRow
+        key = Trim$(CStr(wsDaten.Cells(r, VJ_MAN_COL_KEY).value))
+        If key <> "" Then
+            entscheidungen(key) = Array(wsDaten.Cells(r, VJ_MAN_COL_IST).value, _
+                                        wsDaten.Cells(r, VJ_MAN_COL_STATUS).value, _
+                                        wsDaten.Cells(r, VJ_MAN_COL_GUTHABEN).value, _
+                                        wsDaten.Cells(r, VJ_MAN_COL_BEMERKUNG).value)
+        End If
+    Next r
+End Sub
+
+Private Sub SpeichereVorjahrEntscheidung(ByVal wsUeb As Worksheet, ByVal zeile As Long)
+    Dim wsDaten As Worksheet
+    Dim key As String
+    Dim lastRow As Long
+    Dim zielRow As Long
+    Dim r As Long
+
+    key = UebersichtEntscheidungsKey(wsUeb, zeile)
+    If key = "" Then Exit Sub
+
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsDaten Is Nothing Then Exit Sub
+
+    On Error Resume Next
+    wsDaten.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, VJ_MAN_COL_KEY).End(xlUp).Row
+    zielRow = 0
+    If lastRow >= VJ_MAN_START_ROW Then
+        For r = VJ_MAN_START_ROW To lastRow
+            If StrComp(Trim$(CStr(wsDaten.Cells(r, VJ_MAN_COL_KEY).value)), key, vbTextCompare) = 0 Then
+                zielRow = r
+                Exit For
+            End If
+        Next r
+    End If
+    If zielRow = 0 Then
+        zielRow = IIf(lastRow < VJ_MAN_START_ROW, VJ_MAN_START_ROW, lastRow + 1)
+    End If
+
+    wsDaten.Cells(VJ_MAN_HEADER_ROW, VJ_MAN_COL_KEY).value = "VJ Entscheidung Key"
+    wsDaten.Cells(VJ_MAN_HEADER_ROW, VJ_MAN_COL_IST).value = "VJ Ist"
+    wsDaten.Cells(VJ_MAN_HEADER_ROW, VJ_MAN_COL_STATUS).value = "VJ Status"
+    wsDaten.Cells(VJ_MAN_HEADER_ROW, VJ_MAN_COL_GUTHABEN).value = "VJ Guthaben"
+    wsDaten.Cells(VJ_MAN_HEADER_ROW, VJ_MAN_COL_BEMERKUNG).value = "VJ Bemerkung"
+    wsDaten.Cells(zielRow, VJ_MAN_COL_KEY).value = key
+    wsDaten.Cells(zielRow, VJ_MAN_COL_IST).value = wsUeb.Cells(zeile, UEB_COL_IST).value
+    wsDaten.Cells(zielRow, VJ_MAN_COL_STATUS).value = wsUeb.Cells(zeile, UEB_COL_STATUS).value
+    wsDaten.Cells(zielRow, VJ_MAN_COL_GUTHABEN).value = wsUeb.Cells(zeile, UEB_COL_GUTHABEN).value
+    wsDaten.Cells(zielRow, VJ_MAN_COL_BEMERKUNG).value = wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value
+
+    On Error Resume Next
+    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
 End Sub
 
 Private Function UebersichtEntscheidungsKey(ByVal wsUeb As Worksheet, ByVal zeile As Long) As String
@@ -2068,6 +2146,7 @@ NextGelbZeile:
                     "Guthaben aus Vorjahrzahlung: " & Format$(zahlBetrag - sollWert, "#,##0.00") & " " & ChrW(8364), " | ")
             End If
 
+            Call SpeichereVorjahrEntscheidung(wsUeb, r)
             beantwortet = beantwortet + 1
             
         Else  ' vbNo
@@ -2091,6 +2170,7 @@ NextGelbZeile:
                 wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = rotBem
             End If
             
+            Call SpeichereVorjahrEntscheidung(wsUeb, r)
             bestaetigtRot = bestaetigtRot + 1
             beantwortet = beantwortet + 1
         End If
@@ -2197,6 +2277,7 @@ Private Sub FrageUndMarkiereMitbezahlteVorjahrMitglieder(ByVal wsUeb As Workshee
                                     ", Gesamtbetrag " & Format$(zahlBetrag, "#,##0.00") & " " & ChrW(8364) & ")"
                         wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = _
                             FuegeTeiltextEinmalHinzu(CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value), bemerkung, " | ")
+                        Call SpeichereVorjahrEntscheidung(wsUeb, r)
                         End If
                     End If
                 End If

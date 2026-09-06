@@ -212,6 +212,16 @@ Public Const VJ_COL_ENTITYKEY As Long = 84      ' CF - EntityKey
 Public Const VJ_START_ROW As Long = 4
 Public Const VJ_HEADER_ROW As Long = 3
 
+' Manuelle Vorjahrentscheidungen bleiben unabhängig vom Neuaufbau
+' der Zahlungsübersicht dauerhaft erhalten.
+Public Const VJ_MAN_COL_KEY As Long = 85         ' CG
+Public Const VJ_MAN_COL_IST As Long = 86         ' CH
+Public Const VJ_MAN_COL_STATUS As Long = 87      ' CI
+Public Const VJ_MAN_COL_GUTHABEN As Long = 88    ' CJ
+Public Const VJ_MAN_COL_BEMERKUNG As Long = 89   ' CK
+Public Const VJ_MAN_START_ROW As Long = 4
+Public Const VJ_MAN_HEADER_ROW As Long = 3
+
 ' ===============================================================
 ' I. CSV-IMPORT (SPARKASSE)
 ' ===============================================================
