@@ -839,8 +839,13 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 wsUeb.Cells(rowIdx, UEB_COL_GUTHABEN).value = automatischGuthaben
                 If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                     Dim berechnetesGuthaben As Double
-                    berechnetesGuthaben = ErmittleGuthabenMitgliedsbeitrag( _
-                        mitglieder, CLng(parzelleWert), entityKey, monat, jahr, kategorien(k).SollBetrag)
+                    If partnerInfo = "" Then
+                        berechnetesGuthaben = ErmittleGuthabenMitgliedsbeitrag( _
+                            mitglieder, CLng(parzelleWert), entityKey, monat, jahr, kategorien(k).SollBetrag)
+                    Else
+                        berechnetesGuthaben = 0
+                        wsUeb.Cells(rowIdx, UEB_COL_GUTHABEN).value = 0
+                    End If
                     If berechnetesGuthaben > automatischGuthaben Then
                         wsUeb.Cells(rowIdx, UEB_COL_GUTHABEN).value = berechnetesGuthaben
                     End If
@@ -1644,10 +1649,12 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                 wsUeb.Cells(endRow, UEB_COL_STATUS)).HorizontalAlignment = xlCenter
     Err.Clear
 
+    Dim listenTrenner As String
+    listenTrenner = Application.International(xlListSeparator)
     With wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS))
         .Validation.Delete
         .Validation.Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
-                        Operator:=xlBetween, Formula1:="GR" & ChrW(220) & "N,GELB,ROT"
+                        Operator:=xlBetween, Formula1:="GR" & ChrW(220) & "N" & listenTrenner & "GELB" & listenTrenner & "ROT"
         .Validation.IgnoreBlank = False
         .Validation.InCellDropdown = True
         .Validation.ErrorTitle = "Ungültiger Status"
