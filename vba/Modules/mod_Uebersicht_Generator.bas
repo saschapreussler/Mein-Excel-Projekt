@@ -2040,6 +2040,8 @@ End Sub
 Public Sub DebugStatusDropdown()
     Dim wsUeb As Worksheet
     Dim zelle As Range
+    Dim endRow As Long
+    Dim statusBereich As Range
     Debug.Print "[StatusDropdown] Starte Reparaturtest..."
     RepariereStatusDropdown
     On Error Resume Next
@@ -2052,6 +2054,31 @@ Public Sub DebugStatusDropdown()
     Debug.Print "[StatusDropdown] Repository-PASSWORD-Länge=" & Len(PASSWORD)
     Debug.Print "[StatusDropdown] Zelle=" & zelle.Address(False, False) & _
                 " Locked=" & zelle.Locked & " Value=" & CStr(zelle.Value)
+    endRow = wsUeb.Cells(wsUeb.Rows.Count, UEB_COL_PARZELLE).End(xlUp).Row
+    Set statusBereich = wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_STATUS), _
+                                    wsUeb.Cells(endRow, UEB_COL_STATUS))
+    On Error Resume Next
+    Err.Clear
+    If wsUeb.ProtectContents Then wsUeb.Unprotect PASSWORD:=PASSWORD
+    Debug.Print "[StatusDropdown] Direkter Unprotect Fehler=" & Err.Number & " " & Err.Description
+    Err.Clear
+    statusBereich.Locked = False
+    Debug.Print "[StatusDropdown] Direkter Locked-Set Fehler=" & Err.Number & " " & Err.Description
+    Err.Clear
+    statusBereich.Validation.Delete
+    Debug.Print "[StatusDropdown] Direkter Delete Fehler=" & Err.Number & " " & Err.Description
+    Err.Clear
+    statusBereich.Validation.Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
+        Operator:=xlBetween, Formula1:="=$BH$1:$BH$3"
+    Debug.Print "[StatusDropdown] Direkter Add Fehler=" & Err.Number & " " & Err.Description
+    Err.Clear
+    statusBereich.Validation.InCellDropdown = True
+    Debug.Print "[StatusDropdown] Direkter InCellDropdown Fehler=" & Err.Number & " " & Err.Description
+    Err.Clear
+    wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
+    Debug.Print "[StatusDropdown] Direkter Reprotect Fehler=" & Err.Number & " " & Err.Description
+    Err.Clear
+    On Error GoTo 0
     On Error Resume Next
     Debug.Print "[StatusDropdown] ValidationType=" & zelle.Validation.Type
     Debug.Print "[StatusDropdown] Formula1=" & zelle.Validation.Formula1
