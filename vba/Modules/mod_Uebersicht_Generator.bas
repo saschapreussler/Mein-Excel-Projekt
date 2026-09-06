@@ -1938,7 +1938,7 @@ Private Function IstGemeinschaftskontoFuerParzelle(ByVal mitglieder As Collectio
     If kontoname = "" Then Exit Function
 
     personenNamen = HoleBeitragspflichtigeMitgliedsnamen(parzelle)
-    namen = Split(personenNamen, " / ")
+    namen = Split(personenNamen, vbLf)
     If UBound(namen) < 1 Then Exit Function
 
     For i = LBound(namen) To UBound(namen)
@@ -1967,7 +1967,7 @@ Private Function ErmittleGemeinschaftsVertreter(ByVal mitglieder As Collection) 
     For Each mitglied In mitglieder
         If Trim$(CStr(mitglied("EntityKey"))) <> "" Then
             If InStr(1, CStr(mitglied("Name")), vbLf, vbBinaryCompare) > 0 Or _
-               InStr(1, CStr(mitglied("Name")), " / ", vbTextCompare) > 0 Then
+               InStr(1, CStr(mitglied("Name")), vbLf, vbBinaryCompare) > 0 Then
                 parzellenKey = CStr(CLng(mitglied("Parzelle")))
                 If Not result.exists(parzellenKey) Then result.Add parzellenKey, CStr(mitglied("EntityKey"))
             Else
@@ -2050,7 +2050,7 @@ Private Function HoleBeitragspflichtigeMitgliedsnamen(ByVal parzelle As Long) As
                Trim$(CStr(wsMitglieder.Cells(r, M_COL_VORNAME).value))
         If Replace(name, ", ", "") = "" Then GoTo NextName
         If HoleBeitragspflichtigeMitgliedsnamen <> "" Then HoleBeitragspflichtigeMitgliedsnamen = _
-            HoleBeitragspflichtigeMitgliedsnamen & " / "
+            HoleBeitragspflichtigeMitgliedsnamen & vbLf
         HoleBeitragspflichtigeMitgliedsnamen = HoleBeitragspflichtigeMitgliedsnamen & name
 NextName:
     Next r
