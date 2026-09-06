@@ -115,8 +115,7 @@ Public Sub FormatiereBlattBankkonto()
     If hatMonatListe Then
         monatFormel = "=lst_MonatPeriode"
     Else
-        monatFormel = "Januar,Februar,M" & ChrW(228) & "rz,April,Mai,Juni," & _
-                      "Juli,August,September,Oktober,November,Dezember"
+        monatFormel = "=lst_MonatPeriode"
     End If
     
     For r = BK_START_ROW To lastRow

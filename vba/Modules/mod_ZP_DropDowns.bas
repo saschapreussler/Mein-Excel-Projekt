@@ -249,10 +249,6 @@ Private Sub SetzeMonatDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
     
     If lastRow < BK_START_ROW Then Exit Sub
     
-    Dim monatsListe As String
-    monatsListe = "Januar,Februar,M" & ChrW(228) & "rz,April,Mai,Juni," & _
-                  "Juli,August,September,Oktober,November,Dezember"
-    
     Dim rngMonat As Range
     Set rngMonat = ws.Range(ws.Cells(BK_START_ROW, BK_COL_MONAT_PERIODE), _
                             ws.Cells(lastRow, BK_COL_MONAT_PERIODE))
@@ -263,7 +259,7 @@ Private Sub SetzeMonatDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
         .Add Type:=xlValidateList, _
              AlertStyle:=xlValidAlertInformation, _
              Operator:=xlBetween, _
-             Formula1:=monatsListe
+             Formula1:="=lst_MonatPeriode"
         .IgnoreBlank = True
         .InCellDropdown = True
         .ShowInput = False

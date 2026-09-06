@@ -1218,7 +1218,7 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
             If offen > 0.004 Then
                 quelle = FindeGuthabenQuelle(wsUeb, r, letzteZeile)
                 If quelle > 0 Then
-                    verfuegbar = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(quelle, UEB_COL_GUTHABEN).value)
+                    verfuegbar = ErmittleGesamtguthabenFuerMitglied(wsUeb, r, letzteZeile)
                     If verfuegbar > 0.004 Then
                         zielKey = UebersichtEntscheidungsKey(wsUeb, r)
                         If Not GuthabenVerrechnungVorhanden(wsDaten, zielKey) Then
@@ -1230,7 +1230,7 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
                                 "Soll der offene Betrag aus dem Guthaben verrechnet werden?", _
                                 vbYesNo + vbQuestion, "Guthaben verrechnen")
                             If antwort = vbYes Then
-                                wsUeb.Cells(quelle, UEB_COL_GUTHABEN).value = verfuegbar - anwenden
+                                VerbraucheGuthabenFuerMitglied wsUeb, r, letzteZeile, anwenden
                                 wsUeb.Cells(r, UEB_COL_IST).value = istWert + anwenden
                                 If anwenden >= offen - 0.01 Then
                                     wsUeb.Cells(r, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
@@ -1242,11 +1242,60 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
                                 wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = _
                                     CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value) & _
                                     " | Guthaben verrechnet: " & Format$(anwenden, "#,##0.00") & " " & ChrW(8364)
-                                quelleKey = UebersichtEntscheidungsKey(wsUeb, quelle)
+                                quelleKey = "SUMME|" & Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
+                                             mod_EntityKey_Normalize.NormalisiereStringFuerVergleich( _
+                                                 CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value))
                                 SpeichereGuthabenVerrechnung wsDaten, zielKey, anwenden, quelleKey
                             End If
                         End If
                     End If
+                End If
+            End If
+        End If
+    Next r
+End Sub
+
+Private Function ErmittleGesamtguthabenFuerMitglied(ByVal wsUeb As Worksheet, _
+                                                     ByVal zielZeile As Long, _
+                                                     ByVal letzteZeile As Long) As Double
+    Dim r As Long
+    Dim parzelle As String
+    Dim nameNorm As String
+    parzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
+    nameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zielZeile, UEB_COL_MITGLIED).value))
+    For r = UEBERSICHT_START_ROW To letzteZeile
+        If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
+           mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = nameNorm Then
+            ErmittleGesamtguthabenFuerMitglied = ErmittleGesamtguthabenFuerMitglied + _
+                mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
+        End If
+    Next r
+End Function
+
+Private Sub VerbraucheGuthabenFuerMitglied(ByVal wsUeb As Worksheet, _
+                                            ByVal zielZeile As Long, _
+                                            ByVal letzteZeile As Long, _
+                                            ByVal betrag As Double)
+    Dim r As Long
+    Dim rest As Double
+    Dim vorhanden As Double
+    Dim parzelle As String
+    Dim nameNorm As String
+    rest = betrag
+    parzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
+    nameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zielZeile, UEB_COL_MITGLIED).value))
+    For r = UEBERSICHT_START_ROW To letzteZeile
+        If rest <= 0.004 Then Exit For
+        If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
+           mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = nameNorm Then
+            vorhanden = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
+            If vorhanden > 0.004 Then
+                If vorhanden >= rest Then
+                    wsUeb.Cells(r, UEB_COL_GUTHABEN).value = vorhanden - rest
+                    rest = 0
+                Else
+                    wsUeb.Cells(r, UEB_COL_GUTHABEN).value = 0
+                    rest = rest - vorhanden
                 End If
             End If
         End If
@@ -1282,7 +1331,12 @@ Private Sub LadeGuthabenVerrechnungen(ByVal wsUeb As Worksheet, ByVal wsDaten As
         betrag = mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
         If key <> "" And betrag > 0 Then
             ziel = FindeZeileNachEntscheidungsKey(wsUeb, letzteZeile, key)
-            quelle = FindeZeileNachEntscheidungsKey(wsUeb, letzteZeile, quelleKey)
+            If Left$(quelleKey, 7) = "SUMME|" Then
+                VerbraucheGuthabenNachSummenKey wsUeb, letzteZeile, quelleKey, betrag
+                quelle = 0
+            Else
+                quelle = FindeZeileNachEntscheidungsKey(wsUeb, letzteZeile, quelleKey)
+            End If
             If quelle > 0 Then
                 wsUeb.Cells(quelle, UEB_COL_GUTHABEN).value = Application.Max(0, _
                     mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(quelle, UEB_COL_GUTHABEN).value) - betrag)
@@ -1293,6 +1347,36 @@ Private Sub LadeGuthabenVerrechnungen(ByVal wsUeb As Worksheet, ByVal wsDaten As
                     wsUeb.Cells(ziel, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
                     wsUeb.Cells(ziel, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
                 End If
+            End If
+        End If
+    Next r
+End Sub
+
+Private Sub VerbraucheGuthabenNachSummenKey(ByVal wsUeb As Worksheet, _
+                                             ByVal letzteZeile As Long, _
+                                             ByVal summenKey As String, _
+                                             ByVal betrag As Double)
+    Dim teile() As String
+    Dim r As Long
+    Dim rest As Double
+    Dim vorhanden As Double
+    If Left$(summenKey, 7) <> "SUMME|" Then Exit Sub
+    teile = Split(summenKey, "|", 2)
+    If UBound(teile) < 1 Then Exit Sub
+    Dim kriterium As String
+    kriterium = teile(1)
+    rest = betrag
+    For r = UEBERSICHT_START_ROW To letzteZeile
+        If rest <= 0.004 Then Exit For
+        If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
+           mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = kriterium Then
+            vorhanden = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
+            If vorhanden >= rest Then
+                wsUeb.Cells(r, UEB_COL_GUTHABEN).value = vorhanden - rest
+                rest = 0
+            ElseIf vorhanden > 0.004 Then
+                wsUeb.Cells(r, UEB_COL_GUTHABEN).value = 0
+                rest = rest - vorhanden
             End If
         End If
     Next r

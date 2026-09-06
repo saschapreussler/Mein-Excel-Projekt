@@ -28,7 +28,7 @@ Public Sub Anwende_Zebra_Bankkonto(ByVal ws As Worksheet)
     
     For lRow = BK_START_ROW To lastRow
         Set rngPart1 = ws.Range(ws.Cells(lRow, 1), ws.Cells(lRow, 7))
-        Set rngPart2 = ws.Range(ws.Cells(lRow, 9), ws.Cells(lRow, 26))
+        Set rngPart2 = ws.Range(ws.Cells(lRow, 10), ws.Cells(lRow, 26))
         
         If (lRow - BK_START_ROW) Mod 2 = 1 Then
             rngPart1.Interior.color = ZEBRA_COLOR
