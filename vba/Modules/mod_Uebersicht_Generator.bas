@@ -736,10 +736,12 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
 
                 If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
-                    If IstGemeinschaftskontoFuerParzelle(mitglieder, CLng(parzelleWert), entityKey) Then
+                    Dim gemeinschaftsIban As String
+                    gemeinschaftsIban = HoleGemeinschaftsIban(mitglieder, CLng(parzelleWert), entityKey)
+                    If gemeinschaftsIban <> "" Then
                         Dim gemeinschaftsKey As String
                         gemeinschaftsKey = CStr(parzelleWert) & "|" & monat & "|" & _
-                                          Trim$(CStr(mitglied("IBAN")))
+                                          gemeinschaftsIban
                         If geschriebeneGemeinschaftskonten.exists(gemeinschaftsKey) Then GoTo NextKat
                         geschriebeneGemeinschaftskonten.Add gemeinschaftsKey, True
                     End If
@@ -763,7 +765,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 Dim mbFaktor As Long
                 mbFaktor = 1
                 If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
-                    If IstGemeinschaftskontoFuerParzelle(mitglieder, CLng(parzelleWert), entityKey) Then
+                    If HoleGemeinschaftsIban(mitglieder, CLng(parzelleWert), entityKey) <> "" Then
                         mbFaktor = ZaehleBeitragspflichtigeMitgliederAufParzelle(CLng(parzelleWert))
                         mitgliedName = HoleBeitragspflichtigeMitgliedsnamen(CLng(parzelleWert))
                     End If
@@ -1936,6 +1938,36 @@ Private Function IstGemeinschaftskontoFuerParzelle(ByVal mitglieder As Collectio
     Next i
 
     IstGemeinschaftskontoFuerParzelle = True
+End Function
+
+Private Function HoleGemeinschaftsIban(ByVal mitglieder As Collection, _
+                                        ByVal parzelle As Long, _
+                                        ByVal entityKey As String) As String
+    Dim mitglied As Object
+    Dim eigeneIban As String
+    Dim anzahlPersonen As Long
+
+    HoleGemeinschaftsIban = ""
+    If Trim$(entityKey) = "" Then Exit Function
+
+    For Each mitglied In mitglieder
+        If CLng(mitglied("Parzelle")) = parzelle And _
+           StrComp(CStr(mitglied("EntityKey")), entityKey, vbTextCompare) = 0 Then
+            eigeneIban = Replace(Trim$(CStr(mitglied("IBAN"))), " ", "")
+            Exit For
+        End If
+    Next mitglied
+    If eigeneIban = "" Then Exit Function
+
+    For Each mitglied In mitglieder
+        If CLng(mitglied("Parzelle")) = parzelle And _
+           Replace(Trim$(CStr(mitglied("IBAN"))), " ", "") = eigeneIban And _
+           InStr(1, UCase$(CStr(mitglied("Role"))), "EHREN", vbTextCompare) = 0 Then
+            anzahlPersonen = anzahlPersonen + 1
+        End If
+    Next mitglied
+
+    If anzahlPersonen > 1 Then HoleGemeinschaftsIban = eigeneIban
 End Function
 
 Private Function HoleBeitragspflichtigeMitgliedsnamen(ByVal parzelle As Long) As String
