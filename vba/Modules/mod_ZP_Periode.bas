@@ -131,7 +131,8 @@ Zeilenfehler:
     ws.Cells(r, BK_COL_BEMERKUNG).value = Trim$(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value)) & _
         IIf(Trim$(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value)) = "", "", vbLf) & _
         "Periodenautomatik Fehler - bitte Monat/Periode prüfen"
-    On Error GoTo SetzeMonatPeriodeError
+    Application.EnableEvents = eventsWaren
+    On Error GoTo 0
     GoTo WeiterMitNaechsterZeile
 
 SetzeMonatPeriodeError:

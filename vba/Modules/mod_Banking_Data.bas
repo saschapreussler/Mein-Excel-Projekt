@@ -546,15 +546,15 @@ Private Function ErstelleOffeneZuordnungsDetails(ByVal wsBK As Worksheet) As Str
                 If grund <> "" Then grund = grund & "; "
                 grund = grund & "Monat/Periode I fehlt"
             End If
-            If wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color = RGB(255, 199, 206) Or _
-               wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color = RGB(255, 235, 156) Then
+                If wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color = RGB(255, 199, 206) Or _
+                    wsBK.Cells(r, BK_COL_KATEGORIE).Interior.color = RGB(255, 235, 156) Then
                 If grund <> "" Then grund = grund & "; "
                 grund = grund & "Kategorie muss geprüft werden"
             End If
             If wsBK.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 199, 206) Or _
                wsBK.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 235, 156) Then
                 If grund <> "" Then grund = grund & "; "
-                grund = grund & "Monat/Periode muss geprüft werden"
+                grund = grund & "Monat/Periode wurde automatisch vorgeschlagen und muss bestätigt werden"
             End If
             If grund <> "" Then
                 ErstelleOffeneZuordnungsDetails = ErstelleOffeneZuordnungsDetails & _
