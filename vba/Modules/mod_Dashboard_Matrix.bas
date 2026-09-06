@@ -552,6 +552,12 @@ NextKatDash:
     Next p
     
     matrixEndRow = rowIdx - 1
+
+    Debug.Print "[Dashboard] Matrix erstellt: Parzellen=" & anzParz & _
+                " Soll=" & Format$(kpiSummeSoll, "0.00") & _
+                " Ist=" & Format$(kpiSummeIst, "0.00") & _
+                " Offen=" & Format$(kpiOffenBetrag, "0.00") & _
+                " Guthaben=" & Format$(mod_Uebersicht_Generator.ErmittleGesamtguthaben(), "0.00")
     
     ' Summenzeile
     rowIdx = matrixEndRow + 1

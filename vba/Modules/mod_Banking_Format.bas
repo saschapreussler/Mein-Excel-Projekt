@@ -311,13 +311,11 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     
     ' C5: Letzte Buchung im gewählten Monat oder Gesamtjahr.
     ws.Range("C5").FormulaLocal = _
-        "=WENN(Daten!$AE$4=0;WENN(ANZAHL(Bankkonto!$A$30:$A$3433)=0;"""";" & _
-        """Kontostand nach der letzten Buchung im Monat am: "" & TEXT(MAX(Bankkonto!$A$30:$A$5000);""TT.MM.JJJJ""));" & _
-        "WENN(Z" & ChrW(196) & "HLENWENNS(Bankkonto!$A$30:$A$5000;"">="" & DATUM(Einstellungen!$C$6;Daten!$AE$4;1);" & _
-        "Bankkonto!$A$30:$A$5000;""<="" & DATUM(Einstellungen!$C$6;Daten!$AE$4+1;0))=0;"""";" & _
-        """Kontostand nach der letzten Buchung im Monat am: "" & TEXT(MAXWENNS(Bankkonto!$A$30:$A$5000;" & _
-        "Bankkonto!$A$30:$A$5000;"">="" & DATUM(Einstellungen!$C$6;Daten!$AE$4;1);" & _
-        "Bankkonto!$A$30:$A$5000;""<="" & DATUM(Einstellungen!$C$6;Daten!$AE$4+1;0));""TT.MM.JJJJ""))))"
+        "=WENN(Daten!$AE$4=0;WENN(ANZAHL($A$30:$A$5000)=0;"""";" & _
+        """Kontostand nach der letzten Buchung am: ""&TEXT(MAX($A$30:$A$5000);""TT.MM.JJJJ""));" & _
+        "WENN(ZÄHLENWENNS($A$30:$A$5000;"">=""&DATUM(Einstellungen!$C$6;Daten!$AE$4;1);" & _
+        "$A$30:$A$5000;""<=""&DATUM(Einstellungen!$C$6;Daten!$AE$4+1;0))=0;"""";" & _
+        """Kontostand nach der letzten Buchung am: ""&TEXT(MAXWENNS($A$30:$A$5000;$A$30:$A$5000;"">=""&DATUM(Einstellungen!$C$6;Daten!$AE$4;1);$A$30:$A$5000;""<=""&DATUM(Einstellungen!$C$6;Daten!$AE$4+1;0));""TT.MM.JJJJ"")))"
     
     ' E10-E16: Einnahmen (Spalten M-S) mit SUMMEWENNS + WENN=0 leer
     ws.Range("E10").FormulaLocal = _

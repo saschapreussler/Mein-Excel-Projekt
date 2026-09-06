@@ -1009,6 +1009,7 @@ NextMitglied:
     Application.EnableEvents = True
     Application.ScreenUpdating = True
 
+    VerarbeiteSpaeteNachzahlungen wsUeb, rowIdx - 1
     PruefeUndVerrechneGuthaben wsUeb, rowIdx - 1
     
     ' Die Vorjahr-Hinweispruefung wird gezielt beim Blattwechsel auf
@@ -1055,6 +1056,81 @@ ErrorHandler:
     End If
     
 End Sub
+
+Private Sub VerarbeiteSpaeteNachzahlungen(ByVal wsUeb As Worksheet, ByVal letzteZeile As Long)
+    Dim aktuell As Long, vorher As Long
+    Dim aktuellerIst As Double, aktuellerSoll As Double
+    Dim vorherIst As Double, vorherSoll As Double
+    Dim ueberschuss As Double, offen As Double, anwenden As Double
+    Dim parzelle As String, nameNorm As String, kategorie As String
+    Dim monatAktuell As Long, monatVorher As Long
+    Dim antwort As VbMsgBoxResult
+
+    For aktuell = UEBERSICHT_START_ROW To letzteZeile
+        aktuellerSoll = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(aktuell, UEB_COL_SOLL).value)
+        aktuellerIst = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(aktuell, UEB_COL_IST).value)
+        If aktuellerSoll <= 0 Or aktuellerIst <= aktuellerSoll + 0.01 Then GoTo NaechsteAktuelleZeile
+
+        monatAktuell = MonthNumberFromOverview(wsUeb.Cells(aktuell, UEB_COL_MONAT).value)
+        If monatAktuell <= 1 Then GoTo NaechsteAktuelleZeile
+        parzelle = Trim$(CStr(wsUeb.Cells(aktuell, UEB_COL_PARZELLE).value))
+        nameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(aktuell, UEB_COL_MITGLIED).value))
+        kategorie = Trim$(CStr(wsUeb.Cells(aktuell, UEB_COL_KATEGORIE).value))
+        ueberschuss = aktuellerIst - aktuellerSoll
+
+        For vorher = UEBERSICHT_START_ROW To aktuell - 1
+            If ueberschuss <= 0.004 Then Exit For
+            monatVorher = MonthNumberFromOverview(wsUeb.Cells(vorher, UEB_COL_MONAT).value)
+            If monatVorher <= 0 Or monatVorher >= monatAktuell Then GoTo NaechsteVorherigeZeile
+            If Trim$(CStr(wsUeb.Cells(vorher, UEB_COL_PARZELLE).value)) <> parzelle Then GoTo NaechsteVorherigeZeile
+            If mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(vorher, UEB_COL_MITGLIED).value)) <> nameNorm Then GoTo NaechsteVorherigeZeile
+            If StrComp(Trim$(CStr(wsUeb.Cells(vorher, UEB_COL_KATEGORIE).value)), kategorie, vbTextCompare) <> 0 Then GoTo NaechsteVorherigeZeile
+            If StrComp(UCase$(Trim$(CStr(wsUeb.Cells(vorher, UEB_COL_STATUS).value))), "ROT", vbTextCompare) <> 0 Then GoTo NaechsteVorherigeZeile
+
+            vorherSoll = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(vorher, UEB_COL_SOLL).value)
+            vorherIst = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(vorher, UEB_COL_IST).value)
+            offen = vorherSoll - vorherIst
+            If offen <= 0.004 Then GoTo NaechsteVorherigeZeile
+            anwenden = Application.Min(ueberschuss, offen)
+
+            antwort = MsgBox("Die Zahlung für " & CStr(wsUeb.Cells(aktuell, UEB_COL_MONAT).value) & _
+                " enthält einen Überschuss von " & Format$(ueberschuss, "#,##0.00") & " " & ChrW(8364) & "." & vbCrLf & vbCrLf & _
+                "Offener Vormonat " & CStr(wsUeb.Cells(vorher, UEB_COL_MONAT).value) & ": " & _
+                Format$(offen, "#,##0.00") & " " & ChrW(8364) & vbCrLf & vbCrLf & _
+                "Soll der Betrag von " & Format$(anwenden, "#,##0.00") & " " & ChrW(8364) & _
+                " als Nachzahlung für den Vormonat verwendet werden?", _
+                vbYesNo + vbQuestion, "Spätere Nachzahlung verrechnen")
+            If antwort = vbYes Then
+                wsUeb.Cells(vorher, UEB_COL_IST).value = vorherIst + anwenden
+                wsUeb.Cells(vorher, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
+                wsUeb.Cells(vorher, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
+                wsUeb.Cells(vorher, UEB_COL_BEMERKUNG).value = _
+                    CStr(wsUeb.Cells(vorher, UEB_COL_BEMERKUNG).value) & _
+                    " | Nachzahlung aus " & CStr(wsUeb.Cells(aktuell, UEB_COL_MONAT).value) & _
+                    ": " & Format$(anwenden, "#,##0.00") & " " & ChrW(8364) & _
+                    "; Säumnis bleibt bestehen"
+                aktuellerIst = aktuellerIst - anwenden
+                ueberschuss = ueberschuss - anwenden
+                wsUeb.Cells(aktuell, UEB_COL_IST).value = aktuellerIst
+                wsUeb.Cells(aktuell, UEB_COL_GUTHABEN).value = Application.Max(0, aktuellerIst - aktuellerSoll)
+                wsUeb.Cells(aktuell, UEB_COL_BEMERKUNG).value = _
+                    CStr(wsUeb.Cells(aktuell, UEB_COL_BEMERKUNG).value) & _
+                    " | Nachzahlung für " & CStr(wsUeb.Cells(vorher, UEB_COL_MONAT).value) & _
+                    ": " & Format$(anwenden, "#,##0.00") & " " & ChrW(8364)
+            End If
+NaechsteVorherigeZeile:
+        Next vorher
+NaechsteAktuelleZeile:
+    Next aktuell
+End Sub
+
+Private Function MonthNumberFromOverview(ByVal monatText As Variant) As Long
+    Dim m As Long, text As String
+    text = LCase$(Trim$(CStr(monatText)))
+    For m = 1 To 12
+        If InStr(1, text, LCase$(MonthName(m)), vbTextCompare) > 0 Then MonthNumberFromOverview = m: Exit Function
+    Next m
+End Function
 
 Private Sub SortiereUebersichtNachParzelle(ByVal wsUeb As Worksheet, ByVal letzteZeile As Long)
     If letzteZeile < UEBERSICHT_START_ROW Then Exit Sub
@@ -1941,6 +2017,27 @@ Public Sub RepariereStatusDropdown()
     End If
 End Sub
 
+Public Sub DebugStatusDropdown()
+    Dim wsUeb As Worksheet
+    Dim zelle As Range
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    If Not wsUeb Is Nothing Then Set zelle = wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_STATUS)
+    On Error GoTo 0
+    Debug.Print "[StatusDropdown] Blatt=" & IIf(wsUeb Is Nothing, "NICHT GEFUNDEN", wsUeb.Name)
+    If wsUeb Is Nothing Then Exit Sub
+    Debug.Print "[StatusDropdown] ProtectContents=" & wsUeb.ProtectContents
+    Debug.Print "[StatusDropdown] Zelle=" & zelle.Address(False, False) & _
+                " Locked=" & zelle.Locked & " Value=" & CStr(zelle.Value)
+    On Error Resume Next
+    Debug.Print "[StatusDropdown] ValidationType=" & zelle.Validation.Type
+    Debug.Print "[StatusDropdown] Formula1=" & zelle.Validation.Formula1
+    Debug.Print "[StatusDropdown] InCellDropdown=" & zelle.Validation.InCellDropdown
+    Debug.Print "[StatusDropdown] Fehler=" & Err.Number & " " & Err.Description
+    Err.Clear
+    On Error GoTo 0
+End Sub
+
 Private Sub RichteStatusDropdownEin(ByVal wsUeb As Worksheet, ByVal startRow As Long, ByVal endRow As Long)
     If endRow < startRow Then Exit Sub
 
@@ -1958,6 +2055,8 @@ Private Sub RichteStatusDropdownEin(ByVal wsUeb As Worksheet, ByVal startRow As 
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.ErrorTitle = "Ungültiger Status"
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.ErrorMessage = "Bitte GRÜN, GELB oder ROT auswählen."
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.ShowError = True
+    Debug.Print "[StatusDropdown] eingerichtet: " & wsUeb.Name & "!G" & startRow & ":G" & endRow & _
+                " Fehler=" & Err.Number & " " & Err.Description
     On Error GoTo 0
 End Sub
 
@@ -1998,7 +2097,7 @@ Private Function SammleManuelleSollWerte(ByVal wsUeb As Worksheet) As Object
         
         If sollFarbe = FARBE_HELLGELB_MANUELL Or sollFarbe = AMPEL_GRUEN Then
             Dim sollWert As Double
-            sollWert = val(CStr(wsUeb.Cells(r, UEB_COL_SOLL).value))
+            sollWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_SOLL).value)
             
             If sollWert > 0 Then
                 Dim kat As String

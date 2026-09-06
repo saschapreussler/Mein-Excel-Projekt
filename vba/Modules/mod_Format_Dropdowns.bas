@@ -120,7 +120,7 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
         End If
     Next key
     
-    Call ErstelleKategorieNamedRanges(ws, nextRowE - 1, nextRowA - 1)
+    Call ErstelleKategorieNamedRanges(ws, nextRowE - 1, nextRowA - 1, periodenZeile)
     
     Call mod_Format_Spalten.FormatiereSingleSpalte(ws, 32, True)  ' AF
     Call mod_Format_Spalten.FormatiereSingleSpalte(ws, 33, True)  ' AG
@@ -131,7 +131,10 @@ End Sub
 ' ===============================================================
 ' NAMED RANGES FÜR KATEGORIEN ERSTELLEN
 ' ===============================================================
-Private Sub ErstelleKategorieNamedRanges(ByRef ws As Worksheet, ByVal lastRowE As Long, ByVal lastRowA As Long)
+Private Sub ErstelleKategorieNamedRanges(ByRef ws As Worksheet, _
+                                         ByVal lastRowE As Long, _
+                                         ByVal lastRowA As Long, _
+                                         ByVal periodenZeile As Long)
     
     On Error Resume Next
     
