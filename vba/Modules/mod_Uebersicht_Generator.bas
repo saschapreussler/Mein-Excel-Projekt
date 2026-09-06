@@ -1293,6 +1293,8 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
             istWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_IST).value)
             offen = sollWert - istWert
             If offen > 0.004 Then
+                If BesitzerHatSichtbareGuthabenverrechnung(wsUeb, r, letzteZeile) Or _
+                   GuthabenGesamtVerrechnetFuerMitglied(wsUeb, r) > 0.004 Then GoTo NaechsteGuthabenZeile
                 quelle = FindeGuthabenQuelle(wsUeb, r, letzteZeile)
                 If quelle > 0 Then
                     verfuegbar = VerfuegbaresGuthabenFuerMitglied(wsUeb, r, letzteZeile)
@@ -1328,6 +1330,7 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
                 End If
             End If
         End If
+NaechsteGuthabenZeile:
     Next r
 End Sub
 
