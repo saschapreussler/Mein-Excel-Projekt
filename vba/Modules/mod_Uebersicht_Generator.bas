@@ -1962,20 +1962,19 @@ NextGelbZeile:
             If sollWert <= 0 Then
                 istGruen = True
             ElseIf StrComp(vjKategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 And _
-                   IstVorjahrMitgliedsbeitragParzelleGedeckt(wsUeb, r, zahlBetrag) Then
-                If zahlBetrag > sollWert + 0.01 Then
-                    zahltFuerPartner = (MsgBox( _
-                        "Die Zahlung von " & Format$(zahlBetrag, "#,##0.00") & " " & ChrW(8364) & _
-                        " liegt über dem eigenen Mitgliedsbeitrag von " & _
-                        Format$(sollWert, "#,##0.00") & " " & ChrW(8364) & "." & vbCrLf & vbCrLf & _
-                        "Galt der Mehrbetrag auch für den Mitgliedsbeitrag weiterer Personen auf " & _
-                        "Parzelle " & parzelle & "?" & vbCrLf & vbCrLf & _
-                        "Ja = Partnerbeitrag ist mitbezahlt." & vbCrLf & _
-                        "Nein = Zahlung gilt nur für " & vjMitglied & "; der Mehrbetrag wird als Guthaben geführt.", _
-                        vbYesNo + vbQuestion, "Mitgliedsbeitrag verteilen") = vbYes)
-                Else
-                    zahltFuerPartner = True
-                End If
+                   zahlBetrag > sollWert + 0.01 Then
+                zahltFuerPartner = (MsgBox( _
+                    "Die bestätigte Zahlung von " & Format$(zahlBetrag, "#,##0.00") & " " & ChrW(8364) & _
+                    " liegt über dem eigenen Mitgliedsbeitrag von " & _
+                    Format$(sollWert, "#,##0.00") & " " & ChrW(8364) & "." & vbCrLf & vbCrLf & _
+                    "Galt der Mehrbetrag von " & Format$(zahlBetrag - sollWert, "#,##0.00") & " " & ChrW(8364) & _
+                    " auch für den Mitgliedsbeitrag weiterer Personen auf Parzelle " & parzelle & "?" & vbCrLf & vbCrLf & _
+                    "Ja = Partnerbeitrag ist mitbezahlt." & vbCrLf & _
+                    "Nein = Zahlung gilt nur für " & vjMitglied & "; der Mehrbetrag wird als Guthaben geführt.", _
+                    vbYesNo + vbQuestion, "Mitgliedsbeitrag verteilen") = vbYes)
+                istGruen = True
+            ElseIf StrComp(vjKategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                zahltFuerPartner = True
                 istGruen = True
             Else
                 istGruen = (Abs(zahlBetrag - sollWert) < 0.01)
@@ -1997,6 +1996,9 @@ NextGelbZeile:
                 Call MarkiereMitbezahlteVorjahrMitglieder(wsUeb, r, zahlDatum, zahlBetrag, vjMitglied)
             ElseIf istGruen And StrComp(vjKategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                 wsUeb.Cells(r, UEB_COL_GUTHABEN).value = zahlBetrag - sollWert
+                wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = FuegeTeiltextEinmalHinzu( _
+                    CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value), _
+                    "Guthaben aus Vorjahrzahlung: " & Format$(zahlBetrag - sollWert, "#,##0.00") & " " & ChrW(8364), " | ")
             End If
             
         Else  ' vbNo
