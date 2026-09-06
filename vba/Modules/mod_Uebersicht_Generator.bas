@@ -316,6 +316,9 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' v4.3: Manuell eingetragene Soll-Werte SICHERN bevor Inhalt gelöscht wird
     Dim gespeicherteSoll As Object
     Set gespeicherteSoll = SammleManuelleSollWerte(wsUeb)
+
+    Dim gespeicherteVorjahrEntscheidungen As Object
+    Set gespeicherteVorjahrEntscheidungen = SammleVorjahrEntscheidungen(wsUeb)
     
     ' v4.5b: AutoFilter VORHER entfernen (verhindert Probleme mit gefilterten Zeilen)
     If wsUeb.AutoFilterMode Then wsUeb.AutoFilterMode = False
@@ -940,6 +943,7 @@ NextMitglied:
     ' v5.0: Formatierung NACH AutoFilter/MonatsRegister/Locked, aber VOR Protect,
     ' damit nichts NumberFormat / HorizontalAlignment / AutoFit Überschreibt.
     Call FormatiereUebersicht(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
+    Call StelleVorjahrEntscheidungenWiederHer(wsUeb, gespeicherteVorjahrEntscheidungen, rowIdx - 1)
 
     ' Blatt schützen (Soll-Zellen ohne festen Betrag bleiben editierbar)
     ' AllowFiltering: Nutzer kann AutoFilter ohne Blattschutz-Aufhebung verwenden
@@ -995,6 +999,69 @@ ErrorHandler:
     End If
     
 End Sub
+
+Private Function SammleVorjahrEntscheidungen(ByVal wsUeb As Worksheet) As Object
+    Dim dict As Object
+    Dim lastRow As Long
+    Dim r As Long
+    Dim bemerkung As String
+    Dim key As String
+
+    Set dict = CreateObject("Scripting.Dictionary")
+    dict.CompareMode = vbTextCompare
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
+
+    For r = UEBERSICHT_START_ROW To lastRow
+        bemerkung = CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value)
+        If InStr(1, bemerkung, "Vorjahrzahlung", vbTextCompare) > 0 Or _
+           InStr(1, bemerkung, "Nicht im Vorjahr bezahlt", vbTextCompare) > 0 Or _
+           InStr(1, bemerkung, "Mitbezahlt durch", vbTextCompare) > 0 Then
+            key = UebersichtEntscheidungsKey(wsUeb, r)
+            If key <> "" Then
+                dict(key) = Array(wsUeb.Cells(r, UEB_COL_IST).value, _
+                                  wsUeb.Cells(r, UEB_COL_STATUS).value, _
+                                  wsUeb.Cells(r, UEB_COL_GUTHABEN).value, _
+                                  bemerkung)
+            End If
+        End If
+    Next r
+
+    Set SammleVorjahrEntscheidungen = dict
+End Function
+
+Private Sub StelleVorjahrEntscheidungenWiederHer(ByVal wsUeb As Worksheet, _
+                                                  ByVal entscheidungen As Object, _
+                                                  ByVal lastRow As Long)
+    Dim r As Long
+    Dim key As String
+    Dim werte As Variant
+
+    If entscheidungen Is Nothing Then Exit Sub
+    For r = UEBERSICHT_START_ROW To lastRow
+        key = UebersichtEntscheidungsKey(wsUeb, r)
+        If entscheidungen.exists(key) Then
+            werte = entscheidungen(key)
+            wsUeb.Cells(r, UEB_COL_IST).value = werte(0)
+            wsUeb.Cells(r, UEB_COL_STATUS).value = werte(1)
+            wsUeb.Cells(r, UEB_COL_GUTHABEN).value = werte(2)
+            wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = werte(3)
+            If StrComp(CStr(werte(1)), "GR" & ChrW(220) & "N", vbTextCompare) = 0 Then
+                wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
+            ElseIf StrComp(CStr(werte(1)), "ROT", vbTextCompare) = 0 Then
+                wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_ROT
+            Else
+                wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GELB
+            End If
+        End If
+    Next r
+End Sub
+
+Private Function UebersichtEntscheidungsKey(ByVal wsUeb As Worksheet, ByVal zeile As Long) As String
+    UebersichtEntscheidungsKey = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)) & "|" & _
+                              Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value)) & "|" & _
+                              Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_MONAT).value)) & "|" & _
+                              Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value))
+End Function
 
 Public Function HatOffeneZahlungspruefungen() As Boolean
     Dim wsUeb As Worksheet
