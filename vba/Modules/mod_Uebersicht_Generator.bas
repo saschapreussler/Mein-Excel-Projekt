@@ -1277,6 +1277,7 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
     Dim anwenden As Double
     Dim zielKey As String
     Dim quelleKey As String
+    Dim teile() As String
     Dim antwort As VbMsgBoxResult
 
     On Error Resume Next
@@ -1293,8 +1294,7 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
             istWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_IST).value)
             offen = sollWert - istWert
             If offen > 0.004 Then
-                If BesitzerHatSichtbareGuthabenverrechnung(wsUeb, r, letzteZeile) Or _
-                   GuthabenGesamtVerrechnetFuerMitglied(wsUeb, r) > 0.004 Then GoTo NaechsteGuthabenZeile
+                     If ParzelleHatGuthabenverrechnung(wsUeb, wsDaten, r, letzteZeile) Then GoTo NaechsteGuthabenZeile
                 quelle = FindeGuthabenQuelle(wsUeb, r, letzteZeile)
                 If quelle > 0 Then
                     verfuegbar = VerfuegbaresGuthabenFuerMitglied(wsUeb, r, letzteZeile)
@@ -1304,6 +1304,7 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
                             anwenden = Application.Min(verfuegbar, offen)
                             antwort = MsgBox("Offene Zahlung für " & CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value) & _
                                 " (" & CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value) & ")" & vbCrLf & vbCrLf & _
+                                "Offener Monat: " & CStr(wsUeb.Cells(r, UEB_COL_MONAT).value) & vbCrLf & _
                                 "Offener Betrag: " & Format$(offen, "#,##0.00") & " " & ChrW(8364) & vbCrLf & _
                                 "Verfügbares Guthaben: " & Format$(verfuegbar, "#,##0.00") & " " & ChrW(8364) & vbCrLf & vbCrLf & _
                                 "Soll der offene Betrag aus dem Guthaben verrechnet werden?", _
@@ -1333,6 +1334,37 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
 NaechsteGuthabenZeile:
     Next r
 End Sub
+
+Private Function ParzelleHatGuthabenverrechnung(ByVal wsUeb As Worksheet, _
+                                                 ByVal wsDaten As Worksheet, _
+                                                 ByVal zeile As Long, _
+                                                 ByVal letzteZeile As Long) As Boolean
+    Dim parzelle As String
+    Dim r As Long, lastRow As Long
+    Dim quelleKey As String
+    parzelle = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
+    For r = UEBERSICHT_START_ROW To letzteZeile
+        If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle Then
+            If InStr(1, CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value), "Guthaben verrechnet:", vbTextCompare) > 0 Then
+                ParzelleHatGuthabenverrechnung = True
+                Exit Function
+            End If
+        End If
+    Next r
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
+    For r = GUTH_VER_START_ROW To lastRow
+        quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
+        If Left$(quelleKey, 7) = "SUMME|" Then
+            teile = Split(quelleKey, "|", 2)
+            If UBound(teile) >= 1 Then
+                If StrComp(teile(1), parzelle, vbTextCompare) = 0 Then
+                    ParzelleHatGuthabenverrechnung = True
+                    Exit Function
+                End If
+            End If
+        End If
+    Next r
+End Function
 
 Private Function VerfuegbaresGuthabenFuerMitglied(ByVal wsUeb As Worksheet, _
                                                    ByVal zielZeile As Long, _
