@@ -1661,27 +1661,16 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
 End Sub
 
 Private Sub RichteStatusDropdownEin(ByVal wsUeb As Worksheet, ByVal startRow As Long, ByVal endRow As Long)
-    Dim wsDaten As Worksheet
     Dim statusBereich As String
-    Dim datenWarGeschuetzt As Boolean
     If endRow < startRow Then Exit Sub
 
     On Error Resume Next
-    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
-    On Error GoTo 0
-    If wsDaten Is Nothing Then Exit Sub
-
-    datenWarGeschuetzt = wsDaten.ProtectContents
-    On Error Resume Next
-    If datenWarGeschuetzt Then wsDaten.Unprotect PASSWORD:=PASSWORD
-    On Error GoTo 0
-    wsDaten.Range("BH1:BH3").value = Application.Transpose(Array("GR" & ChrW(220) & "N", "GELB", "ROT"))
-    wsDaten.Columns("BH").Hidden = True
-    On Error Resume Next
     ThisWorkbook.Names("rngStatusZahlungsuebersicht").Delete
     On Error GoTo 0
+    wsUeb.Range("BH1:BH3").value = Application.Transpose(Array("GR" & ChrW(220) & "N", "GELB", "ROT"))
+    wsUeb.Columns("BH").Hidden = True
     ThisWorkbook.Names.Add Name:="rngStatusZahlungsuebersicht", _
-                           RefersTo:="='" & wsDaten.Name & "'!$BH$1:$BH$3"
+                           RefersTo:="='" & wsUeb.Name & "'!$BH$1:$BH$3"
 
     statusBereich = "=rngStatusZahlungsuebersicht"
     On Error Resume Next
@@ -1693,7 +1682,6 @@ Private Sub RichteStatusDropdownEin(ByVal wsUeb As Worksheet, ByVal startRow As 
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.ErrorTitle = "Ungültiger Status"
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.ErrorMessage = "Bitte GRÜN, GELB oder ROT auswählen."
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_STATUS), wsUeb.Cells(endRow, UEB_COL_STATUS)).Validation.ShowError = True
-    If datenWarGeschuetzt Then wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
 

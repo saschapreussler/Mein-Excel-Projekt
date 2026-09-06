@@ -462,7 +462,6 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
 
 ChangeCleanup:
     On Error Resume Next
-    Call mod_Startseite.AktualisiereKontostandKPI
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     On Error GoTo 0
     Application.EnableEvents = True
