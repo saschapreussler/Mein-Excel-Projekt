@@ -23,6 +23,7 @@ Private Const UEB_COL_SOLL As Long = 5
 Private Const UEB_COL_IST As Long = 6
 Private Const UEB_COL_STATUS As Long = 7
 Private Const UEB_COL_BEMERKUNG As Long = 8
+Private Const UEB_COL_GUTHABEN As Long = 9
 
 Private Const FARBE_HELLGELB_MANUELL As Long = 10092543  ' RGB(255, 255, 153)
 Private Const AMPEL_GRUEN As Long = 12968900             ' RGB(196, 225, 196)
@@ -122,7 +123,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     
     ' 2. Prüfen ob IST den neuen Soll erreicht -> Status aktualisieren
     Dim istWert As Double
-    istWert = val(CStr(wsUeb.Cells(zeile, UEB_COL_IST).value))
+    istWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(zeile, UEB_COL_IST).value)
     
     If istWert > 0 And Abs(istWert - neuerWert) < 0.01 Then
         wsUeb.Cells(zeile, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
@@ -223,7 +224,7 @@ Private Sub UebernehmeSollInFolgemonate(ByVal wsUeb As Worksheet, _
                     
                     ' Status aktualisieren wenn IST passt
                     Dim istW As Double
-                    istW = val(CStr(wsUeb.Cells(r, UEB_COL_IST).value))
+                    istW = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_IST).value)
                     If istW > 0 And Abs(istW - sollWert) < 0.01 Then
                         wsUeb.Cells(r, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
                         wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
@@ -377,20 +378,38 @@ Private Sub VerarbeiteIstAenderung(ByVal Target As Range)
                "Die " & ChrW(196) & "nderung wurde zur" & ChrW(252) & "ckgesetzt.", _
                vbInformation, "Abgebrochen"
     Else
-        ' Gueltiges Datum -> Status GRÜN + Bemerkung
-        ws.Cells(zeile, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
-        ws.Cells(zeile, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
-        
+        Dim sollWert As Double
         Dim bem As String
         Dim neuBem As String
+
+        sollWert = 0
+        If IsNumeric(ws.Cells(zeile, UEB_COL_SOLL).value) Then
+            sollWert = CDbl(ws.Cells(zeile, UEB_COL_SOLL).value)
+        End If
+
         bem = Trim(CStr(ws.Cells(zeile, UEB_COL_BEMERKUNG).value))
-        neuBem = "manuell ge" & ChrW(228) & "ndert, Zahlungsdatum " & Format(zahlDatum, "dd.mm.yyyy")
+        neuBem = "Manuell best" & ChrW(228) & "tigt: Zahlung am " & _
+                 Format(zahlDatum, "dd.mm.yyyy") & " in H" & ChrW(246) & "he von " & _
+                 Format(neuerIst, "#,##0.00") & " " & ChrW(8364)
+
+        ws.Cells(zeile, UEB_COL_GUTHABEN).value = 0
+        If sollWert <= 0 Or neuerIst >= sollWert - 0.01 Then
+            ws.Cells(zeile, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
+            ws.Cells(zeile, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
+
+            If neuerIst > sollWert + 0.01 Then
+                ws.Cells(zeile, UEB_COL_GUTHABEN).value = neuerIst - sollWert
+                neuBem = neuBem & " | Guthaben: " & _
+                         Format(neuerIst - sollWert, "#,##0.00") & " " & ChrW(8364)
+            End If
+        Else
+            ws.Cells(zeile, UEB_COL_STATUS).value = "GELB"
+            ws.Cells(zeile, UEB_COL_STATUS).Interior.color = AMPEL_GELB
+            neuBem = neuBem & " | Teilzahlung: Fehlbetrag " & _
+                     Format(sollWert - neuerIst, "#,##0.00") & " " & ChrW(8364)
+        End If
+
         ws.Cells(zeile, UEB_COL_BEMERKUNG).value = FuegeBemerkungEinmalHinzu(bem, neuBem)
-        
-        ' Dashboard updaten
-        On Error Resume Next
-        Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
-        On Error GoTo ErrorHandler
     End If
     
     ' Snapshot invalidieren

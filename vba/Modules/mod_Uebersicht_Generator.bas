@@ -1867,7 +1867,6 @@ NextGelbZeile:
                            "Vorjahr-Pr" & ChrW(252) & "fung (" & i & "/" & gelbZeilen.count & ")")
         
         If vjAntwort = vbCancel Then Exit For
-        beantwortet = beantwortet + 1
         
         Dim aktBem As String
         aktBem = CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value)
@@ -1994,13 +1993,15 @@ NextGelbZeile:
             wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = FuegeTeiltextEinmalHinzu(aktBem, confBem, " | ")
 
             If istGruen And StrComp(vjKategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 And zahltFuerPartner Then
-                Call FrageUndMarkiereMitbezahlteVorjahrMitglieder(wsUeb, r, zahlDatum, zahlBetrag, vjMitglied)
+                Call FrageUndMarkiereMitbezahlteVorjahrMitglieder(wsUeb, r, zahlDatum, zahlBetrag, vjMitglied, beantwortet, bestaetigtGruen)
             ElseIf istGruen And StrComp(vjKategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                 wsUeb.Cells(r, UEB_COL_GUTHABEN).value = zahlBetrag - sollWert
                 wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = FuegeTeiltextEinmalHinzu( _
                     CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value), _
                     "Guthaben aus Vorjahrzahlung: " & Format$(zahlBetrag - sollWert, "#,##0.00") & " " & ChrW(8364), " | ")
             End If
+
+            beantwortet = beantwortet + 1
             
         Else  ' vbNo
             ' -> ROT
@@ -2009,6 +2010,14 @@ NextGelbZeile:
             
             Dim rotBem As String
             rotBem = "Nicht im Vorjahr bezahlt (Nutzer best" & ChrW(228) & "tigt)"
+            Dim vorlaufRot As Long
+            Dim nachlaufRot As Long
+            Dim saeumnisRot As Double
+            Call mod_Zahlungspruefung.HoleToleranzZP(vjKategorie, vorlaufRot, nachlaufRot, saeumnisRot)
+            If saeumnisRot > 0 Then
+                rotBem = rotBem & " | S" & ChrW(228) & "umnis-Geb" & ChrW(252) & "hr: " & _
+                         Format$(saeumnisRot, "#,##0.00") & " " & ChrW(8364)
+            End If
             If aktBem <> "" Then
                 wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = aktBem & " | " & rotBem
             Else
@@ -2016,6 +2025,7 @@ NextGelbZeile:
             End If
             
             bestaetigtRot = bestaetigtRot + 1
+            beantwortet = beantwortet + 1
         End If
 NextPos:
     Next i
@@ -2077,15 +2087,20 @@ Private Sub FrageUndMarkiereMitbezahlteVorjahrMitglieder(ByVal wsUeb As Workshee
                                                           ByVal zeile As Long, _
                                                           ByVal zahlDatum As Date, _
                                                           ByVal zahlBetrag As Double, _
-                                                          ByVal zahlerName As String)
+                                                          ByVal zahlerName As String, _
+                                                          ByRef beantwortet As Long, _
+                                                          ByRef bestaetigtGruen As Long)
     Dim parzelle As String
     Dim monat As String
     Dim lastRow As Long
     Dim r As Long
     Dim bemerkung As String
+    Dim zahlerNameNorm As String
+    Dim partnerNameNorm As String
 
     parzelle = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
     monat = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_MONAT).value))
+    zahlerNameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(zahlerName)
     lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
 
     For r = UEBERSICHT_START_ROW To lastRow
@@ -2096,9 +2111,18 @@ Private Sub FrageUndMarkiereMitbezahlteVorjahrMitglieder(ByVal wsUeb As Workshee
                 If Not IstEhrenmitgliedInUebersicht(wsUeb, r) Then
                     Dim partnerName As String
                     partnerName = CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)
-                    If MsgBox("Soll die Vorjahrzahlung von " & zahlerName & _
-                              " auch den Mitgliedsbeitrag von " & partnerName & " decken?", _
-                              vbYesNo + vbQuestion, "Partnerbeitrag zuordnen") = vbYes Then
+                    partnerNameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(partnerName)
+                    If partnerNameNorm <> "" And _
+                       StrComp(partnerNameNorm, zahlerNameNorm, vbTextCompare) <> 0 And _
+                       IstVorjahrPruefungNoetig(wsUeb, r) Then
+                        Dim partnerAntwort As VbMsgBoxResult
+                        partnerAntwort = MsgBox("Soll die Vorjahrzahlung von " & zahlerName & _
+                                  " auch den Mitgliedsbeitrag von " & partnerName & " decken?", _
+                                  vbYesNo + vbQuestion, "Partnerbeitrag zuordnen")
+
+                        If partnerAntwort = vbYes Then
+                        beantwortet = beantwortet + 1
+                        bestaetigtGruen = bestaetigtGruen + 1
                         wsUeb.Cells(r, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
                         wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
                         bemerkung = "Mitbezahlt durch " & zahlerName & _
@@ -2106,6 +2130,7 @@ Private Sub FrageUndMarkiereMitbezahlteVorjahrMitglieder(ByVal wsUeb As Workshee
                                     ", Gesamtbetrag " & Format$(zahlBetrag, "#,##0.00") & " " & ChrW(8364) & ")"
                         wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = _
                             FuegeTeiltextEinmalHinzu(CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value), bemerkung, " | ")
+                        End If
                     End If
                 End If
             End If
