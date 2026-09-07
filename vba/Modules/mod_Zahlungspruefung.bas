@@ -426,6 +426,8 @@ Public Function LeseGeldwertZP(ByVal wert As Variant) As Double
     If InStr(textwert, ",") > 0 Then
         textwert = Replace(textwert, ".", "")
         textwert = Replace(textwert, ",", Application.International(xlDecimalSeparator))
+    ElseIf InStr(textwert, ".") > 0 And Application.International(xlDecimalSeparator) <> "." Then
+        textwert = Replace(textwert, ".", Application.International(xlDecimalSeparator))
     End If
 
     If IsNumeric(textwert) Then LeseGeldwertZP = CDbl(textwert)

@@ -997,6 +997,7 @@ NextMitglied:
     ' damit nichts NumberFormat / HorizontalAlignment / AutoFit Überschreibt.
     Call FormatiereUebersicht(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
     Call RichteStatusDropdownEin(wsUeb, UEBERSICHT_START_ROW, rowIdx - 1)
+    Call ErstelleSaeumnisBestaetigungsButton(wsUeb)
     Call StelleVorjahrEntscheidungenWiederHer(wsUeb, gespeicherteVorjahrEntscheidungen, rowIdx - 1)
 
     ' Blatt schützen (Soll-Zellen ohne festen Betrag bleiben editierbar)
@@ -1009,6 +1010,9 @@ NextMitglied:
     Application.EnableEvents = True
     Application.ScreenUpdating = True
 
+    ' Persistierte Verrechnungen müssen vor Nachzahlungen angewendet werden,
+    ' damit der Dialog den tatsächlichen Restbetrag vergangener Monate zeigt.
+    LadeGuthabenVerrechnungen wsUeb, wsDaten, rowIdx - 1
     VerarbeiteSpaeteNachzahlungen wsUeb, rowIdx - 1
     PruefeUndVerrechneGuthaben wsUeb, rowIdx - 1
     RepariereStatusDropdown
@@ -1058,6 +1062,28 @@ ErrorHandler:
     
 End Sub
 
+Private Sub ErstelleSaeumnisBestaetigungsButton(ByVal wsUeb As Worksheet)
+    Dim shp As Shape
+    On Error Resume Next
+    wsUeb.Shapes("btn_SaeumnisBestaetigen").Delete
+    On Error GoTo 0
+    Set shp = wsUeb.Shapes.AddShape(msoShapeRoundedRectangle, _
+        wsUeb.Range("K1").Left, wsUeb.Range("K1").Top + 2, 155, 22)
+    With shp
+        .Name = "btn_SaeumnisBestaetigen"
+        .TextFrame2.TextRange.Text = "Säumnisgebühr quittieren"
+        .TextFrame2.TextRange.Font.Size = 9
+        .TextFrame2.TextRange.Font.Bold = msoTrue
+        .TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
+        .TextFrame2.ParagraphFormat.Alignment = msoAlignCenter
+        .TextFrame2.VerticalAnchor = msoAnchorMiddle
+        .Fill.ForeColor.RGB = RGB(192, 57, 43)
+        .Line.Visible = msoFalse
+        .OnAction = "'mod_Uebersicht_Generator.BestaetigeSaeumnisgebuehrAktuelleZeile'"
+        .Placement = xlFreeFloating
+    End With
+End Sub
+
 Private Sub VerarbeiteSpaeteNachzahlungen(ByVal wsUeb As Worksheet, ByVal letzteZeile As Long)
     Dim aktuell As Long, vorher As Long
     Dim aktuellerIst As Double, aktuellerSoll As Double
@@ -1104,8 +1130,8 @@ Private Sub VerarbeiteSpaeteNachzahlungen(ByVal wsUeb As Worksheet, ByVal letzte
                 "Kategorie: " & kategorie & vbCrLf & vbCrLf & _
                 "Neue Zahlung: " & CStr(wsUeb.Cells(aktuell, UEB_COL_MONAT).value) & _
                 " | Ist " & Format$(aktuellerIst, "#,##0.00") & " " & ChrW(8364) & vbCrLf & _
-                "Davon eigener aktueller Soll: " & Format$(aktuellerSoll, "#,##0.00") & " " & ChrW(8364) & vbCrLf & _
-                "Verfügbarer Überschuss: " & Format$(ueberschuss, "#,##0.00") & " " & ChrW(8364) & vbCrLf & vbCrLf & _
+                "Anteil für Brauchwasser im aktuellen Monat: " & Format$(aktuellerSoll, "#,##0.00") & " " & ChrW(8364) & vbCrLf & _
+                "Guthaben aus dieser Zahlung nach dem aktuellen Monat: " & Format$(ueberschuss, "#,##0.00") & " " & ChrW(8364) & vbCrLf & vbCrLf & _
                 "Offene Forderungen (älteste zuerst):" & vbCrLf & offeneForderungen & vbCrLf & _
                 "Vorgeschlagene Nachzahlung: " & Format$(anwenden, "#,##0.00") & " " & ChrW(8364) & vbCrLf & _
                 "Säumnisgebühr: " & saeumnisText & vbCrLf & vbCrLf & _
@@ -1709,7 +1735,12 @@ Public Sub BestaetigeSaeumnisgebuehrAktuelleZeile()
         Exit Sub
     End If
     zeile = ActiveCell.Row
-    If zeile < UEBERSICHT_START_ROW Then Exit Sub
+    If zeile < UEBERSICHT_START_ROW Or _
+       Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)) = "" Then
+        MsgBox "Bitte eine beliebige Zelle in der gewünschten Zahlungszeile anklicken und dann erneut quittieren.", _
+               vbExclamation, "Säumnisgebühr"
+        Exit Sub
+    End If
 
     gebuehr = HoleSaeumnisGebuehrFuerKategorie(CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value))
     If gebuehr <= 0 Then
@@ -1735,9 +1766,26 @@ Public Sub BestaetigeSaeumnisgebuehrAktuelleZeile()
     End If
     bestaetigtDurch = Application.UserName
     SpeichereSaeumnisGebuehr wsDaten, key, gebuehr, bezahlt, zahlDatum, bestaetigtDurch
-    wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value = _
-        CStr(wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value) & " | Säumnisgebühr " & _
-        IIf(bezahlt, "bezahlt am " & zahlDatum, "weiterhin offen") & " (" & bestaetigtDurch & ")"
+    AktualisiereSaeumnisBemerkung wsUeb, zeile, bezahlt, zahlDatum, bestaetigtDurch
+End Sub
+
+Private Sub AktualisiereSaeumnisBemerkung(ByVal wsUeb As Worksheet, ByVal zeile As Long, _
+                                          ByVal bezahlt As Boolean, ByVal zahlDatum As String, _
+                                          ByVal bestaetigtDurch As String)
+    Dim teile() As String, ergebnis As String, i As Long
+    teile = Split(CStr(wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value), " | ")
+    For i = LBound(teile) To UBound(teile)
+        If InStr(1, teile(i), "Säumnisgebühr bezahlt", vbTextCompare) = 0 And _
+           InStr(1, teile(i), "Säumnisgebühr weiterhin offen", vbTextCompare) = 0 Then
+            If ergebnis <> "" Then ergebnis = ergebnis & " | "
+            ergebnis = ergebnis & Trim$(teile(i))
+        End If
+    Next i
+    If ergebnis <> "" Then ergebnis = ergebnis & " | "
+    ergebnis = ergebnis & "Säumnisgebühr " & _
+                IIf(bezahlt, "bezahlt am " & zahlDatum, "weiterhin offen") & _
+                " (" & bestaetigtDurch & ")"
+    wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value = ergebnis
 End Sub
 
 Private Function HoleSaeumnisGebuehrFuerKategorie(ByVal kategorie As String) As Double
@@ -2188,10 +2236,13 @@ Public Function HatOffeneZahlungspruefungen() As Boolean
 
     For r = 4 To lastRow
         status = UCase$(Trim$(CStr(wsUeb.Cells(r, 7).value)))
+        If InStr(1, CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value), _
+                 "Sonderfall bestätigt: kein Abschlag vereinbart", vbTextCompare) > 0 Then GoTo NextPruefung
         If status = "GELB" Or status = "ROT" Then
             HatOffeneZahlungspruefungen = True
             Exit Function
         End If
+NextPruefung:
     Next r
 End Function
 
@@ -2452,9 +2503,6 @@ Private Function IstKategorieImMonatFaellig(ByRef kat As UebKategorie, _
     
     ' Nicht-monatlich OHNE SollMonate -> NICHT anzeigen
     ' (Kategorie muss in Einstellungen Spalte E konfiguriert werden)
-    Debug.Print "[" & ChrW(220) & "bersicht] WARNUNG: Kategorie '" & kat.Name & _
-                "' ist '" & fl & "' aber Spalte E (Soll-Monate) ist leer! " & _
-                "Bitte in Einstellungen die Soll-Monate eintragen."
     IstKategorieImMonatFaellig = False
     
 End Function

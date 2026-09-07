@@ -223,6 +223,8 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
         Call mod_Dashboard_Matrix.SchreibeVerzugsdetail( _
             wsDash, matrixEndRow + 3, verzugListe, anzVerzug, verzugEndRow)
     End If
+
+    Call SchreibeSaeumnisgebuehrenUebersicht(wsDash, IIf(verzugEndRow > 0, verzugEndRow + 3, matrixEndRow + 3))
     
     ' --- 11. Cache freigeben ---
     Call mod_Zahlungspruefung.EntladeEinstellungenCacheZP
@@ -288,6 +290,40 @@ ErrorHandler:
             End If
     Debug.Print "[Dashboard] FEHLER: " & Err.Number & " - " & Err.Description
     
+End Sub
+
+Private Sub SchreibeSaeumnisgebuehrenUebersicht(ByVal wsDash As Worksheet, ByVal startRow As Long)
+    Dim wsDaten As Worksheet
+    Dim lastRow As Long, r As Long, outRow As Long
+    Dim bezahlt As Boolean
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsDaten Is Nothing Then Exit Sub
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, SAEUMNIS_COL_KEY).End(xlUp).Row
+    If lastRow < SAEUMNIS_START_ROW Then Exit Sub
+
+    wsDash.Cells(startRow, 1).value = "SÄUMNISGEBÜHREN (BARZAHLUNG)"
+    wsDash.Cells(startRow, 1).Font.Bold = True
+    wsDash.Cells(startRow, 1).Font.Color = RGB(192, 57, 43)
+    wsDash.Cells(startRow + 1, 1).Resize(1, 5).Value = Array("Gebühr", "Status", "Barzahlungsdatum", "Bestätigt durch", "Vorgang")
+    wsDash.Cells(startRow + 1, 1).Resize(1, 5).Font.Bold = True
+    wsDash.Cells(startRow + 1, 1).Resize(1, 5).Interior.Color = RGB(192, 57, 43)
+    wsDash.Cells(startRow + 1, 1).Resize(1, 5).Font.Color = RGB(255, 255, 255)
+    outRow = startRow + 2
+    For r = SAEUMNIS_START_ROW To lastRow
+        If Trim$(CStr(wsDaten.Cells(r, SAEUMNIS_COL_KEY).Value)) <> "" Then
+            bezahlt = CBool(wsDaten.Cells(r, SAEUMNIS_COL_BEZAHLT).Value)
+            wsDash.Cells(outRow, 1).Value = wsDaten.Cells(r, SAEUMNIS_COL_GEBUEHR).Value
+            wsDash.Cells(outRow, 1).NumberFormat = "#,##0.00 " & ChrW(8364)
+            wsDash.Cells(outRow, 2).Value = IIf(bezahlt, "BEZAHLT", "OFFEN")
+            wsDash.Cells(outRow, 3).Value = wsDaten.Cells(r, SAEUMNIS_COL_DATUM).Value
+            wsDash.Cells(outRow, 4).Value = wsDaten.Cells(r, SAEUMNIS_COL_BESTAETIGT_DURCH).Value
+            wsDash.Cells(outRow, 5).Value = wsDaten.Cells(r, SAEUMNIS_COL_KEY).Value
+            wsDash.Cells(outRow, 2).Interior.Color = IIf(bezahlt, RGB(198, 239, 206), RGB(255, 199, 206))
+            outRow = outRow + 1
+        End If
+    Next r
 End Sub
 
 

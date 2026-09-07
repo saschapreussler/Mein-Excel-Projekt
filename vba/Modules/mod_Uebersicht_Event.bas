@@ -82,9 +82,6 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
         neuerWert = CDbl(Target.value)
     End If
     
-    ' Wenn Wert gelöscht oder 0 -> nichts tun (bleibt gelb)
-    If neuerWert <= 0 Then Exit Sub
-    
     Dim wsUeb As Worksheet
     Set wsUeb = Target.Worksheet
     
@@ -96,6 +93,23 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     parzelle = CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)
     Dim kategorie As String
     kategorie = CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value)
+
+    If neuerWert <= 0 Then
+        If MsgBox("Für " & kategorie & " wurde kein Abschlag vereinbart." & vbCrLf & vbCrLf & _
+                  "Soll dieser Sonderfall als manuell bestätigt gelten?", _
+                  vbYesNo + vbQuestion, "Kein Abschlag vereinbart") <> vbYes Then Exit Sub
+        Application.EnableEvents = False
+        wsUeb.Unprotect PASSWORD:=PASSWORD
+        wsUeb.Cells(zeile, UEB_COL_STATUS).value = "GELB"
+        wsUeb.Cells(zeile, UEB_COL_STATUS).Interior.color = AMPEL_GELB
+        wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value = FuegeBemerkungEinmalHinzu( _
+            CStr(wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value), _
+            "Sonderfall bestätigt: kein Abschlag vereinbart; Endabrechnung abwarten")
+        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True, AllowSorting:=True
+        Call mod_Uebersicht_Generator.SpeichereManuelleUebersichtEntscheidung(zeile)
+        Application.EnableEvents = True
+        Exit Sub
+    End If
     
     ' Events deaktivieren (verhindert Endlosschleife)
     Application.EnableEvents = False
