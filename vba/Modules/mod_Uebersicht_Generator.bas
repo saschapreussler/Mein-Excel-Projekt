@@ -1075,7 +1075,7 @@ Private Sub ErstelleSaeumnisBestaetigungsButton(ByVal wsUeb As Worksheet)
         .TextFrame2.TextRange.Font.Size = 9
         .TextFrame2.TextRange.Font.Bold = msoTrue
         .TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
-        .TextFrame2.ParagraphFormat.Alignment = msoAlignCenter
+        .TextFrame.HorizontalAlignment = xlHAlignCenter
         .TextFrame2.VerticalAnchor = msoAnchorMiddle
         .Fill.ForeColor.RGB = RGB(192, 57, 43)
         .Line.Visible = msoFalse
