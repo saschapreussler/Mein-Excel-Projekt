@@ -1296,7 +1296,12 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
             If offen > 0.004 Then
                 quelle = FindeGuthabenQuelle(wsUeb, r, letzteZeile)
                 If quelle > 0 Then
-                    verfuegbar = VerfuegbaresGuthabenFuerParzelle(wsUeb, r, letzteZeile)
+                    If StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), _
+                               "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                        verfuegbar = VerfuegbaresGuthabenFuerMitgliedsgruppe(wsUeb, r, letzteZeile)
+                    Else
+                        verfuegbar = VerfuegbaresGuthabenFuerParzelle(wsUeb, r, letzteZeile)
+                    End If
                     Debug.Print "[GuthabenDialog] Zeile=" & r & _
                                 " Parzelle=" & CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value) & _
                                 " Monat=" & CStr(wsUeb.Cells(r, UEB_COL_MONAT).value) & _
@@ -1333,6 +1338,15 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
                                              mod_EntityKey_Normalize.NormalisiereStringFuerVergleich( _
                                                  CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value))
                                 SpeichereGuthabenVerrechnung wsDaten, zielKey, anwenden, quelleKey
+                                    If StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), _
+                                         "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                                     SpeichereMitgliedsbeitragsGruppenverbrauch wsDaten, wsUeb, r, anwenden
+                                Else
+                                    SpeichereParzellenVerbrauch wsDaten, _
+                                        Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)), anwenden
+                                End If
+                                Debug.Print "[Guthaben] Verrechnung gespeichert: Ziel=" & zielKey & _
+                                            " Quelle=" & quelleKey & " Betrag=" & Format$(anwenden, "0.00")
                             End If
                         End If
                     End If
@@ -1342,6 +1356,125 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
 NaechsteGuthabenZeile:
     Next r
 End Sub
+
+Private Sub SpeichereParzellenVerbrauch(ByVal wsDaten As Worksheet, _
+                                        ByVal parzelle As String, _
+                                        ByVal betrag As Double)
+    Dim r As Long, lastRow As Long
+    Dim key As String
+    key = "PARZELLE|" & parzelle
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row
+    For r = GUTH_VER_START_ROW To lastRow
+        If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), key, vbTextCompare) = 0 Then
+            wsDaten.Unprotect PASSWORD:=PASSWORD
+            wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value = _
+                mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value) + betrag
+            wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value = key
+            wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+            Exit Sub
+        End If
+    Next r
+    r = lastRow + 1
+    If r < GUTH_VER_START_ROW Then r = GUTH_VER_START_ROW
+    wsDaten.Unprotect PASSWORD:=PASSWORD
+    wsDaten.Cells(GUTH_VER_HEADER_ROW, GUTH_VER_COL_KEY).value = "Guthaben Verrechnung Key"
+    wsDaten.Cells(GUTH_VER_HEADER_ROW, GUTH_VER_COL_BETRAG).value = "Verrechnet"
+    wsDaten.Cells(GUTH_VER_HEADER_ROW, GUTH_VER_COL_QUELLE).value = "Quelle Key"
+    wsDaten.Cells(r, GUTH_VER_COL_KEY).value = key
+    wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value = betrag
+    wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value = key
+    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+End Sub
+
+Private Sub SpeicherePersonenVerbrauch(ByVal wsDaten As Worksheet, _
+                                       ByVal wsUeb As Worksheet, _
+                                       ByVal zeile As Long, _
+                                       ByVal betrag As Double)
+    Dim r As Long, lastRow As Long, key As String
+    key = "PERSON|" & Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)) & "|" & _
+          mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value))
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row
+    For r = GUTH_VER_START_ROW To lastRow
+        If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), key, vbTextCompare) = 0 Then
+            wsDaten.Unprotect PASSWORD:=PASSWORD
+            wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value = _
+                mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value) + betrag
+            wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value = key
+            wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+            Exit Sub
+        End If
+    Next r
+    r = lastRow + 1
+    If r < GUTH_VER_START_ROW Then r = GUTH_VER_START_ROW
+    wsDaten.Unprotect PASSWORD:=PASSWORD
+    wsDaten.Cells(r, GUTH_VER_COL_KEY).value = key
+    wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value = betrag
+    wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value = key
+    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+End Sub
+
+Private Sub SpeichereMitgliedsbeitragsGruppenverbrauch(ByVal wsDaten As Worksheet, _
+                                                       ByVal wsUeb As Worksheet, _
+                                                       ByVal zeile As Long, _
+                                                       ByVal betrag As Double)
+    Dim r As Long, lastRow As Long, key As String
+    key = "MBGRUPPE|" & Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row
+    For r = GUTH_VER_START_ROW To lastRow
+        If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), key, vbTextCompare) = 0 Then
+            wsDaten.Unprotect PASSWORD:=PASSWORD
+            wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value = _
+                mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value) + betrag
+            wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value = key
+            wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+            Exit Sub
+        End If
+    Next r
+    r = lastRow + 1
+    If r < GUTH_VER_START_ROW Then r = GUTH_VER_START_ROW
+    wsDaten.Unprotect PASSWORD:=PASSWORD
+    wsDaten.Cells(r, GUTH_VER_COL_KEY).value = key
+    wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value = betrag
+    wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value = key
+    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+End Sub
+
+Private Function VerfuegbaresGuthabenFuerMitgliedsgruppe(ByVal wsUeb As Worksheet, _
+                                                         ByVal zielZeile As Long, _
+                                                         ByVal letzteZeile As Long) As Double
+    Dim r As Long
+    Dim parzelle As String
+    Dim roh As Double
+    parzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
+    For r = UEBERSICHT_START_ROW To letzteZeile
+        If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
+           StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+            roh = roh + mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
+        End If
+    Next r
+    VerfuegbaresGuthabenFuerMitgliedsgruppe = Application.Max(0, roh - _
+        GuthabenGesamtVerrechnetFuerMitgliedsgruppe(wsUeb, zielZeile))
+End Function
+
+Private Function GuthabenGesamtVerrechnetFuerMitgliedsgruppe(ByVal wsUeb As Worksheet, _
+                                                              ByVal zeile As Long) As Double
+    Dim wsDaten As Worksheet
+    Dim lastRow As Long, r As Long
+    Dim key As String
+    key = "MBGRUPPE|" & Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
+    On Error Resume Next
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsDaten Is Nothing Then Exit Function
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row
+    For r = GUTH_VER_START_ROW To lastRow
+        If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), key, vbTextCompare) = 0 Then
+            GuthabenGesamtVerrechnetFuerMitgliedsgruppe = _
+                mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
+            Exit Function
+        End If
+    Next r
+End Function
 
 Private Function VerfuegbaresGuthabenFuerParzelle(ByVal wsUeb As Worksheet, _
                                                    ByVal zielZeile As Long, _
@@ -1425,6 +1558,20 @@ Private Function ParzelleHatGuthabenverrechnung(ByVal wsUeb As Worksheet, _
             End If
         End If
     Next r
+End Function
+
+Private Function KategorieHatGuthabenverrechnung(ByVal wsUeb As Worksheet, _
+                                                  ByVal wsDaten As Worksheet, _
+                                                  ByVal zeile As Long, _
+                                                  ByVal letzteZeile As Long) As Boolean
+    If StrComp(Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value)), _
+               "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+        KategorieHatGuthabenverrechnung = BesitzerHatSichtbareGuthabenverrechnung(wsUeb, zeile, letzteZeile) Or _
+            GuthabenGesamtVerrechnetFuerMitglied(wsUeb, zeile) > 0.004 Or _
+            GuthabenGesamtVerrechnetFuerMitgliedsgruppe(wsUeb, zeile) > 0.004
+    Else
+        KategorieHatGuthabenverrechnung = ParzelleHatGuthabenverrechnung(wsUeb, wsDaten, zeile, letzteZeile)
+    End If
 End Function
 
 Public Sub DebugGuthabenParzelle(ByVal parzelle As Long)
@@ -1960,6 +2107,8 @@ Private Function GuthabenVerrechnetFuerZeile(ByVal wsUeb As Worksheet, ByVal zei
     If wsDaten Is Nothing Then Exit Function
     ownerKey = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)) & "|" & _
         mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value))
+    Dim parzellenKey As String
+    parzellenKey = "PARZELLE|" & Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
     lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
     basis = CDbl(wsUeb.Cells(zeile, UEB_COL_GUTHABEN).value)
     For r = GUTH_VER_START_ROW To lastRow
@@ -1989,8 +2138,15 @@ Private Function GuthabenGesamtVerrechnetFuerMitglied(ByVal wsUeb As Worksheet, 
     If wsDaten Is Nothing Then Exit Function
     ownerKey = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)) & "|" & _
         mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value))
+    Dim personenKey As String
+    personenKey = "PERSON|" & ownerKey
     lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
     For r = GUTH_VER_START_ROW To lastRow
+        If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), personenKey, vbTextCompare) = 0 Then
+            GuthabenGesamtVerrechnetFuerMitglied = mod_Zahlungspruefung.LeseGeldwertZP( _
+                wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
+            Exit Function
+        End If
         quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
         If Left$(quelleKey, 7) = "SUMME|" Then
             teile = Split(quelleKey, "|", 3)
@@ -2011,12 +2167,18 @@ Private Function GuthabenGesamtVerrechnetFuerParzelle(ByVal wsUeb As Worksheet, 
     Dim parzelle As String, quelleKey As String
     Dim teile() As String
     parzelle = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
+    Dim parzellenKey As String
+    parzellenKey = "PARZELLE|" & parzelle
     On Error Resume Next
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     On Error GoTo 0
     If wsDaten Is Nothing Then Exit Function
     lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
     For r = GUTH_VER_START_ROW To lastRow
+        If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), parzellenKey, vbTextCompare) = 0 Then
+            GuthabenGesamtVerrechnetFuerParzelle = mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
+            Exit Function
+        End If
         quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
         If Left$(quelleKey, 7) = "SUMME|" Then
             teile = Split(quelleKey, "|", 3)
