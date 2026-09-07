@@ -229,6 +229,15 @@ Public Const GUTH_VER_COL_QUELLE As Long = 92   ' CN
 Public Const GUTH_VER_START_ROW As Long = 4
 Public Const GUTH_VER_HEADER_ROW As Long = 3
 
+' Dauerhafte Säumnisgebühren-Bestätigung durch den Kassierer.
+Public Const SAEUMNIS_COL_KEY As Long = 93       ' CO
+Public Const SAEUMNIS_COL_GEBUEHR As Long = 94   ' CP
+Public Const SAEUMNIS_COL_BEZAHLT As Long = 95   ' CQ
+Public Const SAEUMNIS_COL_DATUM As Long = 96     ' CR
+Public Const SAEUMNIS_COL_BESTAETIGT_DURCH As Long = 97 ' CS
+Public Const SAEUMNIS_START_ROW As Long = 4
+Public Const SAEUMNIS_HEADER_ROW As Long = 3
+
 ' ===============================================================
 ' I. CSV-IMPORT (SPARKASSE)
 ' ===============================================================

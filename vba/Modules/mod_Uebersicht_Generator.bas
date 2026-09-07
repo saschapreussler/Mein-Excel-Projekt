@@ -1094,12 +1094,23 @@ Private Sub VerarbeiteSpaeteNachzahlungen(ByVal wsUeb As Worksheet, ByVal letzte
             If offen <= 0.004 Then GoTo NaechsteVorherigeZeile
             anwenden = Application.Min(ueberschuss, offen)
 
-            antwort = MsgBox("Die Zahlung für " & CStr(wsUeb.Cells(aktuell, UEB_COL_MONAT).value) & _
-                " enthält einen Überschuss von " & Format$(ueberschuss, "#,##0.00") & " " & ChrW(8364) & "." & vbCrLf & vbCrLf & _
-                "Offener Vormonat " & CStr(wsUeb.Cells(vorher, UEB_COL_MONAT).value) & ": " & _
-                Format$(offen, "#,##0.00") & " " & ChrW(8364) & vbCrLf & vbCrLf & _
-                "Soll der Betrag von " & Format$(anwenden, "#,##0.00") & " " & ChrW(8364) & _
-                " als Nachzahlung für den Vormonat verwendet werden?", _
+            Dim saeumnisText As String
+            saeumnisText = HoleSaeumnisTextFuerKategorie(kategorie)
+            Dim offeneForderungen As String
+            offeneForderungen = ErstelleOffeneForderungsliste(wsUeb, aktuell, letzteZeile)
+            antwort = MsgBox("Nachzahlung prüfen" & vbCrLf & vbCrLf & _
+                "Parzelle: " & parzelle & vbCrLf & _
+                "Mitglied: " & CStr(wsUeb.Cells(aktuell, UEB_COL_MITGLIED).value) & vbCrLf & _
+                "Kategorie: " & kategorie & vbCrLf & vbCrLf & _
+                "Neue Zahlung: " & CStr(wsUeb.Cells(aktuell, UEB_COL_MONAT).value) & _
+                " | Ist " & Format$(aktuellerIst, "#,##0.00") & " " & ChrW(8364) & vbCrLf & _
+                "Davon eigener aktueller Soll: " & Format$(aktuellerSoll, "#,##0.00") & " " & ChrW(8364) & vbCrLf & _
+                "Verfügbarer Überschuss: " & Format$(ueberschuss, "#,##0.00") & " " & ChrW(8364) & vbCrLf & vbCrLf & _
+                "Offene Forderungen (älteste zuerst):" & vbCrLf & offeneForderungen & vbCrLf & _
+                "Vorgeschlagene Nachzahlung: " & Format$(anwenden, "#,##0.00") & " " & ChrW(8364) & vbCrLf & _
+                "Säumnisgebühr: " & saeumnisText & vbCrLf & vbCrLf & _
+                "Ja = älteste Forderung zuerst verrechnen." & vbCrLf & _
+                "Nein = Zahlung bleibt dem aktuellen Monat zugeordnet.", _
                 vbYesNo + vbQuestion, "Spätere Nachzahlung verrechnen")
             If antwort = vbYes Then
                 wsUeb.Cells(vorher, UEB_COL_IST).value = vorherIst + anwenden
@@ -1125,12 +1136,56 @@ NaechsteAktuelleZeile:
     Next aktuell
 End Sub
 
+Private Function ErstelleOffeneForderungsliste(ByVal wsUeb As Worksheet, _
+                                                ByVal aktuelleZeile As Long, _
+                                                ByVal letzteZeile As Long) As String
+    Dim r As Long
+    Dim parzelle As String
+    Dim nameNorm As String
+    Dim kategorie As String
+    Dim sollWert As Double
+    Dim istWert As Double
+    Dim offen As Double
+    parzelle = Trim$(CStr(wsUeb.Cells(aktuelleZeile, UEB_COL_PARZELLE).value))
+    nameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(aktuelleZeile, UEB_COL_MITGLIED).value))
+    kategorie = Trim$(CStr(wsUeb.Cells(aktuelleZeile, UEB_COL_KATEGORIE).value))
+    For r = UEBERSICHT_START_ROW To letzteZeile
+        If r <> aktuelleZeile And Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
+           mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = nameNorm And _
+           StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), kategorie, vbTextCompare) = 0 Then
+            sollWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_SOLL).value)
+            istWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_IST).value)
+            offen = sollWert - istWert
+            If offen > 0.004 Then
+                ErstelleOffeneForderungsliste = ErstelleOffeneForderungsliste & _
+                    "  " & CStr(wsUeb.Cells(r, UEB_COL_MONAT).value) & ": offen " & _
+                    Format$(offen, "#,##0.00") & " " & ChrW(8364) & _
+                    IIf(UCase$(Trim$(CStr(wsUeb.Cells(r, UEB_COL_STATUS).value))) = "ROT", " | Säumnis", "") & vbCrLf
+            End If
+        End If
+    Next r
+    If ErstelleOffeneForderungsliste = "" Then ErstelleOffeneForderungsliste = "  (keine weiteren offenen Forderungen)" & vbCrLf
+End Function
+
 Private Function MonthNumberFromOverview(ByVal monatText As Variant) As Long
     Dim m As Long, text As String
     text = LCase$(Trim$(CStr(monatText)))
     For m = 1 To 12
         If InStr(1, text, LCase$(MonthName(m)), vbTextCompare) > 0 Then MonthNumberFromOverview = m: Exit Function
     Next m
+End Function
+
+Private Function HoleSaeumnisTextFuerKategorie(ByVal kategorie As String) As String
+    Dim vorlauf As Long
+    Dim nachlauf As Long
+    Dim gebuehr As Double
+    Call mod_Zahlungspruefung.HoleToleranzZP(kategorie, vorlauf, nachlauf, gebuehr)
+    If gebuehr > 0 Then
+        HoleSaeumnisTextFuerKategorie = Format$(gebuehr, "#,##0.00") & " " & ChrW(8364) & _
+                                        " (verspäteter Vormonat bleibt säumnispflichtig)"
+    Else
+        HoleSaeumnisTextFuerKategorie = "keine Gebühr konfiguriert"
+    End If
 End Function
 
 Private Sub SortiereUebersichtNachParzelle(ByVal wsUeb As Worksheet, ByVal letzteZeile As Long)
@@ -1631,6 +1686,104 @@ Public Sub DebugGuthabenParzelle(ByVal parzelle As Long)
                 " Roh=" & Format$(summeRoh, "0.00") & _
                 " Verrechnet=" & Format$(summeVerrechnet, "0.00") & _
                 " Verfügbar=" & Format$(Application.Max(0, summeRoh - summeVerrechnet), "0.00")
+End Sub
+
+Public Sub BestaetigeSaeumnisgebuehrAktuelleZeile()
+    Dim wsUeb As Worksheet
+    Dim wsDaten As Worksheet
+    Dim zeile As Long
+    Dim gebuehr As Double
+    Dim key As String
+    Dim bezahlt As Boolean
+    Dim antwort As VbMsgBoxResult
+    Dim zahlDatum As String
+    Dim bestaetigtDurch As String
+
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsUeb Is Nothing Or wsDaten Is Nothing Then Exit Sub
+    If ActiveSheet.Name <> wsUeb.Name Then
+        MsgBox "Bitte zuerst eine Zeile auf Zahlungsübersicht markieren.", vbExclamation, "Säumnisgebühr"
+        Exit Sub
+    End If
+    zeile = ActiveCell.Row
+    If zeile < UEBERSICHT_START_ROW Then Exit Sub
+
+    gebuehr = HoleSaeumnisGebuehrFuerKategorie(CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value))
+    If gebuehr <= 0 Then
+        MsgBox "Für diese Kategorie ist keine Säumnisgebühr hinterlegt.", vbInformation, "Säumnisgebühr"
+        Exit Sub
+    End If
+
+    key = SaeumnisEntscheidungsKey(wsUeb, zeile)
+    bezahlt = SaeumnisGebuehrIstBezahlt(wsDaten, key)
+    antwort = MsgBox("Parzelle: " & CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value) & vbCrLf & _
+                     "Mitglied: " & CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value) & vbCrLf & _
+                     "Monat: " & CStr(wsUeb.Cells(zeile, UEB_COL_MONAT).value) & vbCrLf & _
+                     "Säumnisgebühr: " & Format$(gebuehr, "#,##0.00") & " " & ChrW(8364) & vbCrLf & vbCrLf & _
+                     "Aktueller Status: " & IIf(bezahlt, "BEZAHLT", "OFFEN") & vbCrLf & vbCrLf & _
+                     "Wurde die Säumnisgebühr bar bezahlt?", _
+                     vbYesNo + vbQuestion, "Säumnisgebühr bestätigen")
+    bezahlt = (antwort = vbYes)
+    If bezahlt Then
+        zahlDatum = InputBox("Datum der Barzahlung (TT.MM.JJJJ):", "Säumnisgebühr", Format$(Date, "dd.mm.yyyy"))
+        If Trim$(zahlDatum) = "" Then Exit Sub
+    Else
+        zahlDatum = ""
+    End If
+    bestaetigtDurch = Application.UserName
+    SpeichereSaeumnisGebuehr wsDaten, key, gebuehr, bezahlt, zahlDatum, bestaetigtDurch
+    wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value = _
+        CStr(wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value) & " | Säumnisgebühr " & _
+        IIf(bezahlt, "bezahlt am " & zahlDatum, "weiterhin offen") & " (" & bestaetigtDurch & ")"
+End Sub
+
+Private Function HoleSaeumnisGebuehrFuerKategorie(ByVal kategorie As String) As Double
+    Dim vorlauf As Long, nachlauf As Long, gebuehr As Double
+    Call mod_Zahlungspruefung.HoleToleranzZP(kategorie, vorlauf, nachlauf, gebuehr)
+    HoleSaeumnisGebuehrFuerKategorie = gebuehr
+End Function
+
+Private Function SaeumnisEntscheidungsKey(ByVal wsUeb As Worksheet, ByVal zeile As Long) As String
+    SaeumnisEntscheidungsKey = UebersichtEntscheidungsKey(wsUeb, zeile)
+End Function
+
+Private Function SaeumnisGebuehrIstBezahlt(ByVal wsDaten As Worksheet, ByVal key As String) As Boolean
+    Dim r As Long, lastRow As Long
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, SAEUMNIS_COL_KEY).End(xlUp).Row
+    For r = SAEUMNIS_START_ROW To lastRow
+        If StrComp(CStr(wsDaten.Cells(r, SAEUMNIS_COL_KEY).value), key, vbTextCompare) = 0 Then
+            SaeumnisGebuehrIstBezahlt = CBool(wsDaten.Cells(r, SAEUMNIS_COL_BEZAHLT).value)
+            Exit Function
+        End If
+    Next r
+End Function
+
+Private Sub SpeichereSaeumnisGebuehr(ByVal wsDaten As Worksheet, ByVal key As String, _
+                                      ByVal gebuehr As Double, ByVal bezahlt As Boolean, _
+                                      ByVal zahlDatum As String, ByVal bestaetigtDurch As String)
+    Dim r As Long, lastRow As Long
+    lastRow = wsDaten.Cells(wsDaten.Rows.Count, SAEUMNIS_COL_KEY).End(xlUp).Row
+    r = SAEUMNIS_START_ROW
+    For r = SAEUMNIS_START_ROW To lastRow
+        If StrComp(CStr(wsDaten.Cells(r, SAEUMNIS_COL_KEY).value), key, vbTextCompare) = 0 Then Exit For
+    Next r
+    If r > lastRow Then r = lastRow + 1
+    If r < SAEUMNIS_START_ROW Then r = SAEUMNIS_START_ROW
+    wsDaten.Unprotect PASSWORD:=PASSWORD
+    wsDaten.Cells(SAEUMNIS_HEADER_ROW, SAEUMNIS_COL_KEY).value = "Säumnis Key"
+    wsDaten.Cells(SAEUMNIS_HEADER_ROW, SAEUMNIS_COL_GEBUEHR).value = "Gebühr"
+    wsDaten.Cells(SAEUMNIS_HEADER_ROW, SAEUMNIS_COL_BEZAHLT).value = "Bezahlt"
+    wsDaten.Cells(SAEUMNIS_HEADER_ROW, SAEUMNIS_COL_DATUM).value = "Zahlungsdatum"
+    wsDaten.Cells(SAEUMNIS_HEADER_ROW, SAEUMNIS_COL_BESTAETIGT_DURCH).value = "Bestätigt durch"
+    wsDaten.Cells(r, SAEUMNIS_COL_KEY).value = key
+    wsDaten.Cells(r, SAEUMNIS_COL_GEBUEHR).value = gebuehr
+    wsDaten.Cells(r, SAEUMNIS_COL_BEZAHLT).value = bezahlt
+    wsDaten.Cells(r, SAEUMNIS_COL_DATUM).value = zahlDatum
+    wsDaten.Cells(r, SAEUMNIS_COL_BESTAETIGT_DURCH).value = bestaetigtDurch
+    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
 End Sub
 
 Private Function VerfuegbaresGuthabenFuerMitglied(ByVal wsUeb As Worksheet, _
