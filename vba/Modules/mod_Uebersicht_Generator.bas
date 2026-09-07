@@ -1276,6 +1276,9 @@ Private Sub StelleVorjahrEntscheidungenWiederHer(ByVal wsUeb As Worksheet, _
         key = UebersichtEntscheidungsKey(wsUeb, r)
         If entscheidungen.exists(key) Then
             werte = entscheidungen(key)
+            If InStr(1, CStr(werte(3)), "Mitbezahlt durch", vbTextCompare) > 0 Then
+                werte(3) = BereinigePartnerVorjahrHinweis(CStr(werte(3)))
+            End If
             wsUeb.Cells(r, UEB_COL_IST).value = werte(0)
             wsUeb.Cells(r, UEB_COL_STATUS).value = werte(1)
             wsUeb.Cells(r, UEB_COL_GUTHABEN).value = werte(2)
@@ -1290,6 +1293,21 @@ Private Sub StelleVorjahrEntscheidungenWiederHer(ByVal wsUeb As Worksheet, _
         End If
     Next r
 End Sub
+
+Private Function BereinigePartnerVorjahrHinweis(ByVal bemerkung As String) As String
+    bemerkung = Replace(bemerkung, _
+        "Keine Vorjahr-Daten: Zahlung evtl. im Vorjahr (Okt-Dez) erfolgt", "", 1, -1, vbTextCompare)
+    Do While InStr(bemerkung, "|  |") > 0
+        bemerkung = Replace(bemerkung, "|  |", "|")
+    Loop
+    Do While Left$(Trim$(bemerkung), 1) = "|"
+        bemerkung = Trim$(Mid$(Trim$(bemerkung), 2))
+    Loop
+    Do While Right$(Trim$(bemerkung), 1) = "|"
+        bemerkung = Trim$(Left$(Trim$(bemerkung), Len(Trim$(bemerkung)) - 1))
+    Loop
+    BereinigePartnerVorjahrHinweis = Trim$(bemerkung)
+End Function
 
 Private Sub LadePersistierteVorjahrEntscheidungen(ByVal entscheidungen As Object)
     Dim wsDaten As Worksheet

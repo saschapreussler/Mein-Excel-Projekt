@@ -405,16 +405,14 @@ ImportAbschluss:
         Application.ScreenUpdating = True
         Application.EnableEvents = True
 
-           Dim offeneDetails As String
-           offeneDetails = ErstelleOffeneZuordnungsDetails(wsZiel)
-           Debug.Print "[Import] Offene H/I-Zuordnungen:" & vbCrLf & offeneDetails
-           MsgBox "Der Import ist gespeichert. In folgenden Zeilen fehlt noch eine Zuordnung:" & vbCrLf & vbCrLf & _
-               offeneDetails & vbCrLf & vbCrLf & _
-             "1. Wählen Sie in Spalte H die passende Kategorie." & vbCrLf & _
-             "2. Bestätigen Sie in Spalte I den Monat bzw. die Periode." & vbCrLf & vbCrLf & _
-             "Sobald alle rot oder gelb markierten H/I-Felder bestätigt sind, aktualisiert " & _
-             "das Programm die Zahlungsübersicht automatisch. Das Dashboard folgt erst nach " & _
-             "vollständiger Zahlungsprüfung.", _
+                     Dim offeneDetails As String
+                     offeneDetails = ErstelleOffeneZuordnungsDetails(wsZiel)
+                     Debug.Print "[Import] Offene H/I-Zuordnungen:" & vbCrLf & offeneDetails
+                     MsgBox "Der Import ist gespeichert. Eine Buchung benötigt noch Ihre Prüfung." & vbCrLf & vbCrLf & _
+                         "Bitte in der markierten Zeile:" & vbCrLf & _
+                         "1. Kategorie in Spalte H auswählen oder bestätigen." & vbCrLf & _
+                         "2. Monat bzw. Periode in Spalte I auswählen oder bestätigen." & vbCrLf & vbCrLf & _
+                         "Nach der Bestätigung wird die Zahlungsübersicht automatisch aktualisiert.", _
                vbExclamation, "Offene Zuordnungen"
         Exit Sub
     End If
