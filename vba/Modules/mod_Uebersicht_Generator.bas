@@ -4,18 +4,18 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_Uebersicht_Generator
 ' VERSION: 5.0 - 07.06.2026
-' ZWECK: Generiert Uebersichtsblatt (Variante 2: Lange Tabelle)
+' ZWECK: Generiert Übersichtsblatt (Variante 2: Lange Tabelle)
 '        - 14 Mitglieder (Parzellen 1-14)
 '        - Kategorien DYNAMISCH aus Einstellungen-Blatt (Spalte B)
 '        - Zeigt Soll/Ist/Status für jede Kombination
 '        - Behandelt SHARE-Keys (Gemeinschaftskonten) korrekt
 '        - Bei Kategorien OHNE festen Soll-Betrag:
 '          Soll-Zelle bleibt leer + hell-gelb + editierbar
-'          Nur Zahlungstermin-Prüfung (puenktlich / Säumnis)
+'          Nur Zahlungstermin-Prüfung (pünktlich / Säumnis)
 '        - Säumnis-Gebühren werden in Bemerkung angezeigt
 ' FIX v1.1: InitialisiereNachDezemberCache -> InitialisiereNachDezemberCacheZP
-' FIX v1.2: Val() statt CDbl() für systemunabhaengiges Parsen
-' FIX v1.3: "Typen unvertraeglich" behoben (Variant, StrComp, etc.)
+' FIX v1.2: Val() statt CDbl() für systemunabhängiges Parsen
+' FIX v1.3: "Typen unverträglich" behoben (Variant, StrComp, etc.)
 ' FIX v1.4: ChrW() in Const nicht erlaubt -> Private Variablen
 ' NEU v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
 '           - Keine hart kodierten Kategorienamen mehr
@@ -27,7 +27,7 @@ Option Explicit
 '           - SHARE-Keys: Parzelle "2, 5" wird aufgeteilt
 '           - stummModus für automatische Aufrufe (keine MsgBox)
 '           - Trigger: Bankkonto H/I + Einstellungen -> auto-Update
-' NEU v4.0: Monatsweise BeFuellung der übersicht
+' NEU v4.0: Monatsweise Befüllung der übersicht
 '           - Nur Monate mit importierten CSV-Daten werden angezeigt
 '           - ErmittleImportierteMonate() scannt Bankkonto Spalte A
 '           - Eintrag erscheint nur wenn:
@@ -35,12 +35,12 @@ Option Explicit
 '             b) Frist abgelaufen + keine Zahlung -> ROT
 '           - Einheitliches Datumsformat: "Januar 2026"
 ' NEU v4.1: Fälligkeit-basierte Kategoriefilterung
-'           - Kategorien erscheinen nur im Fuelligkeitsmonat
+'           - Kategorien erscheinen nur im Fälligkeitsmonat
 '             (nicht mehr in allen 12 Monaten)
 '           - Fälligkeit aus Daten Spalte O (Kategorie-Tabelle)
 '           - Vorjahr-Speicher (Daten Spalten CA-CF):
-'             Okt-Dez Zahlungen des Vorjahres für Jan-Maerz Zuordnung
-'           - Spalte C linksbuendig, Format "Maerz 2025"
+'             Okt-Dez Zahlungen des Vorjahres für Jan-März Zuordnung
+'           - Spalte C linksbündig, Format "März 2025"
 '           - PruefeZahlungen: flexibler Perioden-Vergleich
 ' SPLIT v4.2: Datenquellen + Vorjahr-Speicher ausgelagert nach
 '             mod_Uebersicht_Daten (LadeKategorienAusEinstellungen,
@@ -71,10 +71,10 @@ Option Explicit
 '           - Januar-Schutz: Wenn keine Vorjahr-Daten vorhanden,
 '             wird ROT auf GELB herabgestuft statt falsche Säumnis
 '             (Dezember-Zahlung des Vorjahres könnte fehlen)
-' NEU v5.0: - Keine Buendelung mehr! Jedes Mitglied / jede Parzelle
+' NEU v5.0: - Keine Bündelung mehr! Jedes Mitglied / jede Parzelle
 '             bekommt für jeden Monat / jede Kategorie eine eigene Zeile.
 '             KonsolidiereMitgliedsbeitragZeilen entfernt.
-'           - FormatiereUebersicht laeuft erst NACH AutoFilter / MonatsRegister
+'           - FormatiereUebersicht läuft erst NACH AutoFilter / MonatsRegister
 '             / Lock, damit NumberFormat (Euro) und Ausrichtung (Spalte A
 '             zentriert) garantiert greifen.
 ' ***************************************************************
@@ -85,14 +85,14 @@ Option Explicit
 Private Const UEBERSICHT_START_ROW As Long = 4
 Private Const UEBERSICHT_HEADER_ROW As Long = 3
 
-' Spalten im Uebersichtsblatt
+' Spalten im Übersichtsblatt
 Private Const UEB_COL_PARZELLE As Long = 1      ' A - Parzelle
 Private Const UEB_COL_MITGLIED As Long = 2      ' B - Mitglied
 Private Const UEB_COL_MONAT As Long = 3         ' C - Monat
 Private Const UEB_COL_KATEGORIE As Long = 4     ' D - Kategorie
 Private Const UEB_COL_SOLL As Long = 5          ' E - Soll
 Private Const UEB_COL_IST As Long = 6           ' F - Ist
-Private Const UEB_COL_STATUS As Long = 7        ' G - Status (gruen/GELB/ROT)
+Private Const UEB_COL_STATUS As Long = 7        ' G - Status (grün/GELB/ROT)
 Private Const UEB_COL_BEMERKUNG As Long = 8     ' H - Bemerkung
 Private Const UEB_COL_GUTHABEN As Long = 9      ' I - Guthaben je Position
 
@@ -101,7 +101,7 @@ Private Const AMPEL_GRUEN As Long = 12968900    ' RGB(196, 225, 196)
 Private Const AMPEL_GELB As Long = 10086143     ' RGB(255, 235, 156)
 Private Const AMPEL_ROT As Long = 9871103       ' RGB(255, 199, 206)
 
-' Hell-gelb für "bitte manuell beFuellen" (Soll-Betrag variabel)
+' Hell-gelb für "bitte manuell befüllen" (Soll-Betrag variabel)
 Private Const FARBE_HELLGELB_MANUELL As Long = 10092543  ' RGB(255, 255, 153)
 
 ' Zebra-Farbe (identisch mit Bankkonto / EntityKey-Tabelle)
@@ -142,7 +142,7 @@ End Sub
 
 
 ' ===============================================================
-' v4.5b: Gibt zurück ob GeneriereUebersicht gerade laeuft.
+' v4.5b: Gibt zurück ob GeneriereUebersicht gerade läuft.
 ' Wird von Workbook_SheetChange geprüft um Events während
 ' der Generierung zu ignorieren.
 ' ===============================================================
@@ -152,7 +152,7 @@ End Function
 
 
 ' ===============================================================
-' HAUPTFUNKTION: Generiert komplettes Uebersichtsblatt
+' HAUPTFUNKTION: Generiert komplettes Übersichtsblatt
 ' v2.0: Kategorien DYNAMISCH aus Einstellungen-Blatt
 ' v3.0: stummModus für automatische Aufrufe (ohne MsgBox)
 ' ===============================================================
@@ -190,13 +190,13 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     startTime = Timer
     
     ' Jahr-Parameter validieren
-    ' v6.0: Primaer aus Einstellungen lesen, Abgleich mit Bankkonto-Daten
+    ' v6.0: Primär aus Einstellungen lesen, Abgleich mit Bankkonto-Daten
     If jahr = 0 Then
         ' 1. Abrechnungsjahr aus Einstellungen lesen
         Dim jahrF1 As Long
         jahrF1 = HoleAbrechnungsjahr()
         
-        ' 2. Jahr aus Bankkonto-Daten ermitteln (haeufigstes Jahr)
+        ' 2. Jahr aus Bankkonto-Daten ermitteln (häufigstes Jahr)
         Dim jahrBK As Long
         jahrBK = mod_Uebersicht_Daten.ErmittleJahrAusBankkonto()
         
@@ -347,7 +347,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' Dezember-Cache initialisieren (für Vorauszahlungen)
     Call mod_Zahlungspruefung.InitialisiereNachDezemberCacheZP(jahr)
     
-    ' v4.0: Vorjahr-Speicher beFuellen (Okt-Dez Vorjahr)
+    ' v4.0: Vorjahr-Speicher befüllen (Okt-Dez Vorjahr)
     Call mod_Uebersicht_Daten.BefuelleVorjahrSpeicher(jahr - 1)
     
     ' v4.0: Vorjahr-Speicher automatisch löschen (ab August)
@@ -436,14 +436,14 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     Set summeIstDict = CreateObject("Scripting.Dictionary")
     summeIstDict.CompareMode = vbTextCompare
     
-    ' Sammelt Zeilennummern pro Parzelle+Kategorie für nachtraegliches Befüllen
+    ' Sammelt Zeilennummern pro Parzelle+Kategorie für nachträgliches Befüllen
     ' Key = "Parzelle|Kategorie", Value = Collection von Zeilennummern
     Dim summeIstZeilen As Object
     Set summeIstZeilen = CreateObject("Scripting.Dictionary")
     summeIstZeilen.CompareMode = vbTextCompare
     
     ' v5.1: Dictionary für MB-SOLL-Multiplikator bei Gemeinschaftskonten
-    ' Zaehlt wie viele eindeutige Mitglieder denselben EntityKey auf einer Parzelle nutzen.
+    ' Zählt wie viele eindeutige Mitglieder denselben EntityKey auf einer Parzelle nutzen.
     ' Key = "Parzelle|EntityKey", Value = Anzahl Personen
     Dim mbMultiplier As Object
     Set mbMultiplier = CreateObject("Scripting.Dictionary")
@@ -479,7 +479,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
         Dim mitgliedRole As String
         mitgliedRole = mitglied("Role")
         
-        ' v5.2: Eintrittsdatum -> Beitraege erst ab dem Eintrittsmonat
+        ' v5.2: Eintrittsdatum -> Beiträge erst ab dem Eintrittsmonat
         Dim eintrittMonat As Long
         eintrittMonat = 0
         If IsDate(mitglied("Eintritt")) Then
@@ -512,7 +512,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
         
         For monat = 1 To 12
             ' v5.2: Monate vor Eintritt überspringen (nur Mitgliedsbeitrag)
-            ' Pacht muss unabhaengig vom Mitglied immer bezahlt werden
+            ' Pacht muss unabhängig vom Mitglied immer bezahlt werden
             
             ' v4.7: Monate nach Pachtende überspringen
             If monat > austrittMonat Then GoTo NextMonat
@@ -539,7 +539,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 ' v7.4: Eintrittsdatum-Filter für ALLE Kategorien
                 ' Wenn ein Mitglied erst im laufenden Jahr eintritt
                 ' (Spalte P "Mitglieds-/Pachtbeginn"), zahlt es weder
-                ' Mitgliedsbeitrag noch Pacht noch Brauchwasser-Abschlaege
+                ' Mitgliedsbeitrag noch Pacht noch Brauchwasser-Abschläge
                 ' noch sonstige Gebühren VOR seinem Eintrittsmonat.
                 ' Beispiel: Parzelle 10 ohne Pächter bis 30.06.2025,
                 ' neues Mitglied ab 01.07.2025 -> keine Pacht/MB/Wasser
@@ -617,7 +617,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
-                ' v4.0: Vorjahr-Zahlungen prüfen (Jan-Maerz)
+                ' v4.0: Vorjahr-Zahlungen prüfen (Jan-März)
                 ' Dezember-Zahlung des Vorjahres die für diesen Monat gilt
                 If monat <= 3 And ist = 0 Then
                     Dim vjBetrag As Double
@@ -655,7 +655,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     If partnerInfo <> "" Then
                         If entityKey <> "" Then ist = soll
                         status = m_STATUS_GRUEN
-                        ' BUGFIX: Säumnis-/Verspaetungs-Bemerkung aus ZP entfernen,
+                        ' BUGFIX: Säumnis-/Verspätungs-Bemerkung aus ZP entfernen,
                         ' weil die Zahlung jetzt als bezahlt (durch Partner) gilt
                         If UBound(teile) >= 3 Then teile(3) = ""
                     End If
@@ -668,7 +668,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 ' =============================================
                 ' v4.0: FILTER - Nur relevante Einträge anzeigen
                 ' ROT-Einträge erscheinen NUR für Monate mit
-                ' importierten Kontoauszuegen auf dem Bankkonto-Blatt.
+                ' importierten Kontoauszügen auf dem Bankkonto-Blatt.
                 ' =============================================
                 Dim zeigeEintrag As Boolean
                 zeigeEintrag = False
@@ -791,7 +791,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 Else
                     ' KEIN fester Soll-Betrag -> Zelle hell-gelb (editierbar)
                     ' v4.3: Zuerst prüfen ob Nutzer bereits einen Betrag für
-                    ' diese Kategorie+Parzelle in einem frueheren Monat gesetzt hat
+                    ' diese Kategorie+Parzelle in einem früheren Monat gesetzt hat
                     Dim manuellSoll As Double
                     manuellSoll = HoleManuellSollAusVormonat(gespeicherteSoll, CStr(parzelleWert), kategorie)
                     
@@ -968,7 +968,7 @@ NextMitglied:
         SortiereUebersichtNachParzelle wsUeb, rowIdx - 1
     End If
 
-    ' v5.0: Mitgliedsbeitrag NICHT mehr gebuendelt -- jede(s) Mitglied/Parzelle
+    ' v5.0: Mitgliedsbeitrag NICHT mehr gebündelt -- jede(s) Mitglied/Parzelle
     ' bekommt eine eigene Zeile, auch wenn mehrere auf derselben Parzelle bezahlt
     ' haben. Die Konsolidierungslogik wurde entfernt.
 
@@ -1017,7 +1017,7 @@ NextMitglied:
     PruefeUndVerrechneGuthaben wsUeb, rowIdx - 1
     RepariereStatusDropdown
     
-    ' Die Vorjahr-Hinweispruefung wird gezielt beim Blattwechsel auf
+    ' Die Vorjahr-Hinweisprüfung wird gezielt beim Blattwechsel auf
     ' die Zahlungsübersicht gestartet (nicht direkt während Generierung).
     
     Dim endTime As Double
@@ -1071,7 +1071,7 @@ Private Sub ErstelleSaeumnisBestaetigungsButton(ByVal wsUeb As Worksheet)
         wsUeb.Range("K1").Left, wsUeb.Range("K1").Top + 2, 155, 22)
     With shp
         .Name = "btn_SaeumnisBestaetigen"
-        .TextFrame2.TextRange.Text = "Säumnisgebühr quittieren"
+        .TextFrame2.TextRange.text = "Säumnisgebühr quittieren"
         .TextFrame2.TextRange.Font.Size = 9
         .TextFrame2.TextRange.Font.Bold = msoTrue
         .TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
@@ -1084,7 +1084,7 @@ Private Sub ErstelleSaeumnisBestaetigungsButton(ByVal wsUeb As Worksheet)
     End With
 End Sub
 
-Private Sub VerarbeiteSpaeteNachzahlungen(ByVal wsUeb As Worksheet, ByVal letzteZeile As Long)
+Private Sub VerarbeiteSpaeteNachzahlungen(ByVal wsUeb As Worksheet, ByVal LetzteZeile As Long)
     Dim aktuell As Long, vorher As Long
     Dim aktuellerIst As Double, aktuellerSoll As Double
     Dim vorherIst As Double, vorherSoll As Double
@@ -1093,7 +1093,7 @@ Private Sub VerarbeiteSpaeteNachzahlungen(ByVal wsUeb As Worksheet, ByVal letzte
     Dim monatAktuell As Long, monatVorher As Long
     Dim antwort As VbMsgBoxResult
 
-    For aktuell = UEBERSICHT_START_ROW To letzteZeile
+    For aktuell = UEBERSICHT_START_ROW To LetzteZeile
         aktuellerSoll = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(aktuell, UEB_COL_SOLL).value)
         aktuellerIst = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(aktuell, UEB_COL_IST).value)
         If aktuellerSoll <= 0 Or aktuellerIst <= aktuellerSoll + 0.01 Then GoTo NaechsteAktuelleZeile
@@ -1123,7 +1123,7 @@ Private Sub VerarbeiteSpaeteNachzahlungen(ByVal wsUeb As Worksheet, ByVal letzte
             Dim saeumnisText As String
             saeumnisText = HoleSaeumnisTextFuerKategorie(kategorie)
             Dim offeneForderungen As String
-            offeneForderungen = ErstelleOffeneForderungsliste(wsUeb, aktuell, letzteZeile)
+            offeneForderungen = ErstelleOffeneForderungsliste(wsUeb, aktuell, LetzteZeile)
             antwort = MsgBox("Nachzahlung prüfen" & vbCrLf & vbCrLf & _
                 "Parzelle: " & parzelle & vbCrLf & _
                 "Mitglied: " & CStr(wsUeb.Cells(aktuell, UEB_COL_MITGLIED).value) & vbCrLf & _
@@ -1164,7 +1164,7 @@ End Sub
 
 Private Function ErstelleOffeneForderungsliste(ByVal wsUeb As Worksheet, _
                                                 ByVal aktuelleZeile As Long, _
-                                                ByVal letzteZeile As Long) As String
+                                                ByVal LetzteZeile As Long) As String
     Dim r As Long
     Dim parzelle As String
     Dim nameNorm As String
@@ -1175,7 +1175,7 @@ Private Function ErstelleOffeneForderungsliste(ByVal wsUeb As Worksheet, _
     parzelle = Trim$(CStr(wsUeb.Cells(aktuelleZeile, UEB_COL_PARZELLE).value))
     nameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(aktuelleZeile, UEB_COL_MITGLIED).value))
     kategorie = Trim$(CStr(wsUeb.Cells(aktuelleZeile, UEB_COL_KATEGORIE).value))
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If r <> aktuelleZeile And Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
            mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = nameNorm And _
            StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), kategorie, vbTextCompare) = 0 Then
@@ -1214,16 +1214,16 @@ Private Function HoleSaeumnisTextFuerKategorie(ByVal kategorie As String) As Str
     End If
 End Function
 
-Private Sub SortiereUebersichtNachParzelle(ByVal wsUeb As Worksheet, ByVal letzteZeile As Long)
-    If letzteZeile < UEBERSICHT_START_ROW Then Exit Sub
+Private Sub SortiereUebersichtNachParzelle(ByVal wsUeb As Worksheet, ByVal LetzteZeile As Long)
+    If LetzteZeile < UEBERSICHT_START_ROW Then Exit Sub
 
     With wsUeb.Sort
         .SortFields.Clear
-        .SortFields.Add Key:=wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_PARZELLE), _
-                                        wsUeb.Cells(letzteZeile, UEB_COL_PARZELLE)), _
+        .SortFields.Add key:=wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_PARZELLE), _
+                                        wsUeb.Cells(LetzteZeile, UEB_COL_PARZELLE)), _
                         SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortTextAsNumbers
         .SetRange wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_PARZELLE), _
-                              wsUeb.Cells(letzteZeile, UEB_COL_GUTHABEN))
+                              wsUeb.Cells(LetzteZeile, UEB_COL_GUTHABEN))
         .Header = xlNo
         .MatchCase = False
         .Orientation = xlTopToBottom
@@ -1301,7 +1301,7 @@ Private Function BereinigePartnerVorjahrHinweis(ByVal bemerkung As String) As St
         bemerkung = Replace(bemerkung, "|  |", "|")
     Loop
     Do While Left$(Trim$(bemerkung), 1) = "|"
-        bemerkung = Trim$(Mid$(Trim$(bemerkung), 2))
+        bemerkung = Trim$(mid$(Trim$(bemerkung), 2))
     Loop
     Do While Right$(Trim$(bemerkung), 1) = "|"
         bemerkung = Trim$(Left$(Trim$(bemerkung), Len(Trim$(bemerkung)) - 1))
@@ -1365,7 +1365,7 @@ Public Sub WendePersistierteVorjahrEntscheidungenAn()
     On Error GoTo 0
 End Sub
 
-Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZeile As Long)
+Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal LetzteZeile As Long)
     Dim wsDaten As Worksheet
     Dim r As Long
     Dim quelle As Long
@@ -1383,23 +1383,23 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal letzteZei
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     On Error GoTo 0
     If wsDaten Is Nothing Then Exit Sub
-    If letzteZeile < UEBERSICHT_START_ROW Then Exit Sub
+    If LetzteZeile < UEBERSICHT_START_ROW Then Exit Sub
 
-    LadeGuthabenVerrechnungen wsUeb, wsDaten, letzteZeile
+    LadeGuthabenVerrechnungen wsUeb, wsDaten, LetzteZeile
 
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If UCase$(Trim$(CStr(wsUeb.Cells(r, UEB_COL_STATUS).value))) = "ROT" Then
             sollWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_SOLL).value)
             istWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_IST).value)
             offen = sollWert - istWert
             If offen > 0.004 Then
-                quelle = FindeGuthabenQuelle(wsUeb, r, letzteZeile)
+                quelle = FindeGuthabenQuelle(wsUeb, r, LetzteZeile)
                 If quelle > 0 Then
                     If StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), _
                                "Mitgliedsbeitrag", vbTextCompare) = 0 Then
-                        verfuegbar = VerfuegbaresGuthabenFuerMitgliedsgruppe(wsUeb, r, letzteZeile)
+                        verfuegbar = VerfuegbaresGuthabenFuerMitgliedsgruppe(wsUeb, r, LetzteZeile)
                     Else
-                        verfuegbar = VerfuegbaresGuthabenFuerParzelle(wsUeb, r, letzteZeile)
+                        verfuegbar = VerfuegbaresGuthabenFuerParzelle(wsUeb, r, LetzteZeile)
                     End If
                     Debug.Print "[GuthabenDialog] Zeile=" & r & _
                                 " Parzelle=" & CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value) & _
@@ -1462,7 +1462,7 @@ Private Sub SpeichereParzellenVerbrauch(ByVal wsDaten As Worksheet, _
     Dim r As Long, lastRow As Long
     Dim key As String
     key = "PARZELLE|" & parzelle
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, GUTH_VER_COL_KEY).End(xlUp).Row
     For r = GUTH_VER_START_ROW To lastRow
         If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), key, vbTextCompare) = 0 Then
             wsDaten.Unprotect PASSWORD:=PASSWORD
@@ -1492,7 +1492,7 @@ Private Sub SpeicherePersonenVerbrauch(ByVal wsDaten As Worksheet, _
     Dim r As Long, lastRow As Long, key As String
     key = "PERSON|" & Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)) & "|" & _
           mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value))
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, GUTH_VER_COL_KEY).End(xlUp).Row
     For r = GUTH_VER_START_ROW To lastRow
         If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), key, vbTextCompare) = 0 Then
             wsDaten.Unprotect PASSWORD:=PASSWORD
@@ -1518,7 +1518,7 @@ Private Sub SpeichereMitgliedsbeitragsGruppenverbrauch(ByVal wsDaten As Workshee
                                                        ByVal betrag As Double)
     Dim r As Long, lastRow As Long, key As String
     key = "MBGRUPPE|" & Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, GUTH_VER_COL_KEY).End(xlUp).Row
     For r = GUTH_VER_START_ROW To lastRow
         If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), key, vbTextCompare) = 0 Then
             wsDaten.Unprotect PASSWORD:=PASSWORD
@@ -1540,12 +1540,12 @@ End Sub
 
 Private Function VerfuegbaresGuthabenFuerMitgliedsgruppe(ByVal wsUeb As Worksheet, _
                                                          ByVal zielZeile As Long, _
-                                                         ByVal letzteZeile As Long) As Double
+                                                         ByVal LetzteZeile As Long) As Double
     Dim r As Long
     Dim parzelle As String
     Dim roh As Double
     parzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
            StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), "Mitgliedsbeitrag", vbTextCompare) = 0 Then
             roh = roh + mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
@@ -1565,7 +1565,7 @@ Private Function GuthabenGesamtVerrechnetFuerMitgliedsgruppe(ByVal wsUeb As Work
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     On Error GoTo 0
     If wsDaten Is Nothing Then Exit Function
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, GUTH_VER_COL_KEY).End(xlUp).Row
     For r = GUTH_VER_START_ROW To lastRow
         If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), key, vbTextCompare) = 0 Then
             GuthabenGesamtVerrechnetFuerMitgliedsgruppe = _
@@ -1577,12 +1577,12 @@ End Function
 
 Private Function VerfuegbaresGuthabenFuerParzelle(ByVal wsUeb As Worksheet, _
                                                    ByVal zielZeile As Long, _
-                                                   ByVal letzteZeile As Long) As Double
+                                                   ByVal LetzteZeile As Long) As Double
     Dim r As Long
     Dim parzelle As String
     Dim roh As Double
     parzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle Then
             roh = roh + mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
         End If
@@ -1590,7 +1590,7 @@ Private Function VerfuegbaresGuthabenFuerParzelle(ByVal wsUeb As Worksheet, _
     Dim ledgerVerbrauch As Double
     Dim sichtbarerVerbrauch As Double
     ledgerVerbrauch = GuthabenGesamtVerrechnetFuerParzelle(wsUeb, zielZeile)
-    sichtbarerVerbrauch = GuthabenVerrechnetAusBemerkungenFuerParzelle(wsUeb, zielZeile, letzteZeile)
+    sichtbarerVerbrauch = GuthabenVerrechnetAusBemerkungenFuerParzelle(wsUeb, zielZeile, LetzteZeile)
     VerfuegbaresGuthabenFuerParzelle = Application.Max(0, roh - Application.Max(ledgerVerbrauch, sichtbarerVerbrauch))
     Debug.Print "[Guthaben] Parzelle=" & parzelle & " Roh=" & Format$(roh, "0.00") & _
                 " Ledger=" & Format$(ledgerVerbrauch, "0.00") & _
@@ -1600,7 +1600,7 @@ End Function
 
 Private Function GuthabenVerrechnetAusBemerkungenFuerParzelle(ByVal wsUeb As Worksheet, _
                                                                ByVal zielZeile As Long, _
-                                                               ByVal letzteZeile As Long) As Double
+                                                               ByVal LetzteZeile As Long) As Double
     Dim r As Long
     Dim parzelle As String
     Dim text As String
@@ -1610,7 +1610,7 @@ Private Function GuthabenVerrechnetAusBemerkungenFuerParzelle(ByVal wsUeb As Wor
     Dim trenner As Long
     parzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
     marker = "Guthaben verrechnet:"
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle Then
             text = CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value)
             trenner = InStr(1, text, marker, vbTextCompare)
@@ -1630,13 +1630,13 @@ End Function
 Private Function ParzelleHatGuthabenverrechnung(ByVal wsUeb As Worksheet, _
                                                  ByVal wsDaten As Worksheet, _
                                                  ByVal zeile As Long, _
-                                                 ByVal letzteZeile As Long) As Boolean
+                                                 ByVal LetzteZeile As Long) As Boolean
     Dim parzelle As String
     Dim r As Long, lastRow As Long
     Dim quelleKey As String
     Dim teile() As String
     parzelle = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle Then
             If InStr(1, CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value), "Guthaben verrechnet:", vbTextCompare) > 0 Then
                 ParzelleHatGuthabenverrechnung = True
@@ -1644,7 +1644,7 @@ Private Function ParzelleHatGuthabenverrechnung(ByVal wsUeb As Worksheet, _
             End If
         End If
     Next r
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, GUTH_VER_COL_QUELLE).End(xlUp).Row
     For r = GUTH_VER_START_ROW To lastRow
         quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
         If Left$(quelleKey, 7) = "SUMME|" Then
@@ -1662,14 +1662,14 @@ End Function
 Private Function KategorieHatGuthabenverrechnung(ByVal wsUeb As Worksheet, _
                                                   ByVal wsDaten As Worksheet, _
                                                   ByVal zeile As Long, _
-                                                  ByVal letzteZeile As Long) As Boolean
+                                                  ByVal LetzteZeile As Long) As Boolean
     If StrComp(Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value)), _
                "Mitgliedsbeitrag", vbTextCompare) = 0 Then
-        KategorieHatGuthabenverrechnung = BesitzerHatSichtbareGuthabenverrechnung(wsUeb, zeile, letzteZeile) Or _
+        KategorieHatGuthabenverrechnung = BesitzerHatSichtbareGuthabenverrechnung(wsUeb, zeile, LetzteZeile) Or _
             GuthabenGesamtVerrechnetFuerMitglied(wsUeb, zeile) > 0.004 Or _
             GuthabenGesamtVerrechnetFuerMitgliedsgruppe(wsUeb, zeile) > 0.004
     Else
-        KategorieHatGuthabenverrechnung = ParzelleHatGuthabenverrechnung(wsUeb, wsDaten, zeile, letzteZeile)
+        KategorieHatGuthabenverrechnung = ParzelleHatGuthabenverrechnung(wsUeb, wsDaten, zeile, LetzteZeile)
     End If
 End Function
 
@@ -1693,7 +1693,7 @@ Public Sub DebugGuthabenParzelle(ByVal parzelle As Long)
         Exit Sub
     End If
 
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, GUTH_VER_COL_QUELLE).End(xlUp).Row
     For r = GUTH_VER_START_ROW To lastRow
         quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
         betrag = mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
@@ -1705,17 +1705,17 @@ Public Sub DebugGuthabenParzelle(ByVal parzelle As Long)
                 If UBound(teile) >= 2 Then
                     Debug.Print "[GuthabenDebug]   ParzelleKey=" & teile(1) & _
                                 " BesitzerKey=" & teile(2) & _
-                                " Treffer=" & (CLng(Val(teile(1))) = parzelle)
-                    If CLng(Val(teile(1))) = parzelle Then summeVerrechnet = summeVerrechnet + betrag
+                                " Treffer=" & (CLng(val(teile(1))) = parzelle)
+                    If CLng(val(teile(1))) = parzelle Then summeVerrechnet = summeVerrechnet + betrag
                 End If
             End If
         End If
     Next r
 
     Debug.Print "[GuthabenDebug] Übersicht sichtbare Verrechnungen:"
-    lastRow = wsUeb.Cells(wsUeb.Rows.Count, UEB_COL_PARZELLE).End(xlUp).Row
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
     For r = UEBERSICHT_START_ROW To lastRow
-        If CLng(Val(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value))) = parzelle Then
+        If CLng(val(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value))) = parzelle Then
             If IsNumeric(wsUeb.Cells(r, UEB_COL_GUTHABEN).value) Then
                 summeRoh = summeRoh + mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
             End If
@@ -1818,7 +1818,7 @@ End Function
 
 Private Function SaeumnisGebuehrIstBezahlt(ByVal wsDaten As Worksheet, ByVal key As String) As Boolean
     Dim r As Long, lastRow As Long
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, SAEUMNIS_COL_KEY).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, SAEUMNIS_COL_KEY).End(xlUp).Row
     For r = SAEUMNIS_START_ROW To lastRow
         If StrComp(CStr(wsDaten.Cells(r, SAEUMNIS_COL_KEY).value), key, vbTextCompare) = 0 Then
             SaeumnisGebuehrIstBezahlt = CBool(wsDaten.Cells(r, SAEUMNIS_COL_BEZAHLT).value)
@@ -1831,7 +1831,7 @@ Private Sub SpeichereSaeumnisGebuehr(ByVal wsDaten As Worksheet, ByVal key As St
                                       ByVal gebuehr As Double, ByVal bezahlt As Boolean, _
                                       ByVal zahlDatum As String, ByVal bestaetigtDurch As String)
     Dim r As Long, lastRow As Long
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, SAEUMNIS_COL_KEY).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, SAEUMNIS_COL_KEY).End(xlUp).Row
     r = SAEUMNIS_START_ROW
     For r = SAEUMNIS_START_ROW To lastRow
         If StrComp(CStr(wsDaten.Cells(r, SAEUMNIS_COL_KEY).value), key, vbTextCompare) = 0 Then Exit For
@@ -1854,12 +1854,12 @@ End Sub
 
 Private Function VerfuegbaresGuthabenFuerMitglied(ByVal wsUeb As Worksheet, _
                                                    ByVal zielZeile As Long, _
-                                                   ByVal letzteZeile As Long) As Double
+                                                   ByVal LetzteZeile As Long) As Double
     Dim basis As Double
     Dim verbraucht As Double
-    basis = ErmittleRohguthabenFuerMitglied(wsUeb, zielZeile, letzteZeile)
+    basis = ErmittleRohguthabenFuerMitglied(wsUeb, zielZeile, LetzteZeile)
     verbraucht = GuthabenGesamtVerrechnetFuerMitglied(wsUeb, zielZeile)
-    If verbraucht <= 0.004 And BesitzerHatSichtbareGuthabenverrechnung(wsUeb, zielZeile, letzteZeile) Then
+    If verbraucht <= 0.004 And BesitzerHatSichtbareGuthabenverrechnung(wsUeb, zielZeile, LetzteZeile) Then
         verbraucht = basis
     End If
     VerfuegbaresGuthabenFuerMitglied = Application.Max(0, basis - verbraucht)
@@ -1871,13 +1871,13 @@ End Function
 
 Private Function BesitzerHatSichtbareGuthabenverrechnung(ByVal wsUeb As Worksheet, _
                                                           ByVal zielZeile As Long, _
-                                                          ByVal letzteZeile As Long) As Boolean
+                                                          ByVal LetzteZeile As Long) As Boolean
     Dim r As Long
     Dim parzelle As String
     Dim nameNorm As String
     parzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
     nameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zielZeile, UEB_COL_MITGLIED).value))
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
            mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = nameNorm Then
             If InStr(1, CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value), "Guthaben verrechnet:", vbTextCompare) > 0 Then
@@ -1890,13 +1890,13 @@ End Function
 
 Private Function ErmittleRohguthabenFuerMitglied(ByVal wsUeb As Worksheet, _
                                                   ByVal zielZeile As Long, _
-                                                  ByVal letzteZeile As Long) As Double
+                                                  ByVal LetzteZeile As Long) As Double
     Dim r As Long
     Dim parzelle As String
     Dim nameNorm As String
     parzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
     nameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zielZeile, UEB_COL_MITGLIED).value))
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
            mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = nameNorm Then
             ErmittleRohguthabenFuerMitglied = ErmittleRohguthabenFuerMitglied + _
@@ -1907,13 +1907,13 @@ End Function
 
 Private Function ErmittleGesamtguthabenFuerMitglied(ByVal wsUeb As Worksheet, _
                                                      ByVal zielZeile As Long, _
-                                                     ByVal letzteZeile As Long) As Double
+                                                     ByVal LetzteZeile As Long) As Double
     Dim r As Long
     Dim parzelle As String
     Dim nameNorm As String
     parzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
     nameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zielZeile, UEB_COL_MITGLIED).value))
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
            mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = nameNorm Then
             ErmittleGesamtguthabenFuerMitglied = ErmittleGesamtguthabenFuerMitglied + _
@@ -1926,7 +1926,7 @@ End Function
 
 Private Sub VerbraucheGuthabenFuerMitglied(ByVal wsUeb As Worksheet, _
                                             ByVal zielZeile As Long, _
-                                            ByVal letzteZeile As Long, _
+                                            ByVal LetzteZeile As Long, _
                                             ByVal betrag As Double)
     Dim r As Long
     Dim rest As Double
@@ -1936,7 +1936,7 @@ Private Sub VerbraucheGuthabenFuerMitglied(ByVal wsUeb As Worksheet, _
     rest = betrag
     parzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
     nameNorm = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zielZeile, UEB_COL_MITGLIED).value))
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If rest <= 0.004 Then Exit For
         If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = parzelle And _
            mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = nameNorm Then
@@ -1954,13 +1954,13 @@ Private Sub VerbraucheGuthabenFuerMitglied(ByVal wsUeb As Worksheet, _
     Next r
 End Sub
 
-Private Function FindeGuthabenQuelle(ByVal wsUeb As Worksheet, ByVal zielZeile As Long, ByVal letzteZeile As Long) As Long
+Private Function FindeGuthabenQuelle(ByVal wsUeb As Worksheet, ByVal zielZeile As Long, ByVal LetzteZeile As Long) As Long
     Dim r As Long
     Dim zielParzelle As String
     Dim zielName As String
     zielParzelle = Trim$(CStr(wsUeb.Cells(zielZeile, UEB_COL_PARZELLE).value))
     zielName = mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zielZeile, UEB_COL_MITGLIED).value))
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If r <> zielZeile And Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) = zielParzelle Then
             If mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = zielName Then
                 If mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_GUTHABEN).value) > 0.004 Then
@@ -1972,7 +1972,7 @@ Private Function FindeGuthabenQuelle(ByVal wsUeb As Worksheet, ByVal zielZeile A
     Next r
 End Function
 
-Private Sub LadeGuthabenVerrechnungen(ByVal wsUeb As Worksheet, ByVal wsDaten As Worksheet, ByVal letzteZeile As Long)
+Private Sub LadeGuthabenVerrechnungen(ByVal wsUeb As Worksheet, ByVal wsDaten As Worksheet, ByVal LetzteZeile As Long)
     Dim lastRow As Long, r As Long, ziel As Long, quelle As Long, betrag As Double
     Dim key As String, quelleKey As String
     Dim verbraucht As Object
@@ -1980,7 +1980,7 @@ Private Sub LadeGuthabenVerrechnungen(ByVal wsUeb As Worksheet, ByVal wsDaten As
     Dim anwendbar As Double
     Set verbraucht = CreateObject("Scripting.Dictionary")
     verbraucht.CompareMode = vbTextCompare
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, GUTH_VER_COL_KEY).End(xlUp).Row
     If lastRow < GUTH_VER_START_ROW Then Exit Sub
     For r = GUTH_VER_START_ROW To lastRow
         key = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value))
@@ -1989,7 +1989,7 @@ Private Sub LadeGuthabenVerrechnungen(ByVal wsUeb As Worksheet, ByVal wsDaten As
         If key <> "" And betrag > 0 Then
             anwendbar = betrag
             If Left$(quelleKey, 7) = "SUMME|" Then
-                basis = ErmittleBasisGuthabenNachSummenKey(wsUeb, letzteZeile, quelleKey)
+                basis = ErmittleBasisGuthabenNachSummenKey(wsUeb, LetzteZeile, quelleKey)
                 If verbraucht.exists(quelleKey) Then
                     anwendbar = Application.Max(0, Application.Min(betrag, basis - CDbl(verbraucht(quelleKey))))
                 Else
@@ -2002,12 +2002,12 @@ Private Sub LadeGuthabenVerrechnungen(ByVal wsUeb As Worksheet, ByVal wsDaten As
                 End If
             End If
             If anwendbar <= 0.004 Then GoTo NaechsteVerrechnung
-            ziel = FindeZeileNachEntscheidungsKey(wsUeb, letzteZeile, key)
+            ziel = FindeZeileNachEntscheidungsKey(wsUeb, LetzteZeile, key)
             If Left$(quelleKey, 7) = "SUMME|" Then
-                VerbraucheGuthabenNachSummenKey wsUeb, letzteZeile, quelleKey, anwendbar
+                VerbraucheGuthabenNachSummenKey wsUeb, LetzteZeile, quelleKey, anwendbar
                 quelle = 0
             Else
-                quelle = FindeZeileNachEntscheidungsKey(wsUeb, letzteZeile, quelleKey)
+                quelle = FindeZeileNachEntscheidungsKey(wsUeb, LetzteZeile, quelleKey)
             End If
             If ziel > 0 Then
                 wsUeb.Cells(ziel, UEB_COL_IST).value = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(ziel, UEB_COL_IST).value) + anwendbar
@@ -2022,14 +2022,14 @@ NaechsteVerrechnung:
 End Sub
 
 Private Function ErmittleBasisGuthabenNachSummenKey(ByVal wsUeb As Worksheet, _
-                                                     ByVal letzteZeile As Long, _
+                                                     ByVal LetzteZeile As Long, _
                                                      ByVal summenKey As String) As Double
     Dim teile() As String
     Dim r As Long
     If Left$(summenKey, 7) <> "SUMME|" Then Exit Function
     teile = Split(summenKey, "|", 2)
     If UBound(teile) < 1 Then Exit Function
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
            mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = teile(1) Then
             ErmittleBasisGuthabenNachSummenKey = ErmittleBasisGuthabenNachSummenKey + _
@@ -2039,7 +2039,7 @@ Private Function ErmittleBasisGuthabenNachSummenKey(ByVal wsUeb As Worksheet, _
 End Function
 
 Private Sub VerbraucheGuthabenNachSummenKey(ByVal wsUeb As Worksheet, _
-                                             ByVal letzteZeile As Long, _
+                                             ByVal LetzteZeile As Long, _
                                              ByVal summenKey As String, _
                                              ByVal betrag As Double)
     Dim teile() As String
@@ -2052,7 +2052,7 @@ Private Sub VerbraucheGuthabenNachSummenKey(ByVal wsUeb As Worksheet, _
     Dim kriterium As String
     kriterium = teile(1)
     rest = betrag
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If rest <= 0.004 Then Exit For
         If Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
            mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) = kriterium Then
@@ -2068,9 +2068,9 @@ Private Sub VerbraucheGuthabenNachSummenKey(ByVal wsUeb As Worksheet, _
     Next r
 End Sub
 
-Private Function FindeZeileNachEntscheidungsKey(ByVal wsUeb As Worksheet, ByVal letzteZeile As Long, ByVal key As String) As Long
+Private Function FindeZeileNachEntscheidungsKey(ByVal wsUeb As Worksheet, ByVal LetzteZeile As Long, ByVal key As String) As Long
     Dim r As Long
-    For r = UEBERSICHT_START_ROW To letzteZeile
+    For r = UEBERSICHT_START_ROW To LetzteZeile
         If StrComp(UebersichtEntscheidungsKey(wsUeb, r), key, vbTextCompare) = 0 Then FindeZeileNachEntscheidungsKey = r: Exit Function
     Next r
 End Function
@@ -2081,7 +2081,7 @@ End Function
 
 Private Function FindeGuthabenVerrechnungZeile(ByVal wsDaten As Worksheet, ByVal key As String) As Long
     Dim r As Long, lastRow As Long
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, GUTH_VER_COL_KEY).End(xlUp).Row
     For r = GUTH_VER_START_ROW To lastRow
         If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), key, vbTextCompare) = 0 Then FindeGuthabenVerrechnungZeile = r: Exit Function
     Next r
@@ -2090,7 +2090,7 @@ End Function
 Private Sub SpeichereGuthabenVerrechnung(ByVal wsDaten As Worksheet, ByVal key As String, ByVal betrag As Double, ByVal quelle As String)
     Dim r As Long
     r = FindeGuthabenVerrechnungZeile(wsDaten, key)
-    If r = 0 Then r = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_KEY).End(xlUp).Row + 1: If r < GUTH_VER_START_ROW Then r = GUTH_VER_START_ROW
+    If r = 0 Then r = wsDaten.Cells(wsDaten.Rows.count, GUTH_VER_COL_KEY).End(xlUp).Row + 1: If r < GUTH_VER_START_ROW Then r = GUTH_VER_START_ROW
     wsDaten.Unprotect PASSWORD:=PASSWORD
     wsDaten.Cells(GUTH_VER_HEADER_ROW, GUTH_VER_COL_KEY).value = "Guthaben Verrechnung Key"
     wsDaten.Cells(GUTH_VER_HEADER_ROW, GUTH_VER_COL_BETRAG).value = "Verrechnet"
@@ -2289,7 +2289,7 @@ Public Function GuthabenTextFuerParzelle(ByVal parzelle As Long) As String
     Dim wsUeb As Worksheet
     Dim lastRow As Long
     Dim r As Long
-    Dim name As String
+    Dim Name As String
     Dim guthaben As Double
 
     GuthabenTextFuerParzelle = ""
@@ -2305,11 +2305,11 @@ Public Function GuthabenTextFuerParzelle(ByVal parzelle As Long) As String
                 guthaben = Application.Max(0, CDbl(wsUeb.Cells(r, UEB_COL_GUTHABEN).value) - _
                     GuthabenVerrechnetFuerZeile(wsUeb, r))
                 If guthaben > 0.004 Then
-                    name = Trim$(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value))
-                    If name = "" Then name = "Mitglied"
+                    Name = Trim$(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value))
+                    If Name = "" Then Name = "Mitglied"
                     If GuthabenTextFuerParzelle <> "" Then GuthabenTextFuerParzelle = GuthabenTextFuerParzelle & vbLf
                     GuthabenTextFuerParzelle = GuthabenTextFuerParzelle & _
-                        name & ": " & Format$(guthaben, "#,##0.00") & " " & ChrW(8364)
+                        Name & ": " & Format$(guthaben, "#,##0.00") & " " & ChrW(8364)
                 End If
             End If
         End If
@@ -2331,7 +2331,7 @@ Private Function GuthabenVerrechnetFuerZeile(ByVal wsUeb As Worksheet, ByVal zei
         mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value))
     Dim parzellenKey As String
     parzellenKey = "PARZELLE|" & Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value))
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, GUTH_VER_COL_QUELLE).End(xlUp).Row
     basis = CDbl(wsUeb.Cells(zeile, UEB_COL_GUTHABEN).value)
     For r = GUTH_VER_START_ROW To lastRow
         quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
@@ -2362,7 +2362,7 @@ Private Function GuthabenGesamtVerrechnetFuerMitglied(ByVal wsUeb As Worksheet, 
         mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value))
     Dim personenKey As String
     personenKey = "PERSON|" & ownerKey
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, GUTH_VER_COL_QUELLE).End(xlUp).Row
     For r = GUTH_VER_START_ROW To lastRow
         If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), personenKey, vbTextCompare) = 0 Then
             GuthabenGesamtVerrechnetFuerMitglied = mod_Zahlungspruefung.LeseGeldwertZP( _
@@ -2395,7 +2395,7 @@ Private Function GuthabenGesamtVerrechnetFuerParzelle(ByVal wsUeb As Worksheet, 
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     On Error GoTo 0
     If wsDaten Is Nothing Then Exit Function
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, GUTH_VER_COL_QUELLE).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, GUTH_VER_COL_QUELLE).End(xlUp).Row
     For r = GUTH_VER_START_ROW To lastRow
         If StrComp(Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_KEY).value)), parzellenKey, vbTextCompare) = 0 Then
             GuthabenGesamtVerrechnetFuerParzelle = mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
@@ -2487,13 +2487,13 @@ End Sub
 
 
 ' ===============================================================
-' v4.0: prüft ob eine Kategorie in einem bestimmten Monat Fuellig ist
+' v4.0: prüft ob eine Kategorie in einem bestimmten Monat Fällig ist
 ' Kombiniert SollMonate (Einstellungen Spalte E) mit Fälligkeit
 ' (Daten Spalte O).
 ' - monatlich: SollMonate oder alle Monate
 ' - jährlich: nur SollMonate (1 Monat)
-' - halbjaehrlich: nur SollMonate (2 Monate)
-' - quartalsweise/vierteljaehrlich: nur SollMonate (3-4 Monate)
+' - halbjährlich: nur SollMonate (2 Monate)
+' - quartalsweise/vierteljährlich: nur SollMonate (3-4 Monate)
 ' - benutzerdefiniert: nur SollMonate
 ' Wenn SollMonate leer UND Fälligkeit nicht monatlich ->
 '   Kategorie ist NICHT in allen Monaten fällig!
@@ -2527,7 +2527,7 @@ End Function
 
 
 ' ===============================================================
-' Header im Uebersichtsblatt setzen
+' Header im Übersichtsblatt setzen
 ' ===============================================================
 Private Sub SetzeUebersichtHeader(ByVal wsUeb As Worksheet)
     
@@ -2558,7 +2558,7 @@ Private Sub SetzeUebersichtHeader(ByVal wsUeb As Worksheet)
             .Interior.color = RGB(217, 217, 217)  ' Hellgrau
             .Borders.LineStyle = xlContinuous
             ' Header-Zellen explizit entsperren, damit das AutoFilter-Dropdown
-            ' auch bei aktivem Blattschutz zuverlaessig klickbar bleibt.
+            ' auch bei aktivem Blattschutz zuverlässig klickbar bleibt.
             .Locked = False
         End With
     End With
@@ -2567,7 +2567,7 @@ End Sub
 
 
 ' ===============================================================
-' Formatierung des Uebersichtsblatts
+' Formatierung des Übersichtsblatts
 ' ===============================================================
 Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                                    ByVal startRow As Long, _
@@ -2598,7 +2598,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                         wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                     End If
                 Else
-                    ' Alle uebrigen Spalten einschliesslich Guthaben.
+                    ' Alle übrigen Spalten einschliesslich Guthaben.
                     wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                 End If
             Next c
@@ -2613,7 +2613,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                         wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                     End If
                 Else
-                    ' Alle uebrigen Spalten einschliesslich Guthaben.
+                    ' Alle übrigen Spalten einschliesslich Guthaben.
                     wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                 End If
             Next c
@@ -2640,7 +2640,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     Next colAutoFit
     
     ' Deutsches Zahlenformat mit Euro-Zeichen (Spalte E + F + I)
-    ' Defensiv: einzeln + mit Fehlerunterdrueckung, plus Diagnose
+    ' Defensiv: einzeln + mit Fehlerunterdrückung, plus Diagnose
     On Error Resume Next
     Err.Clear
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_SOLL), _
@@ -2665,7 +2665,7 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
         Debug.Print "[" & ChrW(220) & "bersicht] FEHLER Alignment PARZELLE: " & Err.Number & " - " & Err.Description
         Err.Clear
     End If
-    ' Spalte C (Monat) linksbuendig
+    ' Spalte C (Monat) linksbündig
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_MONAT), _
                 wsUeb.Cells(endRow, UEB_COL_MONAT)).HorizontalAlignment = xlLeft
     Err.Clear
@@ -2705,7 +2705,7 @@ Public Sub RepariereStatusDropdown()
             Exit Sub
         End If
     End If
-    endRow = wsUeb.Cells(wsUeb.Rows.Count, UEB_COL_PARZELLE).End(xlUp).Row
+    endRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
     wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_STATUS), _
                 wsUeb.Cells(endRow, UEB_COL_STATUS)).Locked = False
     Debug.Print "[StatusDropdown] Statuszellen entsperrt: Locked=" & _
@@ -2735,8 +2735,8 @@ Public Sub DebugStatusDropdown()
     Debug.Print "[StatusDropdown] ProtectContents=" & wsUeb.ProtectContents
     Debug.Print "[StatusDropdown] Repository-PASSWORD-Länge=" & Len(PASSWORD)
     Debug.Print "[StatusDropdown] Zelle=" & zelle.Address(False, False) & _
-                " Locked=" & zelle.Locked & " Value=" & CStr(zelle.Value)
-    endRow = wsUeb.Cells(wsUeb.Rows.Count, UEB_COL_PARZELLE).End(xlUp).Row
+                " Locked=" & zelle.Locked & " Value=" & CStr(zelle.value)
+    endRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
     Set statusBereich = wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_STATUS), _
                                     wsUeb.Cells(endRow, UEB_COL_STATUS))
     On Error Resume Next
@@ -2774,7 +2774,7 @@ Private Sub RichteStatusDropdownEin(ByVal wsUeb As Worksheet, ByVal startRow As 
     If endRow < startRow Then Exit Sub
 
     On Error Resume Next
-    ThisWorkbook.Names("rngStatusZahlungsuebersicht").Delete
+    ThisWorkbook.names("rngStatusZahlungsuebersicht").Delete
     On Error GoTo 0
     wsUeb.Range("BH1:BH3").value = Application.Transpose(Array("GR" & ChrW(220) & "N", "GELB", "ROT"))
     wsUeb.Columns("BH").Hidden = True
@@ -2803,8 +2803,8 @@ End Sub
 ' bestehenden übersicht BEVOR diese gelöscht wird.
 ' Gibt ein Dictionary zurück: Key = "Parzelle|Kategorie"
 '                               Value = Soll-Betrag (Double)
-' Nur Zeilen mit hell-gelber oder gruener Soll-Zelle werden
-' beruecksichtigt (= variable Soll-Beträge).
+' Nur Zeilen mit hell-gelber oder grüner Soll-Zelle werden
+' berücksichtigt (= variable Soll-Beträge).
 ' ===============================================================
 Private Function SammleManuelleSollWerte(ByVal wsUeb As Worksheet) As Object
     
@@ -2828,7 +2828,7 @@ Private Function SammleManuelleSollWerte(ByVal wsUeb As Worksheet) As Object
         ' v4.4: Keine Gruppenblock-Logik mehr nötig, jede Zeile hat Parzelle
         If parzelle = "" Then GoTo NextSollRow
         
-        ' Nur variable Soll-Zellen (hell-gelb oder grün) beruecksichtigen
+        ' Nur variable Soll-Zellen (hell-gelb oder grün) berücksichtigen
         Dim sollFarbe As Long
         sollFarbe = wsUeb.Cells(r, UEB_COL_SOLL).Interior.color
         
@@ -3195,7 +3195,7 @@ Private Function HoleBeitragspflichtigeMitgliedsnamen(ByVal parzelle As Long) As
     Dim wsMitglieder As Worksheet
     Dim lastRow As Long
     Dim r As Long
-    Dim name As String
+    Dim Name As String
     Dim anrede As String
     Dim funktion As String
 
@@ -3214,19 +3214,19 @@ Private Function HoleBeitragspflichtigeMitgliedsnamen(ByVal parzelle As Long) As
            StrComp(funktion, AUSTRITT_STATUS, vbTextCompare) = 0 Or _
            InStr(1, funktion, "Ehren", vbTextCompare) > 0 Then GoTo NextName
 
-        name = Trim$(CStr(wsMitglieder.Cells(r, M_COL_NACHNAME).value)) & ", " & _
+        Name = Trim$(CStr(wsMitglieder.Cells(r, M_COL_NACHNAME).value)) & ", " & _
                Trim$(CStr(wsMitglieder.Cells(r, M_COL_VORNAME).value))
-        If Replace(name, ", ", "") = "" Then GoTo NextName
+        If Replace(Name, ", ", "") = "" Then GoTo NextName
         If HoleBeitragspflichtigeMitgliedsnamen <> "" Then HoleBeitragspflichtigeMitgliedsnamen = _
             HoleBeitragspflichtigeMitgliedsnamen & vbLf
-        HoleBeitragspflichtigeMitgliedsnamen = HoleBeitragspflichtigeMitgliedsnamen & name
+        HoleBeitragspflichtigeMitgliedsnamen = HoleBeitragspflichtigeMitgliedsnamen & Name
 NextName:
     Next r
 End Function
 
 
 ' ===============================================================
-' Fuegt einen Textteil mit Trennzeichen nur hinzu, wenn nicht schon
+' Fügt einen Textteil mit Trennzeichen nur hinzu, wenn nicht schon
 ' enthalten (case-insensitive).
 ' ===============================================================
 Private Function FuegeTeiltextEinmalHinzu(ByVal basis As String, _
@@ -3309,7 +3309,7 @@ End Function
 
 ' ===============================================================
 ' v5.4: VORJAHR-GELB-PRÜFUNG
-' Scannt die Zahlungsübersicht nach GELB-Eintraegen im Januar
+' Scannt die Zahlungsübersicht nach GELB-Einträgen im Januar
 ' wo "Keine Vorjahr-Daten" in der Bemerkung steht.
 ' Fragt den Nutzer ob die Zahlungen im Vorjahr erfolgt sind.
 '
@@ -3374,7 +3374,7 @@ NextGelbZeile:
     
     If antwort <> vbYes Then Exit Sub
     
-    ' 3) Einzelpruefung
+    ' 3) Einzelprüfung
     On Error Resume Next
     wsUeb.Unprotect PASSWORD:=PASSWORD
     On Error GoTo 0
@@ -3457,7 +3457,7 @@ NextGelbZeile:
                                infoBlock & vbCrLf & _
                                "------------------------------------------------------------" & vbCrLf & vbCrLf & _
                                "Wann wurde die Zahlung für obige Position im Vorjahr" & vbCrLf & _
-                               "(Oktober bis Dezember) ueberwiesen / verbucht?" & vbCrLf & vbCrLf & _
+                               "(Oktober bis Dezember) überwiesen / verbucht?" & vbCrLf & vbCrLf & _
                                "Vorbelegt nach Solltermin und Vorlaufzeit: " & defaultDatum & _
                                " - bitte ggf. anpassen.", _
                                "Vorjahrzahlung - Datum (Pos. " & i & "/" & gelbZeilen.count & ")", _
@@ -3475,7 +3475,7 @@ NextGelbZeile:
             End If
             On Error GoTo 0
 
-            ' Default-Betrag in InputBox: SOLL aus Einstellungen vorausfuellen.
+            ' Default-Betrag in InputBox: SOLL aus Einstellungen vorausfüllen.
             ' Bei variabler Kategorie (Soll=0) leer lassen.
             Dim defaultBetrag As String
             If sollWert > 0 Then
@@ -3903,7 +3903,7 @@ Private Function LeseDoubleAusStringVJ(ByVal s As String) As Double
     ' Einheiten/Symbole entfernen
     t = Replace(t, ChrW(8364), "")           ' Euro-Zeichen
     t = Replace(t, "EUR", "", , , vbTextCompare)
-    t = Replace(t, ChrW(160), "")            ' geschuetztes Leerzeichen
+    t = Replace(t, ChrW(160), "")            ' geschütztes Leerzeichen
     t = Trim(t)
 
     On Error Resume Next
@@ -3962,6 +3962,8 @@ NextTeil:
 
     EntferneNegativHinweiseVJ = ergebnis
 End Function
+
+
 
 
 

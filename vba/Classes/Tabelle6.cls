@@ -31,7 +31,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 End Sub
 
 ' ==========================================================
-' ZaehlerWECHSEL STARTEN (KORRIGIERT: Direkter Aufruf der UserForm)
+' ZÄHLERWECHSEL STARTEN (KORRIGIERT: Direkter Aufruf der UserForm)
 ' ==========================================================
 Private Sub btn_neuerZaehler_Wasser_Click()
     On Error GoTo ErrHandler
@@ -46,7 +46,7 @@ Private Sub btn_neuerZaehler_Wasser_Click()
     Exit Sub
     
 ErrHandler:
-    MsgBox "Fehler beim öffnen des Zaehlerwechsel-Formulars: " & Err.Description & vbLf & _
+    MsgBox "Fehler beim öffnen des Zählerwechsel-Formulars: " & Err.Description & vbLf & _
            "Stellen Sie sicher, dass das UserForm den Code-Namen 'frm_Zaehlerwechsel' hat.", vbExclamation
 End Sub
 
@@ -58,7 +58,7 @@ Public Sub UpdateWasserblatt()
     
     Application.ScreenUpdating = False
     
-    ' Fuehrt Berechnung und Formatierung durch (in mod_Zaehler_Berechnung)
+    ' Führt Berechnung und Formatierung durch (in mod_Zaehler_Berechnung)
     Call mod_Zaehler_Berechnung.CalculateAllZaehlerVerbrauch(Me)
     Call mod_Startseite.AktualisiereParzellenAnzeigen
     Call mod_ZaehlerLogik.AktualisiereZaehlerTabellenSpalteA
@@ -77,6 +77,8 @@ End Sub
 Public Sub KorrigiereHistorieFarben()
     Call mod_Zaehler_Historie.FarbeHistorieEintraege
 End Sub
+
+
 
 
 

@@ -9,7 +9,7 @@ Option Explicit
 '        HatManuelleKategorie, ReEvaluiereAlleNichtManuellen)
 ' FIX: Evaluator-Signatur v9.0 (wsData + lastRuleRow)
 ' FIX: Einstellungen-Cache Lade/Entlade um Pipeline
-' FIX: HatManuelleKategorie schuetzt manuelle Eingaben
+' FIX: HatManuelleKategorie schützt manuelle Eingaben
 ' v5.1: Sammelzahlung-Filter in AktualisierKategorieListen
 '       entfernt - alle Kategorien aus Spalte J stehen im
 '       DropDown zur Verfügung (inkl. Sammelzahlung)
@@ -125,7 +125,7 @@ End Sub
 ' ---------------------------------------------------------------
 ' Re-Evaluierung ALLER nicht-manuellen Zeilen
 ' Wird aufgerufen wenn Kategorie-Regeln oder Einstellungen
-' geändert werden. ueberspringt manuelle Eingaben.
+' geändert werden. überspringt manuelle Eingaben.
 ' ---------------------------------------------------------------
 Public Sub ReEvaluiereAlleNichtManuellen()
 
@@ -227,7 +227,7 @@ End Sub
 
 
 ' ===============================================================
-' Kategorie-Listen auf Daten! AF + AG beFuellen
+' Kategorie-Listen auf Daten! AF + AG befüllen
 ' (Eindeutige Kategorienamen, getrennt nach E und A)
 ' v5.1: Sammelzahlung wird NICHT mehr ausgefiltert!
 '       Alle Kategorien aus Spalte J stehen im DropDown
@@ -516,6 +516,8 @@ Private Function HatManuelleKategorie(ByVal wsBK As Worksheet, _
     HatManuelleKategorie = True
     
 End Function
+
+
 
 
 

@@ -9,7 +9,7 @@ Option Explicit
 ' FUNKTIONEN:
 '   - SucheMitgliederZuKontoname: Hauptsuche in Mitgliederliste
 '   - PruefeNamensMatch: Namens-Matching (Vor-/Nachname)
-'   - IstMitgliedBereitsGefunden: Duplikatpruefung in Collection
+'   - IstMitgliedBereitsGefunden: Duplikatprüfung in Collection
 '   - FindeBestenTreffer: Besten Match aus Collection ermitteln
 '   - PruefeObInHistorie: Prüft ob Name in Mitgliederhistorie
 '   - HoleParzelleFuerEhemaligesAusHistorie: Parzelle aus Historie
@@ -246,6 +246,8 @@ Public Function HoleAlleParzellen(ByVal memberID As String, _
     
     HoleAlleParzellen = result
 End Function
+
+
 
 
 

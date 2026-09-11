@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_EntityKey_Normalize
-' ZWECK: String-Normalisierung und Hilfsfunktionen fuer EntityKey-System
+' ZWECK: String-Normalisierung und Hilfsfunktionen für EntityKey-System
 ' ABGELEITET AUS: mod_EntityKey_Manager (Modularisierung)
 ' VERSION: 1.0 - 01.03.2026
 ' FUNKTIONEN:
@@ -44,7 +44,7 @@ Public Function NormalisiereIBAN(ByVal iban As Variant) As String
 End Function
 
 ' ===============================================================
-' Normalisiert String fuer Vergleich (Umlaute ersetzen, Kleinbuchstaben)
+' Normalisiert String für Vergleich (Umlaute ersetzen, Kleinbuchstaben)
 ' ===============================================================
 Public Function NormalisiereStringFuerVergleich(ByVal s As String) As String
     Dim result As String
@@ -89,6 +89,7 @@ Public Function ExtrahiereAnzeigeName(ByVal kontoname As String) As String
     
     ExtrahiereAnzeigeName = erstesElement
 End Function
+
 
 
 

@@ -77,7 +77,7 @@ ErrorHandler:
 End Sub
 
 ' ***************************************************************
-' HILFSFUNKTION: GUID erstellen (PUBLIC - für frm_Mitgliedsdaten zugaenglich)
+' HILFSFUNKTION: GUID erstellen (PUBLIC - für frm_Mitgliedsdaten zugänglich)
 ' ***************************************************************
 Public Function CreateGUID_Public() As String
     
@@ -157,7 +157,7 @@ Private Sub ApplyDropdown(ByVal targetRange As Range, ByVal sourceFormula As Str
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertWarning, Operator:=xlBetween, Formula1:=sourceFormula
         .IgnoreBlank = allowBlanks
         .InCellDropdown = True
-        .ErrorTitle = "ungueltiger Wert"
+        .ErrorTitle = "ungültiger Wert"
         .ErrorMessage = "Bitte wählen Sie einen Wert aus der Liste."
     End With
 End Sub
@@ -256,7 +256,7 @@ End Function
 ' ***************************************************************
 ' PROZEDUR: Speichere_Historie_und_Aktualisiere_Mitgliederliste
 ' ***************************************************************
-' SICHERHEITSKRITISCH: Schuetzt die Verein-Parzelle vor Datenueberschreibung
+' SICHERHEITSKRITISCH: Schützt die Verein-Parzelle vor Datenüberschreibung
 ' ***************************************************************
 Public Sub Speichere_Historie_und_Aktualisiere_Mitgliederliste( _
     ByVal selectedRow As Long, _
@@ -403,7 +403,7 @@ Private Sub VerifikationVereinsParzelleIntakt()
             
             ' SICHERHEITSPRUEFUNG: Die Verein-Zeile sollte leer sein oder nur spezielle Marker enthalten
             ' Falls Nachname leer: OK
-            ' Falls Nachname nicht leer: Warnung (zeigt manuell uebernommene Daten an)
+            ' Falls Nachname nicht leer: Warnung (zeigt manuell übernommene Daten an)
             If vereinRowNachname <> "" Then
                 ' Die Zeile hat Mitgliederdaten - dies sollte nicht passieren!
                 Debug.Print "WARNUNG: Verein-Parzelle-Zeile (" & vereinParzelleRow & ") enthält Mitgliederdaten: " & vereinRowNachname
@@ -430,6 +430,8 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False
     
 End Function
+
+
 
 
 

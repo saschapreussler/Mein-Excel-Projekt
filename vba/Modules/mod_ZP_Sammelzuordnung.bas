@@ -4,12 +4,12 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_ZP_Sammelzuordnung
 ' Ausgelagert aus mod_Zahlungspruefung
-' enthält: Sammelueberweisungen erkennen + manuelle Monatszuordnung
+' enthält: Sammelüberweisungen erkennen + manuelle Monatszuordnung
 ' ===============================================================
 
 
 ' ===============================================================
-' SAMMELUEBERWEISUNGEN: Erkennung und manuelle Zuordnung
+' SAMMELÜBERWEISUNGEN: Erkennung und manuelle Zuordnung
 ' ===============================================================
 Public Sub BearbeiteSammelUeberweisungZP(ByVal wsBK As Worksheet, _
                                           ByVal zeile As Long)
@@ -108,7 +108,7 @@ End Function
 
 
 ' ===============================================================
-' MANUELLE ZUORDNUNG: Monatszuordnung bei Problemfaellen
+' MANUELLE ZUORDNUNG: Monatszuordnung bei Problemfällen
 ' ===============================================================
 Public Function FrageNachManuellerMonatszuordnungZP(ByVal wsBK As Worksheet, _
                                                       ByVal zeile As Long) As Long
@@ -158,6 +158,8 @@ Public Function FrageNachManuellerMonatszuordnungZP(ByVal wsBK As Worksheet, _
     FrageNachManuellerMonatszuordnungZP = monat
     
 End Function
+
+
 
 
 

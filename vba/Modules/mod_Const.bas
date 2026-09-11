@@ -32,7 +32,7 @@ Public Const WS_VEREINSKASSE As String = "Vereinskasse"
 Public Const RANGE_KATEGORIE_REGELN As String = "rng_KategorieRegeln"
 
 ' ===============================================================
-' C. DATEN - TemporaerE HILFSSPALTEN
+' C. DATEN - TEMPORÄRE HILFSSPALTEN
 ' ===============================================================
 Public Const DATA_TEMP_COL_KEY As Long = 25
 Public Const DATA_TEMP_COL_NAME As Long = 26
@@ -152,7 +152,7 @@ Public Const DATA_MAP_COL_ENTITYROLE As Long = 23
 Public Const DATA_MAP_COL_DEBUG As Long = 24
 Public Const DATA_MAP_COL_LAST As Long = 24
 
-' Aliase für Kompatibilitaet
+' Aliase für Kompatibilität
 Public Const DATA_MAP_COL_IBAN_OLD As Long = 19
 Public Const DATA_MAP_COL_PARZ_KEY As Long = 22
 Public Const DATA_MAP_COL_NAME As Long = 21
@@ -200,8 +200,8 @@ Public Const DATA_COL_ES_HILF As Long = 53      ' Spalte BA
 ' ===============================================================
 ' H2. DATEN - VORJAHR-SPEICHER (Spalten CA-CF = 79-84)
 ' Cached Bankkonto-Buchungen aus Okt-Dez des Vorjahres
-' Wird beim CSV-Import automatisch beFuellt
-' Soll spaetestens im August des Folgejahres gelöscht werden
+' Wird beim CSV-Import automatisch befüllt
+' Soll spätestens im August des Folgejahres gelöscht werden
 ' ===============================================================
 Public Const VJ_COL_DATUM As Long = 79          ' CA - Buchungsdatum
 Public Const VJ_COL_BETRAG As Long = 80         ' CB - Betrag
@@ -249,7 +249,7 @@ Public Const CSV_COL_IBAN As Long = 13
 Public Const CSV_COL_BETRAG As Long = 15
 
 ' ===============================================================
-' J. ZaehlerLOGIK
+' J. ZÄHLERLOGIK
 ' ===============================================================
 Public Const COL_PARZELLE As Long = 1
 Public Const COL_STAND_ANFANG As Long = 2
@@ -353,7 +353,7 @@ Public Const ES_COL_SOLL_MONATE As Long = 5     ' Spalte E - Soll-Monat(e) z.B. 
 Public Const ES_COL_STICHTAG_FIX As Long = 6    ' Spalte F - Soll-Stichtag (Fix) TT.MM.
 Public Const ES_COL_VORLAUF As Long = 7         ' Spalte G - Vorlauf-Toleranz (Tage)
 Public Const ES_COL_NACHLAUF As Long = 8        ' Spalte H - Nachlauf-Toleranz (Tage)
-Public Const ES_COL_SAEUMNIS As Long = 9        ' Spalte I - Saeumnis-Gebuehr
+Public Const ES_COL_SAEUMNIS As Long = 9        ' Spalte I - Säumnis-Gebühr
 
 Public Const ES_COL_START As Long = 2           ' Erste Datenspalte (B)
 Public Const ES_COL_END As Long = 9             ' Letzte Datenspalte (I)
@@ -429,6 +429,8 @@ Public Function HoleAbrechnungsjahr() As Long
         HoleAbrechnungsjahr = 0
     End If
 End Function
+
+
 
 
 

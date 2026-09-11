@@ -9,7 +9,7 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
 Option Explicit
 
-' Haelt Zebra/AutoFit/Ausblenden der Mitgliederhistorie nach manuellen
+' Hält Zebra/AutoFit/Ausblenden der Mitgliederhistorie nach manuellen
 ' Änderungen konsistent.
 Private Sub Worksheet_Change(ByVal Target As Range)
     On Error GoTo Fehler
@@ -22,4 +22,5 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 Fehler:
     Application.EnableEvents = True
 End Sub
+
 

@@ -173,7 +173,7 @@ End Function
 Private Function FrageEndabrechnungStatus(ByVal parzelle As String, ByVal vorname As String, ByVal nachname As String) As String
     Dim antwort As VbMsgBoxResult
 
-    antwort = MsgBox("Soll fuer " & vorname & " " & nachname & " auf Parzelle " & parzelle & _
+    antwort = MsgBox("Soll für " & vorname & " " & nachname & " auf Parzelle " & parzelle & _
                      " eine Endabrechnung erstellt werden?", _
                      vbYesNoCancel + vbQuestion, "Endabrechnung")
 
@@ -306,7 +306,7 @@ Public Sub SetMode(ByVal EditMode As Boolean, Optional ByVal IsNewEntry As Boole
     
     If CStr(Me.tag) = "NEU" Or InStr(CStr(Me.tag), "NACHPAECHTER_NEU") > 0 Then
         If InStr(CStr(Me.tag), "NACHPAECHTER_NEU") > 0 Then
-            Me.cmd_Anlegen.Caption = "Nachpaechter aufnehmen"
+            Me.cmd_Anlegen.Caption = "Nachpächter aufnehmen"
         Else
             Me.cmd_Anlegen.Caption = "Mitglied anlegen"
         End If
@@ -684,13 +684,13 @@ Private Sub cmd_Entfernen_Click()
 
                 ' WICHTIG: Direkt weiterverarbeiten (ohne erneutes Me.Show), damit
                 ' der Austritt sofort abgeschlossen wird und kein manueller
-                ' Zwischenklick noetig ist.
+                ' Zwischenklick nötig ist.
                 Call VerarbeiteAustrittNachNachpaechterErfassung( _
                     lRow, OldParzelle, OldMemberID, nachname, vorname, Date, ChangeReason, _
                     neuerNachpaechterID, neuerNachpaechterName, weitereMitgliederFlag)
                 Exit Sub
             Else
-                ' Bestehender Nachpächter: in den normalen Austrittsablauf mit Datumsbestaetigung
+                ' Bestehender Nachpächter: in den normalen Austrittsablauf mit Datumsbestätigung
                 If HolePachtbeginnVonMemberID(nachpaechterID, dtNachpaechterEintritt) Then
                     nachpaechterEintrittTag = Format(dtNachpaechterEintritt, "dd.mm.yyyy")
                 Else
@@ -793,7 +793,7 @@ PruefeMehrfachParzellen:
 ' NEU v2.8: Komplett-Austritt bei mehreren Parzellen
 ' ==========================================================
 AustrittBearbeitenKomplett:
-    ' Immer erst Datumsbestaetigung durch den Nutzer einholen
+    ' Immer erst Datumsbestätigung durch den Nutzer einholen
     Call SetMode(True, False, True)
 
     ' Tag-Format: lRow|Grund|NachpaechterID|NachpaechterName|KOMPLETT
@@ -815,7 +815,7 @@ AustrittBearbeitenKomplett:
     Exit Sub
     
 AustrittBearbeiten:
-    ' Immer erst Datumsbestaetigung durch den Nutzer einholen
+    ' Immer erst Datumsbestätigung durch den Nutzer einholen
     Call SetMode(True, False, True)
 
     ' Speichere Grund/Nachpächter temporär im Tag.
@@ -1327,7 +1327,7 @@ Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVa
         Exit Sub
     End If
 
-    ' Sicherheitsnetz: Nachpaechter muss einen gueltigen Pachtbeginn/Mitgliedsbeginn haben.
+    ' Sicherheitsnetz: Nachpächter muss einen gültigen Pachtbeginn/Mitgliedsbeginn haben.
     nachpaechterRow = mod_Mitglieder_Logik.FindeMitgliedsZeile(newMemberID, parzelle)
     If nachpaechterRow > 0 Then
         If Not IsDate(wsM.Cells(nachpaechterRow, M_COL_PACHTANFANG).value) Then
@@ -1376,7 +1376,7 @@ Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVa
 
     Call mod_Mitglieder_Logik.VerschiebeInHistorie(zielRow, parzelle, memberID, nachname, vorname, austrittsDatumFinal, grund, newMemberName, newMemberID, True, endabrechnungStatus)
 
-    ' Bei neu angelegtem Nachpaechter sollen weitere Vorpaechter standardmaessig mit austreten.
+    ' Bei neu angelegtem Nachpächter sollen weitere Vorpächter standardmäßig mit austreten.
     ' Falls der alte Flag fehlt oder uneindeutig ist, wird sicherheitshalber nachgefragt.
     If weitereMitgliederFlag = "JA" Then
         weitereAustritte = True
@@ -1387,7 +1387,7 @@ Private Sub VerarbeiteAustrittNachNachpaechterErfassung(ByVal lRow As Long, ByVa
         If weitereAnzahl > 0 Then
             weitereAntwort = MsgBox("Auf Parzelle " & parzelle & " sind noch " & weitereAnzahl & " weitere gemeldete Person(en)." & vbCrLf & vbCrLf & _
                                     "Sollen diese ebenfalls ausgetragen und in die Mitgliederhistorie verschoben werden?", _
-                                    vbYesNo + vbQuestion, "Weitere Vorpaechter")
+                                    vbYesNo + vbQuestion, "Weitere Vorpächter")
             weitereAustritte = (weitereAntwort = vbYes)
         End If
     End If
@@ -1481,8 +1481,8 @@ Private Sub cmd_Uebernehmen_Click()
     
     ' v8.2 BUGFIX: Zeilennummer aus Tag lesen (war zuvor nur im
     ' Austritts-Pfad mit "|" gesetzt - im normalen Bearbeitungs-Pfad
-    ' blieb lRow=0, was zu Cells(0,...) Fehler 1004 fuehrte und die
-    ' MsgBox "Fehler beim Speichern der Änderungen" ausloeste.
+    ' blieb lRow=0, was zu Cells(0,...) Fehler 1004 führte und die
+    ' MsgBox "Fehler beim Speichern der Änderungen" auslöste.
     If IsNumeric(Me.tag) Then
         lRow = CLng(Me.tag)
     End If
@@ -1827,7 +1827,7 @@ Private Sub cmd_Uebernehmen_MitAustritt(ByVal lRow As Long, ByVal grund As Strin
     
     austrittsDatum = CDate(Me.txt_Pachtende.value)
 
-    ' lRow kann nach Neuanlage/Sortierung veraltet sein -> robust aufloesen
+    ' lRow kann nach Neuanlage/Sortierung veraltet sein -> robust auflösen
     zielRow = lRow
     lastRow = wsM.Cells(wsM.Rows.count, M_COL_NACHNAME).End(xlUp).Row
     If zielRow < M_START_ROW Or zielRow > lastRow Then zielRow = 0
@@ -2366,6 +2366,8 @@ ErrorHandler:
     ' Fallback bei Fehler
     Me.cbo_Funktion.RowSource = "Daten!B4:B12"
 End Sub
+
+
 
 
 

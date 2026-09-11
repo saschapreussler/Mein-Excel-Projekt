@@ -11,7 +11,7 @@ Option Explicit
 
 ' ***************************************************************
 ' WORKSHEET: Tabelle8 (Daten)
-' ZWECK: Automatische Formatierung bei Datenaenderungen
+' ZWECK: Automatische Formatierung bei Datenänderungen
 ' VERSION: 4.7 - 15.03.2026
 ' FIX: OnDatenChange entfernt (war redundant mit FormatKategorieTableComplete)
 ' FIX: ShrinkToFit=False + Font.Color=vbBlack für Spalte L
@@ -168,7 +168,7 @@ End Sub
 
 ' ---------------------------------------------------------------
 ' Findet eine Kategorie-Zeile nach Sortierung anhand von
-' Kategorie + Keyword (beide müssen uebereinstimmen)
+' Kategorie + Keyword (beide müssen übereinstimmen)
 ' Gibt die Zeilennummer zurück, oder 0 wenn nicht gefunden
 ' ---------------------------------------------------------------
 Private Function FindeKategorieZeile(ByVal suchKategorie As String, _
@@ -191,6 +191,8 @@ Private Function FindeKategorieZeile(ByVal suchKategorie As String, _
         End If
     Next r
 End Function
+
+
 
 
 

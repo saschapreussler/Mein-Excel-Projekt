@@ -3,7 +3,7 @@ Option Explicit
 
 ' ***************************************************************
 ' MODUL: mod_Format_Spalten
-' ZWECK: Einzelspalten-Formatierung, Zebra-Streifen, Lueckenentfernung
+' ZWECK: Einzelspalten-Formatierung, Zebra-Streifen, Lückenentfernung
 ' ABGELEITET AUS: mod_Formatierung (Modularisierung)
 ' VERSION: 1.0 - 01.03.2026
 ' FUNKTIONEN:
@@ -27,9 +27,9 @@ Public Sub FormatiereAlleDatenSpalten(ByRef ws As Worksheet)
     Call FormatiereSingleSpalte(ws, 8, True)   ' Spalte H - Seite
     
     Call FormatiereSingleSpalte(ws, 26, True)  ' Spalte Z - Einnahme/Ausgabe
-    Call FormatiereSingleSpalte(ws, 27, True)  ' Spalte AA - Prioritaet
+    Call FormatiereSingleSpalte(ws, 27, True)  ' Spalte AA - Priorität
     Call FormatiereSingleSpalte(ws, 28, True)  ' Spalte AB - Ja/Nein
-    Call FormatiereSingleSpalte(ws, 29, True)  ' Spalte AC - Faelligkeit
+    Call FormatiereSingleSpalte(ws, 29, True)  ' Spalte AC - Fälligkeit
     Call FormatiereSingleSpalte(ws, 30, True)  ' Spalte AD - EntityRole
     Call FormatiereSingleSpalte(ws, 31, True)  ' Spalte AE - Hilfszelle
     Call FormatiereSingleSpalte(ws, 32, True)  ' Spalte AF - Kat Einnahmen
@@ -150,7 +150,7 @@ Public Sub FormatSingleColumnComplete(ByRef ws As Worksheet, ByVal colIndex As L
 End Sub
 
 ' ===============================================================
-' Entfernt Luecken (leere Zeilen) in einer Tabelle/Spalte
+' Entfernt Lücken (leere Zeilen) in einer Tabelle/Spalte
 ' ===============================================================
 Public Sub VerdichteSpalteOhneLuecken(ByRef ws As Worksheet, ByVal checkCol As Long, _
                                        ByVal startCol As Long, ByVal endCol As Long)
@@ -218,6 +218,8 @@ Public Sub VerdichteSpalteOhneLuecken(ByRef ws As Worksheet, ByVal checkCol As L
     End If
     
 End Sub
+
+
 
 
 

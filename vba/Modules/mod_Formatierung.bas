@@ -584,10 +584,10 @@ End Sub
 '
 ' Setzt:
 '   - Vertikale Zentrierung; Header zentriert
-'   - Spalten C-G und I-Q linksbuendig, Rest zentriert
-'   - Duenne schwarze Rahmen um jede Zelle (innen + aussen)
+'   - Spalten C-G und I-Q linksbündig, Rest zentriert
+'   - Dünne schwarze Rahmen um jede Zelle (innen + aussen)
 '   - Zebra-Streifen (weiss / hellgrau alternierend)
-'   - Reines AutoFit aller Tabellenspalten (nach laengstem Eintrag)
+'   - Reines AutoFit aller Tabellenspalten (nach längstem Eintrag)
 '   - Spalte A (Member ID) und C (Seite) ausgeblendet
 '   - Datumsformat für Geburtstag / Pacht-Spalten
 '
@@ -633,8 +633,8 @@ Public Sub FormatiereMitgliederlisteKomplett()
                                   wsM.Cells(lastRow, lastCol))
 
     ' Ausrichtung: alles vertikal zentriert; Header horizontal zentriert.
-    ' Datenzeilen standardmaessig zentriert, aber Spalten C-G und I-Q
-    ' linksbuendig (Nutzerwunsch).
+    ' Datenzeilen standardmäßig zentriert, aber Spalten C-G und I-Q
+    ' linksbündig (Nutzerwunsch).
     datenBereich.VerticalAlignment = xlCenter
     datenBereich.HorizontalAlignment = xlCenter
     headerBereich.HorizontalAlignment = xlCenter
@@ -654,7 +654,7 @@ Public Sub FormatiereMitgliederlisteKomplett()
         .Borders.LineStyle = xlNone
     End With
 
-    ' Rahmen entfernen, dann neu setzen (innen + aussen, duenn, SCHWARZ)
+    ' Rahmen entfernen, dann neu setzen (innen + aussen, dünn, SCHWARZ)
     Dim rngGesamt As Range
     Set rngGesamt = wsM.Range(wsM.Cells(M_HEADER_ROW, 1), _
                                wsM.Cells(lastRow, lastCol))
@@ -691,7 +691,7 @@ Public Sub FormatiereMitgliederlisteKomplett()
               wsM.Cells(lastRow, M_COL_PACHTENDE)).NumberFormat = "DD.MM.YYYY"
     On Error GoTo CleanExit
 
-    ' Spaltenbreiten: reines AutoFit nach laengstem Eintrag (keine
+    ' Spaltenbreiten: reines AutoFit nach längstem Eintrag (keine
     ' Mindestbreite). AutoFit VOR dem Ausblenden, sonst würde AutoFit
     ' die versteckten Spalten wieder einblenden.
     wsM.Range(wsM.Cells(M_HEADER_ROW, 1), wsM.Cells(lastRow, lastCol)) _
@@ -728,8 +728,8 @@ End Sub
 '
 ' Setzt:
 '   - Vertikale Zentrierung; Header zentriert
-'   - Spalte A zentriert, alle anderen Spalten linksbuendig
-'   - Reines AutoFit aller Spalten (nach laengstem Eintrag)
+'   - Spalte A zentriert, alle anderen Spalten linksbündig
+'   - Reines AutoFit aller Spalten (nach längstem Eintrag)
 '   - Spalte B (Member ID alt) und G (ID neuer Pächter) ausgeblendet
 '   - Zebra-Streifen (weiss / hellgrau alternierend)
 ' ===============================================================
@@ -764,7 +764,7 @@ Public Sub FormatiereMitgliederhistorie()
     If lastRow < H_START_ROW Then lastRow = H_START_ROW
 
     ' Ausrichtung: alles vertikal zentriert. Spalte A zentriert,
-    ' alle anderen Spalten linksbuendig (Nutzerwunsch).
+    ' alle anderen Spalten linksbündig (Nutzerwunsch).
     Dim datenBereich As Range
     Set datenBereich = wsH.Range(wsH.Cells(H_START_ROW, 1), wsH.Cells(lastRow, lastCol))
     datenBereich.VerticalAlignment = xlCenter
@@ -794,7 +794,7 @@ Public Sub FormatiereMitgliederhistorie()
         End If
     Next r
 
-    ' Duenne schwarze Rahmenlinien für jede Zelle (innen + aussen)
+    ' Dünne schwarze Rahmenlinien für jede Zelle (innen + aussen)
     With datenBereich.Borders
         .LineStyle = xlContinuous
         .color = RGB(0, 0, 0)
@@ -822,6 +822,8 @@ CleanExit:
     Application.ScreenUpdating = warScreenUpdating
     On Error GoTo 0
 End Sub
+
+
 
 
 

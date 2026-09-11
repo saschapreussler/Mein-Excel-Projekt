@@ -7,7 +7,7 @@ Option Explicit
 ' Änderung v5.0:
 '   - Formatierung ausgelagert nach mod_Banking_Format
 '   - Import-Report ausgelagert nach mod_Banking_Report
-'   - Dieses Modul: Import-Logik, Prüfungen, Loesch-/Aktualisierung
+'   - Dieses Modul: Import-Logik, Prüfungen, Lösch-/Aktualisierung
 ' Änderung v4.0:
 '   - NEU: Schritt 7 in Importiere_Kontoauszug:
 '     Übersicht generieren nach CSV-Import (nur bei neuen Daten)
@@ -164,8 +164,8 @@ Public Sub Importiere_Kontoauszug()
     On Error GoTo 0
     
     ' ============================================================
-    ' v5.1: Jahrpruefung - CSV-Daten mit Abrechnungsjahr abgleichen
-    ' VOR dem Eintragen ins Bankkonto prüfen ob die Jahre uebereinstimmen
+    ' v5.1: Jahrprüfung - CSV-Daten mit Abrechnungsjahr abgleichen
+    ' VOR dem Eintragen ins Bankkonto prüfen ob die Jahre übereinstimmen
     ' v6.0: Abrechnungsjahr aus Einstellungen statt Startmenü!F1
     ' ============================================================
     Dim wsEinstImport As Worksheet
@@ -176,7 +176,7 @@ Public Sub Importiere_Kontoauszug()
     Dim jahrF1Import As Long
     jahrF1Import = HoleAbrechnungsjahr()
     
-    ' haeufigstes Jahr in CSV ermitteln
+    ' häufigstes Jahr in CSV ermitteln
     Dim jahrCSV As Long
     Dim jahrDict As Object
     Set jahrDict = CreateObject("Scripting.Dictionary")
@@ -365,7 +365,7 @@ ImportAbschluss:
     Err.Clear
     On Error GoTo 0
 
-    ' 4c. Harter Workflow-Gate: fehlende EntityRole MUSS vor Kategorie/Periode geklaert werden
+    ' 4c. Harter Workflow-Gate: fehlende EntityRole MUSS vor Kategorie/Periode geklärt werden
     If rowsProcessed > 0 Then
         If PruefeUnvollstaendigeEntityKeys() Then
             Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsZiel)
@@ -385,10 +385,10 @@ ImportAbschluss:
     ' 6. Monat/Periode setzen (mit Diagnose und zweitem Lauf)
     SetzePeriodenMitDiagnose wsZiel
 
-    ' 6b. Ampel/Konflikt-Hinweise fuer Kategorie + Monat/Periode vereinheitlichen
+    ' 6b. Ampel/Konflikt-Hinweise für Kategorie + Monat/Periode vereinheitlichen
     Call SynchronisiereKategorieMonatAmpel(wsZiel)
 
-    ' 6c. Workflow-Gate: Ohne klares H+I KEINE Zahlungsuebersicht / KEIN Dashboard
+    ' 6c. Workflow-Gate: Ohne klares H+I KEINE Zahlungsübersicht / KEIN Dashboard
     If HatOffeneKategorieOderPeriode(wsZiel) Then
         Dim offeneBankZelle As Range
         Set offeneBankZelle = FindeErsteOffeneZuordnung(wsZiel)
@@ -418,7 +418,7 @@ ImportAbschluss:
     End If
     
     ' 7. Übersicht IMMER aktualisieren (fasst ALLE vorhandenen Daten zusammen)
-    '    v4.0: NEU - Uebersichtsblatt nach jedem Import generieren
+    '    v4.0: NEU - Übersichtsblatt nach jedem Import generieren
     '    v4.1: stummModus=True da Import bereits eigene Erfolgsmeldung zeigt
     '    v4.2: On Error Resume Next ENTFERNT - GeneriereUebersicht hat eigenen ErrorHandler
     '    v4.3: Bedingung rowsProcessed>0 ENTFERNT - Übersicht zeigt ALLE Daten,
@@ -426,7 +426,7 @@ ImportAbschluss:
     Debug.Print "[Import] Starte " & ChrW(220) & "bersicht-Generierung..."
     Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
     
-    ' 7b. Zahlungspruefungen muessen vor dem Dashboard geklaert sein.
+    ' 7b. Zahlungsprüfungen müssen vor dem Dashboard geklärt sein.
     If mod_Uebersicht_Generator.HatOffeneZahlungspruefungen() Then
         Call mod_Uebersicht_Generator.PruefeVorjahrHinweisBeimOeffnen
         Call mod_Uebersicht_Generator.FokussiereErsteOffeneZahlungspruefung
@@ -444,7 +444,7 @@ ImportAbschluss:
         Exit Sub
     End If
 
-    ' Dashboard erst nach vollstaendiger Zahlungspruefung aktualisieren.
+    ' Dashboard erst nach vollständiger Zahlungsprüfung aktualisieren.
     Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
     
     ' Blattschutz wird von der Pipeline selbst verwaltet (Protect am Ende).
@@ -463,7 +463,7 @@ ImportAbschluss:
     Application.EnableEvents = True
     
     ' ============================================================
-    ' ERWEITERTE MsgBox mit vollstaendigen Import-Details
+    ' ERWEITERTE MsgBox mit vollständigen Import-Details
     ' ============================================================
     Dim msgIcon As VbMsgBoxStyle
     Dim msgTitle As String
@@ -533,7 +533,7 @@ End Sub
 
 Private Function ErstelleOffeneZuordnungsDetails(ByVal wsBK As Worksheet) As String
     Dim lastRow As Long, r As Long, kat As String, mon As String, grund As String
-    lastRow = wsBK.Cells(wsBK.Rows.Count, BK_COL_DATUM).End(xlUp).Row
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     For r = BK_START_ROW To lastRow
         If Trim$(CStr(wsBK.Cells(r, BK_COL_BETRAG).value)) <> "" Then
             kat = Trim$(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
@@ -571,7 +571,7 @@ End Function
 ' ===============================================================
 ' 1b. ENTITYKEY-Prüfung NACH IMPORT
 '     prüft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
-'     eine vollstaendige Zuordnung in Spalte W (EntityRole) haben.
+'     eine vollständige Zuordnung in Spalte W (EntityRole) haben.
 '     Rückgabe: True = unvollständig (Import-Ablauf anhalten)
 ' ===============================================================
 Private Function PruefeUnvollstaendigeEntityKeys() As Boolean
@@ -640,15 +640,15 @@ Private Function PruefeUnvollstaendigeEntityKeys() As Boolean
     
     hinweis = hinweis & vbCrLf & vbCrLf & _
               "Ohne diese Zuordnung wird der Import-Ablauf jetzt angehalten." & vbCrLf & _
-              "Bitte erst die EntityRole(s) in Daten!W vervollstaendigen." & vbCrLf & vbCrLf & _
-              "Moechten Sie direkt zur ersten offenen Zeile springen?"
+              "Bitte erst die EntityRole(s) in Daten!W vervollständigen." & vbCrLf & vbCrLf & _
+              "Möchten Sie direkt zur ersten offenen Zeile springen?"
     
     Dim antwort As VbMsgBoxResult
     antwort = MsgBox(hinweis, vbYesNo + vbExclamation, _
-                     "Unvollstaendige IBAN-Zuordnungen")
+                     "Unvollständige IBAN-Zuordnungen")
     
     If antwort = vbYes Then
-        ' Zum Daten-Blatt wechseln und erste leere Zelle in Spalte W anwaehlen
+        ' Zum Daten-Blatt wechseln und erste leere Zelle in Spalte W anwählen
         wsDaten.Activate
         
         On Error Resume Next
@@ -665,7 +665,7 @@ Private Function PruefeUnvollstaendigeEntityKeys() As Boolean
 
     ' ===============================================================
     ' 1c. Synchronisiert Ampelstatus von Kategorie (H) auf Monat/Periode (I)
-    ' und ergaenzt klare Hinweise in Bemerkung (L).
+    ' und ergänzt klare Hinweise in Bemerkung (L).
     ' ===============================================================
     Private Sub SynchronisiereKategorieMonatAmpel(ByVal wsBK As Worksheet)
         Dim lastRow As Long
@@ -698,11 +698,11 @@ Private Function PruefeUnvollstaendigeEntityKeys() As Boolean
                 End If
             ElseIf katColor = RGB(255, 235, 156) Then
                 wsBK.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 235, 156)
-                If InStr(1, bem, "Kategorie/Monat pruefen", vbTextCompare) = 0 Then
+                If InStr(1, bem, "Kategorie/Monat prüfen", vbTextCompare) = 0 Then
                     If bem = "" Then
-                        wsBK.Cells(r, BK_COL_BEMERKUNG).value = "Kategorie/Monat pruefen und bestaetigen"
+                        wsBK.Cells(r, BK_COL_BEMERKUNG).value = "Kategorie/Monat prüfen und bestätigen"
                     Else
-                        wsBK.Cells(r, BK_COL_BEMERKUNG).value = bem & " | Kategorie/Monat pruefen und bestaetigen"
+                        wsBK.Cells(r, BK_COL_BEMERKUNG).value = bem & " | Kategorie/Monat prüfen und bestätigen"
                     End If
                 End If
             End If
@@ -923,6 +923,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 

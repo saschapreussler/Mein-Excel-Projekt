@@ -377,7 +377,7 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
             "Parzelle/Zähler", _
             "Medium", _
             "Zähler-Nr. (ID) alt", _
-            "Zaehlerstand (alt) aus der letzten Ablesung", _
+            "Zählerstand (alt) aus der letzten Ablesung", _
             "Stand alt (Ende)", _
             "Zähler-Nr. (ID) neu", _
             "Stand neu (Start)", _
@@ -441,7 +441,7 @@ Public Sub PruefeUndErstelleZaehlerhistorie()
             End If
             
             ws.Range("E1").value = "Zähler-Nr. (ID) alt"
-            ws.Range("F1").value = "Zaehlerstand (alt) aus der letzten Ablesung"
+            ws.Range("F1").value = "Zählerstand (alt) aus der letzten Ablesung"
             ws.Range("H1").value = "Zähler-Nr. (ID) neu"
             ws.Range("K1").value = "Bemerkungen"
             ws.Range("J1").value = "Verbrauch"
@@ -473,7 +473,7 @@ End Sub
 
 
 ' ==========================================================
-' ZaehlerWECHSEL-FORMULAR START
+' ZÄHLERWECHSEL-FORMULAR START
 ' ==========================================================
 Public Sub Start_Zaehlerwechsel(ByVal Medium As String)
     On Error GoTo ErrHandler
@@ -596,6 +596,8 @@ Sub Ermittle_Kennzahlen_Mitgliederliste()
     wsStart.Protect PASSWORD:=PASSWORD, DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True, AllowFiltering:=True
     
 End Sub
+
+
 
 
 

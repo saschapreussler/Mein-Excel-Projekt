@@ -21,7 +21,7 @@ Private Const ZEBRA_COLOR_1 As Long = &HFFFFFF  ' Weiss
 Private Const CLR_CFG_HEADER As Long = 2894892   ' RGB(44, 62, 80) - Dunkel Blau-Grau
 Private Const CLR_CFG_SECTION As Long = 6182740  ' RGB(52, 73, 94) - Mittel Blau-Grau
 Private Const CLR_CFG_LABEL As Long = 15853804   ' RGB(236, 240, 241) - Helles Grau
-Private Const CLR_CFG_CALC As Long = 14408667    ' RGB(219, 234, 219) - Helles Gruen (berechnet)
+Private Const CLR_CFG_CALC As Long = 14408667    ' RGB(219, 234, 219) - Helles Grün (berechnet)
 Private Const ZEBRA_COLOR_2 As Long = &HDEE5E3  ' Hellgrau
 
 
@@ -59,7 +59,7 @@ Public Sub MigriereEinstellungenLayout()
         ' 19 Zeilen oben einfügen - verschiebt alle Daten automatisch
         ws.Rows("1:19").Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
         
-        ' Eingefuegte Zeilen bereinigen (keine Formatierung übernehmen)
+        ' Eingefügte Zeilen bereinigen (keine Formatierung übernehmen)
         ws.Range("A1:Z19").Clear
     End If
     
@@ -134,7 +134,7 @@ Public Sub SchreibeKonfigurationsBereich(Optional ByVal ws As Worksheet)
         .Locked = False
     End With
     
-    ' --- SECTION: Beitraege & Pacht ---
+    ' --- SECTION: Beiträge & Pacht ---
     Call SchreibeSectionHeader(ws, ES_CFG_BEITRAEGE_ROW, "Beitr" & ChrW(228) & "ge & Pacht")
     
     ' Mitgliedsbeitrag
@@ -500,8 +500,8 @@ Public Sub PruefeParzellenwertUndSynchronisiere(Optional ByVal zeigeHinweis As B
             MsgBox "Hinweis: Die manuelle Parzellenanzahl in Einstellungen!C14 weicht von der Mitgliederliste ab." & vbCrLf & vbCrLf & _
                    "Einstellungen!C14: " & cfgParz & vbCrLf & _
                    "Automatik (Mitgliederliste): " & autoParz & vbCrLf & vbCrLf & _
-                   "C14 bleibt bewusst unveraendert und wird als Steuerwert verwendet.", _
-                   vbExclamation, "Parzellenanzahl pruefen"
+                   "C14 bleibt bewusst unverändert und wird als Steuerwert verwendet.", _
+                   vbExclamation, "Parzellenanzahl prüfen"
         End If
     End If
 
@@ -571,7 +571,7 @@ Public Sub PruefeKontostandVorjahr()
         If IsNumeric(eingabe) Then
             dblWert = CDbl(eingabe)
             
-            ' Plausibilitaetspruefung: nicht absurd hoch
+            ' Plausibilitätsprüfung: nicht absurd hoch
             If dblWert > 9999999 Then
                 MsgBox "Der Betrag " & Format(dblWert, "#,##0.00") & " " & ChrW(8364) & _
                        " erscheint unrealistisch hoch." & vbLf & _
@@ -826,8 +826,8 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     eventsWaren = Application.EnableEvents
 
     ' Aktives Blatt sichern: diese Routine darf die Blattauswahl NICHT
-    ' verändern. Die Cross-Sheet-Datenpruefung (SetzeDropDowns ->
-    ' 'Daten'!$BA$..) laesst sonst das Daten-Blatt aktiv.
+    ' verändern. Die Cross-Sheet-Datenprüfung (SetzeDropDowns ->
+    ' 'Daten'!$BA$..) lässt sonst das Daten-Blatt aktiv.
     Dim aktivVorher As Object
     On Error Resume Next
     Set aktivVorher = ActiveSheet
@@ -860,7 +860,7 @@ Public Sub FormatiereZahlungsterminTabelle(Optional ByVal ws As Worksheet)
     ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     
     ' Blattauswahl wiederherstellen, falls eine Teilroutine (Cross-Sheet-
-    ' Datenpruefung) das aktive Blatt auf 'Daten' verschoben hat.
+    ' Datenprüfung) das aktive Blatt auf 'Daten' verschoben hat.
     On Error Resume Next
     If Not aktivVorher Is Nothing Then
         If ActiveSheet Is Nothing Then
@@ -1241,6 +1241,8 @@ Public Sub LoescheZahlungsterminZeile(ByVal ws As Worksheet, ByVal zeile As Long
     Call FormatiereZahlungsterminTabelle(ws)
     
 End Sub
+
+
 
 
 

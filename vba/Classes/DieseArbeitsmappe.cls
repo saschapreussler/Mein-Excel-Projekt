@@ -111,7 +111,7 @@ Private Sub Workbook_Open()
     Call mod_Formatierung.StelleAutoFilterBereit
     On Error GoTo 0
     
-    ' v8.0: Standard-Zeilenhöhen auf Hauptblaettern setzen
+    ' v8.0: Standard-Zeilenhöhen auf Hauptblättern setzen
     On Error Resume Next
     Call mod_Zeilenhoehen.FixiereStandardZeilenhoehen
     On Error GoTo 0
@@ -127,7 +127,7 @@ Private Sub Workbook_Open()
     Call mod_Vereinskasse_Filter.Aktiviere_VereinskasseFilter
     On Error GoTo 0
 
-    ' v8.2: Aktuelle Parzellen-Anzahl in Strom/Wasser/Startmenue
+    ' v8.2: Aktuelle Parzellen-Anzahl in Strom/Wasser/Startmenü
     On Error Resume Next
     Call mod_Einstellungen.PruefeParzellenwertUndSynchronisiere(False)
     On Error GoTo 0
@@ -142,7 +142,7 @@ Private Sub Workbook_Open()
     Call mod_Formatierung.FormatiereMitgliederhistorie
     On Error GoTo 0
 
-    ' FINALER UI-FIX: Startmenue sichtbar stabilisieren (kein weisser Balken)
+    ' FINALER UI-FIX: Startmenü sichtbar stabilisieren (kein weisser Balken)
     On Error Resume Next
     ThisWorkbook.Worksheets(WS_STARTMENUE()).Activate
     ThisWorkbook.Worksheets(WS_STARTMENUE()).Range("A1").Select
@@ -224,7 +224,7 @@ End Sub
 ' UserForms und Application-States neutralisiert.
 '
 ' Wichtig: ActiveWindow-Properties (DisplayHeadings/Gridlines) werden
-' NICHT mehr beruehrt - das kann SheetActivate-Kaskaden auslösen.
+' NICHT mehr berührt - das kann SheetActivate-Kaskaden auslösen.
 ' Excel stellt den korrekten Anzeigezustand beim nächsten öffnen
 ' via Workbook_Open + Workbook_SheetActivate wieder her.
 ' ===============================================================
@@ -242,7 +242,7 @@ Private Sub Workbook_BeforeClose(Cancel As Boolean)
     Application.StatusBar = False
     Application.CutCopyMode = False    ' Clipboard freigeben
     
-    ' (3) Vollbildmodus deaktivieren (vor allem für naechstes öffnen)
+    ' (3) Vollbildmodus deaktivieren (vor allem für nächstes öffnen)
     Call mod_Vollbild.SetzeVollbildModus(False)
     Application.DisplayFullScreen = False
     Application.DisplayFormulaBar = True
@@ -279,12 +279,12 @@ End Sub
 
 ' ===============================================================
 ' v4.5: änderungen auf dem übersicht-Blatt abfangen
-' Wird ausgelöst wenn Nutzer einen Soll-Betrag manuell eintraegt
+' Wird ausgelöst wenn Nutzer einen Soll-Betrag manuell einträgt
 ' v4.5b: Guard gegen Ausführung während GeneriereUebersicht
 ' ===============================================================
 Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
     
-    ' Nicht während GeneriereUebersicht ausfuehren (Reentrancy-Schutz)
+    ' Nicht während GeneriereUebersicht ausführen (Reentrancy-Schutz)
     If mod_Uebersicht_Generator.IsGenerating Then Exit Sub
     
     ' Nur auf dem übersicht-Blatt reagieren
@@ -321,6 +321,7 @@ Private Sub Workbook_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Ra
         Call mod_Uebersicht_Event.MerkeAktuellenUebersichtZustand(Target)
     End If
 End Sub
+
 
 
 

@@ -147,7 +147,7 @@ End Sub
 ' ===============================================================
 ' Setzt DropDown-Listen in Spalte H (Kategorie)
 ' Für jede Zeile: Betrag > 0 -> Einnahmen (AF), Betrag < 0 -> Ausgaben (AG)
-' Referenziert dynamisch auf den befuellten Bereich in AF bzw. AG
+' Referenziert dynamisch auf den befüllten Bereich in AF bzw. AG
 ' ===============================================================
 Private Sub SetzeKategorieDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long)
     
@@ -161,7 +161,7 @@ Private Sub SetzeKategorieDropDowns(ByVal ws As Worksheet, ByVal lastRow As Long
     
     If wsDaten Is Nothing Then Exit Sub
     
-    ' Letzter befuellter Eintrag in AF und AG ermitteln
+    ' Letzter befüllter Eintrag in AF und AG ermitteln
     Dim lastE As Long
     lastE = wsDaten.Cells(wsDaten.Rows.count, DATA_COL_KAT_EINNAHMEN).End(xlUp).Row
     If lastE < DATA_START_ROW Then lastE = DATA_START_ROW
@@ -303,6 +303,8 @@ Private Sub EntsperreSpaltenFuerNutzer(ByVal ws As Worksheet, ByVal lastRow As L
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

@@ -9,7 +9,7 @@ Option Explicit
 ' ===============================================================
 
 ' Farb-Konstanten für ListBox-Hintergrund (OLE_COLOR / BGR)
-Private Const LB_COLOR_GRUEN As Long = &HC0FFC0     ' hellgruen
+Private Const LB_COLOR_GRUEN As Long = &HC0FFC0     ' hellgrün
 Private Const LB_COLOR_GELB As Long = &HC0FFFF      ' hellgelb
 Private Const LB_COLOR_ROT As Long = &HC0C0FF       ' hellrot
 Private Const LB_COLOR_WEISS As Long = &HFFFFFF     ' weiss
@@ -21,14 +21,14 @@ Private Const PROTO_SEP As String = "||"
 Private Const PROTO_ZEILE As Long = 500
 Private Const PROTO_SPALTE As Long = 25              ' Spalte Y
 
-' Maximale Anzahl Import-Bloecke im Speicher (je 5 Zeilen)
+' Maximale Anzahl Import-Blöcke im Speicher (je 5 Zeilen)
 Private Const MAX_BLOECKE As Long = 100
 ' 100 x 5 = 500 Zeilen maximal
 Private Const MAX_ZEILEN As Long = 500
 
 
 ' ---------------------------------------------------------------
-' Initialize: Liest Y500, beFuellt ActiveX ListBox,
+' Initialize: Liest Y500, befüllt ActiveX ListBox,
 '     setzt Hintergrundfarbe.
 '     Aufruf: Workbook_Open, Worksheet_Activate, nach Löschen
 ' ---------------------------------------------------------------
@@ -294,6 +294,8 @@ Public Function ExtrahiereZahl(ByVal text As String) As Long
     End If
     
 End Function
+
+
 
 
 

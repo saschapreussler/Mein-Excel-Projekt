@@ -7,12 +7,12 @@ Option Explicit
 ' ABGELEITET AUS: mod_EntityKey_Manager (Modularisierung)
 ' VERSION: 1.0 - 01.03.2026
 ' FUNKTIONEN:
-'   - IstKontonameRedundant: Semantische Redundanzpruefung
+'   - IstKontonameRedundant: Semantische Redundanzprüfung
 '   - ZerlegeInWorte: Name in normalisierte Wortmenge zerlegen
 '   - SindWortmengenGleich: Wortmengen-Gleichheit prüfen
 '   - IstTeilmenge: Teilmengen-Prüfung
 '   - BereinigeKontonamen: Dictionary von Redundanzen bereinigen
-'   - SammelKontonamen: Dictionary zu String zusammenfuegen
+'   - SammelKontonamen: Dictionary zu String zusammenfügen
 ' ***************************************************************
 
 ' ===============================================================
@@ -215,6 +215,7 @@ Public Function SammelKontonamen(ByRef dictNames As Object) As String
     
     SammelKontonamen = result
 End Function
+
 
 
 

@@ -25,13 +25,13 @@ Public Sub SetzeAmpelFarbe(ByRef ws As Worksheet, ByVal zeile As Long, ByVal amp
     
     Select Case ampelStatus
         Case 1
-            farbe = RGB(198, 224, 180)  ' Gruen
+            farbe = RGB(198, 224, 180)  ' Grün
         Case 2
             farbe = RGB(255, 230, 153)  ' Gelb
         Case 3
             farbe = RGB(255, 150, 150)  ' Rot
         Case Else
-            farbe = RGB(198, 224, 180)  ' Default Gruen
+            farbe = RGB(198, 224, 180)  ' Default Grün
     End Select
     
     rngAmpel.Interior.color = farbe
@@ -154,6 +154,8 @@ Public Function BerechneAmpelStatus(ByVal entityKey As String, _
     ' Default: Gelb
     BerechneAmpelStatus = 2
 End Function
+
+
 
 
 

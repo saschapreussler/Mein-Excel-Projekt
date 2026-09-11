@@ -5,22 +5,22 @@
 ' ZWECK:
 '   Einmaliger Bootstrap-Helfer, um die VBA-Quelldateien aus dem
 '   Repository (vba\Modules\*.bas + vba\Classes\*.cls) nach einem
-'   Umlaut-Fix sauber zurueck in die Arbeitsmappe zu importieren.
+'   Umlaut-Fix sauber zurück in die Arbeitsmappe zu importieren.
 '
 ' HINTERGRUND:
 '   Die Repo-Dateien sind UTF-8 mit BOM. Der VBA-Editor liest beim
-'   File-Import nur ANSI. Wir muessen also UTF-8 nach ANSI konvertieren
+'   File-Import nur ANSI. Wir müssen also UTF-8 nach ANSI konvertieren
 '   bevor wir importieren. Das eigentliche Sync-Modul (mod_Repo_Sync)
-'   kann das, aber wir muessen es ZUERST aktualisieren -- mit einer
+'   kann das, aber wir müssen es ZUERST aktualisieren -- mit einer
 '   bootstrap-fest verdrahteten ANSI-Konvertierung in diesem Modul.
 '
 ' VERWENDUNG:
-'   1. Excel-Mappe oeffnen (Programm Kassenbuch 2018_v2.7.4.xlsm)
-'   2. Alt+F11 -> VBE oeffnen
-'   3. Menue Datei -> Datei importieren ->
-'      tools\Bootstrap_Reimport.bas auswaehlen
+'   1. Excel-Mappe öffnen (Programm Kassenbuch 2018_v2.7.4.xlsm)
+'   2. Alt+F11 -> VBE öffnen
+'   3. Menü Datei -> Datei importieren ->
+'      tools\Bootstrap_Reimport.bas auswählen
 '   4. Im Direktbereich (Strg+G) tippen: BootstrapReimport
-'      und Enter druecken
+'      und Enter drücken
 '   5. Excel zeigt am Ende die Sync-Ergebnis-MsgBox
 '   6. Modul Bootstrap_Reimport kann dann wieder entfernt werden
 '      (rechtsklick -> Entfernen -> Nein)
@@ -40,13 +40,13 @@ Private Const SYNC_MODULE    As String = "mod_Repo_Sync"
 Private Const SYNC_FILE      As String = "mod_Repo_Sync.bas"
 Private Const SYNC_SUB       As String = "SyncVBAVomRepository"
 
-' Module, die VOR dem Sync entfernt werden muessen (z.B. weil sie mit
-' anderen Modulen zusammengefuehrt wurden und sonst Ambiguous-Name-
+' Module, die VOR dem Sync entfernt werden müssen (z.B. weil sie mit
+' anderen Modulen zusammengeführt wurden und sonst Ambiguous-Name-
 ' Konflikte verursachen).
 Private Const MODULES_TO_REMOVE As String = "mod_TestReset"
 ' -------------------------------------------------------------------------
 
-' Diagnose-Variablen fuer detaillierte Fehlermeldungen
+' Diagnose-Variablen für detaillierte Fehlermeldungen
 Private gLastStep As String
 Private gLastErrNum As Long
 Private gLastErrDesc As String
@@ -63,7 +63,7 @@ Public Sub BootstrapReimport()
 
     On Error GoTo Fehler
 
-    ' --- Pfade pruefen ----------------------------------------------------
+    ' --- Pfade prüfen ----------------------------------------------------
     Set fso = CreateObject("Scripting.FileSystemObject")
     quellPfad = REPO_ROOT & SUB_MODULES & SYNC_FILE
     If Not fso.FileExists(quellPfad) Then
@@ -116,7 +116,7 @@ Public Sub BootstrapReimport()
     ansiPfad = tempPfad & SYNC_FILE
 
     If Not KonvertiereUTF8nachANSI(quellPfad, ansiPfad, fso) Then
-        MsgBox "Konvertierung UTF-8 -> ANSI fehlgeschlagen fuer:" & vbCrLf & _
+        MsgBox "Konvertierung UTF-8 -> ANSI fehlgeschlagen für:" & vbCrLf & _
                quellPfad & vbCrLf & vbCrLf & _
                "Letzter Fehler:" & vbCrLf & _
                "  Schritt: " & gLastStep & vbCrLf & _
@@ -132,7 +132,7 @@ Public Sub BootstrapReimport()
     On Error GoTo Fehler
 
     If Not vbComp Is Nothing Then
-        ' Code direkt im CodeModule ersetzen (kein Remove noetig)
+        ' Code direkt im CodeModule ersetzen (kein Remove nötig)
         If Not ErsetzeCodeAusANSIDatei(vbComp, ansiPfad) Then
             MsgBox "Konnte mod_Repo_Sync nicht aktualisieren.", _
                    vbCritical, "Bootstrap fehlgeschlagen"
@@ -164,9 +164,9 @@ End Sub
 
 ' ========================================================================
 ' Konvertiert eine UTF-8-Datei (mit oder ohne BOM) in eine ANSI-Datei
-' (Windows-1252). Loest das BOM-Problem beim VBA-Import.
-' Verwendet ADODB.Stream fuer Lesen UND Schreiben - keine FSO-Mischung.
-' Rueckgabe: True bei Erfolg. Bei Fehler werden gLastStep / gLastErrNum
+' (Windows-1252). Löst das BOM-Problem beim VBA-Import.
+' Verwendet ADODB.Stream für Lesen UND Schreiben - keine FSO-Mischung.
+' Rückgabe: True bei Erfolg. Bei Fehler werden gLastStep / gLastErrNum
 ' / gLastErrDesc gesetzt, damit der Aufrufer eine sinnvolle Meldung
 ' anzeigen kann.
 ' ========================================================================
@@ -181,8 +181,8 @@ Private Function KonvertiereUTF8nachANSI(quellPfad As String, _
     gLastErrNum = 0
     gLastErrDesc = ""
 
-    ' --- Schritt 1: Quelldatei pruefen ----------------------------------
-    gLastStep = "Quelldatei pruefen"
+    ' --- Schritt 1: Quelldatei prüfen ----------------------------------
+    gLastStep = "Quelldatei prüfen"
     If Not fso.FileExists(quellPfad) Then
         gLastErrDesc = "Datei existiert nicht."
         Exit Function
@@ -226,7 +226,7 @@ Private Function KonvertiereUTF8nachANSI(quellPfad As String, _
         End If
     End If
 
-    ' --- Schritt 4: Zieldatei loeschen falls vorhanden ------------------
+    ' --- Schritt 4: Zieldatei löschen falls vorhanden ------------------
     gLastStep = "Zieldatei vorbereiten"
     On Error Resume Next
     If fso.FileExists(zielPfad) Then fso.DeleteFile zielPfad, True
@@ -260,7 +260,7 @@ Private Function KonvertiereUTF8nachANSI(quellPfad As String, _
 
     ' --- Schritt 7: BOM aus ANSI-Datei entfernen ------------------------
     ' ADODB.Stream schreibt mit Charset=windows-1252 KEIN BOM,
-    ' aber sicherheitshalber pruefen
+    ' aber sicherheitshalber prüfen
     gLastStep = "BOM aus ANSI-Datei entfernen"
     On Error Resume Next
     Dim pruef As Object
@@ -304,7 +304,7 @@ End Function
 ' ========================================================================
 ' Ersetzt den Code im CodeModule einer existierenden VBComponent
 ' durch den Inhalt einer ANSI-.bas-Datei. Header-Zeilen werden
-' uebersprungen (Attribute VB_Name etc.).
+' übersprungen (Attribute VB_Name etc.).
 ' ========================================================================
 Private Function ErsetzeCodeAusANSIDatei(vbComp As Object, _
                                           dateipfad As String) As Boolean
@@ -333,7 +333,7 @@ Private Function ErsetzeCodeAusANSIDatei(vbComp As Object, _
         zeilen = Split(alleZeilen, vbLf)
     End If
 
-    ' Header-Zeile "Attribute VB_Name = ..." ueberspringen
+    ' Header-Zeile "Attribute VB_Name = ..." überspringen
     startIdx = -1
     For i = LBound(zeilen) To UBound(zeilen)
         If Left(Trim(zeilen(i)), 9) <> "Attribute" And Trim(zeilen(i)) <> "" Then
@@ -364,3 +364,5 @@ Private Function ErsetzeCodeAusANSIDatei(vbComp As Object, _
 Fehler:
     ErsetzeCodeAusANSIDatei = False
 End Function
+
+

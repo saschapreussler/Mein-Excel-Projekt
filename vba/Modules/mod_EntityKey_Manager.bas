@@ -19,7 +19,7 @@ Option Explicit
 '   - AktualisiereAlleEntityKeys: Haupt-Update aller EntityKeys
 '   - GeneriereEntityKeyUndZuordnung: Zuordnungslogik
 '   - AktualisiereEntityKeyBeiAustritt: EX-Prefix bei Austritt
-'   - HatBereitsGueltigeDaten: Gueltigkeitspruefung
+'   - HatBereitsGueltigeDaten: Gültigkeitsprüfung
 '   - CreateGUID: ID-Generator
 ' ***************************************************************
 
@@ -643,6 +643,8 @@ ErrorHandler:
     wsD.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     Debug.Print "FEHLER in AktualisiereEntityKeyBeiAustritt: " & Err.Description
 End Sub
+
+
 
 
 

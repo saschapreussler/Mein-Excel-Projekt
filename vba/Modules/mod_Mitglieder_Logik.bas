@@ -1,11 +1,11 @@
 ﻿Attribute VB_Name = "mod_Mitglieder_Logik"
 ' =============================================================================
 ' Modul:       mod_Mitglieder_Logik
-' Beschreibung: Geschaeftslogik für Mitgliederverwaltung
+' Beschreibung: Geschäftslogik für Mitgliederverwaltung
 '               Extrahiert aus frm_Mitgliedsdaten.frm (SPLIT v1.0)
 '               enthält: Parzellen-Prüfungen, Historie-Operationen,
 '                        Validierungs- und Hilfsfunktionen
-' abhaengigkeiten: mod_Const (alle Spalten-/Worksheet-Konstanten)
+' abhängigkeiten: mod_Const (alle Spalten-/Worksheet-Konstanten)
 ' Datum:         2025-06
 ' =============================================================================
 Option Explicit
@@ -101,7 +101,7 @@ Public Function IsFormLoaded(ByVal FormName As String) As Boolean
 End Function
 
 ' =============================================================================
-' PARZELLEN-PruefungEN
+' PARZELLEN-PRÜFUNGEN
 ' =============================================================================
 
 ' ***************************************************************
@@ -358,7 +358,7 @@ Public Function FindeMitgliedsZeile(ByVal memberID As String, ByVal parzelle As 
     FindeMitgliedsZeile = 0
 End Function
 
-' Zaehlt weitere aktive Mitglieder auf einer Parzelle exklusive der uebergebenen Member-IDs.
+' Zählt weitere aktive Mitglieder auf einer Parzelle exklusive der übergebenen Member-IDs.
 Public Function AnzahlWeitereMitgliederAufParzelle(ByVal parzelle As String, _
                                                    ByVal ausschlussMemberID As String, _
                                                    Optional ByVal ausschlussMemberID2 As String = "") As Long
@@ -460,7 +460,7 @@ Public Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, By
     ' Schreibe Daten in Mitgliederhistorie (10 Spalten A-J) - MIT FEHLERBEHANDLUNG
     wsH.Cells(nextHistRow, H_COL_PARZELLE).value = parzelle                          ' A: Parzelle
     wsH.Cells(nextHistRow, H_COL_MEMBER_ID_ALT).value = memberID                     ' B: Member ID (alt)
-    wsH.Cells(nextHistRow, H_COL_NAME_EHEM_PAECHTER).value = nachname & ", " & vorname  ' C: Name ehem. Paechter (kombiniert)
+    wsH.Cells(nextHistRow, H_COL_NAME_EHEM_PAECHTER).value = nachname & ", " & vorname  ' C: Name ehem. Pächter (kombiniert)
     
     On Error Resume Next
     wsH.Cells(nextHistRow, H_COL_AUST_DATUM).value = austrittsDatum                  ' D: Austrittsdatum
@@ -470,8 +470,8 @@ Public Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, By
     On Error GoTo 0
     
     wsH.Cells(nextHistRow, H_COL_GRUND).value = grund                                ' E: Grund
-    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = nachpaechterName         ' F: Name neuer Paechter
-    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = nachpaechterID             ' G: ID neuer Paechter
+    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = nachpaechterName         ' F: Name neuer Pächter
+    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = nachpaechterID             ' G: ID neuer Pächter
     wsH.Cells(nextHistRow, H_COL_KOMMENTAR).value = ""                               ' H: Kommentar (leer)
     wsH.Cells(nextHistRow, H_COL_ENDABRECHNUNG).value = Trim$(endabrechnungStatus)   ' I: Endabrechnung-Status
     
@@ -485,7 +485,7 @@ Public Sub VerschiebeInHistorie(ByVal lRow As Long, ByVal parzelle As String, By
     ' Lösche Zeile aus Mitgliederliste
     wsM.Rows(lRow).Delete Shift:=xlUp
     
-    ' Schuetze Blätter wieder
+    ' Schütze Blätter wieder
     wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
@@ -537,8 +537,8 @@ Public Sub SpeichereParzellenwechselInHistorie(ByVal alteParzelle As String, ByV
     On Error GoTo ErrorHandler
     
     wsH.Cells(nextHistRow, H_COL_GRUND).value = grund                               ' E: Grund
-    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = ""                      ' F: kein Nachpaechter
-    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = ""                        ' G: kein Nachpaechter
+    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = ""                      ' F: kein Nachpächter
+    wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = ""                        ' G: kein Nachpächter
     wsH.Cells(nextHistRow, H_COL_KOMMENTAR).value = "Neue Parzelle: " & neueParzelle ' H: Kommentar
     wsH.Cells(nextHistRow, H_COL_ENDABRECHNUNG).value = ""                          ' I: keine Endabrechnung
     
@@ -622,8 +622,8 @@ Public Sub VerschiebeAlleParzellenInHistorie(ByVal memberID As String, _
             On Error GoTo ErrorHandler
             
             wsH.Cells(nextHistRow, H_COL_GRUND).value = grund                                  ' E: Grund
-            wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = ""                         ' F: kein Nachpaechter
-            wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = ""                           ' G: kein Nachpaechter
+            wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_NAME).value = ""                         ' F: kein Nachpächter
+            wsH.Cells(nextHistRow, H_COL_NACHPAECHTER_ID).value = ""                           ' G: kein Nachpächter
             wsH.Cells(nextHistRow, H_COL_KOMMENTAR).value = "Komplett-Austritt (alle Parzellen)" ' H: Kommentar
             wsH.Cells(nextHistRow, H_COL_ENDABRECHNUNG).value = ""                             ' I: Endabrechnung
             
@@ -641,7 +641,7 @@ Public Sub VerschiebeAlleParzellenInHistorie(ByVal memberID As String, _
 NextRowKomplett:
     Next r
     
-    ' Schuetze Blätter wieder
+    ' Schütze Blätter wieder
     wsM.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     
@@ -660,6 +660,8 @@ ErrorHandler:
     If Not wsH Is Nothing Then wsH.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
     MsgBox "Fehler beim Komplett-Austritt: " & Err.Description, vbCritical
 End Sub
+
+
 
 
 

@@ -167,7 +167,7 @@ Public Sub SchreibeMatrixMitDaten(ByVal ws As Worksheet, _
             Dim kategorie As String
             kategorie = kategorien(k).Name
             Dim katCol As Long
-            katCol = katSpalte(k)   ' Punkt 12: 0 wenn jaehrlich, sonst echte Spalte
+            katCol = katSpalte(k)   ' Punkt 12: 0 wenn jährlich, sonst echte Spalte
             
             ' OHNE PACHT: nur Mitgliedsbeitrag
             Dim istNurMitgliedsbeitrag As Boolean
@@ -320,7 +320,7 @@ NextEKDash:
                 
                 ' v5.4: MB-Soll anpassen für Mitglieder ohne eigenen EntityKey
                 ' Wenn mehr Mitglieder auf der Parzelle sind als zahlende EntityKeys,
-                ' muss der Soll auf die tatsaechliche Mitgliederzahl hochgerechnet werden.
+                ' muss der Soll auf die tatsächliche Mitgliederzahl hochgerechnet werden.
                 If istMB And Not uebersichtHatWerte Then
                     Dim tatsaechlicheMB As Long
                     tatsaechlicheMB = parzellen(p).anzMitglieder - mbEhren
@@ -459,7 +459,7 @@ NextMonatDash:
             zeileSoll = zeileSoll + katSoll
             zeileIst = zeileIst + katIst
             
-            ' Punkt 12: Bei jaehrlichen Kategorien in Sammel-Aggregator statt eigene Zelle
+            ' Punkt 12: Bei jährlichen Kategorien in Sammel-Aggregator statt eigene Zelle
             If katCol = 0 Then
                 jpFaellig = jpFaellig + faelligMonate
                 jpBezahlt = jpBezahlt + bezahltMonate
@@ -683,7 +683,7 @@ Private Sub SchreibeMatrixZelle(ByVal ws As Worksheet, _
             Dim ii As Long
             For ii = 1 To faellig
                 If ii <= bezahlt Then
-                    punkte = punkte & ChrW(9679)   ' gefuellt
+                    punkte = punkte & ChrW(9679)   ' gefüllt
                 Else
                     punkte = punkte & ChrW(9675)   ' leer
                 End If
@@ -1038,6 +1038,8 @@ Public Sub PasseSpaltenAn(ByVal ws As Worksheet, ByVal anzKat As Long)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

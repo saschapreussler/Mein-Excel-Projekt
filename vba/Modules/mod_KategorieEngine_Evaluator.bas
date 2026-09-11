@@ -132,7 +132,7 @@ End Function
 ' Braucht KEINEN Named Range! Liest Regeln direkt vom
 ' Daten-Blatt Über DATA_CAT_COL_* Konstanten.
 ' Scoring-Logik aus v7.0 wiederhergestellt.
-' v9.3: WordCountBonus + erhoehter Prio-Bonus
+' v9.3: WordCountBonus + erhöhter Prio-Bonus
 ' =====================================================
 Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                                       ByVal rowBK As Long, _
@@ -191,7 +191,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     bestPriority = 999
     bestCategory = ""
 
-    ' Dictionary: Kategorie -> Score (hoechster Score je Kategorie)
+    ' Dictionary: Kategorie -> Score (höchster Score je Kategorie)
     Dim hitCategories As Object
     Set hitCategories = CreateObject("Scripting.Dictionary")
 
@@ -243,22 +243,22 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
             Dim score As Long
             score = 100
             
-            ' Prioritaetsbonus (niedrigere Prio = hoeherer Bonus)
-            ' v9.3: Faktor 8 statt 5 für staerkere Differenzierung
+            ' Prioritätsbonus (niedrigere Prio = höherer Bonus)
+            ' v9.3: Faktor 8 statt 5 für stärkere Differenzierung
             score = score + (10 - prio) * 8
             
-            ' EntityRole bekannt = hoehere Konfidenz (+20 wie in v7.0)
+            ' EntityRole bekannt = höhere Konfidenz (+20 wie in v7.0)
             If ctx("EntityRole") <> "" Then
                 score = score + 20
             End If
             
-            ' Einnahme/Ausgabe stimmt exakt ueberein
+            ' Einnahme/Ausgabe stimmt exakt überein
             If (einAus = "E" And ctx("IsEinnahme")) Or _
                (einAus = "A" And ctx("IsAusgabe")) Then
                 score = score + 15
             End If
             
-            ' Keyword-Laenge als Qualitaetsfaktor
+            ' Keyword-Länge als Qualitätsfaktor
             Dim kwLen As Long
             kwLen = Len(normKeyword)
             If kwLen >= 12 Then
@@ -422,6 +422,8 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         End Select
     End With
 End Sub
+
+
 
 
 

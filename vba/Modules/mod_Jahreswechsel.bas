@@ -2,15 +2,15 @@
 '==================================================================
 '  PUNKT 13: Neues Kalenderjahr starten
 '  - Erstellt eine Archiv-Kopie der aktuellen Mappe
-'  - Loescht jahresbezogene Daten in der Original-Mappe
-'  - Behält: Mitgliederliste, EntityKeys, Kategorien, Zaehlerstaende
+'  - Löscht jahresbezogene Daten in der Original-Mappe
+'  - Behält: Mitgliederliste, EntityKeys, Kategorien, Zählerstände
 '  - Setzt Abrechnungsjahr in Einstellungen +1
 '==================================================================
 Option Explicit
 
 ' Lokale Konstante - UEBERSICHT_START_ROW ist in mod_Uebersicht_Generator
 ' als Private Const deklariert und daher hier nicht sichtbar.
-' Wert muss mit mod_Uebersicht_Generator / mod_Uebersicht_Filter uebereinstimmen.
+' Wert muss mit mod_Uebersicht_Generator / mod_Uebersicht_Filter übereinstimmen.
 Private Const UEBERSICHT_START_ROW As Long = 4
 
 
@@ -301,6 +301,8 @@ Private Sub UebernehmeKassenbestandVorjahr()
     wsEinst.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
+
+
 
 
 

@@ -347,7 +347,7 @@ Public Sub Aktiviere_VereinskasseFilter()
     Err.Clear
     On Error GoTo 0
 
-    ' 2) Merged Cells im Header-Bereich aufloesen
+    ' 2) Merged Cells im Header-Bereich auflösen
     On Error Resume Next
     ws.Range(ws.Cells(VK_HEADER_ROW, VK_FIRST_FILTER_COL), _
              ws.Cells(VK_HEADER_ROW, VK_LAST_FILTER_COL)).UnMerge
@@ -448,6 +448,8 @@ Public Sub VereinskasseFilterJetzt()
                vbCritical, "Vereinskasse-Filter: FEHLER"
     End If
 End Sub
+
+
 
 
 

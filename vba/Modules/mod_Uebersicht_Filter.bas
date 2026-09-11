@@ -216,7 +216,7 @@ End Sub
 
 ' ===============================================================
 ' v1.1: Zebra-Muster basierend auf SICHTBAREN Zeilen anwenden
-' Zaehlt nur sichtbare Zeilen für das Mod-2-Muster.
+' Zählt nur sichtbare Zeilen für das Mod-2-Muster.
 ' Überspringt Status-Spalte (Ampel) und gelbe Soll-Zellen.
 ' ===============================================================
 Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
@@ -232,7 +232,7 @@ Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
     visibleIdx = 0
     
     For r = startRow To endRow
-        ' Nur sichtbare Zeilen beruecksichtigen
+        ' Nur sichtbare Zeilen berücksichtigen
         If wsUeb.Rows(r).Hidden = False Then
             If visibleIdx Mod 2 = 1 Then
                 ' Gerade sichtbare Zeile -> Zebra-Farbe
@@ -245,7 +245,7 @@ Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
                             wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                         End If
                     Else
-                        ' Alle uebrigen Spalten einschliesslich Guthaben.
+                        ' Alle übrigen Spalten einschliesslich Guthaben.
                         wsUeb.Cells(r, c).Interior.color = ZEBRA_COLOR
                     End If
                 Next c
@@ -260,7 +260,7 @@ Private Sub WendeZebraAufSichtbareZeilenAn(ByVal wsUeb As Worksheet, _
                             wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                         End If
                     Else
-                        ' Alle uebrigen Spalten einschliesslich Guthaben.
+                        ' Alle übrigen Spalten einschliesslich Guthaben.
                         wsUeb.Cells(r, c).Interior.ColorIndex = xlNone
                     End If
                 Next c
@@ -309,6 +309,8 @@ Public Sub EntferneMonatsRegister()
     On Error GoTo 0
 
 End Sub
+
+
 
 
 

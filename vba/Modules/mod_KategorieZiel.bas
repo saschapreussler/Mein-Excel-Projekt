@@ -60,7 +60,7 @@ Public Sub ApplyZielspaltenDropdown(ByVal ws As Worksheet, ByVal rowNr As Long)
 End Sub
 
 ' ---------------------------------------------------------------
-' Ermittelt passende ueberschriftenliste
+' Ermittelt passende überschriftenliste
 ' ---------------------------------------------------------------
 Private Function GetZielspaltenListe(ByVal einAus As String) As String
 
@@ -85,6 +85,8 @@ Private Function GetZielspaltenListe(ByVal einAus As String) As String
     End Select
 
 End Function
+
+
 
 
 

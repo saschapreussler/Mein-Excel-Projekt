@@ -5,19 +5,19 @@ Option Explicit
 ' MODUL: mod_Zahlungspruefung (Orchestrator)
 ' VERSION: 3.3 - 15.03.2026
 ' ZWECK: Zahlungsprüfung für Mitgliederliste + Einstellungen
-'        - Prüft Zahlungseingaenge gegen Soll-Werte
+'        - Prüft Zahlungseingänge gegen Soll-Werte
 '        - Behandelt Dezember-Vorauszahlungen
 '        - Cache-Verwaltung (Einstellungen, IBAN, Dezember)
 ' AUSGELAGERT:
 '   - mod_ZP_DropDowns: SetzeBankkontoDropDowns, Kategorie-/Monat-
 '     DropDowns, Hilfsspalten AF/AG, Spaltenentsperrung
-'   - mod_ZP_Sammelzuordnung: Sammelueberweisungen, manuelle
+'   - mod_ZP_Sammelzuordnung: Sammelüberweisungen, manuelle
 '     Monatszuordnung
 '   - mod_ZP_Periode: SetzeMonatPeriode, HoleFaelligkeitFuerKategorie
 ' FIX v3.1: PruefeZahlungen nutzt jetzt Spalte I (Monat/Periode)
 '           statt Month(Buchungsdatum) für Monats-Zuordnung
 ' NEU v3.2: Frist-/ToleranzPruefung mit Vorlauf/Nachlauf aus
-'           Einstellungen (Spalte G/H). Saeumnishinweis in Bemerkung.
+'           Einstellungen (Spalte G/H). Säumnishinweis in Bemerkung.
 ' ***************************************************************
 
 ' ===============================================================
@@ -45,7 +45,7 @@ Private m_EntityIBANCacheGeladenZP As Boolean
 
 ' ===============================================================
 ' DEZEMBER-CACHE (für Vorauszahlungen)
-' Struktur: Schlüssel = IBAN|Kategorie, Wert = Collection von Betraegen
+' Struktur: Schlüssel = IBAN|Kategorie, Wert = Collection von Beträgen
 ' ===============================================================
 Private m_DezemberCacheZP As Object
 
@@ -63,12 +63,12 @@ Private Const AMPEL_ROT As Long = 9871103
 '
 ' Rückgabe: "STATUS|Soll:XX.XX|Ist:XX.XX" oder
 '            "STATUS|Soll:XX.XX|Ist:XX.XX|Bemerkungstext"
-'           Dezimaltrenner im Rueckgabewert ist IMMER Punkt (.)
+'           Dezimaltrenner im Rückgabewert ist IMMER Punkt (.)
 '
-' v3.2: Frist-/Toleranzpruefung:
+' v3.2: Frist-/Toleranzprüfung:
 '   - Vorlauf (Spalte G) und Nachlauf (Spalte H) aus Einstellungen
-'   - Fuelligkeitsdatum wird berechnet (BerechneSollDatumZP)
-'   - Zahlung innerhalb [Fälligkeit - Vorlauf, Fälligkeit + Nachlauf] = puenktlich
+'   - Fälligkeitsdatum wird berechnet (BerechneSollDatumZP)
+'   - Zahlung innerhalb [Fälligkeit - Vorlauf, Fälligkeit + Nachlauf] = pünktlich
 '   - Zahlung eingegangen aber NACH Fälligkeit + Nachlauf = GELB + Säumnis
 '   - Keine Zahlung = ROT
 ' ===============================================================
@@ -100,7 +100,7 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     ' IBAN-Cache laden (falls noch nicht geschehen)
     If Not m_EntityIBANCacheGeladenZP Then Call LadeEntityIBANCacheZP
     
-    ' 1. IBAN zum EntityKey aufloesen (Über Daten!R+S)
+    ' 1. IBAN zum EntityKey auflösen (Über Daten!R+S)
     entityIBAN = ""
     If Not m_EntityIBANCacheZP Is Nothing Then
         If m_EntityIBANCacheZP.exists(entityKey) Then
@@ -147,7 +147,7 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     Dim istMonatlich As Boolean
     istMonatlich = (katFaelligkeit = "" Or katFaelligkeit = "monatlich")
     
-    ' v3.2: Fruehestes Zahlungsdatum merken (für Fristpruefung)
+    ' v3.2: Frühestes Zahlungsdatum merken (für Fristprüfung)
     Dim fruehestesZahlDatum As Date
     Dim hatZahlung As Boolean
     hatZahlung = False
@@ -161,7 +161,7 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
         If Year(zahlDatum) <> jahr Then
             ' Dezember-Sonderfall: Vorauszahlung Dezember Vorjahr für Januar
             If monat = 1 And Month(zahlDatum) = 12 And Year(zahlDatum) = jahr - 1 Then
-                ' Vorauszahlung aus Dezember des Vorjahres -> zulaessig
+                ' Vorauszahlung aus Dezember des Vorjahres -> zulässig
             Else
                 GoTo NextZahlRow
             End If
@@ -190,7 +190,7 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
         zahlBetrag = wsBK.Cells(r, BK_COL_BETRAG).value
         ist = ist + Abs(zahlBetrag)
         
-        ' v3.2: Fruehestes Zahlungsdatum merken
+        ' v3.2: Frühestes Zahlungsdatum merken
         If Not hatZahlung Then
             fruehestesZahlDatum = zahlDatum
             hatZahlung = True
@@ -202,10 +202,10 @@ NextZahlRow:
     Next r
     
     ' 4. Status ermitteln (GRÜN/GELB/ROT)
-    '    v3.2: Mit Frist-/Toleranzpruefung
+    '    v3.2: Mit Frist-/Toleranzprüfung
     bemerkung = ""
     
-    ' Faelligkeitsdatum und Toleranzen aus Einstellungen holen
+    ' Fälligkeitsdatum und Toleranzen aus Einstellungen holen
     Dim sollDatum As Date
     Dim vorlauf As Long
     Dim nachlauf As Long
@@ -214,9 +214,9 @@ NextZahlRow:
     Call HoleToleranzZP(kategorie, vorlauf, nachlauf, saeumnisGebuehr)
     
     If soll > 0 Then
-        ' Fester Soll-Betrag vorhanden: Betrags-Vergleich + Fristpruefung
+        ' Fester Soll-Betrag vorhanden: Betrags-Vergleich + Fristprüfung
         If ist >= soll Then
-            ' Betrag ausreichend -> Fristpruefung
+            ' Betrag ausreichend -> Fristprüfung
             If hatZahlung And (vorlauf > 0 Or nachlauf > 0) Then
                 Dim fristEnde As Date
                 fristEnde = sollDatum + nachlauf
@@ -318,7 +318,7 @@ End Function
 
 
 ' ===============================================================
-' Zaehlt passende Zahlungen für einen EntityKey/Kategorie/Monat.
+' Zählt passende Zahlungen für einen EntityKey/Kategorie/Monat.
 ' Hilft dabei, Gemeinschaftskonto-Zahlungen nur dann zuzuordnen,
 ' wenn nicht gleichzeitig weitere separate Zahlungen derselben
 ' Person für denselben Zeitraum vorliegen.
@@ -658,7 +658,7 @@ End Sub
 
 
 ' ===============================================================
-' IBAN-CACHE: Laedt EntityKey -> IBAN Zuordnung aus Daten!R+S
+' IBAN-CACHE: Lädt EntityKey -> IBAN Zuordnung aus Daten!R+S
 ' ===============================================================
 Private Sub LadeEntityIBANCacheZP()
     
@@ -1004,6 +1004,8 @@ Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
     HoleDezemberVorauszahlungZP = summe
     
 End Function
+
+
 
 
 

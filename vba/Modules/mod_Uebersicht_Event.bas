@@ -5,7 +5,7 @@ Option Explicit
 ' MODUL: mod_Uebersicht_Event
 ' VERSION: 1.0 - 15.03.2026
 ' ZWECK: Verarbeitet manuelle änderungen auf dem übersicht-Blatt
-'        - Gelb -> Grün wenn Nutzer Soll-Betrag eintraegt
+'        - Gelb -> Grün wenn Nutzer Soll-Betrag einträgt
 '        - MsgBox: Soll-Betrag für Folgemonat übernehmen?
 '        - Automatische Übernahme in Folgemonate gleicher Parzelle+Kategorie
 '        - Wird von DieseArbeitsmappe.Workbook_SheetChange aufgerufen
@@ -88,7 +88,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     Dim zeile As Long
     zeile = Target.Row
     
-    ' Parzelle und Kategorie der geaenderten Zeile ermitteln
+    ' Parzelle und Kategorie der geänderten Zeile ermitteln
     Dim parzelle As String
     parzelle = CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)
     Dim kategorie As String
@@ -153,7 +153,7 @@ Public Sub VerarbeiteUebersichtAenderung(ByVal Target As Range)
     Dim lastRow As Long
     lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
     
-    ' Prüfen ob es ueberhaupt Folgezeilen für diese Parzelle+Kategorie gibt
+    ' Prüfen ob es überhaupt Folgezeilen für diese Parzelle+Kategorie gibt
     Dim hatFolgezeilen As Boolean
     hatFolgezeilen = False
     Dim rCheck As Long
@@ -269,7 +269,7 @@ End Sub
 
 
 ' ===============================================================
-' Uebertraegt den Soll-Betrag in alle Folgezeilen mit gleicher
+' Überträgt den Soll-Betrag in alle Folgezeilen mit gleicher
 ' Parzelle+Kategorie. Setzt Farbe auf Grün + Bemerkung.
 ' ===============================================================
 Private Sub UebernehmeSollInFolgemonate(ByVal wsUeb As Worksheet, _
@@ -281,7 +281,7 @@ Private Sub UebernehmeSollInFolgemonate(ByVal wsUeb As Worksheet, _
     
     Dim r As Long
     For r = startZeile + 1 To lastRow
-        ' Parzelle + Kategorie müssen uebereinstimmen
+        ' Parzelle + Kategorie müssen übereinstimmen
         If CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value) = parzelle Then
             If StrComp(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value), kategorie, vbTextCompare) = 0 Then
                 ' Nur wenn Zelle noch gelb ist (= noch nicht manuell gesetzt)
@@ -384,7 +384,7 @@ End Sub
 ' ===============================================================
 ' PUNKT 10: Manuelle IST-änderung verarbeiten
 ' - Inputbox: Wann wurde gezahlt? (Datum)
-' - Bei gueltigem Datum: Status GRÜN, Bemerkung "manuell geändert,
+' - Bei gültigem Datum: Status GRÜN, Bemerkung "manuell geändert,
 '   Zahlungsdatum TT.MM.JJJJ", Dashboard updaten
 ' - Bei Abbruch / ungültig: ALLES zurücksetzen aus Snapshot
 ' ===============================================================
@@ -449,7 +449,7 @@ Private Sub VerarbeiteIstAenderung(ByVal Target As Range)
     End If
     
     If Not datumOk Then
-        ' Abbruch oder ungueltiges Datum -> ALLES zurücksetzen
+        ' Abbruch oder ungültiges Datum -> ALLES zurücksetzen
         If hatSnapshot Then
             Target.value = g_SnapIst
             ws.Cells(zeile, UEB_COL_STATUS).value = g_SnapStatus
@@ -515,7 +515,7 @@ End Sub
 
 
 ' ===============================================================
-' Fuegt einen Bemerkungsteil nur einmal hinzu (case-insensitive).
+' Fügt einen Bemerkungsteil nur einmal hinzu (case-insensitive).
 ' ===============================================================
 Private Function FuegeBemerkungEinmalHinzu(ByVal basis As String, _
                                            ByVal neuTeil As String) As String
@@ -546,6 +546,8 @@ Private Function FuegeBemerkungEinmalHinzu(ByVal basis As String, _
 
     FuegeBemerkungEinmalHinzu = res & " | " & neuTeil
 End Function
+
+
 
 
 

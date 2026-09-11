@@ -87,7 +87,7 @@ Public Sub SyncVBAVomRepository()
     Set fso = CreateObject("Scripting.FileSystemObject")
 
     ' ---------------------------------------------------------
-    ' 2b. Harte Vorpruefung: Korruptions-/Encoding-Guards
+    ' 2b. Harte Vorprüfung: Korruptions-/Encoding-Guards
     ' ---------------------------------------------------------
     If Not PruefeRepoDateienVorImport(fso, fehlerListe) Then
         MsgBox "Sync abgebrochen: Es wurden problematische Dateien im Repository erkannt." & vbCrLf & vbCrLf & _
@@ -436,9 +436,9 @@ End Sub
 ' STRATEGIE (v3.3, sicher):
 '   - UserForm existiert bereits im Projekt:
 '       Nur den Code-Teil aus der .frm ersetzen. Layout und
-'       Steuerelemente bleiben unveraendert. KEIN Remove.
+'       Steuerelemente bleiben unverändert. KEIN Remove.
 '   - UserForm existiert noch nicht:
-'       Binaerkopie ins Temp-Verzeichnis + VBComponents.Import.
+'       Binärkopie ins Temp-Verzeichnis + VBComponents.Import.
 '
 ' Grund: Bei grossen UserForms (frm_Mitgliedsdaten ~82 KB) kann
 ' ein Remove + Import fehlschlagen und die Form geht dann komplett
@@ -490,7 +490,7 @@ Private Sub ImportiereUserForms(fso As Object, vbProj As Object, _
                 End If
             Else
                 ' -------------------------------------------
-                ' UserForm neu: Binaerkopie + Import
+                ' UserForm neu: Binärkopie + Import
                 ' -------------------------------------------
                 frmZiel = tempPfad & compName & ".frm"
                 fso.CopyFile file.Path, frmZiel, True
@@ -524,7 +524,7 @@ End Sub
 ' ---------------------------------------------------------------
 ' Extrahiert den reinen Code-Teil aus einer .frm-Datei. Der
 ' Layout-Header (VERSION 5.00, Begin {GUID}...End, alle
-' Attribute VB_...-Zeilen) wird uebersprungen. Rueckgabe ist
+' Attribute VB_...-Zeilen) wird übersprungen. Rückgabe ist
 ' alles NACH der letzten Attribute-Zeile - typischerweise
 ' "Option Explicit" gefolgt von den Event-Handler-Subs.
 ' ===============================================================
@@ -563,8 +563,8 @@ Private Function LeseFrmCode(dateipfad As String) As String
 End Function
 
 ' ===============================================================
-' Prueft alle relevanten Repo-Dateien vor dem Import auf
-' bekannte Korruptionsmuster und Encoding-Verstoesse.
+' Prüft alle relevanten Repo-Dateien vor dem Import auf
+' bekannte Korruptionsmuster und Encoding-Verstöße.
 ' - Blockiert EF BF BD (U+FFFD) und C3 AF C2 BF C2 BD ("?")
 ' - Erzwingt .bas/.cls mit UTF-8 BOM
 ' - Erzwingt .frm ohne BOM und nicht als UTF-8 mit High-Bytes
@@ -629,7 +629,7 @@ NaechsteDatei:
     Exit Function
 
 Fehlerfall:
-    Fehler = Fehler & "- Pruefung fehlgeschlagen in " & pfad & ": " & Err.Description & vbCrLf
+    Fehler = Fehler & "- Prüfung fehlgeschlagen in " & pfad & ": " & Err.Description & vbCrLf
     ok = False
     PruefeDateiGruppe = False
 End Function
@@ -784,9 +784,9 @@ End Function
 ' ===============================================================
 ' Bereinigt Doubletten im VBA-Projekt
 '
-' Wenn VBA beim Import eine Komponente nicht loeschen konnte
+' Wenn VBA beim Import eine Komponente nicht löschen konnte
 ' (z.B. wegen "Zugriff verweigert"), erstellt es beim Import
-' automatisch eine Kopie mit angehaengter Ziffer:
+' automatisch eine Kopie mit angehängter Ziffer:
 '   mod_Format_Spalten  -> mod_Format_Spalten1 (Doublette)
 '   mod_KategorieRegeln -> mod_KategorieRegeln3 (Doublette)
 '
@@ -837,7 +837,7 @@ Private Sub BereinigeDoubletten(fso As Object, vbProj As Object, _
         Next file
     End If
     
-    ' 2. Alle VBComponents pruefen und Doubletten sammeln
+    ' 2. Alle VBComponents prüfen und Doubletten sammeln
     Dim vbComp As Object
     Dim compName As String
     Dim basisName As String
@@ -852,7 +852,7 @@ Private Sub BereinigeDoubletten(fso As Object, vbProj As Object, _
         ' Wenn der Name ein bekannter Repo-Name ist -> kein Doublette
         If repoNamen.exists(compName) Then GoTo NaechsteKomponente
         
-        ' Pruefen ob der Name = Basisname + Ziffern ist
+        ' Prüfen ob der Name = Basisname + Ziffern ist
         basisName = EntferneNachgestellteZiffern(compName)
         
         ' Wenn Basisname anders UND Basisname existiert im Repo -> Doublette!
@@ -873,7 +873,7 @@ NaechsteKomponente:
         If Err.Number = 0 Then
             countEntfernt = countEntfernt + 1
         Else
-            ' Fallback: Code leeren (Modul bleibt, stoert aber nicht mehr)
+            ' Fallback: Code leeren (Modul bleibt, stört aber nicht mehr)
             Err.Clear
             With vbComp.CodeModule
                 If .CountOfLines > 0 Then .DeleteLines 1, .CountOfLines
@@ -897,7 +897,7 @@ End Sub
 ' Beispiele:
 '   "mod_Format_Spalten12" -> "mod_Format_Spalten"
 '   "mod_KategorieRegeln3" -> "mod_KategorieRegeln"
-'   "mod_Format_Spalten"   -> "mod_Format_Spalten" (unveraendert)
+'   "mod_Format_Spalten"   -> "mod_Format_Spalten" (unverändert)
 ' ===============================================================
 Private Function EntferneNachgestellteZiffern(ByVal modulName As String) As String
     Do While Len(modulName) > 0 And IsNumeric(Right(modulName, 1))
@@ -1043,14 +1043,14 @@ End Function
 '
 ' Hintergrund:
 '   VBA-Export erzeugt ANSI-Dateien. VS Code speichert UTF-8.
-'   Wir muessen beide Faelle korrekt behandeln.
+'   Wir müssen beide Fälle korrekt behandeln.
 ' ===============================================================
 Private Function LeseDateiMitEncodingErkennung(dateipfad As String) As String
     
     Dim stream As Object
     Set stream = CreateObject("ADODB.Stream")
     
-    ' ---- Schritt 0: BOM-Pruefung (Bytes lesen) ------------------
+    ' ---- Schritt 0: BOM-Prüfung (Bytes lesen) ------------------
     ' Wenn die ersten 3 Bytes EF BB BF sind, ist es eindeutig UTF-8
     ' und wir vermeiden die "?"-Heuristik komplett.
     Dim hatBOM As Boolean
@@ -1089,7 +1089,7 @@ Private Function LeseDateiMitEncodingErkennung(dateipfad As String) As String
         End If
     End If
     
-    ' BOM erkannt -> definitiv UTF-8, kein Encoding-Vergleich noetig
+    ' BOM erkannt -> definitiv UTF-8, kein Encoding-Vergleich nötig
     If hatBOM Then
         LeseDateiMitEncodingErkennung = utf8Inhalt
         Exit Function
@@ -1120,7 +1120,7 @@ Private Function LeseDateiMitEncodingErkennung(dateipfad As String) As String
 
     ' Deterministisch: Ohne BOM und ohne U+FFFD bleibt UTF-8/ASCII.
     ' Die alte "?"-Heuristik hat in der Praxis valide UTF-8-Dateien
-    ' gelegentlich als ANSI fehlklassifiziert und damit Umlaute zerst?rt.
+    ' gelegentlich als ANSI fehlklassifiziert und damit Umlaute zerstört.
     LeseDateiMitEncodingErkennung = utf8Inhalt
     
 End Function

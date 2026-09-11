@@ -4,7 +4,7 @@ Option Explicit
 ' ***************************************************************
 ' MODUL: mod_KategorieRegeln
 ' ZWECK: Kategorieverwaltung + Konsistenzprüfung
-' AKTUALISIERT: Spalte O (Guthabenfaehig) wurde entfernt
+' AKTUALISIERT: Spalte O (Guthabenfähig) wurde entfernt
 ' ***************************************************************
 
 Public Sub Initialisiere_Kategorie_Regeln()
@@ -16,7 +16,7 @@ Public Sub Initialisiere_Kategorie_Regeln()
     Set ws = ThisWorkbook.Worksheets("Daten")
 
     ' Auswahlfelder auf festen Bereich anwenden
-    ' AKTUALISIERT: Spalte O ist jetzt Fälligkeit (war vorher Guthabenfaehig)
+    ' AKTUALISIERT: Spalte O ist jetzt Fälligkeit (war vorher Guthabenfähig)
     Call SetListValidationRange(ws.Range("K" & FIRST_DATA_ROW & ":K" & FIRST_DATA_ROW + MAX_CATEGORY_ROWS), "lst_EinnahmeAusgabe")
     Call SetListValidationRange(ws.Range("M" & FIRST_DATA_ROW & ":M" & FIRST_DATA_ROW + MAX_CATEGORY_ROWS), "lst_Prioritaet")
     Call SetListValidationRange(ws.Range("O" & FIRST_DATA_ROW & ":O" & FIRST_DATA_ROW + MAX_CATEGORY_ROWS), "lst_Faelligkeit")
@@ -51,7 +51,7 @@ Public Sub PruefeUndSynchronisiere_Kategorie(ByVal ws As Worksheet, ByVal change
 
     Application.EnableEvents = False
 
-    ' Referenzwerte übernehmen (AKTUALISIERT - ohne Guthabenfaehig)
+    ' Referenzwerte übernehmen (AKTUALISIERT - ohne Guthabenfähig)
     ws.Cells(changedRow, DATA_CAT_COL_EINAUS).value = ws.Cells(refRow, DATA_CAT_COL_EINAUS).value
     ws.Cells(changedRow, DATA_CAT_COL_ZIELSPALTE).value = ws.Cells(refRow, DATA_CAT_COL_ZIELSPALTE).value
     ws.Cells(changedRow, DATA_CAT_COL_FAELLIGKEIT).value = ws.Cells(refRow, DATA_CAT_COL_FAELLIGKEIT).value
@@ -84,6 +84,8 @@ Private Function FindeErsteKategorieZeile(ws As Worksheet, _
 
     FindeErsteKategorieZeile = 0
 End Function
+
+
 
 
 

@@ -132,7 +132,7 @@ End Function
 
 ' =====================================================
 ' ZeitfensterPruefung (Cache-Version + Fälligkeit + Soll-Monate)
-' Prioritaeten:
+' Prioritäten:
 ' 1. Spalte F (Stichtag Fix) -> exaktes Datum
 ' 2. Spalte D + E (Tag + Monate) -> kombiniert
 ' 3. Spalte D allein -> monatlich
@@ -317,8 +317,8 @@ End Function
 '   - "jährlich (jahr)":       -> "[Kategoriename] [Jahr]"
 '   - "jährlich (jahr/folgejahr)": -> "[Kategoriename] [Jahr]/[Folgejahr]"
 '   - "jährlich" Fallback:     -> "jährlich"
-'   - Sammelzahlung wird NICHT mit "Jahresbeitrag" beFuellt
-'   - Ultimo-5 Bemerkung ohne "Ultimo-5:" Praefix
+'   - Sammelzahlung wird NICHT mit "Jahresbeitrag" befüllt
+'   - Ultimo-5 Bemerkung ohne "Ultimo-5:" Präfix
 '   - Dynamischer Kategoriename aus Blatt "Daten" Spalte J
 ' =====================================================
 Public Function ErmittleMonatPeriode(ByVal category As String, _
@@ -347,7 +347,7 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
     
     ' =============================================
     ' Nicht-monatliche Perioden: direkt zuordnen
-    ' v10.0: Neue Fuelligkeitstypen mit Jahr/Folgejahr
+    ' v10.0: Neue Fälligkeitstypen mit Jahr/Folgejahr
     ' =============================================
     Dim faelligkeitLC As String
     faelligkeitLC = LCase(faelligkeit)
@@ -393,7 +393,7 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
         Exit Function
     End If
     
-    ' --- Halbjaehrlich ---
+    ' --- Halbjährlich ---
     If faelligkeitLC = "halbjaehrlich" Or _
        faelligkeitLC = "halbj" & ChrW(228) & "hrlich" Then
         Dim halbjahr As Long
@@ -551,7 +551,7 @@ NaechsteLernZeile:
                     End If
                 End If
                 
-                ' v10.0: GELB-Rückgabe OHNE "Ultimo-5:" Praefix
+                ' v10.0: GELB-Rückgabe OHNE "Ultimo-5:" Präfix
                 ErmittleMonatPeriode = "GELB|" & MonthName(monatBuchung)
                 Exit Function
                 
@@ -591,6 +591,8 @@ NaechsteLernZeile:
 FallbackMonat:
     ErmittleMonatPeriode = MonthName(monatBuchung)
 End Function
+
+
 
 
 

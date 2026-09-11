@@ -1,0 +1,85 @@
+---
+description: Verbindliche Arbeitsregeln für das Excel-/VBA-Projekt Vereinsverwaltung (Encoding, Sync, Git, Architektur)
+alwaysApply: true
+---
+
+# Arbeitsregeln — Excel/VBA Vereinsverwaltung
+
+Referenz-Arbeitsmappe: `excel/Programm Kassenbuch 2018_v2.7.8.xlsm`
+Live-Code: `vba/Modules` (56 `.bas`), `vba/Classes` (24 `.cls`), `vba/UserForms` (4 `.frm` + 4 `.frx`)
+
+## Grundsatz
+
+- Die Repository-Dateien unter `vba/` sind die Arbeitsgrundlage für den VBA-Code.
+- Blattstruktur, Spaltenbelegung, Buttons, `OnAction`-Bindungen, Named Ranges, Gültigkeitsprüfungen und Blattschutz existieren ausschließlich in der `.xlsm` und sind aus dem Repository nicht lesbar. Diese workbook-only Aspekte niemals aus dem Repository heraus erfinden, annehmen oder verändern.
+- `vba/BackUp*` ist niemals Quelle, Vorlage oder Ziel.
+
+## Encoding und deutsche Umlaute
+
+Zweck dieser Regeln ist nicht nur die Vermeidung von Dateibeschädigungen, sondern ausdrücklich die dauerhafte Erhaltung und Verwendung der korrekten deutschen Umlaute.
+
+### Dateiformate
+
+- `.bas` und `.cls`: UTF-8 **mit** BOM.
+- `.frm`: Windows-1252 (ANSI) **ohne** BOM.
+- `.frx`: Binärdatei, niemals als Text öffnen oder bearbeiten.
+- Niemals beschädigte Zeichen einbringen: weder das Ersatzzeichen U+FFFD noch bekannte Mojibake-Artefakte wie die Bytefolge `C3 AF C2 BF C2 BD`.
+
+### Umlaute sind erwünscht und gefordert
+
+- `Ä ä Ö ö Ü ü ß` sind ausdrücklich erlaubt und sollen verwendet werden.
+- In allen benutzersichtbaren deutschen Texten die echten deutschen Sonderzeichen verwenden, soweit technisch möglich. Das gilt insbesondere für `MsgBox`-Texte, `InputBox`-Texte, Info- und Hinweisfenster, UserForm-Texte und Captions, Beschriftungen und Meldungen, Kommentare im VBA-Code sowie sonstige deutschsprachige Benutzer- und Dokumentationstexte.
+- Die deutsche Schreibweise nicht ohne Grund durch ASCII-Ersatzschreibweisen ersetzen. Enthält ein Text ein echtes deutsches Wort mit Umlaut oder ß, dann **nicht** `ae`, `oe`, `ue`, `Ae`, `Oe`, `Ue` oder `ss` schreiben.
+- Ausnahme technische Bezeichner: VBA-Identifier, Prozedur- und Funktionsnamen, Dateinamen und vergleichbare Stellen bleiben ASCII, wo Umlaute nicht zulässig oder nicht sinnvoll sind. Bestehende Bezeichner wie `WS_UEBERSICHT()`, `WS_STARTMENUE()` und `WS_FINANZ_UEBERSICHT()` bleiben unverändert.
+- In diesem Projekt keine Umlaute in `Const`-Deklarationen verwenden. Das bestehende `Chr$(...)`-Muster sowie die Funktionen `WS_UEBERSICHT()`, `WS_STARTMENUE()` und `WS_FINANZ_UEBERSICHT()` bleiben unverändert.
+- Keine globale automatische Umwandlung von `ae`/`oe`/`ue`/`ss` in Umlaute. Jede solche Ersetzung immer einzeln am tatsächlichen deutschen Wort prüfen.
+- Kein Encoding- oder Umlaut-Reparaturskript eigenmächtig ausführen. Solche Skripte nur auf ausdrücklichen Auftrag verwenden.
+
+## UserForms
+
+- Nur den Code **unterhalb der letzten `Attribute VB_...`-Zeile** ändern.
+- Layout-Header (`VERSION 5.00`, `Begin {GUID}`, alle `Attribute`-Zeilen) byte-identisch lassen.
+- Keine Steuerelemente, Captions, Größen oder Positionen per Textbearbeitung anlegen oder ändern.
+- `.frx` nie ändern. Layout fließt nur Excel → Repo; `mod_Repo_Sync` ersetzt bei bestehenden Forms ausschließlich den Code.
+- `frm_Mitgliedsdaten` (2.363 Codezeilen) nur minimalinvasiv anfassen.
+
+## Dateien und Sync
+
+- Module, Klassen und Forms **nie umbenennen, verschieben oder löschen** — Dateiname = VBComponent-Name.
+- Keine neuen `Tabelle*.cls` anlegen; Blätter und CodeNames entstehen in Excel.
+- `mod_Repo_Sync` und `mod_VBA_Export` überspringen sich beim Import selbst. Änderungen daran vorher ankündigen.
+- Die absoluten Pfade in `mod_Repo_Sync` und `mod_VBA_Export` nicht ändern.
+- Vor Repo-Änderungen klären, ob zuletzt in Excel gearbeitet wurde.
+- Nach jedem Repo → Excel-Sync muss der Nutzer `Debuggen → Kompilieren` ausführen.
+- Nur eine Änderung pro Sync-Zyklus, damit Kompilierfehler zuordenbar bleiben.
+
+## Skripte in tools/
+
+- Kanonisch, aber nur auf ausdrücklichen Auftrag ausführen: `prepare_repo_after_excel_edit.ps1`, `repair_qm_to_umlauts.ps1`, `convert_repo_to_utf8bom.ps1`, `apply_repo_to_excel.ps1`.
+- Verboten: `fix_umlauts*.ps1`, `fix_mixed_case_umlauts*.ps1`, `fix_fffd_and_bom.ps1`, `repair_umlauts_smart.ps1` — veraltete, heute schädliche Encoding-Policy.
+- `roundtrip_smoketest.ps1` nur auf ausdrückliche Anweisung; es überschreibt Repo-Dateien.
+
+## Git
+
+- Keine Schreibbefehle (`add`, `commit`, `push`, `checkout`, `restore`, `rebase`, `stash`) ohne expliziten Auftrag.
+- Die offene Löschung von v2.7.4–v2.7.6 nicht rückgängig machen; sie ist beabsichtigt.
+- `.gitignore` und `excel/*.xlsm` nicht anfassen.
+- Pre-Commit-Hook nie mit `--no-verify` umgehen.
+- Keine `.gitattributes` einführen ohne Absprache.
+
+## Architektur
+
+- `mod_Const` ist die einzige Quelle für Blattnamen, Spalten- und Zeilenindizes sowie Passwort. Indizes nie umnummerieren.
+- Verarbeitungsreihenfolge nicht umstellen: `Importiere_Kontoauszug` → `KategorieEngine_Pipeline` → `Evaluator` → `ApplyKategorie` → `ApplyBetragsZuordnung` → `SetzeMonatPeriode` → EntityKey → BK/KA-Nummern → Übersicht.
+- Ampelsemantik beibehalten: Grün bedeutet „manuell bzw. fertig" und wird bewusst nicht neu bewertet.
+- `Application.EnableEvents`-Guards, Reentrancy-Sperren und `On Error Resume Next` in `Workbook_Open` nicht aufräumen — sie verhindern Endlosschleifen und Startabbrüche.
+- Scheinbar tote Prozeduren nicht löschen; `OnAction`-Bindungen sind im Repo unsichtbar.
+
+## Nie eigenmächtig
+
+- Massen-Refactoring, projektweite Umbenennungen, Nachrüsten von `mod_WorksheetAccess`.
+- Trailing-Leerzeilen entfernen (Export-Artefakt; erzeugt riesige Diffs und maskiert echte Änderungen).
+- Den Spaltenkonflikt `M_COL_AUSTRITT` (`Tabelle7.cls`) vs. `M_COL_PACHTANFANG` (`mod_Const`), beide Spalte 16, auflösen.
+- Fachlogik aus Klassenmodulen herausziehen (`Tabelle3.cls`, `Tabelle5.cls` sind an Blatt-Events gebunden).
+- `Option Explicit` entfernen.
+- Dokumentation und Code aneinander angleichen, solange die Zielvorstellung nicht geklärt ist.

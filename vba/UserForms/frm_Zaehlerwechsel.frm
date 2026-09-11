@@ -1,6 +1,6 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frm_Zaehlerwechsel 
-   Caption         =   "neuer Zaehler"
+   Caption         =   "neuer Zähler"
    ClientHeight    =   4700
    ClientLeft      =   110
    ClientTop       =   450
@@ -92,7 +92,7 @@ Option Explicit
 Public m_Medium As String
 Private m_targetRow As Long
 ' Der Dezimaltrenner muss hier bekannt sein für die Formatierung
-Private Const DECIMAL_SEP As String = "," ' Standard ffuer DE-Excel-UI
+Private Const DECIMAL_SEP As String = "," ' Standard für DE-Excel-UI
 
 ' ==========================================================
 ' INIT
@@ -173,9 +173,9 @@ Private Sub cmb_Parzelle_Change()
     
     ' Code-Namen verwenden
     If m_Medium = "Strom" Then
-        Set ws = Tabelle5 ' Code-Name ffuer das Strom-Blatt
+        Set ws = Tabelle5 ' Code-Name für das Strom-Blatt
     ElseIf m_Medium = "Wasser" Then
-        Set ws = Tabelle6 ' Code-Name ffuer das Wasser-Blatt
+        Set ws = Tabelle6 ' Code-Name für das Wasser-Blatt
     Else
         Exit Sub ' Falls Medium unbekannt
     End If
@@ -198,12 +198,12 @@ Private Sub cmb_Parzelle_Change()
             End If
     End Select
 
-    ' ===== STAND ALT ? EXAKT: C-Spalte der HauptBlaetter =====
+    ' ===== STAND ALT ? EXAKT: C-Spalte der Hauptblätter =====
     ' Wir lesen den Rohwert (der potentiell Dezimalstellen hat)
     standAltValue = ws.Cells(m_targetRow, "C").value
     
     If IsNumeric(standAltValue) Then
-        ' NEU: CleanNumber verwenden, um unnoetige .0 oder ,0 zu entfernen
+        ' NEU: CleanNumber verwenden, um unnötige .0 oder ,0 zu entfernen
         Me.txt_StandAlt.text = CleanAndFormatNumber(standAltValue)
     Else
         Me.txt_StandAlt.text = "0"
@@ -318,7 +318,7 @@ Private Sub chk_Bemerkung_Click()
 End Sub
 
 ' ==========================================================
-' SPEICHERN (KORRIGIERT: Logik für editierbaren Alt-Stand und PlausibilitaetsPruefung)
+' SPEICHERN (KORRIGIERT: Logik für editierbaren Alt-Stand und Plausibilitätsprüfung)
 ' ==========================================================
 Private Sub Btn_Speichern_Click()
 
@@ -326,7 +326,7 @@ Private Sub Btn_Speichern_Click()
     Dim standAltOriginal As Double ' Originaler Wert aus Spalte C des Hauptblatts
     Dim standAltUser As Double     ' Der (korrigierte) Wert aus der Textbox txt_StandAlt
     Dim standNeuStart_Raw As Double
-    Dim standNeuStart_Final As Double ' Bereinigter Wert ffuer die uebergabe
+    Dim standNeuStart_Final As Double ' Bereinigter Wert für die übergabe
     
     ' Die Fehlerbehandlung wird zuerst aktiviert
     On Error GoTo SpeichernErrHandler
@@ -355,7 +355,7 @@ Private Sub Btn_Speichern_Click()
     End If
     
     If Trim(Me.txt_ZaehlerAlt.text) = "" Or Trim(Me.txt_ZaehlerNeu.text) = "" Then
-        If MsgBox("Achtung: Haben Sie Zaehlernummer Alt/Neu vergessen einzugeben? Trotzdem speichern?", vbYesNo + vbQuestion) = vbNo Then
+        If MsgBox("Achtung: Haben Sie Zählernummer Alt/Neu vergessen einzugeben? Trotzdem speichern?", vbYesNo + vbQuestion) = vbNo Then
             Me.txt_ZaehlerAlt.SetFocus
             Exit Sub
         End If
@@ -363,8 +363,8 @@ Private Sub Btn_Speichern_Click()
 
     ' 2. Daten einlesen und konvertieren (KERNKORREKTUREN)
     
-    ' a) Originaler Stand Alt: Liest den Endstand des alten Zaehlers (der in C steht)
-    ' Dient als Grundlage für die PlausibilitaetsPruefung des User-korrigierten Wertes.
+    ' a) Originaler Stand Alt: Liest den Endstand des alten Zählers (der in C steht)
+    ' Dient als Grundlage für die Plausibilitätsprüfung des User-korrigierten Wertes.
     standAltOriginal = ws.Cells(m_targetRow, "C").value
     
     ' b) Korrigierter Stand Alt: Liest den Wert aus der Textbox txt_StandAlt und bereinigt ihn
@@ -405,22 +405,22 @@ Private Sub Btn_Speichern_Click()
     standNeuStart_Raw = CDbl(rawTextNeu)
     standNeuStart_Final = CDbl(mod_ZaehlerLogik.CleanNumber(standNeuStart_Raw))
     
-    ' Optional: Textboxen mit dem Endgueltigen, bereinigten String aktualisieren
+    ' Optional: Textboxen mit dem Endgültigen, bereinigten String aktualisieren
     Me.txt_StandAlt.text = CleanAndFormatNumber(standAltUser)
     Me.txt_StandNeuStart.text = CleanAndFormatNumber(standNeuStart_Final)
     
     
-    ' 3. PlausibilitaetsPruefung für Staende (NEU GEGEN KORRIGIERTEN ALT)
+    ' 3. Plausibilitätsprüfung für Stände (NEU GEGEN KORRIGIERTEN ALT)
     If standNeuStart_Final < 0 Then
-        MsgBox "Der Startstand des neuen Zaehlers darf nicht negativ sein.", vbExclamation
+        MsgBox "Der Startstand des neuen Zählers darf nicht negativ sein.", vbExclamation
         Me.txt_StandNeuStart.SetFocus
         Exit Sub
     End If
     
-    ' !!! WARNUNG, WENN DER NEUE ZaehlerSTAND GROESSER IST ALS DER KORRIGIERTE ALTE ZaehlerSTAND !!!
+    ' !!! WARNUNG, WENN DER NEUE ZÄHLERSTAND GROESSER IST ALS DER KORRIGIERTE ALTE ZÄHLERSTAND !!!
     ' Wichtig: Wir vergleichen gegen standAltUser (den korrigierten Wert)!
     If standNeuStart_Final > standAltUser Then
-        If MsgBox("Achtung: Der neue Zaehlerstand (" & Format(standNeuStart_Final, "0.####") & ") ist GROESSER als der Endstand des alten Zaehlers (" & Format(standAltUser, "0.####") & "). 1", vbYesNo + vbExclamation) = vbNo Then
+        If MsgBox("Achtung: Der neue Zählerstand (" & Format(standNeuStart_Final, "0.####") & ") ist GRÖSSER als der Endstand des alten Zählers (" & Format(standAltUser, "0.####") & ").", vbYesNo + vbExclamation) = vbNo Then
             Me.txt_StandNeuStart.SetFocus
             Exit Sub
         End If
@@ -439,7 +439,7 @@ Private Sub Btn_Speichern_Click()
         Medium:=m_Medium)
 
     ' Wenn SchreibeHistorie KEINEN Fehler ausgelöst hat, kommt der Code hier an.
-    MsgBox "Zaehlerwechsel erfolgreich gespeichert.", vbInformation
+    MsgBox "Zählerwechsel erfolgreich gespeichert.", vbInformation
     Unload Me
     
     Exit Sub ' Erfolgreicher Ausgang
@@ -461,6 +461,8 @@ End Sub
 Private Sub Btn_Abbrechen_Click()
     Unload Me
 End Sub
+
+
 
 
 

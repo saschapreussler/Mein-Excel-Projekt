@@ -105,7 +105,7 @@ Public Sub AktualisiereKategorieDropdownListen(Optional ByRef ws As Worksheet = 
         For Each standardPeriode In Array("Endabrechnung " & periodenJahr, "Pacht " & periodenJahr, _
                                          "Fixkosten " & periodenJahr, "Q1 " & periodenJahr, "Q2 " & periodenJahr, _
                                          "Q3 " & periodenJahr, "Q4 " & periodenJahr, "H1 " & periodenJahr, "H2 " & periodenJahr)
-            If not eigenePerioden.exists(CStr(standardPeriode)) Then
+            If Not eigenePerioden.exists(CStr(standardPeriode)) Then
                 ws.Cells(periodenZeile, DATA_COL_MONAT_PERIODE).value = CStr(standardPeriode)
                 periodenZeile = periodenZeile + 1
             End If
@@ -166,6 +166,8 @@ Private Sub ErstelleKategorieNamedRanges(ByRef ws As Worksheet, _
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

@@ -83,7 +83,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     On Error GoTo ErrHandler
     
-    ' 1. Prüfen, ob eine Zaehlerstand-relevante Zelle geändert wurde (Original-Logik B8:C26)
+    ' 1. Prüfen, ob eine Zählerstand-relevante Zelle geändert wurde (Original-Logik B8:C26)
     If Not Intersect(Target, Me.Range("B10:C28")) Is Nothing Then
         isZaehlerChange = True
     End If
@@ -102,7 +102,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     
     If Not isZaehlerChange And Not isCalculationChange Then Exit Sub
     
-    ' Verhindert erneute Ausloesung durch Schreiben von Werten
+    ' Verhindert erneute Auslösung durch Schreiben von Werten
     Application.EnableEvents = False
     
     ' Hole Toggle-Control sicher
@@ -222,7 +222,7 @@ Private Sub SetModus(modus As String)
             ' NETTO (K) ist Eingabe, MWST (L) und BRUTTO (M) sind Ausgabe
             
             Debug.Print "SetModus(" & r & "): Zelle K" & r & " - Locked=False, Farbe Eingabe"
-            Me.Cells(r, "K").Locked = False: Me.Cells(r, "K").Interior.color = RGB(169, 208, 142) ' Hellgruen (Eingabe)
+            Me.Cells(r, "K").Locked = False: Me.Cells(r, "K").Interior.color = RGB(169, 208, 142) ' Hellgrün (Eingabe)
             
             Debug.Print "SetModus(" & r & "): Zelle L" & r & " - Locked=True, Farbe Ausgabe"
             Me.Cells(r, "L").Locked = True: Me.Cells(r, "L").Interior.color = RGB(244, 176, 132)  ' Orange (Ausgabe)
@@ -233,7 +233,7 @@ Private Sub SetModus(modus As String)
             ' BRUTTO (M) ist Eingabe, NETTO (K) und MWST (L) sind Ausgabe
             
             Debug.Print "SetModus(" & r & "): Zelle M" & r & " - Locked=False, Farbe Eingabe"
-            Me.Cells(r, "M").Locked = False: Me.Cells(r, "M").Interior.color = RGB(169, 208, 142) ' Hellgruen (Eingabe)
+            Me.Cells(r, "M").Locked = False: Me.Cells(r, "M").Interior.color = RGB(169, 208, 142) ' Hellgrün (Eingabe)
             
             Debug.Print "SetModus(" & r & "): Zelle L" & r & " - Locked=True, Farbe Ausgabe"
             Me.Cells(r, "L").Locked = True: Me.Cells(r, "L").Interior.color = RGB(244, 176, 132)  ' Orange (Ausgabe)
@@ -251,7 +251,7 @@ Private Sub SetModus(modus As String)
         Call RechneAlleZeilen("BRUTTO")
     End If
     
-    ' 2. Zaehlerstands-Berechnung auslösen
+    ' 2. Zählerstands-Berechnung auslösen
     Call UpdateStromblatt
     Debug.Print "SetModus beendet."
 End Sub
@@ -274,9 +274,9 @@ Private Sub RechneAlleZeilen(modus As String)
     End If
     
     For r = 4 To 5
-        ' Prüfung auf Zell-Zusammenfuehrung beibehalten
+        ' Prüfung auf Zell-Zusammenführung beibehalten
         If Me.Cells(r, "K").MergeCells Or Me.Cells(r, "L").MergeCells Or Me.Cells(r, "M").MergeCells Then
-            MsgBox "Zeile " & r & ": Bitte entferne jegliche Zell-Zusammenfuehrung (MergeCells) in Spalte K, L oder M.", vbCritical
+            MsgBox "Zeile " & r & ": Bitte entferne jegliche Zell-Zusammenführung (MergeCells) in Spalte K, L oder M.", vbCritical
             Exit Sub
         End If
         
@@ -309,14 +309,14 @@ Private Sub RechneAlleZeilen(modus As String)
 End Sub
 
 ' ==========================================================
-' ZaehlerWECHSEL STARTEN
+' ZÄHLERWECHSEL STARTEN
 ' ==========================================================
 Private Sub btn_neuerZaehler_Strom_Click()
     On Error GoTo ErrHandler
     mod_ZaehlerLogik.Start_Zaehlerwechsel "Strom"
     Exit Sub
 ErrHandler:
-    MsgBox "Fehler beim öffnen des Zaehlerwechsel-Formulars: " & Err.Description, vbExclamation
+    MsgBox "Fehler beim öffnen des Zählerwechsel-Formulars: " & Err.Description, vbExclamation
 End Sub
 
 ' ==========================================================
@@ -327,7 +327,7 @@ Public Sub UpdateStromblatt()
     
     Application.ScreenUpdating = False
     
-    ' Fuehrt Berechnung und Formatierung durch (in mod_Zaehler_Berechnung)
+    ' Führt Berechnung und Formatierung durch (in mod_Zaehler_Berechnung)
     Call mod_Zaehler_Berechnung.CalculateAllZaehlerVerbrauch(Me)
     Call mod_Startseite.AktualisiereParzellenAnzeigen
     Call mod_ZaehlerLogik.AktualisiereZaehlerTabellenSpalteA
@@ -346,6 +346,7 @@ End Sub
 Public Sub KorrigiereHistorieFarben()
     Call mod_Zaehler_Historie.FarbeHistorieEintraege
 End Sub
+
 
 
 

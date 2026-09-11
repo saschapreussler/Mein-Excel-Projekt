@@ -208,7 +208,7 @@ Private Sub SyncBargeldauszahlungenZuVK(ByVal wsBK As Worksheet, _
         
         Dim bkNrStr As String
         bkNrStr = CStr(wsBK.Cells(r, BK_COL_INTERNE_NR).value)
-        ' Falls der Eintrag noch keine BK-Nr hat, überspringen (kommt in naechstem Lauf)
+        ' Falls der Eintrag noch keine BK-Nr hat, überspringen (kommt in nächstem Lauf)
         If LenB(bkNrStr) = 0 Then GoTo NextBK
         ' Nur den BK-Teil verwenden (BK 03 / KA xx -> BK 03)
         Dim p As Long
@@ -257,7 +257,7 @@ End Sub
 ' Numeriert alle VK-Einträge im Abrechnungsjahr nach Datum
 ' fortlaufend mit "KA 01", "KA 02", ...
 ' Wenn der VK-Eintrag einer Bankkonto-Bargeldauszahlung entspricht,
-' wird die KA-Nr UND BK-Nr verschraenkt eingetragen:
+' wird die KA-Nr UND BK-Nr verschränkt eingetragen:
 '   Bankkonto J: "BK 03 / KA 01"
 '   Vereinskasse F: "KA 01 / BK 03"
 ' ===============================================================
@@ -308,7 +308,7 @@ Private Sub NumeriereVKEintraege(ByVal wsBK As Worksheet, _
         sortIdx(j + 1) = tmpI: sortDat(j + 1) = tmpD
     Next i
     
-    ' KA-Nummern vergeben + Verschraenkung mit BK-Nr
+    ' KA-Nummern vergeben + Verschränkung mit BK-Nr
     Dim lastBK As Long
     lastBK = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     
@@ -375,6 +375,8 @@ End Sub
 ' ===============================================================
 ' (Abrechnungsjahr wird aus mod_Const.HoleAbrechnungsjahr bezogen)
 ' ===============================================================
+
+
 
 
 

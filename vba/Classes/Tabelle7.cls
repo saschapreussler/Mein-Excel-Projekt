@@ -61,7 +61,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                 seite = ""
                 
                 ' NEUE LOGIK: Wenn Parzelle "Verein", setze Anrede auf "KGA" (Spalte D)
-                ' Verwendung von StrComp für robuste, fallunabhaengige Prüfung
+                ' Verwendung von StrComp für robuste, fallunabhängige Prüfung
                 If StrComp(parzelle, PARZELLE_VEREIN, vbTextCompare) = 0 Then
                     Me.Cells(rCell.Row, M_COL_ANREDE).value = ANREDE_KGA
                 End If
@@ -76,7 +76,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                         seite = "links"
                     End If
 
-                ' Verwendung von StrComp für robuste, fallunabhaengige Prüfung
+                ' Verwendung von StrComp für robuste, fallunabhängige Prüfung
                 ElseIf StrComp(parzelle, PARZELLE_VEREIN, vbTextCompare) = 0 Then
                     seite = "zentral"
                 End If
@@ -131,7 +131,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Call mod_Mitglieder_UI.AktualisiereDatenstand
 
     ' ------------------------------------------------------------
-    ' 5. Bestehende Logiken (DEAKTIVIERT - NUR Für Stabilitaet)
+    ' 5. Bestehende Logiken (DEAKTIVIERT - NUR Für Stabilität)
     ' ------------------------------------------------------------
     ' Diese Aufrufe bleiben auskommentiert, bis die Sortierung funktioniert
     ' und die Laufzeitfehler 424/1004 dauerhaft behoben sind.
@@ -165,6 +165,8 @@ Fehlerbehandlung:
            "Fehler-Nr: " & Err.Number & vbCrLf & _
            "Beschreibung: " & Err.Description, vbCritical
 End Sub
+
+
 
 
 

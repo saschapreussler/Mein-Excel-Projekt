@@ -109,7 +109,7 @@ Public Sub Anwende_Formatierung_Bankkonto(ByVal ws As Worksheet)
     lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
     
-    ' Spalte B (Betrag): Währung + rechtsbuendig
+    ' Spalte B (Betrag): Währung + rechtsbündig
     With ws.Range(ws.Cells(BK_START_ROW, BK_COL_BETRAG), ws.Cells(lastRow, BK_COL_BETRAG))
         .NumberFormat = euroFormat
         .HorizontalAlignment = xlRight
@@ -157,7 +157,7 @@ Public Sub Aktiviere_BankkontoFilter()
     Err.Clear
     On Error GoTo 0
 
-    ' 2) Merged Cells in Zeile 29 aufloesen (AutoFilter mag keine Merges in Headern)
+    ' 2) Merged Cells in Zeile 29 auflösen (AutoFilter mag keine Merges in Headern)
     On Error Resume Next
     ws.Range(ws.Cells(BK_HEADER_ROW, 1), ws.Cells(BK_HEADER_ROW, 26)).UnMerge
     Err.Clear
@@ -229,7 +229,7 @@ End Sub
 
 
 ' ===============================================================
-' Standard-Blattschutz für Bankkonto-aehnliche Blätter mit
+' Standard-Blattschutz für Bankkonto-ähnliche Blätter mit
 ' aktivierten AutoFilter-/Sortier-Rechten. Verwenden statt
 ' direktem ws.Protect, damit die Filter-Pfeile nutzbar bleiben.
 ' ===============================================================
@@ -358,6 +358,8 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

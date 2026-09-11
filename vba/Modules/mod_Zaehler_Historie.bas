@@ -101,7 +101,7 @@ Public Sub SchreibeHistorie( _
         On Error GoTo Fehler_Handler
     End If
     
-    ' 2. Lese den Startstand des ALTEN Zaehlers
+    ' 2. Lese den Startstand des ALTEN Zählers
     If targetRow > 0 And Not wsTarget Is Nothing Then
         If IsNumeric(wsTarget.Cells(targetRow, COL_STAND_ANFANG).value) Then
             standAnfangAlt = CDbl(wsTarget.Cells(targetRow, COL_STAND_ANFANG).value)
@@ -232,6 +232,8 @@ Public Sub FarbeHistorieEintraege()
     
     If wasProtected Then ws.Protect PASSWORD, AllowFormattingCells:=True, UserInterfaceOnly:=True, AllowFiltering:=True
 End Sub
+
+
 
 
 

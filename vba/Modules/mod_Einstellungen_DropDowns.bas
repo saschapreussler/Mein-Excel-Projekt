@@ -51,7 +51,7 @@ Public Sub SetzeDropDowns(ByVal ws As Worksheet)
         End If
     Next r
     
-    ' 3. verfuegbare Kategorien = Alle aus Daten!J MINUS bereits in Einstellungen!B verwendete
+    ' 3. verfügbare Kategorien = Alle aus Daten!J MINUS bereits in Einstellungen!B verwendete
     Dim verfuegbar As Object
     Set verfuegbar = CreateObject("Scripting.Dictionary")
     verfuegbar.CompareMode = vbTextCompare
@@ -311,6 +311,8 @@ Private Function LetzteZeile(ByVal ws As Worksheet) As Long
     If lr < ES_START_ROW Then lr = ES_START_ROW - 1
     LetzteZeile = lr
 End Function
+
+
 
 
 

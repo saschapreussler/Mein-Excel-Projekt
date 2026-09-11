@@ -4,7 +4,7 @@ Option Explicit
 ' ===============================================================
 ' MODUL: mod_Navigation
 ' VERSION: 1.0 - 18.04.2026
-' ZWECK: Navigation zwischen Tabellenblaettern
+' ZWECK: Navigation zwischen Tabellenblättern
 '        - Startseite -> alle Blätter (Button-Handler)
 '        - Alle Blätter -> Startseite (Home-Button)
 '        - Home-Buttons auf allen Blättern erstellen/entfernen
@@ -123,10 +123,10 @@ Public Sub NavigiereZu_Dashboard()
 End Sub
 
 ' ===============================================================
-' Failsafe gegen vertauschte Startseiten-Button-Verknuepfungen.
-' Wenn ein Navigationsmakro durch eine andere Startkachel ausgeloest
+' Failsafe gegen vertauschte Startseiten-Button-Verknüpfungen.
+' Wenn ein Navigationsmakro durch eine andere Startkachel ausgelöst
 ' wurde, wird auf das richtige Ziel umgeleitet.
-' Rueckgabe: True = Umleitung ausgefuehrt, Aufrufer soll Exit Sub.
+' Rückgabe: True = Umleitung ausgeführt, Aufrufer soll Exit Sub.
 ' ===============================================================
 Private Function LeiteBeiFehlverdrahtungWeiter(ByVal erwarteteKachel As String) As Boolean
     LeiteBeiFehlverdrahtungWeiter = False
@@ -220,10 +220,10 @@ Private Sub AktiviereTabellenblatt(ByVal blattName As String)
 End Sub
 
 ' ===============================================================
-' STABILE AKTIVIERUNG (Sicherheitsnetz gegen falsche Zielblaetter):
-' Aktiviert das Zielblatt und laesst dessen Worksheet_Activate-Logik
+' STABILE AKTIVIERUNG (Sicherheitsnetz gegen falsche Zielblätter):
+' Aktiviert das Zielblatt und lässt dessen Worksheet_Activate-Logik
 ' einmal laufen. Falls ein Nebeneffekt (z.B. Cross-Sheet-DropDowns)
-' danach ein ANDERES Blatt aktiv laesst, wird das gewuenschte Ziel
+' danach ein ANDERES Blatt aktiv lässt, wird das gewünschte Ziel
 ' OHNE erneute Events zwingend wiederhergestellt. So landet ein
 ' Button-Klick garantiert auf dem richtigen Tabellenblatt.
 ' ===============================================================
@@ -428,7 +428,7 @@ Public Sub ErstelleHomeButton(ByVal ws As Worksheet)
     Dim btnW As Double, btnH As Double, fontSize As Double
     Select Case ws.Name
         Case WS_BANKKONTO
-            ' Breites Blatt - etwas groesserer Button
+            ' Breites Blatt - etwas größerer Button
             btnW = 100: btnH = 30: fontSize = 11
         Case WS_UEBERSICHT()
             ' Schmales Blatt mit Filter-Buttons darunter - kompakter
@@ -555,7 +555,7 @@ Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
     ' 2 leere Zeilen oben einfügen
     ws.Rows("1:2").Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
     
-    ' Eingefuegte Zeilen bereinigen
+    ' Eingefügte Zeilen bereinigen
     ws.Range("A1:AZ2").Clear
     ws.Rows(1).RowHeight = 30
     ' Auf der übersicht liegt in Zeile 2 die Monats-Register-Leiste -> mehr Höhe
@@ -571,6 +571,8 @@ Private Sub FuegeNavigationsZeilenEin(ByVal ws As Worksheet)
     
     Debug.Print "[Navigation] Navigationszeilen eingefügt auf: " & ws.Name
 End Sub
+
+
 
 
 

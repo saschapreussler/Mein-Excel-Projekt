@@ -50,7 +50,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     
     On Error GoTo Fehler_Handler_Berechnung
     
-    ' --- Formatierung (v8.2: defensiv, einzelne Bloecke gekapselt) ---
+    ' --- Formatierung (v8.2: defensiv, einzelne Blöcke gekapselt) ---
     ' Formatierungs-Fehler (z.B. wegen verbundener Zellen) dürfen die
     ' Berechnung NICHT abbrechen. Daher jeweils On Error Resume Next.
     On Error Resume Next
@@ -80,7 +80,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     On Error GoTo Fehler_Handler_Berechnung
 
     ' ==========================================================
-    ' 1. PARZELLENZaehler & UNTERZaehler
+    ' 1. PARZELLENZÄHLER & UNTERZaehler
     ' ==========================================================
     
     If LCase(wsTarget.Name) = "strom" Then
@@ -118,7 +118,7 @@ Public Sub CalculateAllZaehlerVerbrauch(wsTarget As Worksheet)
     End If
     
     ' ==========================================================
-    ' 2. HAUPTZaehler
+    ' 2. HAUPTZÄHLER
     ' ==========================================================
     
     If LCase(wsTarget.Name) = "strom" Then
@@ -193,7 +193,7 @@ Private Sub CalculateSingleZaehler( _
         standEndeCurrent = 0
     End If
     
-    ' 1. VorabPruefung (Fehler)
+    ' 1. Vorabprüfung (Fehler)
     If standEndeCurrent < standAnfangCurrent Then
         targetBemerkung.value = "FEHLER: Endstand (" & Format(standEndeCurrent, "#,##0.00") & ") < Startstand (" & Format(standAnfangCurrent, "#,##0.00") & ")."
         targetCellD.ClearContents
@@ -253,7 +253,7 @@ Private Sub CalculateSingleZaehler( _
 
 
     ' 3. BERECHNUNG UND SCHREIBEN IN D, E
-    If zyklen > 0 Then ' FALL A: Mindestens ein Zaehlerwechsel
+    If zyklen > 0 Then ' FALL A: Mindestens ein Zählerwechsel
         
         If standAnfangCurrent <> standNeuStart_last Then
             startCell.value = mod_ZaehlerLogik.CleanNumber(standNeuStart_last)
@@ -273,13 +273,13 @@ Private Sub CalculateSingleZaehler( _
         End If
         
         ' ***************************************************************
-        ' LOGIK Für SPALTE E (BEMERKUNG BEI ZaehlerWECHSEL)
+        ' LOGIK Für SPALTE E (BEMERKUNG BEI ZÄHLERWECHSEL)
         ' ***************************************************************
         Dim oldBemerkung As String
         Dim newHistoryText As String
         Dim posSeparator As Long
         
-        newHistoryText = "Letzter Zaehlerwechsel am: " & Format(lastDate, "dd.mm.yyyy") & vbLf & _
+        newHistoryText = "Letzter Zählerwechsel am: " & Format(lastDate, "dd.mm.yyyy") & vbLf & _
                              "Anzahl der Wechsel: " & zyklen & vbLf & _
                              "Gesamtverbrauch gewechselte Zähler: " & Format(verbrauchAltHistorie_Summe, "#,##0.00") & " " & einheit & vbLf & _
                              "Verbrauch derzeitiger Zähler: " & Format(verbrauchNeuAktuell, "#,##0.00") & " " & einheit
@@ -347,6 +347,8 @@ Private Sub CalculateSingleZaehler( _
     End If
     
 End Sub
+
+
 
 
 

@@ -32,7 +32,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
     
     Set wsM = ThisWorkbook.Worksheets(WS_MITGLIEDER)
     
-    ' 1. Temporaeres Arbeitsblatt erstellen/finden
+    ' 1. Temporäres Arbeitsblatt erstellen/finden
     On Error Resume Next
     Set wsTemp = ThisWorkbook.Worksheets(TEMP_WS_NAME)
     On Error GoTo ErrorHandler
@@ -72,7 +72,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
         
         For i = LBound(copyCols) To UBound(copyCols)
             wsM.Columns(copyCols(i)).SpecialCells(xlCellTypeVisible).Copy
-            ' Fuegen Sie in die Temporäre Tabelle in Spalten A, B, C ein
+            ' Fügen Sie in die Temporäre Tabelle in Spalten A, B, C ein
             wsTemp.Cells(tempRow, i + 1).PasteSpecial xlPasteValues
         Next i
         
@@ -82,7 +82,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
         ' 3. Kombinierte Namen-Liste erstellen (Nachname, Vorname)
         tempRow = wsTemp.Cells(wsTemp.Rows.count, 1).End(xlUp).Row
         
-        If tempRow > 1 Then ' Zeile 1 enthaelt die Header/Erste Zeile des kopierten Bereichs
+        If tempRow > 1 Then ' Zeile 1 enthält die Header/Erste Zeile des kopierten Bereichs
             For i = 2 To tempRow
                 ' Spalte D: Nachname, Vorname (wird im Dropdown angezeigt)
                 wsTemp.Cells(i, 4).value = wsTemp.Cells(i, 1).value & ", " & wsTemp.Cells(i, 2).value
@@ -101,7 +101,7 @@ Public Sub AktualisiereNamedRange_MitgliederNamen()
         End If
     End If
     
-    ' *** WICHTIG: Temporaeres Worksheet IMMER Löschen! ***
+    ' *** WICHTIG: Temporäres Worksheet IMMER Löschen! ***
     Call LoescheTempWorksheet
     
 CleanUp:
@@ -122,7 +122,7 @@ End Sub
 
 ' **********************************************************
 ' PROZEDUR: LoescheTempWorksheet
-' Loescht das Temporäre Worksheet sicher
+' Löscht das Temporäre Worksheet sicher
 ' **********************************************************
 Private Sub LoescheTempWorksheet()
     Dim wsTemp As Worksheet
@@ -141,7 +141,7 @@ End Sub
 
 ' **********************************************************
 ' PROZEDUR: BereinigeTempWorksheets
-' oeffentliche Prozedur zum Bereinigen aller Temporären Worksheets
+' öffentliche Prozedur zum Bereinigen aller Temporären Worksheets
 ' Kann manuell oder beim öffnen der Arbeitsmappe aufgerufen werden
 ' **********************************************************
 Public Sub BereinigeTempWorksheets()
@@ -170,7 +170,7 @@ End Sub
 
 ' **********************************************************
 ' Sicherheits-Reset: Stellt EnableEvents und ScreenUpdating
-' wieder her, falls ein Makro abgestuerzt ist.
+' wieder her, falls ein Makro abgestürzt ist.
 ' Kann Über Alt+F8 manuell aufgerufen werden.
 ' **********************************************************
 Public Sub ResetApplication()
@@ -201,6 +201,8 @@ Private Function IsFormLoaded(ByVal FormName As String) As Boolean
     IsFormLoaded = False ' Formular nicht gefunden
     
 End Function
+
+
 
 
 

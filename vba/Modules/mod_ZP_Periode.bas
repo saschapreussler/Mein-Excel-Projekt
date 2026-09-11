@@ -12,7 +12,7 @@ Option Explicit
 
 
 ' ===============================================================
-' MONAT/PERIODE SETZEN (ueberarbeitet)
+' MONAT/PERIODE SETZEN (überarbeitet)
 ' FIX v1.5: Application.EnableEvents = False VOR dem Beschreiben
 '           von Spalte I, damit Worksheet_Change NICHT getriggert wird.
 ' v2.0: Am Ende wird SetzeBankkontoDropDowns aufgerufen (für H + I)
@@ -228,6 +228,8 @@ Public Function IstPeriodeFuerMonat(ByVal periode As String, ByVal kategorie As 
         If InStr(text, "oktober bis dezember") > 0 Then IstPeriodeFuerMonat = (monat >= 10 And monat <= 12)
     End If
 End Function
+
+
 
 
 

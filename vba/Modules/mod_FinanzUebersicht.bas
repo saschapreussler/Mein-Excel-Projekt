@@ -6,7 +6,7 @@ Option Explicit
 ' VERSION: 2.0 - 21.04.2026
 ' ZWECK: Erstellt und pflegt das Blatt "Finanz-übersicht"
 '        - Kategorien dynamisch aus Bankkonto Spalte H
-'        - Sammelzahlungen: Aufschluesselung via Spalte L (Bemerkung)
+'        - Sammelzahlungen: Aufschlüsselung via Spalte L (Bemerkung)
 '        - KPIs: Einnahmen, Ausgaben, Saldo, Kontostand, VK-Saldo
 '        - Monatsfilter via DropDown
 '        - Balkendiagramme Einnahmen / Ausgaben
@@ -31,7 +31,7 @@ Private Const KAT_SAMMELZAHLUNG As String = "Sammelzahlung"
 
 ' v8.0: Erweiterte Filter (Modul-State, persistent während Session)
 Private m_FilterKat As String       ' Kategorie (leer = alle)
-Private m_FilterName As String      ' Mitglied/Parzelle - Teilstring-Match in BK-Spalte Empfaenger/Bemerkung
+Private m_FilterName As String      ' Mitglied/Parzelle - Teilstring-Match in BK-Spalte Empfänger/Bemerkung
 Private m_FilterDatVon As Date      ' 0 = kein Filter
 Private m_FilterDatBis As Date      ' 0 = kein Filter
 
@@ -149,7 +149,7 @@ End Sub
 ' ===============================================================
 Private Sub BaueFinanzUebersicht(ByVal ws As Worksheet, ByVal monatFilter As Long)
 
-    ' v8.3: Fruehe Leer-Erkennung. Wenn weder Bankkonto- noch Vereinskasse-
+    ' v8.3: Frühe Leer-Erkennung. Wenn weder Bankkonto- noch Vereinskasse-
     '       Buchungen existieren, wird nur der Vorjahres-Kontostand angezeigt.
     If IstAllesLeer() Then
         Call BaueFinanzUebersicht_NurKontostand(ws)
@@ -664,7 +664,7 @@ End Sub
 ' ===============================================================
 ' SAMMELZAHLUNG: Spalte L (Bemerkung) parsen
 ' Format: "SAMMEL:" & vbLf & "Kategorie: Betrag ?" & vbLf & ...
-' Wird der Gesamtbetrag (positiv/negativ) beruecksichtigt um
+' Wird der Gesamtbetrag (positiv/negativ) berücksichtigt um
 ' Einnahmen/Ausgaben korrekt zuzuordnen.
 ' ===============================================================
 Private Sub VerteileSammelzahlung(ByVal wsBK As Worksheet, _
@@ -1330,6 +1330,8 @@ Private Sub BaueFinanzUebersicht_NurKontostand(ByVal ws As Worksheet)
     ws.Rows(15).RowHeight = 20
     ws.Rows(16).RowHeight = 20
 End Sub
+
+
 
 
 

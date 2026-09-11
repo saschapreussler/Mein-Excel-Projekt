@@ -17,7 +17,7 @@ Option Explicit
 
 
 ' ===============================================================
-' Laedt Kategorien DYNAMISCH aus Einstellungen-Blatt
+' Lädt Kategorien DYNAMISCH aus Einstellungen-Blatt
 ' Liest Spalte B (Kategorie), C (Soll-Betrag), E (Soll-Monate),
 ' I (Säumnis-Gebühr) + Fälligkeit aus Daten Spalte O
 ' Gibt eindeutige Kategorien zurück (keine Duplikate)
@@ -45,12 +45,12 @@ Public Sub LadeKategorienAusEinstellungen(ByRef kategorien() As UebKategorie, _
     ' Dictionary für Eindeutigkeit
     Set dict = CreateObject("Scripting.Dictionary")
     
-    ' Zuerst zaehlen für ReDim
+    ' Zuerst zählen für ReDim
     For r = ES_START_ROW To lastRow
         katName = Trim(CStr(wsEinst.Cells(r, ES_COL_KATEGORIE).value))
         If katName <> "" Then
             If Not dict.exists(katName) Then
-                dict.Add katName, r  ' Merke Zeilennummer fuer spaeteres Lesen
+                dict.Add katName, r  ' Merke Zeilennummer für späteres Lesen
             End If
         End If
     Next r
@@ -354,7 +354,7 @@ End Function
 
 ' ===============================================================
 ' Ermittelt das häufigste Jahr aus Bankkonto-Daten
-' Scannt Spalte A (Datum) und zaehlt welches Jahr am meisten
+' Scannt Spalte A (Datum) und zählt welches Jahr am meisten
 ' vorkommt. Gibt 0 zurück wenn keine Daten vorhanden.
 ' ===============================================================
 Public Function ErmittleJahrAusBankkonto() As Long
@@ -395,7 +395,7 @@ Public Function ErmittleJahrAusBankkonto() As Long
         End If
     Next r
     
-    ' Haeufigtes Jahr finden
+    ' Häufigtes Jahr finden
     If jahrZaehler.count = 0 Then
         Set jahrZaehler = Nothing
         Exit Function
@@ -551,7 +551,7 @@ Public Sub BefuelleVorjahrSpeicher(ByVal vorjahr As Long)
         wsDaten.Cells(vjRow, VJ_COL_MONAT_PERIODE).value = _
             Trim(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
         
-        ' EntityKey via IBAN aufloesen (Über EntityKey-Tabelle)
+        ' EntityKey via IBAN auflösen (Über EntityKey-Tabelle)
         Dim vjEK As String
         vjEK = ""
         Dim ek As Long
@@ -579,7 +579,7 @@ End Sub
 
 
 ' ===============================================================
-' Loescht den Vorjahr-Speicher auf Blatt Daten (ab CA)
+' Löscht den Vorjahr-Speicher auf Blatt Daten (ab CA)
 ' ===============================================================
 Public Sub LoescheVorjahrSpeicher()
     
@@ -625,7 +625,7 @@ Public Sub PruefeVorjahrSpeicherAblauf()
         
         If IsDate(ersteDatum) Then
             If Year(CDate(ersteDatum)) < Year(Date) - 1 Then
-                ' Daten sind aelter als Vorjahr -> löschen
+                ' Daten sind älter als Vorjahr -> löschen
                 Call LoescheVorjahrSpeicher
             ElseIf Year(CDate(ersteDatum)) = Year(Date) - 1 Then
                 ' Vorjahr-Daten und wir sind >= August -> löschen
@@ -648,7 +648,7 @@ Public Function HoleVorjahrZahlung(ByVal entityKey As String, _
                                     ByVal monat As Long) As Double
     HoleVorjahrZahlung = 0
     
-    ' Nur für fruehe Monate relevant (Jan-Maerz)
+    ' Nur für frühe Monate relevant (Jan-März)
     If monat > 3 Then Exit Function
     
     Dim wsDaten As Worksheet
@@ -801,7 +801,7 @@ End Function
 
 
 ' ===============================================================
-' Zaehlt ALLE aktiven Mitglieder aus der Mitgliederliste
+' Zählt ALLE aktiven Mitglieder aus der Mitgliederliste
 ' (auch ohne eigene Parzelle, z.B. Mitnutzer / passive Mitglieder)
 ' Aktiv = Pachtanfang vorhanden UND (Pachtende leer ODER Pachtende in der Zukunft)
 ' ===============================================================
@@ -835,7 +835,7 @@ Public Function ZaehleAktiveMitgliederGesamt() As Long
         nn = Trim(CStr(wsML.Cells(r, M_COL_NACHNAME).value))
         If vn = "" And nn = "" Then GoTo NextMR
 
-        ' KGA-/Systemzeilen und ehemalige Mitglieder nicht als aktiv zaehlen
+        ' KGA-/Systemzeilen und ehemalige Mitglieder nicht als aktiv zählen
         Dim anrede As String
         anrede = Trim(CStr(wsML.Cells(r, M_COL_ANREDE).value))
         If StrComp(anrede, ANREDE_KGA, vbTextCompare) = 0 Then GoTo NextMR
@@ -847,7 +847,7 @@ Public Function ZaehleAktiveMitgliederGesamt() As Long
         ' Alle realen Mitglieder zählen, unabhängig von der Rollenbezeichnung.
         ' Ausschluss erfolgt nur über KGA/Systemzeilen und "Ehemaliges Mitglied".
 
-        ' Jede gueltige Personenzeile ist ein Mitglied.
+        ' Jede gültige Personenzeile ist ein Mitglied.
         ' KEIN Deduplizieren nach Member-ID: In Bestandsdateien wird
         ' dieselbe ID teils von zwei Personen einer Parzelle genutzt.
         cnt = cnt + 1
@@ -860,7 +860,7 @@ End Function
 
 
 ' ===============================================================
-' DEBUG: Harte Zaehlwerte fuer Startmenu/Dashboard pruefen
+' DEBUG: Harte Zählwerte für Startmenu/Dashboard prüfen
 ' Aufruf im Direktfenster: Call DebugMitgliederZaehlung
 ' ===============================================================
 Public Sub DebugMitgliederZaehlung()
@@ -877,12 +877,14 @@ Public Sub DebugMitgliederZaehlung()
     Debug.Print "[DEBUG] mod_Startseite.ZaehleMitglieder = " & cntStart
     Debug.Print "[DEBUG] mod_Startseite.ZaehleBelegteParzellen = " & cntParz
 
-    MsgBox "Debug-Zaehlung:" & vbCrLf & vbCrLf & _
+    MsgBox "Debug-Zählung:" & vbCrLf & vbCrLf & _
            "ZaehleAktiveMitgliederGesamt: " & cntGesamt & vbCrLf & _
-           "Startseite-Zaehler: " & cntStart & vbCrLf & _
+           "Startseite-Zähler: " & cntStart & vbCrLf & _
            "Belegte Parzellen: " & cntParz, _
-           vbInformation, "Debug Mitgliederzaehlung"
+           vbInformation, "Debug Mitgliederzählung"
 End Sub
+
+
 
 
 

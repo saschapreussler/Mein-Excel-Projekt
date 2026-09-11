@@ -41,7 +41,7 @@ End Function
 ' =====================================================
 ' ExactMatchBonus (v8.0)
 ' Gibt Bonuspunkte wenn das normalisierte Keyword als
-' zusammenhaengender Substring im Text vorkommt.
+' zusammenhängender Substring im Text vorkommt.
 ' =====================================================
 Public Function ExactMatchBonus(ByVal normText As String, _
                                  ByVal normKeyword As String) As Long
@@ -54,16 +54,16 @@ End Function
 
 ' =====================================================
 ' WordCountBonus (v9.3 - ersetzt CoverageBonus)
-' zaehlt die Wörter im normalisierten Keyword und
-' gibt pro Wort 5 Punkte Bonus. Laengere/spezifischere
-' Keywords mit mehr Woertern bekommen dadurch mehr Punkte.
+' zählt die Wörter im normalisierten Keyword und
+' gibt pro Wort 5 Punkte Bonus. Längere/spezifischere
+' Keywords mit mehr Wörtern bekommen dadurch mehr Punkte.
 '
 ' Beispiel: normText = "max mustermann stvom wasser parz 9 gutschrift"
 '   Keyword "stvom wasser parz 9" -> 4 Wörter -> +20
 '   Keyword "wasser parz 9"       -> 3 Wörter -> +15
 '   Keyword "wasser"               -> 1 Wort   -> +5
 '
-' Zusammen mit dem erhoehten Prio-Bonus (10-prio)*8
+' Zusammen mit dem erhöhten Prio-Bonus (10-prio)*8
 ' ergibt sich bei Prio1 vs Prio3 eine Differenz von
 ' 16 (Prio) + 5 (WordCount) = 21 >= SCHWELLE 20
 ' =====================================================
@@ -147,7 +147,7 @@ Public Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
         If catLower Like "*kontof" & ChrW(252) & "hrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         If catLower Like "*kontofuehrung*" Then PasstEntityRoleZuKategorie = False: Exit Function
         
-        ' Mitglied bei Ausgabe = nur Rueckerstattung/Auszahlung/Guthaben
+        ' Mitglied bei Ausgabe = nur Rückerstattung/Auszahlung/Guthaben
         If ctx("IsAusgabe") Then
             If Not (catLower Like "*r" & ChrW(252) & "ck*" Or catLower Like "*rueck*" Or _
                     catLower Like "*erstattung*" Or catLower Like "*gutschrift*" Or _
@@ -179,7 +179,7 @@ Public Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
             PasstEntityRoleZuKategorie = False: Exit Function
         End If
         
-        ' Ehemalige bei Ausgabe: Auszahlung/Guthaben/Rueckzahlung erlaubt
+        ' Ehemalige bei Ausgabe: Auszahlung/Guthaben/Rückzahlung erlaubt
         If ctx("IsAusgabe") Then
             If Not (catLower Like "*r" & ChrW(252) & "ck*" Or catLower Like "*rueck*" Or _
                     catLower Like "*erstattung*" Or catLower Like "*gutschrift*" Or _
@@ -191,6 +191,8 @@ Public Function PasstEntityRoleZuKategorie(ByVal ctx As Object, _
     End If
     
 End Function
+
+
 
 
 

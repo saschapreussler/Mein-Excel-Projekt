@@ -14,14 +14,14 @@ Option Explicit
 ' --- Farben (Modernes Blau-Schema mit Akzenten) ---
 Private Const CLR_HERO_DARK As Long = 2763306    ' RGB(26, 35, 42) - Hero-Banner dunkel
 Private Const CLR_HERO_MED As Long = 4735033     ' RGB(41, 50, 72) - Hero-Banner mittel
-Private Const CLR_ACCENT As Long = 14521384      ' RGB(40, 167, 221) - Akzent-Tuerkis
+Private Const CLR_ACCENT As Long = 14521384      ' RGB(40, 167, 221) - Akzent-Türkis
 Private Const CLR_KPI_BG As Long = 16119285      ' RGB(245, 246, 250) - KPI Hintergrund
 Private Const CLR_KPI_BORDER As Long = 14408667  ' RGB(219, 223, 219) - KPI Rahmen
 Private Const CLR_BTN_FINANCE As Long = 11948081 ' RGB(41, 128, 182) - Finanzen-Blau
-Private Const CLR_BTN_METER As Long = 7168108    ' RGB(108, 117, 109) - Zaehler Grau-Gruen
+Private Const CLR_BTN_METER As Long = 7168108    ' RGB(108, 117, 109) - Zähler Grau-Grün
 Private Const CLR_BTN_ADMIN As Long = 6260068    ' RGB(100, 120, 95) - Verwaltung
-Private Const CLR_BTN_SERIENBR As Long = 5202271 ' RGB(95, 110, 79) - Gedaempftes Gruen
-Private Const CLR_BTN_MITGL As Long = 5408340    ' RGB(52, 152, 82) - Mitglieder Gruen
+Private Const CLR_BTN_SERIENBR As Long = 5202271 ' RGB(95, 110, 79) - Gedämpftes Grün
+Private Const CLR_BTN_MITGL As Long = 5408340    ' RGB(52, 152, 82) - Mitglieder Grün
 Private Const CLR_WHITE As Long = 16777215
 Private Const CLR_DARK_TEXT As Long = 2500134     ' RGB(38, 50, 56)
 Private Const CLR_LIGHT_TEXT As Long = 12632256   ' RGB(192, 192, 192)
@@ -71,7 +71,7 @@ End Sub
 ' ZENTRALER CLICK-DISPATCHER für Startseite-Kacheln
 ' ---------------------------------------------------------------
 ' Hintergrund: In einigen Bestandsdateien wurden OnAction-Ziele,
-' Modulstaende oder Shape-Ueberlagerungen inkonsistent. Dieser
+' Modulstände oder Shape-Überlagerungen inkonsistent. Dieser
 ' Dispatcher nutzt Application.Caller und steuert je Kachel das
 ' Ziel explizit und robust an.
 ' ===============================================================
@@ -156,8 +156,8 @@ End Sub
 
 
 ' ===============================================================
-' Stellt die normale Excel-Ansicht wieder her (Menueband, Register,
-' Bearbeitungsleiste, Ueberschriften) - Gegenstueck zum Vollbild
+' Stellt die normale Excel-Ansicht wieder her (Menüband, Register,
+' Bearbeitungsleiste, Überschriften) - Gegenstück zum Vollbild
 ' des Startmenüs.
 ' ===============================================================
 Public Sub StelleNormaleAnsichtWiederHer()
@@ -387,7 +387,7 @@ End Function
 
 ' ===============================================================
 ' Liefert das direkte Ziel-Makro für eine Kachel anhand ihres
-' Namens. Leerer Rueckgabewert = keine bekannte Kachel.
+' Namens. Leerer Rückgabewert = keine bekannte Kachel.
 ' ===============================================================
 Private Function KachelZielMakro(ByVal shapeName As String) As String
     Select Case shapeName
@@ -533,7 +533,7 @@ Private Sub SchreibeHeroBanner(ByVal ws As Worksheet)
         .Interior.color = CLR_HERO_DARK
     End With
     
-    ' Titel: "KASSENBUCH" gross und auffaellig
+    ' Titel: "KASSENBUCH" gross und auffällig
     With ws.Range("B2:K2")
         .Merge
         .value = ChrW(9733) & "  K A S S E N B U C H  " & ChrW(9733)
@@ -603,7 +603,7 @@ Private Sub SchreibeHeroBanner(ByVal ws As Worksheet)
         .VerticalAlignment = xlCenter
     End With
     
-    ' Akzentlinie (schmaler Tuerkis-Streifen)
+    ' Akzentlinie (schmaler Türkis-Streifen)
     With ws.Range("A5:L5")
         .Interior.color = CLR_ACCENT
     End With
@@ -834,7 +834,7 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         col3Left, ws.Range("I18").Top + 4, kachelW, kachelH, _
         CLR_BTN_ADMIN, "'mod_Jahreswechsel.StarteNeuesJahr'")
 
-    ' Normale Ansicht wiederherstellen (Menueband / Register einblenden) - Spalte 2, Zeile 18
+    ' Normale Ansicht wiederherstellen (Menüband / Register einblenden) - Spalte 2, Zeile 18
     Call ErstelleKachel(ws, "kachel_NormaleAnsicht", _
         ChrW(9707) & " Normale Ansicht", _
         col2Left, ws.Range("F18").Top + 4, kachelW, kachelH, _
@@ -931,10 +931,10 @@ End Sub
 ' ===============================================================
 
 Public Function ZaehleMitglieder() As Long
-    ' Zaehlt distinkte Personen (Vorname + Nachname dedupliziert).
+    ' Zählt distinkte Personen (Vorname + Nachname dedupliziert).
     ' Quelle: Mitgliederliste, ohne KGA-/Systemzeilen und ohne ehemalige
     ' Mitglieder. Wer mehrfach auftaucht (z.B. mit zwei Parzellen), wird
-    ' nur einmal gezaehlt.
+    ' nur einmal gezählt.
     Dim wsMitgl As Worksheet
     On Error Resume Next
     Set wsMitgl = ThisWorkbook.Worksheets(WS_MITGLIEDER)
@@ -983,9 +983,9 @@ End Function
 
 Public Function ZaehleBelegteParzellen() As Long
     ' Quelle 1: Einstellungen!C14 (Zelle, in der die Anzahl der
-    ' verpachteten Parzellen gepflegt wird). Wenn dort kein gueltiger
-    ' Zahlenwert steht, faellt die Funktion auf die Mitgliederliste
-    ' zurück und zaehlt distinkte Parzellen (ohne "Verein" und KGA).
+    ' verpachteten Parzellen gepflegt wird). Wenn dort kein gültiger
+    ' Zahlenwert steht, fällt die Funktion auf die Mitgliederliste
+    ' zurück und zählt distinkte Parzellen (ohne "Verein" und KGA).
 
     ' --- Quelle 1: Einstellungen!C14 -------------------------------
     Dim wsCfg As Worksheet
@@ -1310,6 +1310,8 @@ Private Function HoleVereinsOrt() As String
     If ws Is Nothing Then HoleVereinsOrt = "": Exit Function
     HoleVereinsOrt = Trim(CStr(ws.Cells(ES_CFG_PLZ_ORT_ROW, 5).value))
 End Function
+
+
 
 
 

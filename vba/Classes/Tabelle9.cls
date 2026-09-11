@@ -33,7 +33,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         ' PLZ/Ort Spalte D-E
         If Target.Row = ES_CFG_PLZ_ORT_ROW And _
            (Target.Column = 4 Or Target.Column = 5) Then
-            Exit Sub  ' Nur Eingabe, keine Aktion noetig
+            Exit Sub  ' Nur Eingabe, keine Aktion nötig
         End If
     End If
     
@@ -72,16 +72,16 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                 Target.value = NormalisiereMonate(eingabe)
             End If
             
-            ' D/E vs F Sperre: Wenn E geFuellt, darf F NICHT geFuellt sein
+            ' D/E vs F Sperre: Wenn E gefüllt, darf F NICHT gefüllt sein
             If Trim(CStr(Me.Cells(rowES, ES_COL_STICHTAG_FIX).value)) <> "" Then
-                MsgBox "Spalte F (Soll-Stichtag Fix) ist bereits geFuellt!" & vbLf & _
+                MsgBox "Spalte F (Soll-Stichtag Fix) ist bereits gefüllt!" & vbLf & _
                        "Entweder Spalte D/E ODER Spalte F verwenden." & vbLf & vbLf & _
                        "Die Eingabe in Spalte E wird zurückgesetzt.", vbExclamation, "Konflikt"
                 Target.ClearContents
                 GoTo WeiterFormatieren
             End If
             
-            ' Nur Spalte E geFuellt (kein Tag in D) -> automatisch 31 setzen
+            ' Nur Spalte E gefüllt (kein Tag in D) -> automatisch 31 setzen
             Dim aktuellerTag As String
             aktuellerTag = Trim(CStr(Me.Cells(rowES, ES_COL_SOLL_TAG).value))
             If aktuellerTag = "" Then
@@ -102,9 +102,9 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         tagWert = Trim(CStr(Target.value))
         
         If tagWert <> "" Then
-            ' D/E vs F Sperre: Wenn D geFuellt, darf F NICHT geFuellt sein
+            ' D/E vs F Sperre: Wenn D gefüllt, darf F NICHT gefüllt sein
             If Trim(CStr(Me.Cells(rowES, ES_COL_STICHTAG_FIX).value)) <> "" Then
-                MsgBox "Spalte F (Soll-Stichtag Fix) ist bereits geFuellt!" & vbLf & _
+                MsgBox "Spalte F (Soll-Stichtag Fix) ist bereits gefüllt!" & vbLf & _
                        "Entweder Spalte D/E ODER Spalte F verwenden." & vbLf & vbLf & _
                        "Die Eingabe in Spalte D wird zurückgesetzt.", vbExclamation, "Konflikt"
                 Target.ClearContents
@@ -121,14 +121,14 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         stichtagWert = Trim(CStr(Target.value))
         
         If stichtagWert <> "" Then
-            ' F vs D/E Sperre: Wenn F geFuellt, dürfen D und E NICHT geFuellt sein
+            ' F vs D/E Sperre: Wenn F gefüllt, dürfen D und E NICHT gefüllt sein
             Dim dWert As String
             Dim eWert As String
             dWert = Trim(CStr(Me.Cells(rowES, ES_COL_SOLL_TAG).value))
             eWert = Trim(CStr(Me.Cells(rowES, ES_COL_SOLL_MONATE).value))
             
             If dWert <> "" Or eWert <> "" Then
-                MsgBox "Spalte D (Soll-Tag) oder E (Soll-Monate) ist bereits geFuellt!" & vbLf & _
+                MsgBox "Spalte D (Soll-Tag) oder E (Soll-Monate) ist bereits gefüllt!" & vbLf & _
                        "Entweder Spalte D/E ODER Spalte F verwenden." & vbLf & vbLf & _
                        "Die Eingabe in Spalte F wird zurückgesetzt.", vbExclamation, "Konflikt"
                 Target.ClearContents
@@ -229,9 +229,9 @@ End Sub
 ' Hilfsfunktion: Monatseingabe normalisieren
 ' "3,6,9" -> "03, 06, 09"
 ' "1, 3, 12" -> "01, 03, 12"
-' Jeder Monat wird auf 2 Stellen aufgeFuellt,
+' Jeder Monat wird auf 2 Stellen aufgefüllt,
 ' nach dem Komma folgt ein Leerzeichen.
-' ungueltige Monate (>12 oder <1) werden ignoriert.
+' ungültige Monate (>12 oder <1) werden ignoriert.
 ' ===============================================================
 Private Function NormalisiereMonate(ByVal eingabe As String) As String
     Dim teile() As String
@@ -254,7 +254,7 @@ Private Function NormalisiereMonate(ByVal eingabe As String) As String
         End If
     Next i
     
-    If result = "" Then result = eingabe  ' Fallback: Original zurueckgeben
+    If result = "" Then result = eingabe  ' Fallback: Original zurückgeben
     NormalisiereMonate = result
 End Function
 
@@ -307,6 +307,8 @@ CfgExit:
     Application.EnableEvents = True
     If Err.Number <> 0 Then Err.Clear
 End Sub
+
+
 
 
 

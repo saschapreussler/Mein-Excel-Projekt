@@ -136,7 +136,7 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
         Exit Sub
     End If
     
-    ' --- 3a. Mitglieder aus Mitgliederliste ergaenzen ---
+    ' --- 3a. Mitglieder aus Mitgliederliste ergänzen ---
     ' Auch Mitglieder OHNE eigenen EntityKey werden angezeigt
     Dim mitgliederML As Collection
     Set mitgliederML = mod_Uebersicht_Daten.HoleMitgliederAusMitgliederliste()
@@ -300,27 +300,27 @@ Private Sub SchreibeSaeumnisgebuehrenUebersicht(ByVal wsDash As Worksheet, ByVal
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     On Error GoTo 0
     If wsDaten Is Nothing Then Exit Sub
-    lastRow = wsDaten.Cells(wsDaten.Rows.Count, SAEUMNIS_COL_KEY).End(xlUp).Row
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, SAEUMNIS_COL_KEY).End(xlUp).Row
     If lastRow < SAEUMNIS_START_ROW Then Exit Sub
 
     wsDash.Cells(startRow, 1).value = "SÄUMNISGEBÜHREN (BARZAHLUNG)"
     wsDash.Cells(startRow, 1).Font.Bold = True
-    wsDash.Cells(startRow, 1).Font.Color = RGB(192, 57, 43)
-    wsDash.Cells(startRow + 1, 1).Resize(1, 5).Value = Array("Gebühr", "Status", "Barzahlungsdatum", "Bestätigt durch", "Vorgang")
+    wsDash.Cells(startRow, 1).Font.color = RGB(192, 57, 43)
+    wsDash.Cells(startRow + 1, 1).Resize(1, 5).value = Array("Gebühr", "Status", "Barzahlungsdatum", "Bestätigt durch", "Vorgang")
     wsDash.Cells(startRow + 1, 1).Resize(1, 5).Font.Bold = True
-    wsDash.Cells(startRow + 1, 1).Resize(1, 5).Interior.Color = RGB(192, 57, 43)
-    wsDash.Cells(startRow + 1, 1).Resize(1, 5).Font.Color = RGB(255, 255, 255)
+    wsDash.Cells(startRow + 1, 1).Resize(1, 5).Interior.color = RGB(192, 57, 43)
+    wsDash.Cells(startRow + 1, 1).Resize(1, 5).Font.color = RGB(255, 255, 255)
     outRow = startRow + 2
     For r = SAEUMNIS_START_ROW To lastRow
-        If Trim$(CStr(wsDaten.Cells(r, SAEUMNIS_COL_KEY).Value)) <> "" Then
-            bezahlt = CBool(wsDaten.Cells(r, SAEUMNIS_COL_BEZAHLT).Value)
-            wsDash.Cells(outRow, 1).Value = wsDaten.Cells(r, SAEUMNIS_COL_GEBUEHR).Value
+        If Trim$(CStr(wsDaten.Cells(r, SAEUMNIS_COL_KEY).value)) <> "" Then
+            bezahlt = CBool(wsDaten.Cells(r, SAEUMNIS_COL_BEZAHLT).value)
+            wsDash.Cells(outRow, 1).value = wsDaten.Cells(r, SAEUMNIS_COL_GEBUEHR).value
             wsDash.Cells(outRow, 1).NumberFormat = "#,##0.00 " & ChrW(8364)
-            wsDash.Cells(outRow, 2).Value = IIf(bezahlt, "BEZAHLT", "OFFEN")
-            wsDash.Cells(outRow, 3).Value = wsDaten.Cells(r, SAEUMNIS_COL_DATUM).Value
-            wsDash.Cells(outRow, 4).Value = wsDaten.Cells(r, SAEUMNIS_COL_BESTAETIGT_DURCH).Value
-            wsDash.Cells(outRow, 5).Value = wsDaten.Cells(r, SAEUMNIS_COL_KEY).Value
-            wsDash.Cells(outRow, 2).Interior.Color = IIf(bezahlt, RGB(198, 239, 206), RGB(255, 199, 206))
+            wsDash.Cells(outRow, 2).value = IIf(bezahlt, "BEZAHLT", "OFFEN")
+            wsDash.Cells(outRow, 3).value = wsDaten.Cells(r, SAEUMNIS_COL_DATUM).value
+            wsDash.Cells(outRow, 4).value = wsDaten.Cells(r, SAEUMNIS_COL_BESTAETIGT_DURCH).value
+            wsDash.Cells(outRow, 5).value = wsDaten.Cells(r, SAEUMNIS_COL_KEY).value
+            wsDash.Cells(outRow, 2).Interior.color = IIf(bezahlt, RGB(198, 239, 206), RGB(255, 199, 206))
             outRow = outRow + 1
         End If
     Next r
@@ -842,9 +842,9 @@ End Sub
 
 ' ============================================================
 '  v5.4: PARZELLEN MIT MITGLIEDERLISTE-NAMEN ERGAENZEN
-'  Fuegt Mitglieder aus der Mitgliederliste hinzu, die keinen
+'  Fügt Mitglieder aus der Mitgliederliste hinzu, die keinen
 '  eigenen EntityKey haben (z.B. Partner zahlt Kosten mit).
-'  Vergleicht per InStr (case-insensitive) um Doppeleintraege
+'  Vergleicht per InStr (case-insensitive) um Doppeleinträge
 '  zu vermeiden - nutzt Nachname als Schlüsselwort.
 ' ============================================================
 Private Sub ErgaenzeParzellennamen(ByRef parzellen() As ParzelleInfo, _
@@ -892,6 +892,8 @@ Private Sub ErgaenzeParzellennamen(ByRef parzellen() As ParzelleInfo, _
     Next mlM
     
 End Sub
+
+
 
 
 

@@ -108,7 +108,7 @@ Public Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
         .ShowError = True
     End With
     
-    ' Dropdown M (Prioritaet)
+    ' Dropdown M (Priorität)
     ws.Cells(nextRow, DATA_CAT_COL_PRIORITAET).Validation.Delete
     With ws.Cells(nextRow, DATA_CAT_COL_PRIORITAET).Validation
         .Add Type:=xlValidateList, _
@@ -230,6 +230,8 @@ Public Sub EntspeerreEditierbareSpalten(ByRef ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

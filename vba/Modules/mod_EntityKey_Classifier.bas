@@ -213,7 +213,7 @@ Public Function ErmittleVersorgerZweck(ByVal kontoname As String) As String
         Exit Function
     End If
     
-    ' --- Miete / Grundstueck ---
+    ' --- Miete / Grundstück ---
     If InStr(n, "GRUNDSTUECKSGESELLSCHAFT") > 0 Or InStr(n, "GRUNDSTUCKSGESELLSCHAFT") > 0 Then
         ErmittleVersorgerZweck = "Grundst" & ChrW(252) & "cks-Miete"
         Exit Function
@@ -378,6 +378,8 @@ Public Function ErmittleEntityRoleVonFunktion(ByVal funktion As String) As Strin
         ErmittleEntityRoleVonFunktion = "MITGLIED MIT PACHT"
     End If
 End Function
+
+
 
 
 

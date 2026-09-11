@@ -10,7 +10,7 @@ Option Explicit
 '   - VerarbeiteManuelleRoleAenderung: Event-Handler für Spalte W
 '   - SetupEntityRoleDropdown: DropDown für EntityRole-Spalte
 '   - SetupParzelleDropdown: DropDown für Parzelle-Spalte
-'   - FormatiereEntityKeyZeile: Kompatibilitaets-Stub
+'   - FormatiereEntityKeyZeile: Kompatibilitäts-Stub
 ' ***************************************************************
 
 ' ===============================================================
@@ -351,11 +351,13 @@ Public Sub SetupParzelleDropdown(ByRef ws As Worksheet, ByVal zeile As Long)
 End Sub
 
 ' ===============================================================
-' Kompatibilitaets-Stub (bewusst leer)
+' Kompatibilitäts-Stub (bewusst leer)
 ' ===============================================================
 Public Sub FormatiereEntityKeyZeile(ByVal zeile As Long, Optional ByVal ws As Worksheet = Nothing)
     ' BEWUSST LEER
 End Sub
+
+
 
 
 

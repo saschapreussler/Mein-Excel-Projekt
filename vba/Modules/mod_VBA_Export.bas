@@ -7,9 +7,9 @@ Option Explicit
 ' VERSION: 2.0 - 02.07.2026
 ' WICHTIG (v2.0): vbComp.Export schreibt ANSI (Windows-1252) OHNE
 '   BOM. Der Import (mod_Repo_Sync) erwartet aber UTF-8. Dieser
-'   Mismatch hat ueber Export/Import-Zyklen die Umlaute zu "?"
-'   zerstoert. Deshalb werden .bas/.cls nach dem Export sofort
-'   nach UTF-8 MIT BOM konvertiert. .frm bleibt unveraendert.
+'   Mismatch hat über Export/Import-Zyklen die Umlaute zu "?"
+'   zerstört. Deshalb werden .bas/.cls nach dem Export sofort
+'   nach UTF-8 MIT BOM konvertiert. .frm bleibt unverändert.
 ' ***************************************************************
 
 ' ===============================================================
@@ -274,12 +274,12 @@ End Sub
 ' HINTERGRUND / WARUM DAS NOETIG IST:
 '   VBIDE.Export schreibt im System-Codepage (Windows-1252) OHNE
 '   BOM. Der Import (mod_Repo_Sync) liest die Repo-Dateien jedoch
-'   als UTF-8. Ohne diese Konvertierung werden Umlaute ueber die
-'   Export/Import-Zyklen schrittweise zu "?" zerstoert.
+'   als UTF-8. Ohne diese Konvertierung werden Umlaute über die
+'   Export/Import-Zyklen schrittweise zu "?" zerstört.
 '   Mit UTF-8+BOM greift im Import die eindeutige BOM-Erkennung
 '   und die Umlaute bleiben dauerhaft erhalten.
 '
-' HINWEIS: NICHT fuer .frm verwenden - UserForms muessen im
+' HINWEIS: NICHT für .frm verwenden - UserForms müssen im
 '   ANSI-Format (ohne BOM) bleiben, damit VBComponents.Import sie
 '   korrekt einlesen kann.
 ' ===============================================================
@@ -309,7 +309,7 @@ Private Sub KonvertiereDateiZuUtf8BOM(ByVal pfad As String)
         If AscW(Left$(inhalt, 1)) = &HFEFF Then inhalt = mid$(inhalt, 2)
     End If
 
-    ' 2) Als UTF-8 MIT BOM zurueckschreiben (ADODB schreibt BOM automatisch)
+    ' 2) Als UTF-8 MIT BOM zurückschreiben (ADODB schreibt BOM automatisch)
     Dim sOut As Object
     Set sOut = CreateObject("ADODB.Stream")
     sOut.Type = 2                ' adTypeText

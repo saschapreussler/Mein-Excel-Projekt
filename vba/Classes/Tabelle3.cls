@@ -12,7 +12,7 @@ Option Explicit
 ' ===============================================================
 ' Modulweite Variablen für den Vergleich (alter Wert)
 ' Werden in Worksheet_SelectionChange gespeichert und in
-' Worksheet_Change ausgewertet, um unnoetige Verarbeitung
+' Worksheet_Change ausgewertet, um unnötige Verarbeitung
 ' bei "Doppelklick + Enter ohne änderung" zu verhindern.
 ' ===============================================================
 Private m_AlterWertH As String
@@ -25,8 +25,8 @@ End Sub
 
 Private Sub Worksheet_Activate()
 
-    ' Events ABSCHALTEN bevor die ComboBox beFuellt wird!
-    ' Sonst loest .ListIndex = 0 sofort cbo_RechnungsMonat_Change aus,
+    ' Events ABSCHALTEN bevor die ComboBox befüllt wird!
+    ' Sonst löst .ListIndex = 0 sofort cbo_RechnungsMonat_Change aus,
     ' was bei fehlenden Daten die ComboBox wieder leert (Endlosschleife).
     Application.EnableEvents = False
 
@@ -98,7 +98,7 @@ Private Sub cbo_RechnungsMonat_Change()
 
     With wsBank
     
-        ' Blattschutz aufheben (AutoFilter erfordert ungeschuetztes Blatt)
+        ' Blattschutz aufheben (AutoFilter erfordert ungeschütztes Blatt)
         On Error Resume Next
         .Unprotect PASSWORD:=PASSWORD
         On Error GoTo SafeExit
@@ -203,7 +203,7 @@ End Sub
 
 ' ===============================================================
 ' NEU v9.7: Worksheet_SelectionChange
-' Speichert den aktuellen Wert der ausgewaehlten Zelle in
+' Speichert den aktuellen Wert der ausgewählten Zelle in
 ' m_AlterWertH (Spalte H) bzw. m_AlterWertI (Spalte I),
 ' damit Worksheet_Change Prüfen kann ob sich der Wert
 ' tatsächlich geändert hat.
@@ -229,8 +229,8 @@ End Sub
 '   Spalte I (BK_COL_MONAT_PERIODE = 9): Monat-Auswahl (DropDown)
 '
 ' NEU v9.7: prüft ob sich der Wert tatsächlich geändert hat.
-'   Verhindert unnoetige Verarbeitung bei Doppelklick+Enter
-'   ohne echte WertAenderung. Alter Wert wird in
+'   Verhindert unnötige Verarbeitung bei Doppelklick+Enter
+'   ohne echte Wertänderung. Alter Wert wird in
 '   Worksheet_SelectionChange gespeichert.
 '
 ' Spalte H - Kategorie:
@@ -245,7 +245,7 @@ End Sub
 '   - v9.6 FIX: Lern-Vermerk NUR wenn Zelle vorher GELB war
 '     (= Automatik war unsicher). Programmatische änderungen
 '     durch SetzeMonatPeriode triggern KEINEN Vermerk mehr.
-'   - Spalte I: hell-gruener Hintergrund (manuell bestätigt)
+'   - Spalte I: hell-grüner Hintergrund (manuell bestätigt)
 '   - Spalte L: Lern-Vermerk anhängen (mit vbLf)
 ' ===============================================================
 Private Sub Worksheet_Change(ByVal Target As Range)
@@ -306,7 +306,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         Exit Sub
     End If
 
-    ' Zahlungsuebersicht aktualisieren; Dashboard nur bei vollstaendiger Pruefung.
+    ' Zahlungsübersicht aktualisieren; Dashboard nur bei vollständiger Prüfung.
     On Error Resume Next
     Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
     If Not mod_Uebersicht_Generator.HatOffeneZahlungspruefungen() Then
@@ -386,7 +386,7 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
         ws.Cells(rowBK, c).ClearContents
     Next c
     
-    ' 2. Kategorie grün faerben
+    ' 2. Kategorie grün färben
     ApplyKategorie ws.Cells(rowBK, BK_COL_KATEGORIE), kategorie, "GRÜN"
     
     ' 3. Bemerkung setzen
@@ -457,7 +457,7 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
         End If
     End If
     
-    ' 5. Betragszuordnung ausfuehren
+    ' 5. Betragszuordnung ausführen
     ApplyBetragsZuordnung ws, rowBK
 
 ChangeCleanup:
@@ -484,7 +484,7 @@ End Sub
 ' v9.8: JEDE manuelle änderung wird in Spalte L notiert.
 ' ---------------------------------------------------------------
 ' - Bei GELBER Zelle: Folgemonat-Lernvermerk (Marker für Lern-Check)
-' - Bei gruenER Zelle mit bestehendem Folgemonat-Vermerk: Aktualisierung
+' - Bei grüner Zelle mit bestehendem Folgemonat-Vermerk: Aktualisierung
 ' - Bei ALLEN anderen Füllen: Allgemeiner Vermerk "manuell geändert"
 ' ===============================================================
 Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
@@ -513,7 +513,7 @@ Private Sub VerarbeiteMonatAenderung(ByVal Target As Range)
     ws.Unprotect PASSWORD:=PASSWORD
     On Error GoTo MonatError
     
-    ' 1. Hell-gruenen Hintergrund setzen (= manuell bestätigt)
+    ' 1. Hell-grünen Hintergrund setzen (= manuell bestätigt)
     ws.Cells(rowBK, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206)
     
     ' 2. Bemerkung in Spalte L aktualisieren
@@ -831,7 +831,7 @@ NextKatRow:
             GoTo WeiterEingabe
         End If
         
-        ' Kürzel in Kategorie uebersetzen
+        ' Kürzel in Kategorie übersetzen
         Dim gefundenIdx As Long
         gefundenIdx = 0
         For i = 1 To anzahlKat
@@ -900,7 +900,7 @@ WeiterEingabe:
     ' Farbe und Bemerkung abhängig vom Zuordnungsstatus
     ' ===============================================================
     
-    ' Endgueltigen Restbetrag nochmal sauber berechnen
+    ' Endgültigen Restbetrag nochmal sauber berechnen
     restBetrag = Round(absBetrag - zugeordnet, 2)
     
     If zugeordnet < 0.01 Then
@@ -1037,6 +1037,8 @@ NextRowOpen:
 NextPass:
     Next pass
 End Function
+
+
 
 
 

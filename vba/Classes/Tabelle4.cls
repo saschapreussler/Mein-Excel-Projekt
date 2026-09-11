@@ -14,7 +14,7 @@ Option Explicit
 ' VERSION: 1.0 - 18.04.2026
 ' ZWECK: Monatsfilter (ComboBox cbo_MonatFilter_VK)
 '        Analog zu Bankkonto (Tabelle3)
-' HINWEIS: Dieses Modul gehoert zum Blatt "Vereinskasse".
+' HINWEIS: Dieses Modul gehört zum Blatt "Vereinskasse".
 '          Falls der VBA-Codename nicht "Tabelle4" ist,
 '          bitte den Code in das korrekte Sheet-Modul verschieben.
 ' ===============================================================
@@ -57,6 +57,8 @@ Private Sub cbo_MonatFilter_VK_Change()
     
     Call mod_Vereinskasse_Filter.WendeVereinskasseFilterAn(Me, CStr(oleObj.Object.value))
 End Sub
+
+
 
 
 

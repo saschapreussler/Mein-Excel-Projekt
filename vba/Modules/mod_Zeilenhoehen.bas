@@ -3,7 +3,7 @@ Option Explicit
 
 ' ===============================================================
 ' Modul: mod_Zeilenhoehen
-' v8.0: Setzt definierte Zeilenhöhen auf den Hauptblaettern.
+' v8.0: Setzt definierte Zeilenhöhen auf den Hauptblättern.
 '       Wird beim Workbook_Open aufgerufen, kann auch manuell ausgelöst werden.
 '
 ' Spezifikation:
@@ -57,6 +57,7 @@ Private Sub SetzeZeilenhoehe(ByVal blattName As String, ByVal zeile As Long, ByV
     
     If warGeschuetzt Then ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
 End Sub
+
 
 
 

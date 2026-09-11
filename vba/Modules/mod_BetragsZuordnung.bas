@@ -27,7 +27,7 @@ Public Sub ApplyBetragsZuordnung(ByVal wsBK As Worksheet, _
     ' Der Nutzer muss die Beträge manuell aufteilen.
     If wsBK.Cells(rowBK, BK_COL_KATEGORIE).Interior.color = RGB(255, 235, 156) Then Exit Sub
 
-    ' Zielueberschrift aus Kategorietabelle
+    ' Zielüberschrift aus Kategorietabelle
     Dim targetHeader As String
     targetHeader = GetTargetHeaderByCategory(category)
 
@@ -87,7 +87,7 @@ Private Function GetTargetHeaderByCategory(ByVal category As String) As String
 End Function
 
 ' ---------------------------------------------------------------
-' Zielspalte anhand ueberschrift UND Bereich finden
+' Zielspalte anhand überschrift UND Bereich finden
 ' ---------------------------------------------------------------
 Private Function FindBankkontoColumnByHeader(ByVal wsBK As Worksheet, _
                                              ByVal headerText As String, _
@@ -103,6 +103,8 @@ Private Function FindBankkontoColumnByHeader(ByVal wsBK As Worksheet, _
 
     FindBankkontoColumnByHeader = 0
 End Function
+
+
 
 
 
