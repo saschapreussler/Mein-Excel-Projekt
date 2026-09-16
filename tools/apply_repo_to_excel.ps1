@@ -65,7 +65,7 @@ try {
     $workbook = $excel.Workbooks.Open($targetWorkbook)
 
     Write-Host "Running VBA reimport macro..." -ForegroundColor Cyan
-    $excel.Run('mod_Repo_Sync.SyncVBAVomRepository')
+    $excel.Run('mod_Repo_Sync.SyncVBAVomRepositoryStill')
 
     Write-Host "Refreshing Start menu KPIs..." -ForegroundColor Cyan
     $excel.Run('mod_Startseite.InitialisiereStartseite')

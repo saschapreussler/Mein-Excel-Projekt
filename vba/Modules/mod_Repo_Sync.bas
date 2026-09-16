@@ -50,6 +50,11 @@ Private Const REPO_PATH_MODULES As String = "C:\Users\DELL Latitude 7490\Desktop
 Private Const TEMP_SUBFOLDER As String = "VBA_Repo_Sync_Temp"
 Private Const SYNC_VERSION As String = "3.6"
 
+' Stillmodus: unterdrückt nur die Abschlussmeldung, damit der
+' Sync aus tools/apply_repo_to_excel.ps1 ohne Klick durchläuft.
+' Fehlerdialoge bleiben bewusst sichtbar.
+Private m_SyncStill As Boolean
+
 
 ' ===============================================================
 ' HAUPTPROZEDUR: Synchronisiert das VBA-Projekt mit dem Repo
@@ -195,7 +200,9 @@ Public Sub SyncVBAVomRepository()
     msg = msg & vbCrLf & "Das Projekt ist nun auf dem Stand des Repositories." & vbCrLf & _
           "WICHTIG: Bitte f" & ChrW(252) & "hre jetzt 'Debuggen > Kompilieren' aus."
     
-    If fehlerListe <> "" Then
+    If m_SyncStill Then
+        Debug.Print "[Sync] " & Replace(msg, vbCrLf, " | ")
+    ElseIf fehlerListe <> "" Then
         MsgBox msg, vbExclamation, "Synchronisierung mit Warnungen"
     Else
         MsgBox msg, vbInformation, "Synchronisierung erfolgreich"
@@ -218,6 +225,20 @@ ErrorHandler:
     MsgBox "Unerwarteter Fehler beim Import:" & vbCrLf & vbCrLf & _
            "Fehler " & Err.Number & ": " & Err.Description, _
            vbCritical, "Sync fehlgeschlagen"
+End Sub
+
+
+' ===============================================================
+' Stiller Einstieg für die Automatisierung.
+' Wird von tools/apply_repo_to_excel.ps1 aufgerufen. Unterdrückt
+' ausschließlich die Abschlussmeldung; der normale Aufruf
+' SyncVBAVomRepository bleibt unverändert und bleibt im
+' Makro-Dialog sichtbar.
+' ===============================================================
+Public Sub SyncVBAVomRepositoryStill()
+    m_SyncStill = True
+    SyncVBAVomRepository
+    m_SyncStill = False
 End Sub
 
 
