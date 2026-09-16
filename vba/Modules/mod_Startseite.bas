@@ -751,23 +751,23 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     
     ' --- Spalte 1: Finanzen ---
     Call ErstelleKachel(ws, "kachel_Uebersicht", _
-        ChrW(9654) & " Zahlungs" & ChrW(252) & "bersicht", _
+        ChrW(9776) & " Zahlungs" & ChrW(252) & "bersicht", _
         col1Left, ws.Range("C15").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Uebersicht'")
     
     Call ErstelleKachel(ws, "kachel_Bankkonto", _
-        ChrW(9733) & " Bankkonto", _
+        ChrW(9636) & " Bankkonto", _
         col1Left, ws.Range("C16").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Startseite.Startseite_Nav_Bankkonto_Direct'")
     
     Call ErstelleKachel(ws, "kachel_Vereinskasse", _
-        ChrW(9830) & " Vereinskasse", _
+        ChrW(8364) & " Vereinskasse", _
         col1Left, ws.Range("C17").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Vereinskasse'")
     
     ' --- Spalte 2: Verbrauch & Verwaltung ---
     Call ErstelleKachel(ws, "kachel_Dashboard", _
-        ChrW(9650) & " Dashboard", _
+        ChrW(9638) & " Dashboard", _
         col2Left, ws.Range("F15").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_Dashboard'")
     
@@ -788,18 +788,18 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Einstellungen'")
     
     Call ErstelleKachel(ws, "kachel_Daten", _
-        ChrW(9632) & " Daten", _
+        ChrW(9641) & " Daten", _
         col3Left, ws.Range("I16").Top + 4, kachelW, kachelH, _
         CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Daten'")
     
     Call ErstelleKachel(ws, "kachel_Mitglieder", _
-        ChrW(9679) & " Mitgliederverwaltung", _
+        ChrW(9787) & " Mitgliederverwaltung", _
         col3Left, ws.Range("I17").Top + 4, kachelW, kachelH, _
         CLR_BTN_MITGL, "'mod_Navigation.ZeigeMitgliederverwaltung'")
     
     ' --- Zeile 4: Finanz-übersicht ---
     Call ErstelleKachel(ws, "kachel_FinanzUebersicht", _
-        ChrW(9654) & " Finanz-" & ChrW(220) & "bersicht", _
+        ChrW(8721) & " Finanz-" & ChrW(220) & "bersicht", _
         col1Left, ws.Range("C18").Top + 4, kachelW, kachelH, _
         CLR_BTN_FINANCE, "'mod_Navigation.NavigiereZu_FinanzUebersicht'")
     
@@ -817,12 +817,12 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     End With
     
     Call ErstelleKachel(ws, "kachel_Betriebskosten", _
-        ChrW(9633) & " Betriebskostenabrechnung", _
+        ChrW(9993) & " Betriebskostenabrechnung", _
         col1Left, ws.Range("C21").Top + 4, kachelW, kachelH, _
         CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Betriebskosten'")
     
     Call ErstelleKachel(ws, "kachel_Endabrechnung", _
-        ChrW(9633) & " Endabrechnung", _
+        ChrW(9993) & " Endabrechnung", _
         col2Left, ws.Range("F21").Top + 4, kachelW, kachelH, _
         CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Endabrechnung'")
     
@@ -830,13 +830,13 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     ' (Spalte 3 = col3Left), auf gleicher Höhe wie Finanz-Übersicht /
     ' Normale Ansicht (Zeile 18).
     Call ErstelleKachel(ws, "kachel_NeuesJahr", _
-        ChrW(9654) & " Neues Kalenderjahr", _
+        ChrW(8635) & " Neues Kalenderjahr", _
         col3Left, ws.Range("I18").Top + 4, kachelW, kachelH, _
         CLR_BTN_ADMIN, "'mod_Jahreswechsel.StarteNeuesJahr'")
 
     ' Normale Ansicht wiederherstellen (Menüband / Register einblenden) - Spalte 2, Zeile 18
     Call ErstelleKachel(ws, "kachel_NormaleAnsicht", _
-        ChrW(9707) & " Normale Ansicht", _
+        ChrW(8617) & " Normale Ansicht", _
         col2Left, ws.Range("F18").Top + 4, kachelW, kachelH, _
         RGB(120, 90, 90), "'mod_Startseite.StelleNormaleAnsichtWiederHer'")
 End Sub
