@@ -793,7 +793,7 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Daten'")
     
     Call ErstelleKachel(ws, "kachel_Mitglieder", _
-        ChrW(9787) & "   Mitgliederverwaltung", _
+        ChrW(55357) & ChrW(56421) & "   Mitgliederverwaltung", _
         col3Left, ws.Range("I17").Top + 4, kachelW, kachelH, _
         CLR_BTN_MITGL, "'mod_Navigation.ZeigeMitgliederverwaltung'")
     
@@ -836,7 +836,7 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
 
     ' Normale Ansicht wiederherstellen (Menüband / Register einblenden) - Spalte 2, Zeile 18
     Call ErstelleKachel(ws, "kachel_NormaleAnsicht", _
-        ChrW(8617) & "   Normale Ansicht", _
+        ChrW(8862) & "   Normale Ansicht", _
         col2Left, ws.Range("F18").Top + 4, kachelW, kachelH, _
         RGB(120, 90, 90), "'mod_Startseite.StelleNormaleAnsichtWiederHer'")
 End Sub
