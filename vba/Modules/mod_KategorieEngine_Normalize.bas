@@ -33,6 +33,16 @@ Public Function NormalizeText(ByVal inputText As String) As String
     txt = Replace(txt, "mitglied beitrag", "mitgliedsbeitrag")
     txt = Replace(txt, "mitglieds beitrag", "mitgliedsbeitrag")
     txt = Replace(txt, "beitragsgeb hr", "beitragsgebuehr")
+
+    ' Getrennt geschriebene Zusammensetzungen zusammenziehen.
+    ' Ohne diese Regeln scheitert das Schlüsselwort "Fixkosten" am
+    ' Verwendungszweck "FIXE KOSTEN": einwortige Schlüsselwörter werden
+    ' als reiner Teilstring gesucht, und "fixkosten" steckt nicht in
+    ' "fixe kosten". Solche Regeln wirken punktgenau und können keine
+    ' andere Kategorie beeinflussen.
+    txt = Replace(txt, "fixe kosten", "fixkosten")
+    txt = Replace(txt, "fix kosten", "fixkosten")
+    txt = Replace(txt, "feste kosten", "fixkosten")
     txt = Replace(txt, "entgelt abschluss", "entgeltabschluss")
     txt = Replace(txt, "paz.", "parz ")
     txt = Replace(txt, "paz ", "parz ")

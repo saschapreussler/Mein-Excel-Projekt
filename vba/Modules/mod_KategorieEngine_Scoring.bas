@@ -7,6 +7,17 @@ Option Explicit
 ' enthält: Keyword-Matching, Score-Boni, EntityRole-Filter
 ' =====================================================
 
+' Mindestlänge eines Schlüsselworts für die gelockerte
+' Rückfallprüfung. Kürzere Schlüsselwörter bleiben streng, weil
+' bei ihnen Zufallstreffer zu wahrscheinlich sind.
+Private Const MIN_LEN_TOLERANT As Long = 6
+
+' Zwischenspeicher der Textvarianten der aktuellen Buchung.
+Private m_cacheText As String
+Private m_cacheGefuellt As Boolean
+Private m_ohneLeerzeichen As String
+Private m_grundform As String
+
 
 ' =====================================================
 ' MULTI-WORD-MATCHING (v7.0)
@@ -15,10 +26,19 @@ Option Explicit
 ' werden ebenfalls erkannt (Substring-Matching je Wort).
 ' =====================================================
 Public Function MatchKeyword(ByVal normText As String, _
-                              ByVal normKeyword As String) As Boolean
-    
+                              ByVal normKeyword As String, _
+                              Optional ByRef istTolerant As Boolean) As Boolean
+
+    istTolerant = False
+
+    ' Stufe 1: unveränderte strenge Prüfung wie bisher.
     If InStr(normKeyword, " ") = 0 Then
-        MatchKeyword = (InStr(normText, normKeyword) > 0)
+        If InStr(normText, normKeyword) > 0 Then
+            MatchKeyword = True
+            Exit Function
+        End If
+        MatchKeyword = MatchKeywordTolerant(normText, normKeyword)
+        istTolerant = MatchKeyword
         Exit Function
     End If
     
@@ -29,7 +49,9 @@ Public Function MatchKeyword(ByVal normText As String, _
     For w = LBound(woerter) To UBound(woerter)
         If Len(woerter(w)) > 0 Then
             If InStr(normText, woerter(w)) = 0 Then
-                MatchKeyword = False
+                ' Ein Wort fehlt -> gelockerte Rückfallprüfung versuchen.
+                MatchKeyword = MatchKeywordTolerant(normText, normKeyword)
+                istTolerant = MatchKeyword
                 Exit Function
             End If
         End If
@@ -37,6 +59,82 @@ Public Function MatchKeyword(ByVal normText As String, _
     
     MatchKeyword = True
 End Function
+
+
+' =====================================================
+' GELOCKERTE RÜCKFALLPRÜFUNG (Stufe 2 und 3)
+' Wird ausschließlich aufgerufen, wenn die strenge Prüfung
+' nichts gefunden hat. Dadurch kann kein bisher funktionierender
+' Treffer verloren gehen, es können nur neue hinzukommen.
+'
+' Stufe 2: Vergleich ohne Leerzeichen. Erkennt getrennt
+'          geschriebene Wörter wie "Fix Kosten".
+' Stufe 3: Vergleich ohne Leerzeichen und ohne angehängtes "e"
+'          je Wort. Erkennt gebeugte Adjektive, also zum Beispiel
+'          "fixe kosten" gegen das Schlüsselwort "fixkosten".
+'
+' Ein Treffer aus dieser Funktion gilt als unsicher. Der Evaluator
+' setzt ihn deshalb auf GELB zur Bestätigung und niemals
+' automatisch auf GRÜN.
+' =====================================================
+Private Function MatchKeywordTolerant(ByVal normText As String, _
+                                       ByVal normKeyword As String) As Boolean
+
+    Dim flachKeyword As String
+
+    flachKeyword = Replace(normKeyword, " ", "")
+    If Len(flachKeyword) < MIN_LEN_TOLERANT Then Exit Function
+
+    BaueTextVarianten normText
+
+    If InStr(m_ohneLeerzeichen, flachKeyword) > 0 Then
+        MatchKeywordTolerant = True
+        Exit Function
+    End If
+
+    If InStr(m_grundform, flachKeyword) > 0 Then
+        MatchKeywordTolerant = True
+    End If
+End Function
+
+
+' =====================================================
+' Baut die beiden Textvarianten für die Rückfallprüfung.
+' Der Evaluator prüft alle Regelzeilen einer Buchung
+' hintereinander, deshalb genügt ein einziger Zwischenspeicher,
+' um die Varianten nur einmal je Buchung zu erzeugen statt
+' einmal je Regelzeile.
+' =====================================================
+Private Sub BaueTextVarianten(ByVal normText As String)
+
+    Dim woerter() As String
+    Dim w As Long
+    Dim wort As String
+    Dim grund As String
+
+    If m_cacheGefuellt Then
+        If m_cacheText = normText Then Exit Sub
+    End If
+
+    m_cacheText = normText
+    m_ohneLeerzeichen = Replace(normText, " ", "")
+
+    grund = ""
+    woerter = Split(normText, " ")
+    For w = LBound(woerter) To UBound(woerter)
+        wort = woerter(w)
+        ' Nur ein einzelnes angehängtes "e" entfernen. Die Endungen
+        ' "en", "er" und "es" bleiben stehen, damit Wörter wie
+        ' "kosten" oder "wasser" unverändert erhalten bleiben.
+        If Len(wort) >= 4 Then
+            If Right$(wort, 1) = "e" Then wort = Left$(wort, Len(wort) - 1)
+        End If
+        grund = grund & wort
+    Next w
+
+    m_grundform = grund
+    m_cacheGefuellt = True
+End Sub
 
 ' =====================================================
 ' ExactMatchBonus (v8.0)

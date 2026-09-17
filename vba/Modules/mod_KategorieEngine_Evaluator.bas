@@ -187,9 +187,12 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
     Dim bestCategory As String
     Dim bestScore As Long
     Dim bestPriority As Long
+    Dim bestWarTolerant As Boolean
+    Dim istTolerant As Boolean
     bestScore = -999
     bestPriority = 999
     bestCategory = ""
+    bestWarTolerant = False
 
     ' Dictionary: Kategorie -> Score (höchster Score je Kategorie)
     Dim hitCategories As Object
@@ -238,10 +241,14 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
         Dim normKeyword As String
         normKeyword = NormalizeText(keyword)
         
-        If MatchKeyword(normText, normKeyword) Then
+        If MatchKeyword(normText, normKeyword, istTolerant) Then
 
             Dim score As Long
             score = 100
+
+            ' Ein Treffer aus der gelockerten Erkennung wiegt weniger,
+            ' damit ein sauber geschriebener Treffer immer vorgeht.
+            If istTolerant Then score = score - 15
             
             ' Prioritätsbonus (niedrigere Prio = höherer Bonus)
             ' v9.3: Faktor 8 statt 5 für stärkere Differenzierung
@@ -299,6 +306,7 @@ Public Sub EvaluateKategorieEngineRow(ByVal wsBK As Worksheet, _
                 bestScore = score
                 bestPriority = prio
                 bestCategory = category
+                bestWarTolerant = istTolerant
             End If
         End If
 
@@ -327,7 +335,16 @@ NextRule:
         
         If scoreDifferenz >= SCORE_DOMINANZ_SCHWELLE Then
             ' SICHERER TREFFER trotz mehrerer Matches
-            ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRÜN"
+            If bestWarTolerant Then
+                ' Der Sieger stammt nur aus der gelockerten Erkennung.
+                ' Deshalb vorschlagen und bestätigen lassen, nicht
+                ' automatisch festschreiben.
+                wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
+                    "Kategorie erkannt, bitte bestätigen: " & bestCategory
+                ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GELB"
+            Else
+                ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRÜN"
+            End If
             Exit Sub
         End If
         
@@ -357,9 +374,19 @@ NextRule:
         Exit Sub
     End If
 
-    ' Genau 1 Treffer = sicher grün
+    ' Genau 1 Treffer
     If bestCategory <> "" Then
-        ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRÜN"
+        If bestWarTolerant Then
+            ' Hier lag die eigentliche Gefahrenstelle: ein einzelner
+            ' Treffer wurde bisher ohne Dominanzprüfung sofort grün
+            ' gesetzt. Ein Treffer aus der gelockerten Erkennung wird
+            ' deshalb nur vorgeschlagen und muss bestätigt werden.
+            wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
+                "Kategorie erkannt, bitte bestätigen: " & bestCategory
+            ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GELB"
+        Else
+            ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), bestCategory, "GRÜN"
+        End If
         Exit Sub
     End If
 
