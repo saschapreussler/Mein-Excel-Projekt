@@ -459,6 +459,19 @@ NextRowReEval:
     
     If anzahlNeu > 0 Then
         Debug.Print "Re-Evaluierung: " & anzahlNeu & " Zeilen für IBAN " & Left(ibanClean, 8) & "... neu bewertet."
+
+        ' Zahlungsübersicht und Dashboard sofort nachziehen. Ohne diesen
+        ' Schritt blieben beide veraltet stehen, sobald der Nutzer eine
+        ' Zuordnungsart nachträgt und sich dadurch Kategorien ändern.
+        ' Events bleiben dabei aus, damit die Schreibvorgänge auf der
+        ' Zahlungsübersicht keine weiteren Ereignisse auslösen.
+        Application.EnableEvents = False
+        On Error Resume Next
+        Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
+        Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
+        If Err.Number <> 0 Then Err.Clear
+        On Error GoTo 0
+        Application.EnableEvents = eventsWarenRole
     End If
     
 End Sub
