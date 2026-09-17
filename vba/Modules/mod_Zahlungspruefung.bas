@@ -109,7 +109,7 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     End If
     
     If entityIBAN = "" Then
-        PruefeZahlungen = "GELB|Soll:0.00|Ist:0.00|Keine IBAN zum EntityKey"
+        PruefeZahlungen = "GELB|Soll:0.00|Ist:0.00|Keine IBAN zum Zuordnungsschlüssel"
         Exit Function
     End If
     
@@ -1004,6 +1004,8 @@ Public Function HoleDezemberVorauszahlungZP(ByVal entityKey As String, _
     HoleDezemberVorauszahlungZP = summe
     
 End Function
+
+
 
 
 

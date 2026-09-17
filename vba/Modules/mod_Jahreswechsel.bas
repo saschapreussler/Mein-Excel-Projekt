@@ -33,7 +33,7 @@ Public Sub StarteNeuesJahr()
         "  2) Bankkonto / Vereinskasse leeren (au" & ChrW(223) & "er Okt-Dez " & altJahr & ")" & vbCrLf & _
         "  3) " & ChrW(220) & "bersicht / Dashboard / Finanz-" & ChrW(220) & "bersicht leeren" & vbCrLf & _
         "  4) Abrechnungsjahr auf " & neuJahr & " setzen" & vbCrLf & vbCrLf & _
-        "Mitgliederliste, EntityKeys, Kategorien und Z" & ChrW(228) & "hlerst" & ChrW(228) & "nde bleiben erhalten." & vbCrLf & vbCrLf & _
+           "Mitgliederliste, Zuordnungsschl" & ChrW(252) & "ssel, Kategorien und Z" & ChrW(228) & "hlerst" & ChrW(228) & "nde bleiben erhalten." & vbCrLf & vbCrLf & _
         "1", _
         vbYesNo + vbExclamation, "Neues Kalenderjahr")
 
@@ -301,6 +301,8 @@ Private Sub UebernehmeKassenbestandVorjahr()
     wsEinst.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
     On Error GoTo 0
 End Sub
+
+
 
 
 

@@ -374,7 +374,7 @@ ImportAbschluss:
     Err.Clear
     On Error GoTo 0
 
-    ' 4c. Eine fehlende Zuordnungsart wird nur noch erfasst, nicht mehr
+    ' 4c. Eine fehlende Zuordnungsrolle wird nur noch erfasst, nicht mehr
     '     als Abbruch behandelt. Früher hielt dieser Schritt den gesamten
     '     Import an, wodurch Kategorie, Monat/Periode, Zahlungsübersicht
     '     und Dashboard leer blieben. Der Hinweis erfolgt jetzt am Ende.
@@ -402,7 +402,7 @@ ImportAbschluss:
     End If
 
     ' 6d. Buchungen kennzeichnen, deren Bankverbindung noch keine
-    '     Zuordnungsart hat. Der Hinweis steht damit direkt an der
+    '     Zuordnungsrolle hat. Der Hinweis steht damit direkt an der
     '     betroffenen Buchung und nicht nur in einer Sammelmeldung.
     If anzahlOhneZuordnungsart > 0 Then
         Call MarkiereBuchungenOhneZuordnungsart(wsZiel, dictOhneZuordnungsart)
@@ -420,10 +420,10 @@ ImportAbschluss:
     ' 7b. Offene Zahlungsprüfungen werden nur erfasst. Die Abfragen zur
     '     Januar-Regel und zur Vorlaufzeit bleiben unverändert erhalten,
     '     weil PruefeVorjahrHinweisBeimOeffnen weiterhin aufgerufen wird.
+    '     Die Abfragen selbst laufen erst am Ende, nach der
+    '     Import-Zusammenfassung. Vorher erschienen sie davor, was die
+    '     Reihenfolge der Meldungen verdreht hat.
     offeneZahlungspruefung = mod_Uebersicht_Generator.HatOffeneZahlungspruefungen()
-    If offeneZahlungspruefung Then
-        Call mod_Uebersicht_Generator.PruefeVorjahrHinweisBeimOeffnen
-    End If
 
     ' Dashboard immer aktualisieren, damit es nie veraltet stehen bleibt.
     Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
@@ -495,9 +495,15 @@ ImportAbschluss:
     Call mod_BK_KA_Nummern.NeuberechneAlleBKNummern
     On Error GoTo 0
 
-    ' Punkt 12: Alle offenen Punkte in einem Hinweis zusammenfassen und
-    '           den Fokus auf die erste fehlende Angabe setzen. Der
-    '           Hinweis hält nichts mehr an, alles ist bereits berechnet.
+    ' Punkt 12: Reihenfolge der Meldungen nach dem Import.
+    '           Erst die Abfragen zur Januar-Regel und zur Vorlaufzeit,
+    '           denn deren Antworten können offene Punkte bereits klären.
+    '           Danach der Hinweis auf das, was dann noch fehlt.
+    If offeneZahlungspruefung Then
+        Call mod_Uebersicht_Generator.PruefeVorjahrHinweisBeimOeffnen
+        offeneZahlungspruefung = mod_Uebersicht_Generator.HatOffeneZahlungspruefungen()
+    End If
+
     Call ZeigeOffeneImportHinweise(wsZiel, anzahlOhneZuordnungsart, _
                                    ersteZeileOhneZuordnungsart, listeOhneZuordnungsart, _
                                    offeneKategorieOderPeriode, offeneZahlungspruefung)
@@ -559,7 +565,7 @@ End Function
 ' ===============================================================
 ' 1b. Prüfung der Zuordnungstabelle NACH dem Import
 '     Ermittelt alle Bankverbindungen in Daten!R:X, denen die
-'     Zuordnungsart in Spalte W fehlt.
+'     Zuordnungsrolle in Spalte W fehlt.
 '     Diese Funktion zeigt bewusst keine Meldung und wechselt das
 '     Blatt nicht, damit der Import vollständig durchläuft. Gemeldet
 '     wird erst am Ende über ZeigeOffeneImportHinweise.
@@ -594,7 +600,7 @@ Private Function ErmittleOffeneZuordnungsarten(ByRef anzahlOffen As Long, _
         ' Nur Zeilen prüfen, die eine IBAN haben
         ibanWert = Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value))
         If ibanWert <> "" Then
-            ' Spalte W (Zuordnungsart) leer?
+            ' Spalte W (Zuordnungsrolle) leer?
             If Trim(CStr(wsDaten.Cells(r, EK_COL_ROLE).value)) = "" Then
                 anzahlOffen = anzahlOffen + 1
 
@@ -602,7 +608,7 @@ Private Function ErmittleOffeneZuordnungsarten(ByRef anzahlOffen As Long, _
                 If ersteZeile = 0 Then ersteZeile = r
 
                 ' Betroffene IBAN merken, um die Buchungen zu kennzeichnen
-                If Not dictIBAN.Exists(UCase(ibanWert)) Then dictIBAN.Add UCase(ibanWert), r
+                If Not dictIBAN.exists(UCase(ibanWert)) Then dictIBAN.Add UCase(ibanWert), r
 
                 ' Maximal 5 Bankverbindungen für die Anzeige sammeln
                 If anzahlOffen <= 5 Then
@@ -634,7 +640,7 @@ End Function
 ' ===============================================================
 ' 1b2. Kennzeichnet auf dem Bankkonto jede Buchung, deren
 '      Bankverbindung in der Zuordnungstabelle noch keine
-'      Zuordnungsart besitzt. Der Hinweis landet in Spalte L und
+'      Zuordnungsrolle besitzt. Der Hinweis landet in Spalte L und
 '      wird bei wiederholtem Import nicht doppelt geschrieben.
 ' ===============================================================
 Private Sub MarkiereBuchungenOhneZuordnungsart(ByVal wsBK As Worksheet, _
@@ -650,7 +656,7 @@ Private Sub MarkiereBuchungenOhneZuordnungsart(ByVal wsBK As Worksheet, _
     If dictOffeneIBAN Is Nothing Then Exit Sub
     If dictOffeneIBAN.count = 0 Then Exit Sub
 
-    hinweisText = "Zuordnungsart fehlt: bitte Angabe in der Zuordnungstabelle ergänzen"
+    hinweisText = "Zuordnungsrolle fehlt: bitte Angabe in der Zuordnungstabelle ergänzen"
 
     lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
     If lastRow < BK_START_ROW Then Exit Sub
@@ -658,9 +664,9 @@ Private Sub MarkiereBuchungenOhneZuordnungsart(ByVal wsBK As Worksheet, _
     For r = BK_START_ROW To lastRow
         ibanWert = UCase(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)))
         If ibanWert <> "" Then
-            If dictOffeneIBAN.Exists(ibanWert) Then
+            If dictOffeneIBAN.exists(ibanWert) Then
                 bem = Trim(CStr(wsBK.Cells(r, BK_COL_BEMERKUNG).value))
-                If InStr(1, bem, "Zuordnungsart fehlt", vbTextCompare) = 0 Then
+                If InStr(1, bem, "Zuordnungsrolle fehlt", vbTextCompare) = 0 Then
                     If bem = "" Then
                         wsBK.Cells(r, BK_COL_BEMERKUNG).value = hinweisText
                     Else
@@ -679,7 +685,7 @@ End Sub
 '      fehlende Angabe. Der Hinweis hält nichts mehr an, denn
 '      Kategorie, Periode, Zahlungsübersicht und Dashboard sind zu
 '      diesem Zeitpunkt bereits vollständig berechnet.
-'      Reihenfolge des Fokus: Zuordnungsart, dann Kategorie bzw.
+'      Reihenfolge des Fokus: Zuordnungsrolle, dann Kategorie bzw.
 '      Periode, dann Zahlungsprüfung.
 ' ===============================================================
 Private Sub ZeigeOffeneImportHinweise(ByVal wsBK As Worksheet, _
@@ -703,7 +709,7 @@ Private Sub ZeigeOffeneImportHinweise(ByVal wsBK As Worksheet, _
 
     If anzahlOhneZuordnungsart > 0 Then
         meldung = meldung & vbCrLf & anzahlOhneZuordnungsart & _
-                  " Bankverbindung(en) ohne Zuordnungsart auf dem Blatt Daten, " & _
+                  " Bankverbindung(en) ohne Zuordnungsrolle auf dem Blatt Daten, " & _
                   "Spalte W:" & listeOhneZuordnungsart & vbCrLf
     End If
 
@@ -1028,6 +1034,8 @@ Public Sub Sortiere_Tabellen_Daten()
 ExitClean:
     Application.EnableEvents = True
 End Sub
+
+
 
 
 

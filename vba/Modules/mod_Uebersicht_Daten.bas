@@ -513,7 +513,7 @@ Public Sub BefuelleVorjahrSpeicher(ByVal vorjahr As Long)
     wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_IBAN).value = "VJ IBAN"
     wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_KATEGORIE).value = "VJ Kategorie"
     wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_MONAT_PERIODE).value = "VJ Monat/Periode"
-    wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_ENTITYKEY).value = "VJ EntityKey"
+    wsDaten.Cells(VJ_HEADER_ROW, VJ_COL_ENTITYKEY).value = "VJ Zuordnungsschlüssel"
     
     ' Header formatieren
     Dim rngVJHeader As Range
@@ -883,6 +883,8 @@ Public Sub DebugMitgliederZaehlung()
            "Belegte Parzellen: " & cntParz, _
            vbInformation, "Debug Mitgliederzählung"
 End Sub
+
+
 
 
 

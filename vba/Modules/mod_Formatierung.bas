@@ -334,7 +334,7 @@ Public Sub FormatiereBlattDaten()
            "- Alle Zellen vertikal zentriert" & vbCrLf & _
            "- Alle Spalten mit Zebra-Formatierung" & vbCrLf & _
            "- Kategorie-Tabelle formatiert und sortiert" & vbCrLf & _
-           "- EntityKey-Tabelle formatiert und sortiert" & vbCrLf & _
+              "- Zuordnungstabelle formatiert und sortiert" & vbCrLf & _
            "- DropDown-Listen aktualisiert" & vbCrLf & _
            "- Editierbare Spalten und Eingabezeile entsperrt", vbInformation
     
@@ -822,6 +822,8 @@ CleanExit:
     Application.ScreenUpdating = warScreenUpdating
     On Error GoTo 0
 End Sub
+
+
 
 
 

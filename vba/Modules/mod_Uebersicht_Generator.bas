@@ -363,7 +363,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     If mitglieder.count = 0 Then
         Debug.Print "[" & ChrW(220) & "bersicht] WARNUNG: Keine aktiven Mitglieder gefunden!"
         Debug.Print "[" & ChrW(220) & "bersicht] Pr" & ChrW(252) & "fe Daten-Blatt: " & _
-                    "EntityKey (R), Parzelle (V), Role (W)"
+                    "Zuordnungsschl" & ChrW(252) & "ssel (R), Parzelle (V), Zuordnungsrolle (W)"
         
         ' v4.5b: Blatt trotzdem schützen und aufraumen
         On Error Resume Next
@@ -378,7 +378,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
         If Not stummModus Then
             MsgBox "Keine aktiven Mitglieder im Daten-Blatt gefunden!" & vbLf & vbLf & _
                    "Bitte sicherstellen dass:" & vbLf & _
-                   "- Spalte R (EntityKey) bef" & ChrW(252) & "llt ist" & vbLf & _
+                   "- Spalte R (Zuordnungsschl" & ChrW(252) & "ssel) bef" & ChrW(252) & "llt ist" & vbLf & _
                    "- Spalte V (Parzelle) eine Nummer 1-14 enth" & ChrW(228) & "lt" & vbLf & _
                    "- Spalte W (Role) 'MITGLIED MIT PACHT' oder 'MITGLIED OHNE PACHT' enth" & ChrW(228) & "lt", _
                    vbExclamation, ChrW(220) & "bersicht"
@@ -3962,6 +3962,8 @@ NextTeil:
 
     EntferneNegativHinweiseVJ = ergebnis
 End Function
+
+
 
 
 

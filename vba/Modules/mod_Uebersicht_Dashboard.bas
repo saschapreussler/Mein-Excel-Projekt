@@ -883,7 +883,7 @@ Private Sub ErgaenzeParzellennamen(ByRef parzellen() As ParzelleInfo, _
                     parzellen(p).mitgliedNamen = parzellen(p).mitgliedNamen & vbLf & mlName
                     parzellen(p).anzMitglieder = parzellen(p).anzMitglieder + 1
                     Debug.Print "[Dashboard] Mitglied ergaenzt: " & mlName & _
-                                " auf Parzelle " & pNr & " (ohne eigenen EntityKey)"
+                                " auf Parzelle " & pNr & " (ohne eigenen Zuordnungsschl" & ChrW(252) & "ssel)"
                 End If
                 
                 Exit For
@@ -892,6 +892,8 @@ Private Sub ErgaenzeParzellennamen(ByRef parzellen() As ParzelleInfo, _
     Next mlM
     
 End Sub
+
+
 
 
 

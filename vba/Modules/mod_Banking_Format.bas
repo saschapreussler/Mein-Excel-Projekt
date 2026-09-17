@@ -169,7 +169,7 @@ Public Sub Aktiviere_BankkontoFilter()
     headerNamen = Array( _
         "Datum", "Betrag", "Saldo", "IBAN", "Auftraggeber", _
         "Verwendungszweck", "Buchungsart", "Kategorie", "Monat/Periode", _
-        "EntityKey", "Anmerkung", "Bemerkung", _
+        "Zuordnungsschlüssel", "Anmerkung", "Bemerkung", _
         "Mitgliedsbeitrag", "Pacht", "Strom", "Wasser", "Sondernutzung", _
         "Spenden", "Sonstiges", "Kassenbon", "BK-Nr.", "KA-Nr.", _
         "Rueckbuchung", "Storno", "Korrektur", "Auszahlung Kasse")
@@ -358,6 +358,8 @@ Public Sub StelleFormelnWiederHer(ByVal ws As Worksheet)
     On Error GoTo 0
     
 End Sub
+
+
 
 
 

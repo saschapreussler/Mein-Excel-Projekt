@@ -393,10 +393,10 @@ NextRule:
     ' Kein Treffer = ROT
     If ctx("EntityRole") = "" Then
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-        "Keine Kategorie gefunden. IBAN nicht zugeordnet - bitte Entity-Mapping Prüfen!"
+        "Keine Kategorie gefunden. IBAN nicht zugeordnet - bitte Zuordnungstabelle prüfen!"
     Else
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
-            "Keine passende Kategorie gefunden (EntityRole: " & ctx("EntityRole") & ")"
+            "Keine passende Kategorie gefunden (Zuordnungsrolle: " & ctx("EntityRole") & ")"
     End If
     ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), "Bitte Auswahl treffen!", "ROT"
 
@@ -449,6 +449,8 @@ Public Sub ApplyKategorie(ByVal targetCell As Range, _
         End Select
     End With
 End Sub
+
+
 
 
 
