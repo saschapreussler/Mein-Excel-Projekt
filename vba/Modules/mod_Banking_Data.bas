@@ -49,7 +49,16 @@ Public Sub Importiere_Kontoauszug()
     Dim rowsIgnoredFilter As Long
     Dim rowsFailedImport As Long
     Dim rowsTotalInFile As Long
-    
+
+    ' Offene Punkte werden nur gesammelt und erst am Ende gemeldet.
+    ' Der Import läuft dadurch in jedem Fall bis zum Dashboard durch.
+    Dim dictOhneZuordnungsart As Object
+    Dim anzahlOhneZuordnungsart As Long
+    Dim ersteZeileOhneZuordnungsart As Long
+    Dim listeOhneZuordnungsart As String
+    Dim offeneKategorieOderPeriode As Boolean
+    Dim offeneZahlungspruefung As Boolean
+
     tempSheetName = "TempImport"
     
     Application.ScreenUpdating = False
@@ -365,16 +374,12 @@ ImportAbschluss:
     Err.Clear
     On Error GoTo 0
 
-    ' 4c. Harter Workflow-Gate: fehlende EntityRole MUSS vor Kategorie/Periode geklärt werden
-    If rowsProcessed > 0 Then
-        If PruefeUnvollstaendigeEntityKeys() Then
-            Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsZiel)
-            Application.DisplayAlerts = True
-            Application.ScreenUpdating = True
-            Application.EnableEvents = True
-            Exit Sub
-        End If
-    End If
+    ' 4c. Eine fehlende Zuordnungsart wird nur noch erfasst, nicht mehr
+    '     als Abbruch behandelt. Früher hielt dieser Schritt den gesamten
+    '     Import an, wodurch Kategorie, Monat/Periode, Zahlungsübersicht
+    '     und Dashboard leer blieben. Der Hinweis erfolgt jetzt am Ende.
+    Set dictOhneZuordnungsart = ErmittleOffeneZuordnungsarten( _
+            anzahlOhneZuordnungsart, ersteZeileOhneZuordnungsart, listeOhneZuordnungsart)
     
     ' 5. Kategorie-Engine nur bei neuen Zeilen
     ' WICHTIG: On Error GoTo 0 MUSS vorher stehen,
@@ -388,33 +393,19 @@ ImportAbschluss:
     ' 6b. Ampel/Konflikt-Hinweise für Kategorie + Monat/Periode vereinheitlichen
     Call SynchronisiereKategorieMonatAmpel(wsZiel)
 
-    ' 6c. Workflow-Gate: Ohne klares H+I KEINE Zahlungsübersicht / KEIN Dashboard
-    If HatOffeneKategorieOderPeriode(wsZiel) Then
-        Dim offeneBankZelle As Range
-        Set offeneBankZelle = FindeErsteOffeneZuordnung(wsZiel)
+    ' 6c. Offene Kategorie bzw. Periode wird nur erfasst. Zahlungsübersicht
+    '     und Dashboard entstehen jetzt auch dann, wenn H oder I offen sind.
+    offeneKategorieOderPeriode = HatOffeneKategorieOderPeriode(wsZiel)
+    If offeneKategorieOderPeriode Then
+        Debug.Print "[Import] Offene H/I-Zuordnungen:" & vbCrLf & _
+                    ErstelleOffeneZuordnungsDetails(wsZiel)
+    End If
 
-        If Not offeneBankZelle Is Nothing Then
-            On Error Resume Next
-            wsZiel.Activate
-            offeneBankZelle.Select
-            On Error GoTo 0
-        End If
-
-        Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsZiel)
-        Application.DisplayAlerts = True
-        Application.ScreenUpdating = True
-        Application.EnableEvents = True
-
-                     Dim offeneDetails As String
-                     offeneDetails = ErstelleOffeneZuordnungsDetails(wsZiel)
-                     Debug.Print "[Import] Offene H/I-Zuordnungen:" & vbCrLf & offeneDetails
-                     MsgBox "Der Import ist gespeichert. Eine Buchung benötigt noch Ihre Prüfung." & vbCrLf & vbCrLf & _
-                         "Bitte in der markierten Zeile:" & vbCrLf & _
-                         "1. Kategorie in Spalte H auswählen oder bestätigen." & vbCrLf & _
-                         "2. Monat bzw. Periode in Spalte I auswählen oder bestätigen." & vbCrLf & vbCrLf & _
-                         "Nach der Bestätigung wird die Zahlungsübersicht automatisch aktualisiert.", _
-               vbExclamation, "Offene Zuordnungen"
-        Exit Sub
+    ' 6d. Buchungen kennzeichnen, deren Bankverbindung noch keine
+    '     Zuordnungsart hat. Der Hinweis steht damit direkt an der
+    '     betroffenen Buchung und nicht nur in einer Sammelmeldung.
+    If anzahlOhneZuordnungsart > 0 Then
+        Call MarkiereBuchungenOhneZuordnungsart(wsZiel, dictOhneZuordnungsart)
     End If
     
     ' 7. Übersicht IMMER aktualisieren (fasst ALLE vorhandenen Daten zusammen)
@@ -426,25 +417,15 @@ ImportAbschluss:
     Debug.Print "[Import] Starte " & ChrW(220) & "bersicht-Generierung..."
     Call mod_Uebersicht_Generator.GeneriereUebersicht(stummModus:=True)
     
-    ' 7b. Zahlungsprüfungen müssen vor dem Dashboard geklärt sein.
-    If mod_Uebersicht_Generator.HatOffeneZahlungspruefungen() Then
+    ' 7b. Offene Zahlungsprüfungen werden nur erfasst. Die Abfragen zur
+    '     Januar-Regel und zur Vorlaufzeit bleiben unverändert erhalten,
+    '     weil PruefeVorjahrHinweisBeimOeffnen weiterhin aufgerufen wird.
+    offeneZahlungspruefung = mod_Uebersicht_Generator.HatOffeneZahlungspruefungen()
+    If offeneZahlungspruefung Then
         Call mod_Uebersicht_Generator.PruefeVorjahrHinweisBeimOeffnen
-        Call mod_Uebersicht_Generator.FokussiereErsteOffeneZahlungspruefung
-        Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsZiel)
-        Application.DisplayAlerts = True
-        Application.ScreenUpdating = True
-        Application.EnableEvents = True
-
-        MsgBox "Die Zahlungs" & ChrW(252) & "bersicht enthält noch gelbe oder rote Zahlungspr" & _
-               ChrW(252) & "fungen." & vbCrLf & vbCrLf & _
-               "Bitte pr" & ChrW(252) & "fen Sie die markierte Zeile. Bei einer Zahlung aus dem Vorjahr " & _
-               "tragen Sie Betrag und Zahlungsdatum in der Spalte IST ein." & vbCrLf & _
-               "Das Dashboard wird erst nach vollst" & ChrW(228) & "ndiger Kl" & ChrW(228) & "rung aktualisiert.", _
-               vbExclamation, "Zahlungspr" & ChrW(252) & "fung offen"
-        Exit Sub
     End If
 
-    ' Dashboard erst nach vollständiger Zahlungsprüfung aktualisieren.
+    ' Dashboard immer aktualisieren, damit es nie veraltet stehen bleibt.
     Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
     
     ' Blattschutz wird von der Pipeline selbst verwaltet (Protect am Ende).
@@ -513,7 +494,14 @@ ImportAbschluss:
     On Error Resume Next
     Call mod_BK_KA_Nummern.NeuberechneAlleBKNummern
     On Error GoTo 0
-    
+
+    ' Punkt 12: Alle offenen Punkte in einem Hinweis zusammenfassen und
+    '           den Fokus auf die erste fehlende Angabe setzen. Der
+    '           Hinweis hält nichts mehr an, alles ist bereits berechnet.
+    Call ZeigeOffeneImportHinweise(wsZiel, anzahlOhneZuordnungsart, _
+                                   ersteZeileOhneZuordnungsart, listeOhneZuordnungsart, _
+                                   offeneKategorieOderPeriode, offeneZahlungspruefung)
+
 End Sub
 
 Private Sub SetzePeriodenMitDiagnose(ByVal wsBK As Worksheet)
@@ -569,98 +557,215 @@ End Function
 
 
 ' ===============================================================
-' 1b. ENTITYKEY-Prüfung NACH IMPORT
-'     prüft ob alle IBANs in der EntityKey-Tabelle (Daten! R-X)
-'     eine vollständige Zuordnung in Spalte W (EntityRole) haben.
-'     Rückgabe: True = unvollständig (Import-Ablauf anhalten)
+' 1b. Prüfung der Zuordnungstabelle NACH dem Import
+'     Ermittelt alle Bankverbindungen in Daten!R:X, denen die
+'     Zuordnungsart in Spalte W fehlt.
+'     Diese Funktion zeigt bewusst keine Meldung und wechselt das
+'     Blatt nicht, damit der Import vollständig durchläuft. Gemeldet
+'     wird erst am Ende über ZeigeOffeneImportHinweise.
+'     Rückgabe: Verzeichnis der betroffenen IBANs, Nothing wenn keine.
 ' ===============================================================
-Private Function PruefeUnvollstaendigeEntityKeys() As Boolean
-    
+Private Function ErmittleOffeneZuordnungsarten(ByRef anzahlOffen As Long, _
+                                               ByRef ersteZeile As Long, _
+                                               ByRef liste As String) As Object
+
     Dim wsDaten As Worksheet
     Dim lastRow As Long
     Dim r As Long
-    Dim ersteLeereZeile As Long
-    Dim anzahlOhneRole As Long
-    Dim ibanOhneRole As String
-    
-    PruefeUnvollstaendigeEntityKeys = False
+    Dim ibanWert As String
+    Dim dictIBAN As Object
+
+    anzahlOffen = 0
+    ersteZeile = 0
+    liste = ""
+    Set ErmittleOffeneZuordnungsarten = Nothing
 
     On Error Resume Next
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     On Error GoTo 0
     If wsDaten Is Nothing Then Exit Function
-    
+
     lastRow = wsDaten.Cells(wsDaten.Rows.count, EK_COL_IBAN).End(xlUp).Row
     If lastRow < EK_START_ROW Then Exit Function
-    
-    ersteLeereZeile = 0
-    anzahlOhneRole = 0
-    ibanOhneRole = ""
+
+    Set dictIBAN = CreateObject("Scripting.Dictionary")
     
     For r = EK_START_ROW To lastRow
-        ' Nur Zeilen Prüfen die eine IBAN haben
-        If Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value)) <> "" Then
-            ' Spalte W (EntityRole) leer?
+        ' Nur Zeilen prüfen, die eine IBAN haben
+        ibanWert = Trim(CStr(wsDaten.Cells(r, EK_COL_IBAN).value))
+        If ibanWert <> "" Then
+            ' Spalte W (Zuordnungsart) leer?
             If Trim(CStr(wsDaten.Cells(r, EK_COL_ROLE).value)) = "" Then
-                anzahlOhneRole = anzahlOhneRole + 1
-                
-                ' Erste leere Zeile merken
-                If ersteLeereZeile = 0 Then ersteLeereZeile = r
-                
-                ' Maximal 5 IBANs für die Anzeige sammeln
-                If anzahlOhneRole <= 5 Then
+                anzahlOffen = anzahlOffen + 1
+
+                ' Erste leere Zeile merken, damit der Fokus dort landet
+                If ersteZeile = 0 Then ersteZeile = r
+
+                ' Betroffene IBAN merken, um die Buchungen zu kennzeichnen
+                If Not dictIBAN.Exists(UCase(ibanWert)) Then dictIBAN.Add UCase(ibanWert), r
+
+                ' Maximal 5 Bankverbindungen für die Anzeige sammeln
+                If anzahlOffen <= 5 Then
                     Dim kontoname As String
                     kontoname = Trim(CStr(wsDaten.Cells(r, EK_COL_KONTONAME).value))
                     If kontoname <> "" Then
-                        ibanOhneRole = ibanOhneRole & vbCrLf & "  " & ChrW(8226) & " " & _
-                            Left(CStr(wsDaten.Cells(r, EK_COL_IBAN).value), 12) & "...  (" & kontoname & ")"
+                        liste = liste & vbCrLf & "  " & ChrW(8226) & " " & _
+                            Left(ibanWert, 12) & "...  (" & kontoname & ")"
                     Else
-                        ibanOhneRole = ibanOhneRole & vbCrLf & "  " & ChrW(8226) & " " & _
-                            CStr(wsDaten.Cells(r, EK_COL_IBAN).value)
+                        liste = liste & vbCrLf & "  " & ChrW(8226) & " " & ibanWert
                     End If
                 End If
             End If
         End If
     Next r
     
-    ' Keine fehlenden Einträge -> nichts tun
-    If anzahlOhneRole = 0 Then Exit Function
+    ' Keine fehlenden Angaben -> nichts zurückgeben
+    If anzahlOffen = 0 Then Exit Function
 
-    PruefeUnvollstaendigeEntityKeys = True
-    
-    ' MsgBox zusammenbauen
-    Dim hinweis As String
-    hinweis = "Nach dem Import wurden " & anzahlOhneRole & _
-              " IBAN-Zuordnung(en) ohne EntityRole (Spalte W) gefunden:" & _
-              vbCrLf & ibanOhneRole
-    
-    If anzahlOhneRole > 5 Then
-        hinweis = hinweis & vbCrLf & "  ... und " & (anzahlOhneRole - 5) & " weitere"
+    If anzahlOffen > 5 Then
+        liste = liste & vbCrLf & "  ... und " & (anzahlOffen - 5) & " weitere"
     End If
-    
-    hinweis = hinweis & vbCrLf & vbCrLf & _
-              "Ohne diese Zuordnung wird der Import-Ablauf jetzt angehalten." & vbCrLf & _
-              "Bitte erst die EntityRole(s) in Daten!W vervollständigen." & vbCrLf & vbCrLf & _
-              "Möchten Sie direkt zur ersten offenen Zeile springen?"
-    
-    Dim antwort As VbMsgBoxResult
-    antwort = MsgBox(hinweis, vbYesNo + vbExclamation, _
-                     "Unvollständige IBAN-Zuordnungen")
-    
-    If antwort = vbYes Then
-        ' Zum Daten-Blatt wechseln und erste leere Zelle in Spalte W anwählen
-        wsDaten.Activate
-        
+
+    Set ErmittleOffeneZuordnungsarten = dictIBAN
+
+End Function
+
+
+' ===============================================================
+' 1b2. Kennzeichnet auf dem Bankkonto jede Buchung, deren
+'      Bankverbindung in der Zuordnungstabelle noch keine
+'      Zuordnungsart besitzt. Der Hinweis landet in Spalte L und
+'      wird bei wiederholtem Import nicht doppelt geschrieben.
+' ===============================================================
+Private Sub MarkiereBuchungenOhneZuordnungsart(ByVal wsBK As Worksheet, _
+                                               ByVal dictOffeneIBAN As Object)
+
+    Dim hinweisText As String
+    Dim lastRow As Long
+    Dim r As Long
+    Dim ibanWert As String
+    Dim bem As String
+
+    If wsBK Is Nothing Then Exit Sub
+    If dictOffeneIBAN Is Nothing Then Exit Sub
+    If dictOffeneIBAN.count = 0 Then Exit Sub
+
+    hinweisText = "Zuordnungsart fehlt: bitte Angabe in der Zuordnungstabelle ergänzen"
+
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Sub
+
+    For r = BK_START_ROW To lastRow
+        ibanWert = UCase(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)))
+        If ibanWert <> "" Then
+            If dictOffeneIBAN.Exists(ibanWert) Then
+                bem = Trim(CStr(wsBK.Cells(r, BK_COL_BEMERKUNG).value))
+                If InStr(1, bem, "Zuordnungsart fehlt", vbTextCompare) = 0 Then
+                    If bem = "" Then
+                        wsBK.Cells(r, BK_COL_BEMERKUNG).value = hinweisText
+                    Else
+                        wsBK.Cells(r, BK_COL_BEMERKUNG).value = bem & " | " & hinweisText
+                    End If
+                End If
+            End If
+        End If
+    Next r
+End Sub
+
+
+' ===============================================================
+' 1b3. Meldet nach dem vollständigen Import alle offenen Punkte in
+'      einem einzigen Hinweis und setzt den Fokus auf die erste
+'      fehlende Angabe. Der Hinweis hält nichts mehr an, denn
+'      Kategorie, Periode, Zahlungsübersicht und Dashboard sind zu
+'      diesem Zeitpunkt bereits vollständig berechnet.
+'      Reihenfolge des Fokus: Zuordnungsart, dann Kategorie bzw.
+'      Periode, dann Zahlungsprüfung.
+' ===============================================================
+Private Sub ZeigeOffeneImportHinweise(ByVal wsBK As Worksheet, _
+                                      ByVal anzahlOhneZuordnungsart As Long, _
+                                      ByVal ersteZeileOhneZuordnungsart As Long, _
+                                      ByVal listeOhneZuordnungsart As String, _
+                                      ByVal offeneKategorieOderPeriode As Boolean, _
+                                      ByVal offeneZahlungspruefung As Boolean)
+
+    Dim meldung As String
+    Dim offeneZelle As Range
+
+    If anzahlOhneZuordnungsart = 0 _
+       And Not offeneKategorieOderPeriode _
+       And Not offeneZahlungspruefung Then Exit Sub
+
+    meldung = "Der Import ist vollständig verarbeitet." & vbCrLf & _
+              "Kategorie, Monat/Periode, Zahlungsübersicht und Dashboard " & _
+              "sind aktualisiert." & vbCrLf & vbCrLf & _
+              "Es fehlen noch folgende Angaben:" & vbCrLf
+
+    If anzahlOhneZuordnungsart > 0 Then
+        meldung = meldung & vbCrLf & anzahlOhneZuordnungsart & _
+                  " Bankverbindung(en) ohne Zuordnungsart auf dem Blatt Daten, " & _
+                  "Spalte W:" & listeOhneZuordnungsart & vbCrLf
+    End If
+
+    If offeneKategorieOderPeriode Then
+        meldung = meldung & vbCrLf & "Auf dem Blatt Bankkonto ist mindestens eine " & _
+                  "Kategorie in Spalte H oder ein Monat in Spalte I noch offen." & vbCrLf
+    End If
+
+    If offeneZahlungspruefung Then
+        meldung = meldung & vbCrLf & "Die Zahlungsübersicht enthält noch gelbe oder " & _
+                  "rote Zahlungsprüfungen. Bei einer Zahlung aus dem Vorjahr tragen " & _
+                  "Sie Betrag und Zahlungsdatum in der Spalte IST ein." & vbCrLf
+    End If
+
+    meldung = meldung & vbCrLf & "Sie können jederzeit weiterarbeiten. Der Cursor " & _
+              "steht auf der ersten fehlenden Angabe."
+
+    MsgBox meldung, vbExclamation, "Noch offene Angaben"
+
+    ' Fokus auf die erste fehlende Angabe setzen
+    If anzahlOhneZuordnungsart > 0 And ersteZeileOhneZuordnungsart > 0 Then
+        Call FokussiereBlattZelle(WS_DATEN, ersteZeileOhneZuordnungsart, EK_COL_ROLE)
+    ElseIf offeneKategorieOderPeriode Then
+        Set offeneZelle = FindeErsteOffeneZuordnung(wsBK)
+        If Not offeneZelle Is Nothing Then
+            On Error Resume Next
+            wsBK.Activate
+            offeneZelle.Select
+            On Error GoTo 0
+        End If
+    ElseIf offeneZahlungspruefung Then
         On Error Resume Next
-        wsDaten.Unprotect PASSWORD:=PASSWORD
+        Call mod_Uebersicht_Generator.FokussiereErsteOffeneZahlungspruefung
         On Error GoTo 0
-        
-        wsDaten.Cells(ersteLeereZeile, EK_COL_ROLE).Select
-        
-        wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    End If
+End Sub
+
+
+' ===============================================================
+' 1b4. Aktiviert ein Blatt und setzt den Cursor auf eine Zelle,
+'      auch wenn das Blatt geschützt ist. Der Schutz wird danach
+'      mit UserInterfaceOnly wiederhergestellt.
+' ===============================================================
+Private Sub FokussiereBlattZelle(ByVal blattName As String, _
+                                 ByVal zeile As Long, _
+                                 ByVal spalte As Long)
+
+    Dim ws As Worksheet
+
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(blattName)
+    If ws Is Nothing Then
+        On Error GoTo 0
+        Exit Sub
     End If
 
-    End Function
+    ws.Activate
+    ws.Unprotect PASSWORD:=PASSWORD
+    ws.Cells(zeile, spalte).Select
+    ws.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True
+    On Error GoTo 0
+End Sub
 
 
     ' ===============================================================
