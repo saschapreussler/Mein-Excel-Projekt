@@ -1015,6 +1015,7 @@ NextMitglied:
     LadeGuthabenVerrechnungen wsUeb, wsDaten, rowIdx - 1
     VerarbeiteSpaeteNachzahlungen wsUeb, rowIdx - 1
     PruefeUndVerrechneGuthaben wsUeb, rowIdx - 1
+    PruefeGuthabenGegenAuszahlung wsUeb, rowIdx - 1, stummModus
     RepariereStatusDropdown
     
     ' Die Vorjahr-Hinweisprüfung wird gezielt beim Blattwechsel auf
@@ -1364,6 +1365,232 @@ Public Sub WendePersistierteVorjahrEntscheidungenAn()
     Application.EnableEvents = eventsWarenAktiv
     On Error GoTo 0
 End Sub
+
+' =====================================================
+' Prüft das Guthaben eines Mitglieds gegen eine
+' Auszahlung der Kategorie "Auszahlung Guthaben".
+'
+' Fachliche Regel: Wurde einem Mitglied Guthaben
+' ausgezahlt, muss die Auszahlung der Summe seines
+' Guthabens entsprechen. Das Guthaben ist dabei NICHT
+' kategoriebezogen. Es wird deshalb über alle Kategorien
+' und alle Monate hinweg aufsummiert, denn es darf
+' zwischen den Kategorien verschoben und aufgeteilt
+' werden.
+'
+' Gewarnt wird nur, wenn tatsächlich eine Auszahlung
+' vorliegt. Ein Guthaben ohne Auszahlung ist normal, es
+' wird einfach weitergeführt.
+'
+' Der Hinweis landet immer in der Bemerkung. Die
+' Sammelmeldung erscheint nur beim manuellen Aufruf,
+' damit die automatischen Neuaufbauten still bleiben.
+' =====================================================
+Private Sub PruefeGuthabenGegenAuszahlung(ByVal wsUeb As Worksheet, _
+                                          ByVal LetzteZeile As Long, _
+                                          ByVal stummModus As Boolean)
+
+    Dim wsDaten As Worksheet
+    Dim wsBK As Worksheet
+    Dim mitglieder As Collection
+    Dim mitglied As Object
+    Dim guthabenSumme As Object
+    Dim hinweisZeile As Object
+    Dim guthabenZeile As Object
+    Dim ibanJeMitglied As Object
+    Dim auszahlungJeIBAN As Object
+    Dim r As Long
+    Dim lastRowBK As Long
+    Dim schluessel As String
+    Dim katBK As String
+    Dim ibanBK As String
+    Dim jahr As Long
+    Dim guthaben As Double
+    Dim auszahlung As Double
+    Dim zeile As Long
+    Dim meldung As String
+    Dim anzahl As Long
+    Dim k As Variant
+
+    On Error GoTo Fertig
+
+    If LetzteZeile < UEBERSICHT_START_ROW Then Exit Sub
+
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+
+    Set guthabenSumme = CreateObject("Scripting.Dictionary")
+    Set hinweisZeile = CreateObject("Scripting.Dictionary")
+    Set guthabenZeile = CreateObject("Scripting.Dictionary")
+    Set ibanJeMitglied = CreateObject("Scripting.Dictionary")
+    Set auszahlungJeIBAN = CreateObject("Scripting.Dictionary")
+
+    ' --- 1. Guthaben je Mitglied über alle Kategorien summieren ---
+    For r = UEBERSICHT_START_ROW To LetzteZeile
+        schluessel = MitgliedSchluesselGuthaben(wsUeb, r)
+        If schluessel = "" Then GoTo NaechsteUebZeile
+
+        guthaben = LeseDoubleAusZelleVJ(wsUeb.Cells(r, UEB_COL_GUTHABEN))
+
+        If Not guthabenSumme.exists(schluessel) Then
+            guthabenSumme.Add schluessel, 0#
+            hinweisZeile.Add schluessel, r
+        End If
+        guthabenSumme(schluessel) = guthabenSumme(schluessel) + guthaben
+
+        ' Für den Hinweis bevorzugt die erste Zeile mit echtem Guthaben
+        If guthaben > 0 And Not guthabenZeile.exists(schluessel) Then
+            guthabenZeile.Add schluessel, r
+        End If
+NaechsteUebZeile:
+    Next r
+
+    ' --- 2. IBAN je Mitglied aus der Zuordnungstabelle ---
+    Set mitglieder = mod_Uebersicht_Daten.HoleAktiveMitglieder(wsDaten)
+    For Each mitglied In mitglieder
+        schluessel = Trim$(CStr(mitglied("Parzelle"))) & "|" & _
+                     UCase$(Trim$(CStr(mitglied("Name"))))
+        If Not ibanJeMitglied.exists(schluessel) Then
+            ibanJeMitglied.Add schluessel, _
+                UCase$(Replace(Trim$(CStr(mitglied("IBAN"))), " ", ""))
+        End If
+    Next mitglied
+
+    ' --- 3. Auszahlungen je Bankverbindung aufsummieren ---
+    jahr = mod_Uebersicht_Daten.ErmittleJahrAusBankkonto()
+    lastRowBK = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+
+    For r = BK_START_ROW To lastRowBK
+        katBK = LCase$(Trim$(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)))
+        If InStr(katBK, "auszahlung") = 0 Then GoTo NaechsteBKZeile
+        If InStr(katBK, "guthaben") = 0 Then GoTo NaechsteBKZeile
+
+        If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo NaechsteBKZeile
+        If Year(CDate(wsBK.Cells(r, BK_COL_DATUM).value)) <> jahr Then GoTo NaechsteBKZeile
+
+        ibanBK = UCase$(Replace(Trim$(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", ""))
+        If ibanBK = "" Then GoTo NaechsteBKZeile
+
+        If Not auszahlungJeIBAN.exists(ibanBK) Then auszahlungJeIBAN.Add ibanBK, 0#
+        If IsNumeric(wsBK.Cells(r, BK_COL_BETRAG).value) Then
+            auszahlungJeIBAN(ibanBK) = auszahlungJeIBAN(ibanBK) + _
+                Abs(CDbl(wsBK.Cells(r, BK_COL_BETRAG).value))
+        End If
+NaechsteBKZeile:
+    Next r
+
+    ' --- 4. Vergleichen und Abweichungen melden ---
+    For Each k In guthabenSumme.keys
+        schluessel = CStr(k)
+        If Not ibanJeMitglied.exists(schluessel) Then GoTo NaechsterSchluessel
+
+        ibanBK = CStr(ibanJeMitglied(schluessel))
+        If ibanBK = "" Then GoTo NaechsterSchluessel
+        If Not auszahlungJeIBAN.exists(ibanBK) Then GoTo NaechsterSchluessel
+
+        auszahlung = CDbl(auszahlungJeIBAN(ibanBK))
+        If auszahlung <= 0 Then GoTo NaechsterSchluessel
+
+        guthaben = CDbl(guthabenSumme(schluessel))
+
+        ' Rundungsrauschen ignorieren
+        If Abs(guthaben - auszahlung) <= 0.01 Then GoTo NaechsterSchluessel
+
+        If guthabenZeile.exists(schluessel) Then
+            zeile = CLng(guthabenZeile(schluessel))
+        Else
+            zeile = CLng(hinweisZeile(schluessel))
+        End If
+
+        Dim richtung As String
+        If guthaben > auszahlung Then
+            richtung = "Guthaben ist gr" & ChrW(246) & ChrW(223) & "er als die Auszahlung"
+        Else
+            richtung = "Guthaben ist kleiner als die Auszahlung"
+        End If
+
+        Call ErgaenzeBemerkungGuthaben(wsUeb, zeile, _
+            richtung & ": Guthaben " & Format(guthaben, "#,##0.00") & " " & ChrW(8364) & _
+            ", ausgezahlt " & Format(auszahlung, "#,##0.00") & " " & ChrW(8364))
+
+        anzahl = anzahl + 1
+        meldung = meldung & "- " & Replace(schluessel, "|", " / ") & ": " & _
+                  "Guthaben " & Format(guthaben, "#,##0.00") & " " & ChrW(8364) & _
+                  ", ausgezahlt " & Format(auszahlung, "#,##0.00") & " " & ChrW(8364) & vbCrLf
+
+NaechsterSchluessel:
+    Next k
+
+    If anzahl > 0 And Not stummModus Then
+        MsgBox "Bei " & anzahl & " Mitglied(ern) stimmt die Auszahlung des " & _
+               "Guthabens nicht mit dem Guthaben " & ChrW(252) & "berein:" & vbCrLf & vbCrLf & _
+               meldung & vbCrLf & _
+               "Das Guthaben ist nicht kategoriebezogen und darf zwischen den " & vbCrLf & _
+               "Kategorien verschoben werden. Bitte pr" & ChrW(252) & "fen, ob die Buchung " & vbCrLf & _
+               "der richtigen Kategorie zugeordnet ist." & vbCrLf & vbCrLf & _
+               "Der Hinweis steht zus" & ChrW(228) & "tzlich in der Bemerkung der " & _
+               "betroffenen Zeile.", _
+               vbExclamation, "Guthaben und Auszahlung weichen ab"
+    End If
+
+    If anzahl > 0 Then
+        Debug.Print "[" & ChrW(220) & "bersicht] Guthaben-Abgleich: " & anzahl & " Abweichung(en)."
+    End If
+
+Fertig:
+    If Err.Number <> 0 Then
+        Debug.Print "[" & ChrW(220) & "bersicht] Guthaben-Abgleich abgebrochen: " & Err.Description
+        Err.Clear
+    End If
+
+End Sub
+
+
+' =====================================================
+' Schlüssel eines Mitglieds für den Guthaben-Abgleich.
+' Bewusst über Parzelle und Name, weil die Übersicht
+' keinen Zuordnungsschlüssel je Zeile mitführt.
+' =====================================================
+Private Function MitgliedSchluesselGuthaben(ByVal wsUeb As Worksheet, _
+                                            ByVal r As Long) As String
+
+    Dim parz As String
+    Dim nam As String
+
+    parz = Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value))
+    nam = UCase$(Trim$(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)))
+
+    If parz = "" And nam = "" Then
+        MitgliedSchluesselGuthaben = ""
+    Else
+        MitgliedSchluesselGuthaben = parz & "|" & nam
+    End If
+
+End Function
+
+
+' =====================================================
+' Hängt einen Hinweis an die Bemerkung an, ohne einen
+' bereits vorhandenen gleichartigen Hinweis zu doppeln.
+' =====================================================
+Private Sub ErgaenzeBemerkungGuthaben(ByVal wsUeb As Worksheet, _
+                                      ByVal r As Long, _
+                                      ByVal hinweis As String)
+
+    Dim bisher As String
+
+    bisher = Trim$(CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value))
+
+    If InStr(1, bisher, "Guthaben ist", vbTextCompare) > 0 Then Exit Sub
+
+    If bisher = "" Then
+        wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = hinweis
+    Else
+        wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = bisher & " | " & hinweis
+    End If
+
+End Sub
+
 
 Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal LetzteZeile As Long)
     Dim wsDaten As Worksheet
