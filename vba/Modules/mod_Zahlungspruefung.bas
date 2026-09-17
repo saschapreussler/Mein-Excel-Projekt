@@ -50,6 +50,23 @@ Private m_EntityIBANCacheGeladenZP As Boolean
 Private m_DezemberCacheZP As Object
 
 ' ===============================================================
+' BANKKONTO-CACHE (v5.0, Tempo)
+' Das Bankkonto wurde bisher für JEDE Kombination aus Mitglied,
+' Monat und Kategorie komplett neu durchsucht. Bei 40 Mitgliedern,
+' 10 Kategorien und 1.000 Buchungen waren das mehrere Millionen
+' Einzelzugriffe auf Zellen je Übersichtsaufbau.
+' Jetzt wird das Blatt in einem einzigen Lesevorgang in ein Array
+' geholt und nach "IBAN|KATEGORIE" indexiert. Eine Abfrage läuft
+' dadurch nur noch über die wenigen wirklich passenden Zeilen.
+' Der Lebenszyklus entspricht genau dem IBAN-Cache: geladen beim
+' ersten Zugriff, verworfen in EntladeEinstellungenCacheZP.
+' ===============================================================
+Private m_BKWerte As Variant            ' 2D-Array der Spalten A bis I
+Private m_BKZeilen As Long
+Private m_BKIndex As Object             ' "IBAN|KATEGORIE" -> Collection der Arrayzeilen
+Private m_BKCacheGeladenZP As Boolean
+
+' ===============================================================
 ' AMPELFARBEN (Konsistenz mit KategorieEngine)
 ' ===============================================================
 Private Const AMPEL_GRUEN As Long = 12968900
@@ -99,6 +116,9 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     
     ' IBAN-Cache laden (falls noch nicht geschehen)
     If Not m_EntityIBANCacheGeladenZP Then Call LadeEntityIBANCacheZP
+
+    ' Bankkonto-Cache laden (falls noch nicht geschehen)
+    If Not m_BKCacheGeladenZP Then Call LadeBankkontoCacheZP
     
     ' 1. IBAN zum EntityKey auflösen (Über Daten!R+S)
     entityIBAN = ""
@@ -152,54 +172,71 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
     Dim hatZahlung As Boolean
     hatZahlung = False
     
-    For r = BK_START_ROW To lastRow
-        ' Datum prüfen (muss vorhanden sein für Jahr-Check)
-        If Not IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then GoTo NextZahlRow
-        zahlDatum = wsBK.Cells(r, BK_COL_DATUM).value
-        
-        ' Jahr prüfen Über Buchungsdatum
-        If Year(zahlDatum) <> jahr Then
-            ' Dezember-Sonderfall: Vorauszahlung Dezember Vorjahr für Januar
-            If monat = 1 And Month(zahlDatum) = 12 And Year(zahlDatum) = jahr - 1 Then
-                ' Vorauszahlung aus Dezember des Vorjahres -> zulässig
-            Else
-                GoTo NextZahlRow
+    ' v5.0: IBAN und Kategorie werden nicht mehr je Zeile verglichen,
+    '       sondern vorab über den Index aufgelöst. Es werden nur noch
+    '       die Zeilen durchlaufen, die zu dieser Bankverbindung und
+    '       dieser Kategorie gehören. Die Prüfungen auf Jahr und
+    '       Periode bleiben inhaltlich unverändert.
+    Dim monatPeriode As String
+    Dim monatPasstZP As Boolean
+    Dim trefferSchluessel As String
+    Dim trefferZeilen As Collection
+    Dim idx As Long
+    Dim zeileImCache As Long
+
+    trefferSchluessel = UCase(entityIBAN) & "|" & UCase(Trim(kategorie))
+
+    Set trefferZeilen = Nothing
+    If Not m_BKIndex Is Nothing Then
+        If m_BKIndex.exists(trefferSchluessel) Then
+            Set trefferZeilen = m_BKIndex(trefferSchluessel)
+        End If
+    End If
+
+    If Not trefferZeilen Is Nothing Then
+        For idx = 1 To trefferZeilen.count
+            zeileImCache = trefferZeilen(idx)
+
+            ' Datum prüfen (muss vorhanden sein für Jahr-Check)
+            If Not IsDate(m_BKWerte(zeileImCache, BK_COL_DATUM)) Then GoTo NextZahlRow
+            zahlDatum = CDate(m_BKWerte(zeileImCache, BK_COL_DATUM))
+
+            ' Jahr prüfen Über Buchungsdatum
+            If Year(zahlDatum) <> jahr Then
+                ' Dezember-Sonderfall: Vorauszahlung Dezember Vorjahr für Januar
+                If monat = 1 And Month(zahlDatum) = 12 And Year(zahlDatum) = jahr - 1 Then
+                    ' Vorauszahlung aus Dezember des Vorjahres -> zulässig
+                Else
+                    GoTo NextZahlRow
+                End If
             End If
-        End If
-        
-        ' Monat prüfen Über Spalte I (Monat/Periode)
-        Dim monatPeriode As String
-        monatPeriode = Trim(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value))
-        
-        ' v4.0: Flexibler Perioden-Vergleich
-        Dim monatPasstZP As Boolean
-        monatPasstZP = mod_ZP_Periode.IstPeriodeFuerMonat(monatPeriode, kategorie, monat, jahr, istMonatlich)
-        If monatPeriode = "" Then monatPasstZP = (Month(zahlDatum) = monat)
-        
-        If Not monatPasstZP Then GoTo NextZahlRow
-        
-        ' IBAN prüfen (Spalte D = BK_COL_IBAN)
-        ibanZeile = Replace(Trim(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
-        If StrComp(ibanZeile, entityIBAN, vbTextCompare) <> 0 Then GoTo NextZahlRow
-        
-        ' Kategorie prüfen (Spalte H = BK_COL_KATEGORIE)
-        zahlKat = Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value))
-        If StrComp(zahlKat, kategorie, vbTextCompare) <> 0 Then GoTo NextZahlRow
-        
-        ' Betrag addieren (Spalte B = BK_COL_BETRAG)
-        zahlBetrag = wsBK.Cells(r, BK_COL_BETRAG).value
-        ist = ist + Abs(zahlBetrag)
-        
-        ' v3.2: Frühestes Zahlungsdatum merken
-        If Not hatZahlung Then
-            fruehestesZahlDatum = zahlDatum
-            hatZahlung = True
-        ElseIf zahlDatum < fruehestesZahlDatum Then
-            fruehestesZahlDatum = zahlDatum
-        End If
-        
+
+            ' Monat prüfen Über Spalte I (Monat/Periode)
+            monatPeriode = Trim(CStr(m_BKWerte(zeileImCache, BK_COL_MONAT_PERIODE)))
+
+            ' v4.0: Flexibler Perioden-Vergleich
+            monatPasstZP = mod_ZP_Periode.IstPeriodeFuerMonat(monatPeriode, kategorie, monat, jahr, istMonatlich)
+            If monatPeriode = "" Then monatPasstZP = (Month(zahlDatum) = monat)
+
+            If Not monatPasstZP Then GoTo NextZahlRow
+
+            ' Betrag addieren (Spalte B = BK_COL_BETRAG)
+            If IsNumeric(m_BKWerte(zeileImCache, BK_COL_BETRAG)) Then
+                zahlBetrag = CDbl(m_BKWerte(zeileImCache, BK_COL_BETRAG))
+                ist = ist + Abs(zahlBetrag)
+            End If
+
+            ' v3.2: Frühestes Zahlungsdatum merken
+            If Not hatZahlung Then
+                fruehestesZahlDatum = zahlDatum
+                hatZahlung = True
+            ElseIf zahlDatum < fruehestesZahlDatum Then
+                fruehestesZahlDatum = zahlDatum
+            End If
+
 NextZahlRow:
-    Next r
+        Next idx
+    End If
     
     ' 4. Status ermitteln (GRÜN/GELB/ROT)
     '    v3.2: Mit Frist-/Toleranzprüfung
@@ -708,6 +745,72 @@ End Sub
 
 
 ' ===============================================================
+' BANKKONTO-CACHE: Laden
+' Liest die Spalten A bis I in EINEM Zugriff in ein Array und
+' baut den Index "IBAN|KATEGORIE" -> Zeilen auf.
+' Zeilen ohne IBAN oder ohne Kategorie werden nicht indexiert,
+' weil sie ohnehin nie zu einer Abfrage passen könnten.
+' ===============================================================
+Private Sub LadeBankkontoCacheZP()
+
+    Dim wsBK As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim ibanWert As String
+    Dim katWert As String
+    Dim schluessel As String
+
+    m_BKCacheGeladenZP = True
+    m_BKZeilen = 0
+    m_BKWerte = Empty
+    Set m_BKIndex = CreateObject("Scripting.Dictionary")
+
+    On Error Resume Next
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    On Error GoTo 0
+    If wsBK Is Nothing Then Exit Sub
+
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Sub
+
+    ' Ein einziger Lesevorgang statt tausender Einzelzugriffe
+    m_BKWerte = wsBK.Range(wsBK.Cells(BK_START_ROW, 1), _
+                           wsBK.Cells(lastRow, BK_COL_MONAT_PERIODE)).value
+    m_BKZeilen = lastRow - BK_START_ROW + 1
+
+    For i = 1 To m_BKZeilen
+        ibanWert = Replace(Trim(CStr(m_BKWerte(i, BK_COL_IBAN))), " ", "")
+        katWert = Trim(CStr(m_BKWerte(i, BK_COL_KATEGORIE)))
+
+        If ibanWert <> "" And katWert <> "" Then
+            schluessel = UCase(ibanWert) & "|" & UCase(katWert)
+            If Not m_BKIndex.exists(schluessel) Then
+                m_BKIndex.Add schluessel, New Collection
+            End If
+            m_BKIndex(schluessel).Add i
+        End If
+    Next i
+
+    Debug.Print "[ZP] Bankkonto-Cache: " & m_BKZeilen & " Zeilen, " & _
+                m_BKIndex.count & " Kombinationen aus IBAN und Kategorie."
+
+End Sub
+
+
+' ===============================================================
+' BANKKONTO-CACHE: Freigeben
+' ===============================================================
+Private Sub EntladeBankkontoCacheZP()
+
+    Set m_BKIndex = Nothing
+    m_BKWerte = Empty
+    m_BKZeilen = 0
+    m_BKCacheGeladenZP = False
+
+End Sub
+
+
+' ===============================================================
 ' Soll-Betrag aus Einstellungen holen (mit Cache)
 ' ===============================================================
 Private Function HoleSollBetragZP(ByVal kategorie As String) As Double
@@ -902,6 +1005,7 @@ Public Sub EntladeEinstellungenCacheZP()
     m_EinstellungenGeladenZP = False
     
     Call EntladeEntityIBANCacheZP
+    Call EntladeBankkontoCacheZP
     
 End Sub
 
