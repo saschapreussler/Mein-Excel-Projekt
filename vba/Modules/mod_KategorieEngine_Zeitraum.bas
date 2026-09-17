@@ -286,6 +286,51 @@ End Function
 
 
 ' =====================================================
+' Prüft, ob für dieselbe Bankverbindung und dieselbe
+' Kategorie bereits einmal eine Zahlung dem Folgemonat
+' zugeordnet wurde.
+'
+' Solche Zeilen tragen eine grüne Periodenzelle und in
+' der Bemerkung das Wort "Folgemonat". Sie entstehen
+' entweder automatisch über SetzeMonatPeriode oder durch
+' die manuelle Bestätigung des Nutzers im Bankkonto.
+' Genau darüber lernt das Programm den über-pünktlichen
+' Dauerauftrag eines Mitglieds kennen.
+' =====================================================
+Private Function HatFolgemonatMuster(ByVal wsBK As Worksheet, _
+                                     ByVal aktuelleZeile As Long, _
+                                     ByVal category As String) As Boolean
+
+    Dim ibanAktuell As String
+    Dim ibanVergleich As String
+    Dim suchZeile As Long
+
+    HatFolgemonatMuster = False
+
+    ibanAktuell = UCase$(Replace(Trim$(CStr(wsBK.Cells(aktuelleZeile, BK_COL_IBAN).value)), " ", ""))
+    If ibanAktuell = "" Then Exit Function
+
+    For suchZeile = BK_START_ROW To aktuelleZeile - 1
+        ibanVergleich = UCase$(Replace(Trim$(CStr(wsBK.Cells(suchZeile, BK_COL_IBAN).value)), " ", ""))
+        If ibanVergleich <> ibanAktuell Then GoTo NaechsteMusterZeile
+
+        If StrComp(Trim$(CStr(wsBK.Cells(suchZeile, BK_COL_KATEGORIE).value)), _
+                   category, vbTextCompare) <> 0 Then GoTo NaechsteMusterZeile
+
+        If wsBK.Cells(suchZeile, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206) Then
+            If InStr(LCase$(CStr(wsBK.Cells(suchZeile, BK_COL_BEMERKUNG).value)), _
+                     "folgemonat") > 0 Then
+                HatFolgemonatMuster = True
+                Exit Function
+            End If
+        End If
+NaechsteMusterZeile:
+    Next suchZeile
+
+End Function
+
+
+' =====================================================
 ' Hilfsfunktion: prüft ob ein Monat (1-12) in einer
 ' kommaseparierten Monatsliste enthalten ist.
 ' z.B. IstMonatInListe(3, "03, 06, 09, 12") -> True
@@ -490,6 +535,30 @@ Public Function ErmittleMonatPeriode(ByVal category As String, _
                 End If
             End If
             
+            ' =============================================
+            ' Gelerntes Muster: über-pünktlicher Dauerauftrag
+            ' =============================================
+            ' Zahlt diese Bankverbindung für diese Kategorie
+            ' gewohnheitsmäßig am Monatsende für den Folgemonat, dann
+            ' gilt das auch für die vorliegende Buchung.
+            '
+            ' Diese Prüfung hing bisher ausschließlich im Ultimo-Zweig
+            ' weiter unten. Dessen Bedingung istUltimoBereich bewertet
+            ' aber den SOLL-TAG der Kategorie, nicht den Buchungstag.
+            ' Bei einem Soll-Tag am Monatsanfang, etwa dem 5. beim
+            ' Mitgliedsbeitrag, ist effektiverTag = 5 und damit nie
+            ' größer als letzterTagMonat - 5. Der Zweig wurde also nie
+            ' erreicht und das bekannte Muster nie angewendet.
+            ' Maßgeblich ist deshalb hier der Tag der Buchung.
+            If tagBuchung >= 20 And Not wsBK Is Nothing And aktuelleZeile > 0 Then
+                If SollMonate = "" Or IstMonatInListe(folgeMonatNr, SollMonate) Then
+                    If HatFolgemonatMuster(wsBK, aktuelleZeile, category) Then
+                        ErmittleMonatPeriode = MonthName(folgeMonatNr)
+                        Exit Function
+                    End If
+                End If
+            End If
+
             If istUltimoBereich And tagBuchung >= (letzterTagMonat - 5) And tagBuchung < letzterTagMonat Then
                 
                 ' Wenn für dieselbe IBAN und Kategorie bereits eine Zahlung
