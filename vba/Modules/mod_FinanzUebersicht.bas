@@ -905,7 +905,7 @@ Private Sub ErstelleFilterDropDown(ByVal ws As Worksheet, ByVal aktuellerMonat A
     Set btn = ws.Buttons.Add(ddLeft + 116, ddTop, 140, 18)
     With btn
         .Name = FILTER_BTN_NAME
-        .Caption = ChrW(9776) & " Erweiterte Filter ..."
+        .Caption = ChrW(9776) & "   Erweiterte Filter ..."
         .OnAction = "'mod_FinanzUebersicht.OeffneFilterDialog'"
         .Font.Size = 9
     End With
@@ -915,7 +915,7 @@ Private Sub ErstelleFilterDropDown(ByVal ws As Worksheet, ByVal aktuellerMonat A
     Set btnReset = ws.Buttons.Add(ddLeft + 260, ddTop, 110, 18)
     With btnReset
         .Name = "btn_FilterReset_FU"
-        .Caption = ChrW(8635) & " zur" & ChrW(252) & "cksetzen"
+        .Caption = ChrW(8635) & "   zur" & ChrW(252) & "cksetzen"
         .OnAction = "'mod_FinanzUebersicht.FilterZuruecksetzen'"
         .Font.Size = 9
     End With
