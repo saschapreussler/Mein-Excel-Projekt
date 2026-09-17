@@ -43,6 +43,12 @@ Public Function NormalizeText(ByVal inputText As String) As String
     txt = Replace(txt, "fixe kosten", "fixkosten")
     txt = Replace(txt, "fix kosten", "fixkosten")
     txt = Replace(txt, "feste kosten", "fixkosten")
+
+    ' Amazon steht auf Kontoauszügen meist nur als Kürzel, etwa
+    ' "AMZN Mktp DE". Das Schlüsselwort "Amazon" aus der Regeltabelle
+    ' findet darin nichts. "amazon" selbst enthält die Folge "amzn"
+    ' nicht, die Angleichung kann also nichts anderes treffen.
+    txt = Replace(txt, "amzn", "amazon")
     txt = Replace(txt, "entgelt abschluss", "entgeltabschluss")
     txt = Replace(txt, "paz.", "parz ")
     txt = Replace(txt, "paz ", "parz ")

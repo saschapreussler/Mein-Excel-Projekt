@@ -390,6 +390,35 @@ NextRule:
         Exit Sub
     End If
 
+    ' ================================
+    ' PHASE 3: RÜCKFALL FÜR EINNAHMEN VON EINEM VERSORGER
+    ' ================================
+    ' Geht Geld VON einem Versorger EIN, kann es sachlich fast nur eine
+    ' Rückerstattung oder Gutschrift sein. Bisher blieb so eine Buchung
+    ' ohne Kategorie: die Regeln mit den Vertragsnummern sind als
+    ' Ausgabe hinterlegt und werden bei einer Einnahme verworfen, und
+    ' die Einnahme-Regeln kennen nur Stichwörter wie "GUTHABEN".
+    ' Die passende Rückzahlungs-Kategorie wird in der Regeltabelle
+    ' gesucht und nicht im Code festgeschrieben, damit Umbenennungen
+    ' der Kategorien wirksam bleiben.
+    If ctx("IsVersorger") And ctx("IsEinnahme") Then
+        Dim rueckKategorie As String
+        rueckKategorie = FindeVersorgerRueckzahlung(wsData, lastRuleRow, normText, _
+                                                    CStr(wsBK.Cells(rowBK, BK_COL_NAME).value))
+
+        If rueckKategorie <> "" Then
+            wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
+                "Einnahme von einem Versorger, daher als Erstattung erkannt. Bitte bestätigen."
+            ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), rueckKategorie, "GELB"
+        Else
+            wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
+                "Einnahme von einem Versorger. Das ist vermutlich eine Erstattung " & _
+                "oder Gutschrift. Bitte Kategorie wählen."
+            ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), "Bitte Auswahl treffen!", "GELB"
+        End If
+        Exit Sub
+    End If
+
     ' Kein Treffer = ROT
     If ctx("EntityRole") = "" Then
         wsBK.Cells(rowBK, BK_COL_BEMERKUNG).value = _
@@ -401,6 +430,92 @@ NextRule:
     ApplyKategorie wsBK.Cells(rowBK, BK_COL_KATEGORIE), "Bitte Auswahl treffen!", "ROT"
 
 End Sub
+
+
+' =====================================================
+' Sucht die passende Erstattungs-Kategorie eines Versorgers
+' in der Regeltabelle.
+' Bedingung: Einnahme-Kategorie, deren Name auf eine
+' Erstattung hindeutet. Unter mehreren Kandidaten gewinnt
+' die, deren Wortbestandteile im Buchungstext oder in der
+' Versorgerart des Kontonamens vorkommen. Damit trennen
+' sich Strom und Wasser von selbst.
+' Bleibt es mehrdeutig, wird bewusst nichts zurückgegeben,
+' damit keine falsche Kategorie gesetzt wird.
+' =====================================================
+Private Function FindeVersorgerRueckzahlung(ByVal wsData As Worksheet, _
+                                            ByVal lastRuleRow As Long, _
+                                            ByVal normText As String, _
+                                            ByVal kontoname As String) As String
+
+    Dim dataRow As Long
+    Dim kategorie As String
+    Dim katLower As String
+    Dim einAus As String
+    Dim bester As String
+    Dim besteTreffer As Long
+    Dim mehrdeutig As Boolean
+    Dim geprueft As Object
+    Dim vergleichstext As String
+    Dim worte As Variant
+    Dim i As Long
+    Dim treffer As Long
+
+    FindeVersorgerRueckzahlung = ""
+    Set geprueft = CreateObject("Scripting.Dictionary")
+    besteTreffer = -1
+    mehrdeutig = False
+
+    ' Die Versorgerart liefert das entscheidende Stichwort, wenn im
+    ' Buchungstext selbst nur eine Vertragsnummer steht. Aus
+    ' "Vattenfall" wird so "Strom/Energie".
+    vergleichstext = normText & " " & _
+        mod_KategorieEngine_Normalize.NormalizeText( _
+            mod_EntityKey_Classifier.ErmittleVersorgerZweck(kontoname))
+
+    For dataRow = DATA_START_ROW To lastRuleRow
+        kategorie = Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_KATEGORIE).value))
+        If kategorie = "" Then GoTo NaechsteRegel
+
+        ' Jede Kategorie nur einmal bewerten, sie steht mehrfach in der Tabelle
+        If geprueft.exists(LCase(kategorie)) Then GoTo NaechsteRegel
+        geprueft.Add LCase(kategorie), True
+
+        einAus = UCase(Trim(CStr(wsData.Cells(dataRow, DATA_CAT_COL_EINAUS).value)))
+        If einAus <> "E" Then GoTo NaechsteRegel
+
+        katLower = LCase(kategorie)
+        If InStr(katLower, "r" & ChrW(252) & "ck") = 0 And _
+           InStr(katLower, "rueck") = 0 And _
+           InStr(katLower, "erstattung") = 0 And _
+           InStr(katLower, "gutschrift") = 0 Then GoTo NaechsteRegel
+
+        ' Wie viele aussagekräftige Wörter der Kategorie stehen im Text?
+        treffer = 0
+        worte = Split(mod_KategorieEngine_Normalize.NormalizeText(kategorie), " ")
+        For i = LBound(worte) To UBound(worte)
+            If Len(CStr(worte(i))) >= 5 Then
+                If InStr(vergleichstext, CStr(worte(i))) > 0 Then treffer = treffer + 1
+            End If
+        Next i
+
+        If treffer > besteTreffer Then
+            besteTreffer = treffer
+            bester = kategorie
+            mehrdeutig = False
+        ElseIf treffer = besteTreffer Then
+            mehrdeutig = True
+        End If
+
+NaechsteRegel:
+    Next dataRow
+
+    ' Ohne jeden Worttreffer oder bei Gleichstand lieber nichts liefern.
+    If besteTreffer > 0 And Not mehrdeutig Then
+        FindeVersorgerRueckzahlung = bester
+    End If
+
+End Function
 
 
 ' =====================================================
