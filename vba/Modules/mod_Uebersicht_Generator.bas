@@ -1985,18 +1985,34 @@ Private Sub ErgaenzeBemerkungGuthaben(ByVal wsUeb As Worksheet, _
 End Sub
 
 
+' ===============================================================
+' Prüft, ob ein Quellschlüssel eine Summen-Zuordnung bezeichnet.
+'
+' Der Präfix "SUMME|" ist sechs Zeichen lang. An neun Stellen im
+' Modul stand als Länge die Sieben. Damit war der Vergleich immer
+' falsch, die Verrechnung wurde nie erkannt und das Guthaben nie
+' abgeschrieben. Die Länge steht deshalb jetzt nur noch hier.
+' ===============================================================
+Private Function IstSummenQuelle(ByVal quelleKey As String) As Boolean
+    Const PRAEFIX As String = "SUMME|"
+    IstSummenQuelle = (StrComp(Left$(quelleKey, Len(PRAEFIX)), PRAEFIX, vbTextCompare) = 0)
+End Function
+
+
 Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal LetzteZeile As Long)
     Dim wsDaten As Worksheet
     Dim r As Long
-    Dim quelle As Long
+    Dim zeile As Long
     Dim sollWert As Double
     Dim istWert As Double
     Dim verfuegbar As Double
     Dim offen As Double
-    Dim anwenden As Double
+    Dim summe As Double
+    Dim gezeigt As Long
     Dim zielKey As String
-    Dim quelleKey As String
-    Dim teile() As String
+    Dim liste As String
+    Dim kandidaten As Collection
+    Dim eintrag As Variant
     Dim antwort As VbMsgBoxResult
 
     On Error Resume Next
@@ -2007,72 +2023,228 @@ Private Sub PruefeUndVerrechneGuthaben(ByVal wsUeb As Worksheet, ByVal LetzteZei
 
     LadeGuthabenVerrechnungen wsUeb, wsDaten, LetzteZeile
 
+    Set kandidaten = New Collection
+
+    ' --- 1) Alle offenen Positionen sammeln, die aus Guthaben
+    '        gedeckt werden könnten. Hier wird noch nichts gefragt
+    '        und noch nichts verändert.
     For r = UEBERSICHT_START_ROW To LetzteZeile
-        If UCase$(Trim$(CStr(wsUeb.Cells(r, UEB_COL_STATUS).value))) = "ROT" Then
-            sollWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_SOLL).value)
-            istWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_IST).value)
-            offen = sollWert - istWert
-            If offen > 0.004 Then
-                quelle = FindeGuthabenQuelle(wsUeb, r, LetzteZeile)
-                If quelle > 0 Then
-                    If StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), _
-                               "Mitgliedsbeitrag", vbTextCompare) = 0 Then
-                        verfuegbar = VerfuegbaresGuthabenFuerMitgliedsgruppe(wsUeb, r, LetzteZeile)
-                    Else
-                        verfuegbar = VerfuegbaresGuthabenFuerParzelle(wsUeb, r, LetzteZeile)
-                    End If
-                    Debug.Print "[GuthabenDialog] Zeile=" & r & _
-                                " Parzelle=" & CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value) & _
-                                " Monat=" & CStr(wsUeb.Cells(r, UEB_COL_MONAT).value) & _
-                                " Kategorie=" & CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value) & _
-                                " Offen=" & Format$(offen, "0.00") & _
-                                " Verfügbar=" & Format$(verfuegbar, "0.00")
-                    Debug.Print "[Guthaben] Prüfe Dialog: Zeile=" & r & _
-                                " Monat=" & CStr(wsUeb.Cells(r, UEB_COL_MONAT).value) & _
-                                " Quelle=" & quelle & " Verfügbar=" & Format$(verfuegbar, "0.00")
-                    If verfuegbar > 0.004 Then
-                        zielKey = UebersichtEntscheidungsKey(wsUeb, r)
-                        If Not GuthabenVerrechnungVorhanden(wsDaten, zielKey) Then
-                            anwenden = Application.Min(verfuegbar, offen)
-                            antwort = MsgBox("Offene Zahlung für " & CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value) & _
-                                " (" & CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value) & ")" & vbCrLf & vbCrLf & _
-                                "Offener Monat: " & CStr(wsUeb.Cells(r, UEB_COL_MONAT).value) & vbCrLf & _
-                                "Offener Betrag: " & Format$(offen, "#,##0.00") & " " & ChrW(8364) & vbCrLf & _
-                                "Verfügbares Guthaben: " & Format$(verfuegbar, "#,##0.00") & " " & ChrW(8364) & vbCrLf & vbCrLf & _
-                                "Soll der offene Betrag aus dem Guthaben verrechnet werden?", _
-                                vbYesNo + vbQuestion, "Guthaben verrechnen")
-                            If antwort = vbYes Then
-                                wsUeb.Cells(r, UEB_COL_IST).value = istWert + anwenden
-                                If anwenden >= offen - 0.01 Then
-                                    wsUeb.Cells(r, UEB_COL_STATUS).value = "GR" & ChrW(220) & "N"
-                                    wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
-                                Else
-                                    wsUeb.Cells(r, UEB_COL_STATUS).value = "ROT"
-                                    wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_ROT
-                                End If
-                                wsUeb.Cells(r, UEB_COL_BEMERKUNG).value = _
-                                    CStr(wsUeb.Cells(r, UEB_COL_BEMERKUNG).value) & _
-                                    " | Guthaben verrechnet: " & Format$(anwenden, "#,##0.00") & " " & ChrW(8364)
-                                quelleKey = "SUMME|" & Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)) & "|" & _
-                                             mod_EntityKey_Normalize.NormalisiereStringFuerVergleich( _
-                                                 CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value))
-                                SpeichereGuthabenVerrechnung wsDaten, zielKey, anwenden, quelleKey
-                                    If StrComp(Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)), _
-                                         "Mitgliedsbeitrag", vbTextCompare) = 0 Then
-                                     SpeichereMitgliedsbeitragsGruppenverbrauch wsDaten, wsUeb, r, anwenden
-                                Else
-                                    SpeichereParzellenVerbrauch wsDaten, _
-                                        Trim$(CStr(wsUeb.Cells(r, UEB_COL_PARZELLE).value)), anwenden
-                                End If
-                                Debug.Print "[Guthaben] Verrechnung gespeichert: Ziel=" & zielKey & _
-                                            " Quelle=" & quelleKey & " Betrag=" & Format$(anwenden, "0.00")
-                            End If
-                        End If
-                    End If
-                End If
-            End If
-        End If
+        If UCase$(Trim$(CStr(wsUeb.Cells(r, UEB_COL_STATUS).value))) <> "ROT" Then GoTo NaechsteGuthabenZeile
+
+        sollWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_SOLL).value)
+        istWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_COL_IST).value)
+        offen = sollWert - istWert
+        If offen <= 0.004 Then GoTo NaechsteGuthabenZeile
+
+        If FindeGuthabenQuelle(wsUeb, r, LetzteZeile) <= 0 Then GoTo NaechsteGuthabenZeile
+
+        verfuegbar = ErmittleVerfuegbaresGuthaben(wsUeb, r, LetzteZeile)
+        If verfuegbar <= 0.004 Then GoTo NaechsteGuthabenZeile
+
+        zielKey = UebersichtEntscheidungsKey(wsUeb, r)
+        If zielKey = "" Then GoTo NaechsteGuthabenZeile
+        If GuthabenVerrechnungVorhanden(wsDaten, zielKey) Then GoTo NaechsteGuthabenZeile
+
+        kandidaten.Add Array(r, zielKey, Application.Min(verfuegbar, offen))
 NaechsteGuthabenZeile:
+    Next r
+
+    If kandidaten.count = 0 Then Exit Sub
+
+    ' --- 2) Eine einzige Rückfrage für alle Vorschläge.
+    '        Vorher wurde je Position gefragt, und eine Ablehnung wurde
+    '        nirgends festgehalten. Deshalb kamen dieselben Fragen bei
+    '        jedem Lauf der Übersicht erneut.
+    For Each eintrag In kandidaten
+        summe = summe + CDbl(eintrag(2))
+        If gezeigt < 12 Then
+            zeile = CLng(eintrag(0))
+            liste = liste & vbCrLf & _
+                CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value) & _
+                " (Parzelle " & CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value) & "), " & _
+                CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value) & ", " & _
+                CStr(wsUeb.Cells(zeile, UEB_COL_MONAT).value) & ": " & _
+                Format$(CDbl(eintrag(2)), "#,##0.00") & " " & ChrW(8364)
+            gezeigt = gezeigt + 1
+        End If
+    Next eintrag
+
+    If kandidaten.count > gezeigt Then
+        liste = liste & vbCrLf & "... und " & (kandidaten.count - gezeigt) & " weitere"
+    End If
+
+    antwort = MsgBox( _
+        kandidaten.count & " offene Position(en) lassen sich aus vorhandenem " & _
+        "Guthaben decken." & vbCrLf & _
+        "Summe: " & Format$(summe, "#,##0.00") & " " & ChrW(8364) & vbCrLf & _
+        liste & vbCrLf & vbCrLf & _
+        "Ja" & vbTab & "alle aufgeführten Positionen verrechnen" & vbCrLf & _
+        "Nein" & vbTab & "nicht verrechnen und nicht mehr danach fragen" & vbCrLf & _
+        "Abbrechen" & vbTab & "später entscheiden, beim nächsten Lauf erneut fragen", _
+        vbYesNoCancel + vbQuestion, "Guthaben verrechnen")
+
+    If antwort = vbCancel Then Exit Sub
+
+    ' --- 3) Entscheidung umsetzen und in jedem Fall festhalten.
+    For Each eintrag In kandidaten
+        If antwort = vbYes Then
+            Call WendeGuthabenVerrechnungAn(wsUeb, wsDaten, CLng(eintrag(0)), _
+                                            CStr(eintrag(1)), LetzteZeile)
+        Else
+            ' Die Ablehnung wird mit Betrag 0 abgelegt. LadeGuthaben-
+            ' Verrechnungen überspringt solche Zeilen, die Frage bleibt
+            ' aber dauerhaft beantwortet.
+            SpeichereGuthabenVerrechnung wsDaten, CStr(eintrag(1)), 0, "ABGELEHNT"
+        End If
+    Next eintrag
+End Sub
+
+
+' ===============================================================
+' Ermittelt das für eine Position nutzbare Guthaben.
+'
+' Guthaben ist nicht an die Kategorie gebunden, aus der es entstanden
+' ist. Beim Mitgliedsbeitrag zählt die Beitragsgruppe der Parzelle,
+' bei allen anderen Kategorien die Parzelle als Ganzes.
+' ===============================================================
+Private Function ErmittleVerfuegbaresGuthaben(ByVal wsUeb As Worksheet, _
+                                              ByVal zeile As Long, _
+                                              ByVal LetzteZeile As Long) As Double
+    If StrComp(Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value)), _
+               "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+        ErmittleVerfuegbaresGuthaben = _
+            VerfuegbaresGuthabenFuerMitgliedsgruppe(wsUeb, zeile, LetzteZeile)
+    Else
+        ErmittleVerfuegbaresGuthaben = _
+            VerfuegbaresGuthabenFuerParzelle(wsUeb, zeile, LetzteZeile)
+    End If
+End Function
+
+
+' ===============================================================
+' Verrechnet eine offene Position gegen das Guthaben.
+'
+' Der verfügbare Betrag wird hier erneut bestimmt: Zwischen dem
+' Sammeln der Vorschläge und diesem Aufruf können frühere
+' Verrechnungen des gleichen Durchlaufs das Guthaben bereits
+' aufgebraucht haben.
+' ===============================================================
+Private Sub WendeGuthabenVerrechnungAn(ByVal wsUeb As Worksheet, _
+                                       ByVal wsDaten As Worksheet, _
+                                       ByVal zeile As Long, _
+                                       ByVal zielKey As String, _
+                                       ByVal LetzteZeile As Long)
+
+    Dim sollWert As Double
+    Dim istWert As Double
+    Dim offen As Double
+    Dim verfuegbar As Double
+    Dim anwenden As Double
+    Dim quelleKey As String
+    Dim bemerkung As String
+
+    sollWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(zeile, UEB_COL_SOLL).value)
+    istWert = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(zeile, UEB_COL_IST).value)
+    offen = sollWert - istWert
+    If offen <= 0.004 Then Exit Sub
+
+    verfuegbar = ErmittleVerfuegbaresGuthaben(wsUeb, zeile, LetzteZeile)
+    If verfuegbar <= 0.004 Then Exit Sub
+
+    anwenden = Application.Min(verfuegbar, offen)
+    wsUeb.Cells(zeile, UEB_COL_IST).value = istWert + anwenden
+
+    bemerkung = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value))
+
+    If anwenden >= offen - 0.01 Then
+        wsUeb.Cells(zeile, UEB_COL_STATUS).value = m_STATUS_GRUEN
+        wsUeb.Cells(zeile, UEB_COL_STATUS).Interior.color = AMPEL_GRUEN
+
+        ' Eine vollständig aus Guthaben gedeckte Zahlung ist nicht säumig.
+        ' Gebühr und Verspätungshinweis müssen deshalb verschwinden, sonst
+        ' bliebe eine Forderung stehen, die es nicht mehr gibt.
+        bemerkung = EntferneBemerkungsTeile(bemerkung, "S" & ChrW(228) & "umnis")
+        bemerkung = EntferneBemerkungsTeile(bemerkung, "Versp" & ChrW(228) & "tet")
+        Call LoescheSaeumnisGebuehr(wsDaten, zielKey)
+    Else
+        wsUeb.Cells(zeile, UEB_COL_STATUS).value = "ROT"
+        wsUeb.Cells(zeile, UEB_COL_STATUS).Interior.color = AMPEL_ROT
+    End If
+
+    Call FuegeBemerkungHinzu(bemerkung, "Guthaben verrechnet: " & _
+         Format$(anwenden, "#,##0.00") & " " & ChrW(8364))
+    wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value = bemerkung
+
+    quelleKey = "SUMME|" & Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)) & "|" & _
+                mod_EntityKey_Normalize.NormalisiereStringFuerVergleich( _
+                    CStr(wsUeb.Cells(zeile, UEB_COL_MITGLIED).value))
+    SpeichereGuthabenVerrechnung wsDaten, zielKey, anwenden, quelleKey
+
+    If StrComp(Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value)), _
+               "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+        SpeichereMitgliedsbeitragsGruppenverbrauch wsDaten, wsUeb, zeile, anwenden
+    Else
+        SpeichereParzellenVerbrauch wsDaten, _
+            Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_PARZELLE).value)), anwenden
+    End If
+
+    ' Das Guthaben der Herkunftszeilen wird sofort abgeschrieben, damit
+    ' die Spalte Guthaben in Übersicht und Dashboard den Ist-Zustand
+    ' zeigt und nicht weiter einen längst verbrauchten Betrag ausweist.
+    Call VerbraucheGuthabenNachSummenKey(wsUeb, LetzteZeile, quelleKey, anwenden)
+
+End Sub
+
+
+' ===============================================================
+' Entfernt aus einer Bemerkung alle mit " | " getrennten Teile,
+' die den Suchtext enthalten.
+' ===============================================================
+Private Function EntferneBemerkungsTeile(ByVal bemerkung As String, _
+                                         ByVal suchText As String) As String
+    Dim teile() As String
+    Dim i As Long
+    Dim ergebnis As String
+
+    If Trim$(bemerkung) = "" Then Exit Function
+
+    teile = Split(bemerkung, " | ")
+    For i = LBound(teile) To UBound(teile)
+        If InStr(1, teile(i), suchText, vbTextCompare) = 0 Then
+            If ergebnis <> "" Then ergebnis = ergebnis & " | "
+            ergebnis = ergebnis & Trim$(teile(i))
+        End If
+    Next i
+
+    EntferneBemerkungsTeile = ergebnis
+End Function
+
+
+' ===============================================================
+' Nimmt einen gespeicherten Säumniseintrag zurück.
+'
+' Wird gebraucht, wenn eine Position nachträglich vollständig aus
+' Guthaben gedeckt wird. Ohne das Löschen stünde die Gebühr weiter
+' in der Säumnisübersicht des Dashboards.
+' ===============================================================
+Private Sub LoescheSaeumnisGebuehr(ByVal wsDaten As Worksheet, ByVal key As String)
+    Dim r As Long
+    Dim lastRow As Long
+
+    If key = "" Then Exit Sub
+
+    lastRow = wsDaten.Cells(wsDaten.Rows.count, SAEUMNIS_COL_KEY).End(xlUp).Row
+
+    For r = SAEUMNIS_START_ROW To lastRow
+        If StrComp(CStr(wsDaten.Cells(r, SAEUMNIS_COL_KEY).value), key, vbTextCompare) = 0 Then
+            On Error Resume Next
+            wsDaten.Unprotect PASSWORD:=PASSWORD
+            wsDaten.Range(wsDaten.Cells(r, SAEUMNIS_COL_KEY), _
+                          wsDaten.Cells(r, SAEUMNIS_COL_BESTAETIGT_DURCH)).ClearContents
+            wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+            On Error GoTo 0
+            Exit Sub
+        End If
     Next r
 End Sub
 
@@ -2267,7 +2439,7 @@ Private Function ParzelleHatGuthabenverrechnung(ByVal wsUeb As Worksheet, _
     lastRow = wsDaten.Cells(wsDaten.Rows.count, GUTH_VER_COL_QUELLE).End(xlUp).Row
     For r = GUTH_VER_START_ROW To lastRow
         quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
-        If Left$(quelleKey, 7) = "SUMME|" Then
+        If IstSummenQuelle(quelleKey) Then
             teile = Split(quelleKey, "|", 3)
             If UBound(teile) >= 2 Then
                 If StrComp(teile(1), parzelle, vbTextCompare) = 0 Then
@@ -2320,7 +2492,7 @@ Public Sub DebugGuthabenParzelle(ByVal parzelle As Long)
         If quelleKey <> "" Then
             Debug.Print "[GuthabenDebug] Daten Zeile=" & r & " Betrag=" & Format$(betrag, "0.00") & _
                         " QuelleKey=" & quelleKey
-            If Left$(quelleKey, 7) = "SUMME|" Then
+            If IstSummenQuelle(quelleKey) Then
                 teile = Split(quelleKey, "|", 3)
                 If UBound(teile) >= 2 Then
                     Debug.Print "[GuthabenDebug]   ParzelleKey=" & teile(1) & _
@@ -2608,7 +2780,7 @@ Private Sub LadeGuthabenVerrechnungen(ByVal wsUeb As Worksheet, ByVal wsDaten As
         betrag = mod_Zahlungspruefung.LeseGeldwertZP(wsDaten.Cells(r, GUTH_VER_COL_BETRAG).value)
         If key <> "" And betrag > 0 Then
             anwendbar = betrag
-            If Left$(quelleKey, 7) = "SUMME|" Then
+            If IstSummenQuelle(quelleKey) Then
                 basis = ErmittleBasisGuthabenNachSummenKey(wsUeb, LetzteZeile, quelleKey)
                 If verbraucht.exists(quelleKey) Then
                     anwendbar = Application.Max(0, Application.Min(betrag, basis - CDbl(verbraucht(quelleKey))))
@@ -2623,7 +2795,7 @@ Private Sub LadeGuthabenVerrechnungen(ByVal wsUeb As Worksheet, ByVal wsDaten As
             End If
             If anwendbar <= 0.004 Then GoTo NaechsteVerrechnung
             ziel = FindeZeileNachEntscheidungsKey(wsUeb, LetzteZeile, key)
-            If Left$(quelleKey, 7) = "SUMME|" Then
+            If IstSummenQuelle(quelleKey) Then
                 VerbraucheGuthabenNachSummenKey wsUeb, LetzteZeile, quelleKey, anwendbar
                 quelle = 0
             Else
@@ -2646,7 +2818,7 @@ Private Function ErmittleBasisGuthabenNachSummenKey(ByVal wsUeb As Worksheet, _
                                                      ByVal summenKey As String) As Double
     Dim teile() As String
     Dim r As Long
-    If Left$(summenKey, 7) <> "SUMME|" Then Exit Function
+    If Not IstSummenQuelle(summenKey) Then Exit Function
     teile = Split(summenKey, "|", 2)
     If UBound(teile) < 1 Then Exit Function
     For r = UEBERSICHT_START_ROW To LetzteZeile
@@ -2666,7 +2838,7 @@ Private Sub VerbraucheGuthabenNachSummenKey(ByVal wsUeb As Worksheet, _
     Dim r As Long
     Dim rest As Double
     Dim vorhanden As Double
-    If Left$(summenKey, 7) <> "SUMME|" Then Exit Sub
+    If Not IstSummenQuelle(summenKey) Then Exit Sub
     teile = Split(summenKey, "|", 2)
     If UBound(teile) < 1 Then Exit Sub
     Dim kriterium As String
@@ -3061,7 +3233,7 @@ Private Function GuthabenVerrechnetFuerZeile(ByVal wsUeb As Worksheet, ByVal zei
     basis = CDbl(wsUeb.Cells(zeile, UEB_COL_GUTHABEN).value)
     For r = GUTH_VER_START_ROW To lastRow
         quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
-        If Left$(quelleKey, 7) = "SUMME|" Then
+        If IstSummenQuelle(quelleKey) Then
             teile = Split(quelleKey, "|", 3)
             If UBound(teile) = 2 Then
                 If StrComp(teile(1) & "|" & teile(2), ownerKey, vbTextCompare) = 0 Then
@@ -3096,7 +3268,7 @@ Private Function GuthabenGesamtVerrechnetFuerMitglied(ByVal wsUeb As Worksheet, 
             Exit Function
         End If
         quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
-        If Left$(quelleKey, 7) = "SUMME|" Then
+        If IstSummenQuelle(quelleKey) Then
             teile = Split(quelleKey, "|", 3)
             If UBound(teile) = 2 Then
                 If StrComp(teile(1) & "|" & teile(2), ownerKey, vbTextCompare) = 0 Then
@@ -3128,7 +3300,7 @@ Private Function GuthabenGesamtVerrechnetFuerParzelle(ByVal wsUeb As Worksheet, 
             Exit Function
         End If
         quelleKey = Trim$(CStr(wsDaten.Cells(r, GUTH_VER_COL_QUELLE).value))
-        If Left$(quelleKey, 7) = "SUMME|" Then
+        If IstSummenQuelle(quelleKey) Then
             teile = Split(quelleKey, "|", 3)
             If UBound(teile) >= 1 Then
                 If StrComp(teile(1), parzelle, vbTextCompare) = 0 Then

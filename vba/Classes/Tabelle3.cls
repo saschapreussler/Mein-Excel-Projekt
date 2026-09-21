@@ -457,6 +457,26 @@ Private Sub VerarbeiteKategorieAenderung(ByVal Target As Range)
         End If
     End If
     
+    ' 4b. Stehengebliebene Prüfmarkierung in Spalte I auflösen.
+    '
+    ' Die Erkennung färbt Monat/Periode gelb, wenn sie sich beim Monat
+    ' nicht sicher ist, und schreibt einen Prüfhinweis in die Bemerkung.
+    ' Spalte I wird oben aber nur neu berechnet, wenn sie leer ist. Eine
+    ' Rückzahlung vom Versorger, die die Erkennung schon eingetragen hat,
+    ' blieb deshalb für immer gelb, auch nachdem der Nutzer die Kategorie
+    ' im Dropdown bestätigt hatte. Die Auswahl im Dropdown ist genau die
+    ' manuelle Entscheidung, um die die Markierung gebeten hat, also wird
+    ' sie hier quittiert.
+    If ws.Cells(rowBK, BK_COL_MONAT_PERIODE).Interior.color = RGB(255, 235, 156) Then
+        ws.Cells(rowBK, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206)
+        
+        Dim bemerkungOhneHinweis As String
+        bemerkungOhneHinweis = Trim(CStr(ws.Cells(rowBK, BK_COL_BEMERKUNG).value))
+        bemerkungOhneHinweis = EntferneBemerkungsZeile(bemerkungOhneHinweis, "bitte pr")
+        ws.Cells(rowBK, BK_COL_BEMERKUNG).value = bemerkungOhneHinweis
+        ws.Cells(rowBK, BK_COL_BEMERKUNG).Interior.ColorIndex = xlNone
+    End If
+    
     ' 5. Betragszuordnung ausführen
     ApplyBetragsZuordnung ws, rowBK
 
