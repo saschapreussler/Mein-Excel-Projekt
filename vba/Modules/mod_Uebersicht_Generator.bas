@@ -3585,6 +3585,9 @@ Private Function PruefeMitbezahltePartnerDurchZahler( _
     Dim partner As Object
     Dim ergebnis As String
     Dim zahlDatum As Date
+    Dim partnerAnzahl As Long
+    Dim partnerBetrag As Double
+    Dim offenePartner As Long
 
     PruefeMitbezahltePartnerDurchZahler = ""
     If meineEntityKey = "" Or sollProPerson <= 0 Then Exit Function
@@ -3598,11 +3601,30 @@ Private Function PruefeMitbezahltePartnerDurchZahler( _
           If CLng(partner("Parzelle")) = parzelle And _
            StrComp(CStr(partner("EntityKey")), meineEntityKey, vbTextCompare) <> 0 Then
                 If InStr(1, UCase$(CStr(partner("Role"))), "EHREN", vbTextCompare) > 0 Then GoTo NextPartner
+
+            ' Ein Partner, der seinen Beitrag im selben Monat selbst überwiesen
+            ' hat, ist bereits versorgt. Ihn trotzdem als mitbezahlt zu führen
+            ' wäre doppelt gezählt: Die Überzahlung des Zahlers verschwände als
+            ' vermeintliche Partnerleistung, statt ihm als Guthaben
+            ' gutgeschrieben zu werden.
+            partnerAnzahl = 0
+            partnerBetrag = 0
+            Call mod_Zahlungspruefung.ZaehleZahlungenZP( _
+                CStr(partner("EntityKey")), "Mitgliedsbeitrag", monat, jahr, _
+                partnerAnzahl, partnerBetrag)
+            If partnerBetrag >= sollProPerson - 0.01 Then GoTo NextPartner
+
+            offenePartner = offenePartner + 1
             If ergebnis <> "" Then ergebnis = ergebnis & ", "
             ergebnis = ergebnis & CStr(partner("Name"))
         End If
 NextPartner:
     Next partner
+
+    ' Der Zahler muss seinen eigenen Beitrag und den jedes offenen Partners
+    ' abdecken. Reicht die Summe dafür nicht, liegt keine Partnerzahlung vor.
+    If offenePartner = 0 Then Exit Function
+    If eigenerBetrag < (offenePartner + 1) * sollProPerson - 0.01 Then Exit Function
 
     If ergebnis <> "" Then
         PruefeMitbezahltePartnerDurchZahler = "Mitbezahlt für " & ergebnis & _
