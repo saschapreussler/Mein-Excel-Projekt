@@ -271,7 +271,31 @@ Public Sub Importiere_Kontoauszug()
             Exit Sub
         End If
     End If
-    
+
+    ' ============================================================
+    ' Lückenprüfung: Fehlt ein Monat zwischen den Kontoauszügen?
+    ' Läuft vor dem Eintragen, damit der Nutzer den fehlenden
+    ' Auszug zuerst nachholen kann, wenn er das möchte.
+    ' ============================================================
+    If Not PruefeMonatsluecke(wsZiel, wsTemp, lastRowTemp) Then
+        On Error Resume Next
+        Application.DisplayAlerts = False
+        If Not wsTemp Is Nothing Then wsTemp.Delete
+        Application.DisplayAlerts = True
+        Set wsTemp = Nothing
+        On Error GoTo 0
+
+        Application.ScreenUpdating = True
+        Application.DisplayAlerts = True
+        Application.EnableEvents = True
+        Call mod_Banking_Format.Schuetze_BankkontoBlatt(wsZiel)
+
+        MsgBox "Import abgebrochen." & vbLf & _
+               "Es wurde nichts in das Bankkonto eingetragen.", _
+               vbInformation, "Import abgebrochen"
+        Exit Sub
+    End If
+
     For lRowTemp = 2 To lastRowTemp
         
         betragString = CStr(wsTemp.Cells(lRowTemp, CSV_COL_BETRAG).value)
@@ -758,6 +782,111 @@ Private Sub ZeigeOffeneImportHinweise(ByVal wsBK As Worksheet, _
         On Error GoTo 0
     End If
 End Sub
+
+
+' ===============================================================
+' 1b6. Lückenprüfung vor dem Import
+' ===============================================================
+' Wer den Auszug für Februar überspringt und gleich den März
+' einliest, bekommt eine Übersicht mit einem Loch: Der Februar
+' sieht aus, als hätte niemand gezahlt. Deshalb wird vor dem
+' Eintragen geprüft, ob zwischen dem ersten und dem letzten Monat
+' mit Buchungen ein Monat ganz ohne Buchungen läge.
+'
+' Betrachtet werden die bereits vorhandenen Buchungen im Bankkonto
+' zusammen mit den Monaten aus der gerade eingelesenen CSV-Datei.
+' Nur Monate des Abrechnungsjahres zählen.
+'
+' Rückgabe: True = weitermachen, False = der Nutzer bricht ab.
+' ===============================================================
+Private Function PruefeMonatsluecke(ByVal wsBK As Worksheet, _
+                                    ByVal wsTemp As Worksheet, _
+                                    ByVal lastRowTemp As Long) As Boolean
+
+    Dim monatHatDaten(1 To 12) As Boolean
+    Dim jahr As Long
+    Dim r As Long
+    Dim m As Long
+    Dim ersterMonat As Long
+    Dim letzterMonat As Long
+    Dim fehlende As String
+    Dim anzahlFehlend As Long
+    Dim lastRowBK As Long
+    Dim antwort As VbMsgBoxResult
+
+    ' Im Zweifel nie den Import blockieren.
+    PruefeMonatsluecke = True
+
+    On Error GoTo Fertig
+
+    jahr = HoleAbrechnungsjahr()
+    If jahr <= 0 Then Exit Function
+
+    ' Bereits vorhandene Buchungen
+    lastRowBK = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    For r = BK_START_ROW To lastRowBK
+        If IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then
+            If Year(CDate(wsBK.Cells(r, BK_COL_DATUM).value)) = jahr Then
+                monatHatDaten(Month(CDate(wsBK.Cells(r, BK_COL_DATUM).value))) = True
+            End If
+        End If
+    Next r
+
+    ' Monate aus der eingelesenen Datei
+    For r = 2 To lastRowTemp
+        If IsDate(wsTemp.Cells(r, CSV_COL_BUCHUNGSDATUM).value) Then
+            If Year(CDate(wsTemp.Cells(r, CSV_COL_BUCHUNGSDATUM).value)) = jahr Then
+                monatHatDaten(Month(CDate(wsTemp.Cells(r, CSV_COL_BUCHUNGSDATUM).value))) = True
+            End If
+        End If
+    Next r
+
+    ersterMonat = 0
+    letzterMonat = 0
+    For m = 1 To 12
+        If monatHatDaten(m) Then
+            If ersterMonat = 0 Then ersterMonat = m
+            letzterMonat = m
+        End If
+    Next m
+
+    ' Weniger als zwei belegte Monate können keine Lücke haben.
+    If ersterMonat = 0 Or letzterMonat <= ersterMonat Then Exit Function
+
+    For m = ersterMonat To letzterMonat
+        If Not monatHatDaten(m) Then
+            anzahlFehlend = anzahlFehlend + 1
+            If fehlende <> "" Then fehlende = fehlende & ", "
+            fehlende = fehlende & MonthName(m)
+        End If
+    Next m
+
+    If anzahlFehlend = 0 Then Exit Function
+
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
+
+    antwort = MsgBox( _
+        "Zwischen den Kontoausz" & ChrW(252) & "gen fehlt ein Monat." & vbCrLf & vbCrLf & _
+        "Ohne Buchungen f" & ChrW(252) & "r " & fehlende & " sieht es in der " & _
+        "Zahlungs" & ChrW(252) & "bersicht so aus, als h" & ChrW(228) & "tte in " & _
+        "diesem Zeitraum niemand gezahlt." & vbCrLf & vbCrLf & _
+        "Wenn der Auszug daf" & ChrW(252) & "r noch fehlt, holen Sie ihn am besten " & _
+        "zuerst nach. Sie k" & ChrW(246) & "nnen ihn aber auch sp" & ChrW(228) & _
+        "ter nachtragen: Die Kategoriefindung l" & ChrW(228) & "uft dann wie " & _
+        "gewohnt, und Ihre von Hand gesetzten Angaben in anderen Monaten " & _
+        "bleiben erhalten." & vbCrLf & vbCrLf & _
+        "  Ja = jetzt trotzdem importieren" & vbCrLf & _
+        "  Nein = Import abbrechen und den fehlenden Auszug zuerst holen", _
+        vbQuestion + vbYesNo + vbDefaultButton1, "Fehlender Monat")
+
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+
+    PruefeMonatsluecke = (antwort = vbYes)
+
+Fertig:
+End Function
 
 
 ' ===============================================================
