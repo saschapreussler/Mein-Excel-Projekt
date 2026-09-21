@@ -7,6 +7,7 @@ alwaysApply: true
 
 Referenz-Arbeitsmappe: `excel/Programm Kassenbuch 2018_v2.7.8.xlsm`
 Live-Code: `vba/Modules` (56 `.bas`), `vba/Classes` (24 `.cls`), `vba/UserForms` (4 `.frm` + 4 `.frx`)
+Bedienungsanleitung: `doku/Bedienungsanleitung.md` (Quelle) und `doku/Bedienungsanleitung.docx` (Word-Fassung)
 
 ## Grundsatz
 
@@ -53,9 +54,19 @@ Zweck dieser Regeln ist nicht nur die Vermeidung von Dateibeschädigungen, sonde
 - Nach jedem Repo → Excel-Sync muss der Nutzer `Debuggen → Kompilieren` ausführen.
 - Nur eine Änderung pro Sync-Zyklus, damit Kompilierfehler zuordenbar bleiben.
 
+## Bedienungsanleitung
+
+- Quelle ist ausschließlich `doku/Bedienungsanleitung.md`. Die `.docx` ist ein Erzeugnis und wird nie von Hand bearbeitet.
+- Ändert sich etwas, das der Nutzer sieht oder bedient — Blattaufbau, Spaltenbedeutung, Ampellogik, Dialoge, Schaltflächen, Kategorie- oder Periodenlogik, Jahreswechsel —, dann im selben Arbeitsgang das betroffene Kapitel der Anleitung nachziehen.
+- Rein interne Umbauten ohne sichtbare Wirkung erfordern keine Änderung an der Anleitung.
+- Bildschirmfotos erzeugt `tools/make_screenshots.ps1` nach `doku/screenshots`. Die Word-Fassung erzeugt `tools/build_bedienungsanleitung.ps1`. Beide nur auf ausdrücklichen Auftrag ausführen; `make_screenshots.ps1` braucht den Vordergrund und stört jede parallele Arbeit am Rechner.
+- Keine Screenshots von Hand in `doku/screenshots` ablegen, sonst überschreibt der nächste Lauf sie.
+- Die unterstützte Auszeichnung ist der im Generator dokumentierte Markdown-Ausschnitt. Keine weitere Syntax einführen, ohne den Generator anzupassen.
+
 ## Skripte in tools/
 
-- Kanonisch, aber nur auf ausdrücklichen Auftrag ausführen: `prepare_repo_after_excel_edit.ps1`, `repair_qm_to_umlauts.ps1`, `convert_repo_to_utf8bom.ps1`, `apply_repo_to_excel.ps1`.
+- Kanonisch, aber nur auf ausdrücklichen Auftrag ausführen: `prepare_repo_after_excel_edit.ps1`, `repair_qm_to_umlauts.ps1`, `convert_repo_to_utf8bom.ps1`, `apply_repo_to_excel.ps1`, `make_screenshots.ps1`, `build_bedienungsanleitung.ps1`.
+- Eigene `.ps1`-Skripte in `tools/` immer als UTF-8 **mit** BOM speichern. Ohne BOM liest Windows PowerShell 5.1 sie als ANSI und zerstört jeden Umlaut, auch in Blattnamen wie `Zahlungsübersicht`.
 - Verboten: `fix_umlauts*.ps1`, `fix_mixed_case_umlauts*.ps1`, `fix_fffd_and_bom.ps1`, `repair_umlauts_smart.ps1` — veraltete, heute schädliche Encoding-Policy.
 - `roundtrip_smoketest.ps1` nur auf ausdrückliche Anweisung; es überschreibt Repo-Dateien.
 
