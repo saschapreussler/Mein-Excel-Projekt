@@ -137,8 +137,15 @@ End Sub
 ' Name aus Spalte T (Kontoname), Fallback auf Spalte U (Zuordnung)
 ' v4.7: Role wird live aus Mitgliederliste Spalte O abgeglichen,
 '       damit Ehren-/Funktions-änderungen sofort wirken
+'
+' inklusiveEhemalige: Normalerweise bleiben ehemalige Mitglieder außen
+' vor. Die Zahlungsübersicht braucht sie jedoch weiterhin, solange nach
+' Austritt oder Todesfall noch eine Endabrechnung offen ist oder ein
+' Guthaben auszuzahlen bleibt. Jeder Eintrag trägt dafür das Merkmal
+' "Ehemalig", damit die Übersicht diese Zeilen gesondert behandeln kann.
 ' ===============================================================
-Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
+Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet, _
+                                     Optional ByVal inklusiveEhemalige As Boolean = False) As Collection
     
     Dim col As Collection
     Set col = New Collection
@@ -223,7 +230,10 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
         End If
         
         If InStr(roleWert, "MITGLIED") = 0 Then GoTo NextDatenRow
-        If InStr(roleWert, "EHEMALIGES") > 0 Then GoTo NextDatenRow
+
+        Dim istEhemalig As Boolean
+        istEhemalig = (InStr(roleWert, "EHEMALIGES") > 0)
+        If istEhemalig And Not inklusiveEhemalige Then GoTo NextDatenRow
         
         ' Parzelle(n) lesen (kann "2" oder "2, 5" sein bei SHARE-Keys)
         parzelleWert = Trim(CStr(wsDaten.Cells(r, EK_COL_PARZELLE).value))
@@ -291,6 +301,7 @@ Public Function HoleAktiveMitglieder(ByVal wsDaten As Worksheet) As Collection
                         End If
                         dict.Add "Eintritt", eintritt
                         dict.Add "Austritt", austritt
+                        dict.Add "Ehemalig", istEhemalig
                         
                         col.Add dict
                         verarbeiteteNamen(nameKey) = True
@@ -339,6 +350,7 @@ NextDatenRow:
             dict.Add "Kontoname", ""
             dict.Add "Eintritt", wsML.Cells(rML, M_COL_PACHTANFANG).value
             dict.Add "Austritt", wsML.Cells(rML, M_COL_PACHTENDE).value
+            dict.Add "Ehemalig", (InStr(UCase$(CStr(dict("Role"))), "EHEMALIGES") > 0)
             col.Add dict
             verarbeiteteNamen(CStr(CLng(parzelleOhneEK)) & "|" & _
                 mod_EntityKey_Normalize.NormalisiereStringFuerVergleich(nameOhneEK)) = True

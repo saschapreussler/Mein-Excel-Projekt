@@ -96,6 +96,15 @@ Private Sub Workbook_Open()
     End If
     On Error GoTo 0
 
+    ' Schaltflächen für die Sonderzuordnung einzelner Buchungen.
+    ' Sie werden bei jedem Öffnen neu aufgebaut, damit die Funktion
+    ' ohne Entwicklerwerkzeuge und ohne Makrofenster erreichbar ist.
+    On Error Resume Next
+    If Not wsBK Is Nothing Then
+        Call mod_Sonderzuordnung.ErstelleSonderzuordnungButtons(wsBK)
+    End If
+    On Error GoTo 0
+
     ' v7.3 (alt): Aktiviere_BankkontoFilter wurde hier aufgerufen,
     '             aber StelleAutoFilterBereit weiter unten hat ihn
     '             wieder Überschrieben. -> Aufruf nach unten verschoben.

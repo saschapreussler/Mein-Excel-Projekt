@@ -353,8 +353,12 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     ' v4.0: Vorjahr-Speicher automatisch löschen (ab August)
     Call mod_Uebersicht_Daten.PruefeVorjahrSpeicherAblauf
     
-    ' Aktive Mitglieder aus Daten-Blatt EntityKey-Tabelle laden
-    Set mitglieder = mod_Uebersicht_Daten.HoleAktiveMitglieder(wsDaten)
+    ' Aktive Mitglieder aus Daten-Blatt EntityKey-Tabelle laden.
+    ' Ehemalige Mitglieder kommen bewusst mit, weil nach Austritt oder
+    ' Todesfall noch eine Endabrechnung offen sein oder ein Guthaben
+    ' zur Auszahlung anstehen kann. Ausgeglichene Zeilen entfernt
+    ' EntferneAusgeglicheneEhemalige am Ende wieder.
+    Set mitglieder = mod_Uebersicht_Daten.HoleAktiveMitglieder(wsDaten, True)
     
     ' Debug-Diagnose: Mitglieder und Kategorien protokollieren
     Debug.Print "[" & ChrW(220) & "bersicht] Kategorien: " & anzahlKat & _
@@ -453,6 +457,13 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
     Set geschriebeneGemeinschaftskonten = CreateObject("Scripting.Dictionary")
     geschriebeneGemeinschaftskonten.CompareMode = vbTextCompare
 
+    ' Merkzettel der ausgeschiedenen Mitglieder. Ihre Zeilen werden am
+    ' Ende entfernt, sobald nichts mehr offen ist und kein Guthaben mehr
+    ' aussteht.
+    Dim ehemaligeSchluessel As Object
+    Set ehemaligeSchluessel = CreateObject("Scripting.Dictionary")
+    ehemaligeSchluessel.CompareMode = vbTextCompare
+
     Dim gemeinschaftsVertreter As Object
     Set gemeinschaftsVertreter = ErmittleGemeinschaftsVertreter(mitglieder)
     
@@ -492,13 +503,16 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
         
         ' v4.7: Pachtende prüfen - Monate nach Pachtende überspringen
         Dim austrittMonat As Long
+        Dim austrittJahr As Long
         austrittMonat = 13 ' Standardwert: kein Austritt (alle Monate aktiv)
+        austrittJahr = 0
         If IsDate(mitglied("Austritt")) Then
             Dim austrittDatum As Date
             austrittDatum = CDate(mitglied("Austritt"))
             If austrittDatum > 0 Then
+                austrittJahr = Year(austrittDatum)
                 If Year(austrittDatum) < jahr Then
-                    ' Pacht endete vor dem Abrechnungsjahr -> gesamtes Jahr überspringen
+                    ' Pacht endete vor dem Abrechnungsjahr -> keine laufenden Beiträge mehr
                     austrittMonat = 0
                 ElseIf Year(austrittDatum) = jahr Then
                     ' Pacht endet im Abrechnungsjahr -> nur bis zum Austrittsmonat
@@ -506,16 +520,61 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
             End If
         End If
-        
-        ' Wenn Pachtende vor dem Abrechnungsjahr -> dieses Mitglied komplett überspringen
-        If austrittMonat = 0 Then GoTo NextMitglied
-        
+
+        ' ===========================================================
+        ' Austritt und Erbfall
+        ' ===========================================================
+        ' Ein ausgeschiedenes Mitglied verschwindet nicht sofort aus der
+        ' Übersicht. Bis zum Austrittsmonat gilt die gewohnte
+        ' Beitragspflicht. Danach bleiben nur noch die Schlusspositionen
+        ' stehen, also Endabrechnung und Betriebskostenabrechnung. Genau
+        ' die muss im Todesfall ein Angehöriger begleichen, und genau auf
+        ' diese Zeilen zahlt ein Guthaben zurück.
+        '
+        ' Endet die Sichtbarkeit nicht von selbst, würden solche Zeilen
+        ' ewig weiterlaufen. Deshalb die Begrenzung auf das Austrittsjahr
+        ' und das Folgejahr. Was dann noch offen ist, ist ohnehin ein Fall
+        ' für die Mitgliederhistorie und keine laufende Forderung mehr.
+        Dim istEhemalig As Boolean
+        istEhemalig = False
+        If mitglied.exists("Ehemalig") Then
+            If Not IsEmpty(mitglied("Ehemalig")) Then istEhemalig = CBool(mitglied("Ehemalig"))
+        End If
+
+        Dim istAusgeschieden As Boolean
+        istAusgeschieden = istEhemalig Or (austrittMonat < 13)
+
+        If istAusgeschieden And austrittJahr > 0 Then
+            If jahr > austrittJahr + 1 Then GoTo NextMitglied
+        End If
+
+        ' Ein ehemaliges Mitglied ohne gepflegtes Pachtende hat keinen
+        ' belastbaren Stichtag. Ohne Stichtag lässt sich nicht sagen, bis
+        ' wann Beiträge fällig waren, deshalb bleiben nur die
+        ' Schlusspositionen übrig.
+        If istEhemalig And austrittJahr = 0 Then austrittMonat = 0
+
+        ' Wer weder ausgeschieden ist noch ein Pachtende trägt, wird wie
+        ' bisher über alle Monate geführt.
+        If austrittMonat = 0 And Not istAusgeschieden Then GoTo NextMitglied
+
+        ' Nur wer bereits vor dem Abrechnungsjahr ausgeschieden ist, kommt
+        ' auf den Merkzettel für das automatische Ausblenden. Wer im
+        ' laufenden Jahr austritt, behält seine Jahreszeilen, weil die
+        ' Zahlungen bis zum Austritt zur Jahresabrechnung gehören.
+        If istAusgeschieden And (austrittJahr = 0 Or austrittJahr < jahr) Then
+            ehemaligeSchluessel(CStr(parzelleWert) & "|" & _
+                                UCase$(Trim$(mitgliedName))) = True
+        End If
+
         For monat = 1 To 12
             ' v5.2: Monate vor Eintritt überspringen (nur Mitgliedsbeitrag)
             ' Pacht muss unabhängig vom Mitglied immer bezahlt werden
             
             ' v4.7: Monate nach Pachtende überspringen
-            If monat > austrittMonat Then GoTo NextMonat
+            Dim nachAustritt As Boolean
+            nachAustritt = (monat > austrittMonat)
+            If nachAustritt And Not istAusgeschieden Then GoTo NextMonat
             
             Dim k As Long
             For k = 0 To anzahlKat - 1
@@ -526,6 +585,12 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 End If
                 
                 kategorie = kategorien(k).Name
+
+                ' Nach dem Austritt entstehen keine laufenden Beiträge mehr.
+                ' Offen bleiben ausschließlich die Schlusspositionen.
+                If nachAustritt Then
+                    If Not IstSchlussposition(kategorie) Then GoTo NextKat
+                End If
 
                 If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                     Dim gemeinschaftsParzellenKey As String
@@ -1017,6 +1082,11 @@ NextMitglied:
     PruefeUndVerrechneGuthaben wsUeb, rowIdx - 1
     PruefeGuthabenGegenAuszahlung wsUeb, rowIdx - 1, stummModus
     RepariereStatusDropdown
+
+    ' Erst jetzt stehen Ist-Betrag, Guthaben und Status endgültig fest.
+    ' Deshalb wird hier entschieden, welche ausgeschiedenen Mitglieder
+    ' vollständig ausgeglichen sind und aus der Übersicht verschwinden.
+    Call EntferneAusgeglicheneEhemalige(wsUeb, rowIdx - 1, ehemaligeSchluessel)
     
     ' Die Vorjahr-Hinweisprüfung wird gezielt beim Blattwechsel auf
     ' die Zahlungsübersicht gestartet (nicht direkt während Generierung).
@@ -1511,7 +1581,9 @@ NaechsteUebZeile:
     Next r
 
     ' --- 2. IBAN je Mitglied aus der Zuordnungstabelle ---
-    Set mitglieder = mod_Uebersicht_Daten.HoleAktiveMitglieder(wsDaten)
+    ' Auch hier die ehemaligen Mitglieder einschließen, sonst bliebe die
+    ' Auszahlung eines Guthabens im Erbfall ohne Gegenprüfung.
+    Set mitglieder = mod_Uebersicht_Daten.HoleAktiveMitglieder(wsDaten, True)
     For Each mitglied In mitglieder
         schluessel = Trim$(CStr(mitglied("Parzelle"))) & "|" & _
                      UCase$(Trim$(CStr(mitglied("Name"))))
@@ -1632,6 +1704,129 @@ Private Function MitgliedSchluesselGuthaben(ByVal wsUeb As Worksheet, _
     End If
 
 End Function
+
+
+' =====================================================
+' Kategorien, die einen Austritt überdauern.
+'
+' Nach dem Ende der Pacht entstehen keine laufenden Beiträge mehr.
+' Offen bleiben nur die Positionen, die den Vorgang abschließen:
+' die Endabrechnung, die Betriebskostenabrechnung und die Auszahlung
+' eines verbliebenen Guthabens. Im Todesfall sind genau das die
+' Beträge, die ein Angehöriger noch begleicht oder erhält.
+' =====================================================
+Private Function IstSchlussposition(ByVal kategorie As String) As Boolean
+
+    Dim k As String
+
+    k = LCase$(Trim$(kategorie))
+
+    IstSchlussposition = (InStr(k, "endabrechnung") > 0) Or _
+                         (InStr(k, "betriebskosten") > 0) Or _
+                         (InStr(k, "schlussrechnung") > 0) Or _
+                         (InStr(k, "guthaben") > 0)
+
+End Function
+
+
+' =====================================================
+' Blendet ausgeschiedene Mitglieder aus, sobald nichts mehr offen ist.
+'
+' Ein ausgetretenes oder verstorbenes Mitglied bleibt so lange in der
+' Zahlungsübersicht stehen, wie es entweder noch einen offenen Betrag
+' schuldet oder noch ein Guthaben zu bekommen hat. Maßgeblich ist das
+' Mitglied als Ganzes, nicht die einzelne Zeile: Ist auch nur eine
+' Position offen, bleibt der komplette Block sichtbar, damit der
+' Zusammenhang erhalten bleibt. Erst wenn alles ausgeglichen ist,
+' verschwindet das Mitglied vollständig aus der Übersicht.
+' =====================================================
+Private Sub EntferneAusgeglicheneEhemalige(ByVal wsUeb As Worksheet, _
+                                           ByVal LetzteZeile As Long, _
+                                           ByVal ehemaligeSchluessel As Object)
+
+    Dim offeneMitglieder As Object
+    Dim schluessel As String
+    Dim r As Long
+    Dim soll As Double
+    Dim ist As Double
+    Dim guthaben As Double
+    Dim warGeschuetzt As Boolean
+    Dim entfernt As Long
+
+    If ehemaligeSchluessel Is Nothing Then Exit Sub
+    If ehemaligeSchluessel.count = 0 Then Exit Sub
+    If LetzteZeile < UEBERSICHT_START_ROW Then Exit Sub
+
+    On Error GoTo Aufraeumen
+
+    Set offeneMitglieder = CreateObject("Scripting.Dictionary")
+    offeneMitglieder.CompareMode = vbTextCompare
+
+    ' Erster Durchgang: Wer hat überhaupt noch etwas offen?
+    For r = UEBERSICHT_START_ROW To LetzteZeile
+        schluessel = MitgliedSchluesselGuthaben(wsUeb, r)
+        If schluessel <> "" Then
+            If ehemaligeSchluessel.exists(schluessel) Then
+
+                soll = 0
+                ist = 0
+                guthaben = 0
+                If IsNumeric(wsUeb.Cells(r, UEB_COL_SOLL).value) Then
+                    soll = CDbl(wsUeb.Cells(r, UEB_COL_SOLL).value)
+                End If
+                If IsNumeric(wsUeb.Cells(r, UEB_COL_IST).value) Then
+                    ist = CDbl(wsUeb.Cells(r, UEB_COL_IST).value)
+                End If
+                If IsNumeric(wsUeb.Cells(r, UEB_COL_GUTHABEN).value) Then
+                    guthaben = CDbl(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
+                End If
+
+                If soll - ist > 0.01 Or guthaben > 0.01 Then
+                    offeneMitglieder(schluessel) = True
+                End If
+
+            End If
+        End If
+    Next r
+
+    warGeschuetzt = wsUeb.ProtectContents
+    If warGeschuetzt Then wsUeb.Unprotect PASSWORD:=PASSWORD
+
+    ' Zweiter Durchgang: von unten nach oben löschen, damit die
+    ' Zeilennummern der noch nicht geprüften Zeilen stabil bleiben.
+    For r = LetzteZeile To UEBERSICHT_START_ROW Step -1
+        schluessel = MitgliedSchluesselGuthaben(wsUeb, r)
+        If schluessel <> "" Then
+            If ehemaligeSchluessel.exists(schluessel) Then
+                If Not offeneMitglieder.exists(schluessel) Then
+                    wsUeb.Rows(r).Delete
+                    entfernt = entfernt + 1
+                End If
+            End If
+        End If
+    Next r
+
+    If entfernt > 0 Then
+        ' Der AutoFilter zeigt sonst weiterhin auf den alten Bereich.
+        On Error Resume Next
+        If wsUeb.AutoFilterMode Then wsUeb.AutoFilterMode = False
+        wsUeb.Range(wsUeb.Cells(UEBERSICHT_HEADER_ROW, UEB_COL_PARZELLE), _
+                    wsUeb.Cells(LetzteZeile - entfernt, UEB_COL_GUTHABEN)).AutoFilter
+        On Error GoTo Aufraeumen
+
+        Debug.Print "[" & ChrW(220) & "bersicht] Ausgeschiedene Mitglieder " & _
+                    "ausgeblendet: " & entfernt & " Zeilen"
+    End If
+
+Aufraeumen:
+    On Error Resume Next
+    If warGeschuetzt Then
+        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, _
+                      AllowFiltering:=True, AllowSorting:=True
+    End If
+    On Error GoTo 0
+
+End Sub
 
 
 ' =====================================================

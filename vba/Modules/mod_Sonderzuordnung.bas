@@ -523,3 +523,91 @@ Private Function BeschreibeSchluessel(ByVal schluessel As String) As String
                            Left$(teile(0), 4) & ", " & teile(1) & " " & ChrW(8364)
 
 End Function
+
+
+' ===============================================================
+' Legt die beiden Bedienschaltflächen auf dem Blatt Bankkonto an.
+'
+' Die Sonderzuordnung soll ohne Umweg über Entwicklerwerkzeuge oder
+' das Makrofenster erreichbar sein. Die Schaltflächen sitzen deshalb
+' rechts unterhalb des vorhandenen Bedienfelds und werden bei jedem
+' Öffnen der Arbeitsmappe neu aufgebaut, damit sie nicht verloren
+' gehen können. Das Blatt wird dafür kurz entsperrt und danach
+' wieder mit denselben Rechten geschützt wie sonst auch.
+' ===============================================================
+Public Sub ErstelleSonderzuordnungButtons(Optional ByVal wsBK As Worksheet = Nothing)
+
+    Const REIHE_OBEN As Single = 476
+    Const REIHE_HOEHE As Single = 30
+
+    Dim warGeschuetzt As Boolean
+
+    On Error GoTo Aufraeumen
+
+    If wsBK Is Nothing Then
+        Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    End If
+    If wsBK Is Nothing Then Exit Sub
+
+    warGeschuetzt = wsBK.ProtectContents
+    If warGeschuetzt Then wsBK.Unprotect PASSWORD:=PASSWORD
+
+    Call ZeichneBedienschaltflaeche(wsBK, "btn_ZahlungZuordnen", _
+         ChrW(8644) & "   Zahlung zuordnen", _
+         832, REIHE_OBEN, 166, REIHE_HOEHE, RGB(33, 156, 170), _
+         "'mod_Sonderzuordnung.OrdneBuchungEinemMitgliedZu'")
+
+    Call ZeichneBedienschaltflaeche(wsBK, "btn_ZuordnungenZeigen", _
+         "Zuordnungen", _
+         1004, REIHE_OBEN, 100, REIHE_HOEHE, RGB(82, 88, 94), _
+         "'mod_Sonderzuordnung.ZeigeSonderzuordnungen'")
+
+Aufraeumen:
+    On Error Resume Next
+    If warGeschuetzt And Not wsBK Is Nothing Then
+        wsBK.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    End If
+    On Error GoTo 0
+
+End Sub
+
+
+' ===============================================================
+' Zeichnet eine einzelne Schaltfläche im Stil der übrigen Kacheln.
+'
+' Eine vorhandene Schaltfläche gleichen Namens wird vorher entfernt,
+' damit mehrfaches Aufrufen keine Stapel übereinanderliegender
+' Formen erzeugt.
+' ===============================================================
+Private Sub ZeichneBedienschaltflaeche(ByVal ws As Worksheet, _
+                                       ByVal formName As String, _
+                                       ByVal beschriftung As String, _
+                                       ByVal x As Single, _
+                                       ByVal y As Single, _
+                                       ByVal breite As Single, _
+                                       ByVal hoehe As Single, _
+                                       ByVal farbe As Long, _
+                                       ByVal makro As String)
+
+    Dim shp As Shape
+
+    On Error Resume Next
+    ws.Shapes(formName).Delete
+    On Error GoTo 0
+
+    Set shp = ws.Shapes.AddShape(msoShapeRoundedRectangle, x, y, breite, hoehe)
+    With shp
+        .Name = formName
+        .TextFrame2.TextRange.text = beschriftung
+        .TextFrame2.TextRange.Font.Size = 9
+        .TextFrame2.TextRange.Font.Bold = msoTrue
+        .TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
+        .TextFrame.HorizontalAlignment = xlHAlignCenter
+        .TextFrame2.VerticalAnchor = msoAnchorMiddle
+        .Fill.ForeColor.RGB = farbe
+        .Line.Visible = msoFalse
+        .OnAction = makro
+        .Placement = xlFreeFloating
+    End With
+
+End Sub
