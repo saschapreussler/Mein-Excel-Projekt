@@ -332,6 +332,15 @@ NaechsteZahlerZeile:
 
         kategorie = Trim$(CStr(ws.Cells(r, BK_COL_KATEGORIE).value))
 
+        ' Abschlagszahlungen mit verabredeten Terminen sind eindeutig.
+        ' Steht in Spalte E der Zahlungstermine etwa "03, 06, 09" und geht
+        ' die Zahlung im März ein, dann gilt sie für den März. Danach zu
+        ' fragen wäre überflüssig.
+        If mod_KategorieEngine_Zeitraum.IstBuchungImSollMonat(kategorie, buchDatum) Then
+            Call MerkeZahlerFrageGeklaert(ws, r)
+            GoTo NaechsterZahlerFall
+        End If
+
         ' Ohne monatliche Fälligkeit gibt es keinen Folgemonat.
         If InStr(1, HoleFaelligkeitFuerKategorie(wsDaten, kategorie), _
                  "monatlich", vbTextCompare) = 0 Then GoTo NaechsterZahlerFall

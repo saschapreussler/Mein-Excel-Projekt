@@ -355,6 +355,39 @@ Public Function IstMonatInListe(ByVal monat As Long, ByVal monatListe As String)
 End Function
 
 
+' =====================================================
+' Liegt die Buchung in einem fest vereinbarten Soll-Monat?
+' =====================================================
+' Trägt eine Kategorie in Spalte E der Zahlungstermine eine
+' Monatsliste wie "03, 06, 09", dann sind die Termine verabredet.
+' Geht die Zahlung in einem dieser Monate ein, ist die Periode
+' eindeutig — auch am 25. oder 28. des Monats. Es gibt dann keinen
+' Grund, den Nutzer nach dem gemeinten Monat zu fragen oder die
+' Periode gelb zu markieren.
+'
+' Ohne Monatsliste (Spalte E leer) gilt die Kategorie in jedem Monat.
+' Dann ist ein Monatsende weiterhin mehrdeutig und die Funktion
+' liefert False.
+Public Function IstBuchungImSollMonat(ByVal category As String, _
+                                      ByVal buchungsDatum As Date) As Boolean
+
+    Dim i As Long
+
+    If Not mCacheGeladen Then Call LadeEinstellungenCache
+    If mCacheAnzahl = 0 Then Exit Function
+
+    For i = 1 To mCacheAnzahl
+        If StrComp(mCacheKat(i), category, vbTextCompare) = 0 Then
+            If Trim$(mCacheSollMonate(i)) = "" Then Exit Function
+            IstBuchungImSollMonat = _
+                IstMonatInListe(Month(buchungsDatum), mCacheSollMonate(i))
+            Exit Function
+        End If
+    Next i
+
+End Function
+
+
 
 ' =====================================================
 ' Monat/Periode intelligent ermitteln (v10.0)
@@ -620,6 +653,15 @@ NaechsteLernZeile:
                     End If
                 End If
                 
+                ' Bei verabredeten Soll-Monaten ist der Buchungsmonat
+                ' gesetzt und die Periode damit nicht mehr strittig.
+                If SollMonate <> "" Then
+                    If IstMonatInListe(monatBuchung, SollMonate) Then
+                        ErmittleMonatPeriode = MonthName(monatBuchung)
+                        Exit Function
+                    End If
+                End If
+
                 ' v10.0: GELB-Rückgabe OHNE "Ultimo-5:" Präfix
                 ErmittleMonatPeriode = "GELB|" & MonthName(monatBuchung)
                 Exit Function
