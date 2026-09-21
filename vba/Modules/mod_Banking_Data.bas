@@ -390,6 +390,14 @@ ImportAbschluss:
     ' 6. Monat/Periode setzen (mit Diagnose und zweitem Lauf)
     SetzePeriodenMitDiagnose wsZiel
 
+    ' 6a. Über-pünktliche Daueraufträge einmalig klären. Ohne
+    '     Vorjahresdaten lässt sich bei einer Zahlung am Monatsende
+    '     nicht entscheiden, ob sie für den laufenden Monat oder
+    '     bereits für den Folgemonat gilt. Die Rückfrage erfolgt
+    '     einmal je Bankverbindung und Kategorie, danach lernt die
+    '     Periodenautomatik das Muster von selbst.
+    Call mod_ZP_Periode.PruefeUeberpuenktlicheZahler(wsZiel)
+
     ' 6b. Ampel/Konflikt-Hinweise für Kategorie + Monat/Periode vereinheitlichen
     Call SynchronisiereKategorieMonatAmpel(wsZiel)
 

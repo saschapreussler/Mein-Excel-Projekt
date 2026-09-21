@@ -230,6 +230,300 @@ Public Function IstPeriodeFuerMonat(ByVal periode As String, ByVal kategorie As 
 End Function
 
 
+' ===============================================================
+' ÜBER-PÜNKTLICHE DAUERAUFTRÄGE EINMALIG KLÄREN
+' ===============================================================
+' Fachlicher Hintergrund:
+' Eine Kategorie, die erst zum Monatsletzten fällig ist, hat ein
+' Erkennungsproblem. Eine Zahlung am Monatsende sieht wie die
+' pünktliche Zahlung des laufenden Monats aus. Zahlt ein Mitglied
+' per Dauerauftrag aber schon am Ende des Vormonats, dann wurde die
+' Januar-Zahlung bereits im Dezember des Vorjahres geleistet, und
+' jede weitere Zahlung gehört einen Monat später. Ohne Klärung zieht
+' sich diese Verschiebung durch das ganze Jahr: der Februar gilt als
+' offen, obwohl er Ende Januar bezahlt wurde.
+'
+' Liegen Vorjahresdaten aus Oktober bis Dezember vor, belegen diese
+' den Sachverhalt und es wird nichts gefragt. Nur beim ersten Lauf
+' eines neuen Programms fehlt dieser Beleg. Genau dann wird einmal
+' je Bankverbindung und Kategorie nachgefragt, nicht je Buchung.
+'
+' Eine bestätigte Antwort schreibt den Lernvermerk "Folgemonat
+' manuell bestätigt". Ab dann greift die vorhandene Automatik in
+' mod_KategorieEngine_Zeitraum von selbst und es wird nicht erneut
+' gefragt.
+' ===============================================================
+Public Sub PruefeUeberpuenktlicheZahler(ByVal ws As Worksheet)
+
+    Dim wsDaten As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim schluessel As String
+    Dim iban As String
+    Dim kategorie As String
+    Dim datumWert As Variant
+    Dim ersteZeile As Object
+    Dim erstesDatum As Object
+    Dim bereitsGeklaert As Object
+    Dim k As Variant
+    Dim eventsWaren As Boolean
+    Dim antwort As VbMsgBoxResult
+    Dim buchDatum As Date
+    Dim folgeMonatNr As Long
+    Dim letzterTag As Long
+    Dim betrag As Double
+    Dim anzahlBestaetigt As Long
+
+    On Error GoTo ZahlerFehler
+
+    If ws Is Nothing Then Exit Sub
+
+    ' Sind Vorjahresdaten vorhanden, ist der Fall belegt.
+    If mod_Uebersicht_Daten.HatVorjahrDaten() Then Exit Sub
+
+    lastRow = ws.Cells(ws.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then Exit Sub
+
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    Set ersteZeile = CreateObject("Scripting.Dictionary")
+    Set erstesDatum = CreateObject("Scripting.Dictionary")
+    Set bereitsGeklaert = CreateObject("Scripting.Dictionary")
+
+    ' --- 1. Früheste Buchung je Bankverbindung und Kategorie suchen ---
+    For r = BK_START_ROW To lastRow
+        datumWert = ws.Cells(r, BK_COL_DATUM).value
+        If Not IsDate(datumWert) Then GoTo NaechsteZahlerZeile
+
+        kategorie = Trim$(CStr(ws.Cells(r, BK_COL_KATEGORIE).value))
+        If kategorie = "" Then GoTo NaechsteZahlerZeile
+
+        iban = UCase$(Replace(Trim$(CStr(ws.Cells(r, BK_COL_IBAN).value)), " ", ""))
+        If iban = "" Then GoTo NaechsteZahlerZeile
+
+        schluessel = iban & "|" & UCase$(kategorie)
+
+        If IstZahlerFrageGeklaert(ws, r) Then
+            If Not bereitsGeklaert.exists(schluessel) Then bereitsGeklaert.Add schluessel, True
+        End If
+
+        If Not erstesDatum.exists(schluessel) Then
+            erstesDatum.Add schluessel, CDate(datumWert)
+            ersteZeile.Add schluessel, r
+        ElseIf CDate(datumWert) < CDate(erstesDatum(schluessel)) Then
+            erstesDatum(schluessel) = CDate(datumWert)
+            ersteZeile(schluessel) = r
+        End If
+NaechsteZahlerZeile:
+    Next r
+
+    ' --- 2. Je offenem Fall genau einmal fragen ---
+    eventsWaren = Application.EnableEvents
+    Application.EnableEvents = False
+
+    For Each k In erstesDatum.keys
+        schluessel = CStr(k)
+        If bereitsGeklaert.exists(schluessel) Then GoTo NaechsterZahlerFall
+
+        r = CLng(ersteZeile(schluessel))
+        buchDatum = CDate(erstesDatum(schluessel))
+
+        ' Nur Zahlungen kurz vor Monatsende sind überhaupt mehrdeutig.
+        If Day(buchDatum) < 20 Then GoTo NaechsterZahlerFall
+
+        kategorie = Trim$(CStr(ws.Cells(r, BK_COL_KATEGORIE).value))
+
+        ' Ohne monatliche Fälligkeit gibt es keinen Folgemonat.
+        If InStr(1, HoleFaelligkeitFuerKategorie(wsDaten, kategorie), _
+                 "monatlich", vbTextCompare) = 0 Then GoTo NaechsterZahlerFall
+
+        folgeMonatNr = Month(buchDatum) + 1
+        If folgeMonatNr > 12 Then folgeMonatNr = 1
+        letzterTag = Day(DateSerial(Year(buchDatum), Month(buchDatum) + 1, 0))
+
+        betrag = 0
+        If IsNumeric(ws.Cells(r, BK_COL_BETRAG).value) Then
+            betrag = Abs(CDbl(ws.Cells(r, BK_COL_BETRAG).value))
+        End If
+
+        antwort = MsgBox( _
+            "Zahlung am Monatsende - für welchen Monat gilt sie?" & vbCrLf & vbCrLf & _
+            "Kontoinhaber: " & CStr(ws.Cells(r, BK_COL_NAME).value) & vbCrLf & _
+            "Kategorie: " & kategorie & vbCrLf & _
+            "Betrag: " & Format(betrag, "#,##0.00") & " " & ChrW(8364) & vbCrLf & _
+            "Eingang: " & Format(buchDatum, "dd.mm.yyyy") & _
+            "  (Tag " & Day(buchDatum) & " von " & letzterTag & ")" & vbCrLf & vbCrLf & _
+            "Diese Kategorie ist erst zum Monatsletzten fällig. Die Zahlung" & vbCrLf & _
+            "kann deshalb für " & MonthName(Month(buchDatum)) & " gelten - oder das Mitglied zahlt" & vbCrLf & _
+            "per Dauerauftrag über-pünktlich bereits für " & MonthName(folgeMonatNr) & "." & vbCrLf & vbCrLf & _
+            "Es liegen noch keine Vorjahresdaten aus Oktober bis Dezember" & vbCrLf & _
+            "vor, die das belegen könnten. Daher diese einmalige Rückfrage." & vbCrLf & vbCrLf & _
+            "Zahlt dieses Mitglied über-pünktlich für den Folgemonat?" & vbCrLf & vbCrLf & _
+            "  Ja = alle Monatsend-Zahlungen einen Monat weiterschieben" & vbCrLf & _
+            "  Nein = Zahlung gilt für den laufenden Monat" & vbCrLf & _
+            "  Abbrechen = restliche Fälle überspringen", _
+            vbYesNoCancel + vbQuestion, _
+            "Über-pünktlicher Dauerauftrag?")
+
+        If antwort = vbCancel Then Exit For
+
+        If antwort = vbYes Then
+            Call VerschiebeMonatsendzahlungen(ws, schluessel, lastRow)
+            anzahlBestaetigt = anzahlBestaetigt + 1
+        Else
+            Call MerkeZahlerFrageGeklaert(ws, r)
+        End If
+
+NaechsterZahlerFall:
+    Next k
+
+    Application.EnableEvents = eventsWaren
+
+    If anzahlBestaetigt > 0 Then
+        Debug.Print "[Periodenautomatik] " & anzahlBestaetigt & _
+                    " über-pünktliche(r) Dauerauftrag/Daueraufträge bestätigt."
+    End If
+
+    Exit Sub
+
+ZahlerFehler:
+    Application.EnableEvents = eventsWaren
+    Debug.Print "Fehler in PruefeUeberpuenktlicheZahler: " & Err.Number & " - " & Err.Description
+
+End Sub
+
+
+' ===============================================================
+' Wurde für diese Zeile bereits entschieden?
+' Erkennbar an einem Lernvermerk, an einer manuellen Änderung oder
+' an der ausdrücklichen Verneinung aus dieser Rückfrage.
+' ===============================================================
+Private Function IstZahlerFrageGeklaert(ByVal ws As Worksheet, _
+                                        ByVal r As Long) As Boolean
+
+    Dim bem As String
+    bem = LCase$(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value))
+
+    IstZahlerFrageGeklaert = (InStr(bem, "folgemonat") > 0) Or _
+                             (InStr(bem, "manuell ge") > 0) Or _
+                             (InStr(bem, "monatsendzahlung gepr") > 0)
+
+End Function
+
+
+' ===============================================================
+' Verneinung festhalten, damit nicht erneut gefragt wird.
+' ===============================================================
+Private Sub MerkeZahlerFrageGeklaert(ByVal ws As Worksheet, ByVal r As Long)
+
+    Dim bem As String
+    Dim hinweis As String
+
+    hinweis = "Monatsendzahlung geprüft: gilt für den laufenden Monat"
+    bem = Trim$(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value))
+
+    If bem = "" Then
+        ws.Cells(r, BK_COL_BEMERKUNG).value = hinweis
+    Else
+        ws.Cells(r, BK_COL_BEMERKUNG).value = bem & vbLf & hinweis
+    End If
+
+End Sub
+
+
+' ===============================================================
+' Alle Monatsend-Zahlungen dieser Bankverbindung und Kategorie um
+' einen Monat weiterschieben.
+'
+' Von Hand geänderte Zeilen bleiben unangetastet: was der Nutzer
+' selbst gesetzt hat, darf die Automatik nicht überschreiben.
+' Der Lernvermerk sorgt dafür, dass künftige Buchungen ohne weitere
+' Rückfrage richtig zugeordnet werden.
+' ===============================================================
+Private Sub VerschiebeMonatsendzahlungen(ByVal ws As Worksheet, _
+                                         ByVal schluessel As String, _
+                                         ByVal lastRow As Long)
+
+    Dim r As Long
+    Dim iban As String
+    Dim kategorie As String
+    Dim datumWert As Variant
+    Dim buchDatum As Date
+    Dim folgeMonatNr As Long
+    Dim neuerMonat As String
+    Dim bem As String
+    Dim vermerk As String
+
+    For r = BK_START_ROW To lastRow
+        datumWert = ws.Cells(r, BK_COL_DATUM).value
+        If Not IsDate(datumWert) Then GoTo NaechsteVerschiebeZeile
+
+        kategorie = Trim$(CStr(ws.Cells(r, BK_COL_KATEGORIE).value))
+        iban = UCase$(Replace(Trim$(CStr(ws.Cells(r, BK_COL_IBAN).value)), " ", ""))
+        If iban & "|" & UCase$(kategorie) <> schluessel Then GoTo NaechsteVerschiebeZeile
+
+        buchDatum = CDate(datumWert)
+        If Day(buchDatum) < 20 Then GoTo NaechsteVerschiebeZeile
+
+        bem = LCase$(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value))
+        If InStr(bem, "manuell ge") > 0 Then GoTo NaechsteVerschiebeZeile
+
+        folgeMonatNr = Month(buchDatum) + 1
+        If folgeMonatNr > 12 Then folgeMonatNr = 1
+        neuerMonat = MonthName(folgeMonatNr)
+
+        ws.Cells(r, BK_COL_MONAT_PERIODE).value = neuerMonat
+        ws.Cells(r, BK_COL_MONAT_PERIODE).Interior.color = RGB(198, 239, 206)
+
+        ' Den alten Rückfragehinweis entfernen, er ist beantwortet.
+        Call EntferneGelbHinweisPeriode(ws, r)
+
+        vermerk = "Folgemonat manuell best" & ChrW(228) & "tigt: " & neuerMonat
+        bem = Trim$(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value))
+        If InStr(1, bem, vermerk, vbTextCompare) = 0 Then
+            If bem = "" Then
+                ws.Cells(r, BK_COL_BEMERKUNG).value = vermerk
+            Else
+                ws.Cells(r, BK_COL_BEMERKUNG).value = bem & vbLf & vermerk
+            End If
+        End If
+        ws.Cells(r, BK_COL_BEMERKUNG).Interior.ColorIndex = xlNone
+
+NaechsteVerschiebeZeile:
+    Next r
+
+End Sub
+
+
+' ===============================================================
+' Den gelben Hinweis "Bitte prüfen ob Zahlung für ... gilt"
+' entfernen, sobald die Frage beantwortet ist.
+' ===============================================================
+Private Sub EntferneGelbHinweisPeriode(ByVal ws As Worksheet, ByVal r As Long)
+
+    Dim zeilen() As String
+    Dim neu As String
+    Dim i As Long
+
+    zeilen = Split(CStr(ws.Cells(r, BK_COL_BEMERKUNG).value), vbLf)
+
+    For i = LBound(zeilen) To UBound(zeilen)
+        If InStr(1, zeilen(i), "Bitte pr", vbTextCompare) = 0 Or _
+           InStr(1, zeilen(i), "Folgemonat gilt", vbTextCompare) = 0 Then
+            If Trim$(zeilen(i)) <> "" Then
+                If neu = "" Then
+                    neu = zeilen(i)
+                Else
+                    neu = neu & vbLf & zeilen(i)
+                End If
+            End If
+        End If
+    Next i
+
+    ws.Cells(r, BK_COL_BEMERKUNG).value = neu
+
+End Sub
+
+
 
 
 
