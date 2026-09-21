@@ -208,9 +208,10 @@ Private Sub Workbook_SheetActivate(ByVal Sh As Object)
         Case WS_UEBERSICHT()
             On Error Resume Next
             ' Maßgeblich ist das Bankkonto. Hinkt die Übersicht dem
-            ' Stand dort hinterher, wird sie vor der Anzeige neu
-            ' aufgebaut, damit Spalte C zur Spalte I des Bankkontos passt.
-            Call mod_Uebersicht_Generator.AktualisiereUebersichtFallsVeraltet
+            ' Stand dort hinterher, wird sie neu aufgebaut, damit
+            ' Spalte C zur Spalte I des Bankkontos passt. Der Neuaufbau
+            ' wird nur vorgemerkt und läuft erst nach diesem Ereignis.
+            Call mod_Uebersicht_Generator.PlaneUebersichtAktualisierung
             Call mod_Uebersicht_Generator.RepariereStatusDropdown
             On Error GoTo 0
         Case "Dashboard Mitgliederzahlungen"

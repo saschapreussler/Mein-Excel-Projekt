@@ -123,6 +123,9 @@ Private Const STEMPEL_NAME As String = "BankkontoStand"
 ' Merker für den Hinweis auf fehlende Soll- und Ist-Beträge.
 Private m_HinweisUebersichtGezeigt As Boolean
 
+' Ist bereits ein Neuaufbau der Übersicht vorgemerkt?
+Private m_AktualisierungGeplant As Boolean
+
 
 ' ===============================================================
 ' Type für eine dynamische Kategorie aus Einstellungen
@@ -3273,12 +3276,50 @@ Fertig:
 End Function
 
 
+' Merkt einen Neuaufbau vor, statt ihn sofort zu starten.
+' ---------------------------------------------------------------
+' Aufgerufen wird das aus Workbook_SheetActivate. Ein vollständiger
+' Neuaufbau mitten in einem Blattwechsel-Ereignis ist heikel: Der
+' Generator wechselt selbst Blätter, hebt Blattschutz auf und stellt
+' Rückfragen. Das löst weitere Ereignisse aus, während das erste noch
+' läuft, und endet in Laufzeitfehlern.
+'
+' Application.OnTime führt die Arbeit deshalb erst aus, wenn das
+' Ereignis abgearbeitet und Excel wieder im Ruhezustand ist.
+' ---------------------------------------------------------------
+Public Sub PlaneUebersichtAktualisierung()
+
+    On Error Resume Next
+
+    If m_AktualisierungGeplant Then Exit Sub
+    If m_IsGenerating Then Exit Sub
+
+    ' Nur für einen Menschen am Bildschirm. In einer unsichtbaren
+    ' Excel-Instanz, etwa beim Abgleich mit dem Repository, würde der
+    ' Neuaufbau eigene Rückfragen auslösen und die Instanz blockieren.
+    If Not Application.Visible Then Exit Sub
+    If Not Application.Interactive Then Exit Sub
+
+    If Not UebersichtIstVeraltet() Then Exit Sub
+
+    m_AktualisierungGeplant = True
+    Application.OnTime Now + TimeSerial(0, 0, 1), _
+                       "'mod_Uebersicht_Generator.AktualisiereUebersichtFallsVeraltet'"
+
+End Sub
+
+
 ' Baut die Übersicht neu auf, falls sie dem Bankkonto hinterherhinkt.
 Public Sub AktualisiereUebersichtFallsVeraltet()
 
     On Error Resume Next
 
+    m_AktualisierungGeplant = False
+
     If m_IsGenerating Then Exit Sub
+    If Not Application.Visible Then Exit Sub
+    If Not Application.Interactive Then Exit Sub
+
     If Not UebersichtIstVeraltet() Then Exit Sub
 
     Call GeneriereUebersicht(stummModus:=True)

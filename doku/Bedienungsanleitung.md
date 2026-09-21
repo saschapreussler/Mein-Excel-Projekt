@@ -385,6 +385,12 @@ Gibt es offene Punkte, springt der Cursor anschließend auf die erste Stelle, di
 
 ### Einen Monat übersprungen
 
+Bevor die Daten eingetragen werden, prüft das Programm, ob zwischen dem ersten und dem letzten Monat mit Buchungen ein Monat ganz ohne Buchungen bliebe. Ist das der Fall, meldet es sich:
+
+> Zwischen den Kontoauszügen fehlt ein Monat.
+
+Der Grund für die Rückfrage: Ohne Buchungen für den fehlenden Monat sieht es in der Zahlungsübersicht so aus, als hätte in diesem Zeitraum niemand gezahlt. Sie haben die Wahl, jetzt trotzdem zu importieren oder abzubrechen und den fehlenden Auszug zuerst zu holen. Bei Abbruch wird nichts eingetragen.
+
 Wenn Sie einen Monat auslassen und später nachholen, funktioniert die Kategoriefindung für den nachgereichten Monat genauso wie für alle anderen. Manuelle Korrekturen, die Sie in anderen Monaten vorgenommen haben, bleiben dabei unangetastet: Das Programm überschreibt weder grün markierte Kategorien noch von Hand gesetzte Perioden.
 
 ## 7.3 Die Ampel in Spalte H
@@ -406,6 +412,20 @@ Spalte I sagt, für welchen Zeitraum eine Zahlung gilt. Das ist nicht dasselbe w
 Das Programm entscheidet anhand der Angaben aus der Tabelle **Zahlungstermine**: des Soll-Tags, der Vorlaufzeit und der Nachlaufzeit. Ist die Lage eindeutig, wird der Monat gesetzt. Ist sie es nicht, fragt das Programm nach.
 
 Sie können den Wert jederzeit selbst ändern. Auch hier gilt: Was Sie von Hand setzen, bleibt stehen.
+
+### Abschlagszahlungen zu festen Terminen
+
+Trägt eine Kategorie in Spalte E der Zahlungstermine eine Monatsliste wie `03, 06, 09`, dann sind die Termine verabredet. Geht die Zahlung in einem dieser Monate ein, ist die Periode eindeutig, und das Programm fragt nicht nach. Eine Abschlagszahlung, die am 25. März eingeht, gilt für den März, auch wenn die Kategorie erst zum Monatsletzten fällig ist.
+
+Nur Kategorien mit leerer Spalte E gelten in jedem Monat. Bei ihnen bleibt das Monatsende mehrdeutig, und es kann zu der Rückfrage im folgenden Abschnitt kommen.
+
+### Wenn Sie das Blatt mit offenen Angaben verlassen
+
+Sind noch Kategorien in Spalte H oder Monate in Spalte I offen und Sie wechseln auf ein anderes Blatt, meldet sich das Programm:
+
+> Bankkonto noch nicht vollständig
+
+Der Wechsel wird nicht verhindert. Der Hinweis nennt die Zeile mit der ersten offenen Stelle und erscheint erst wieder, wenn Sie am Bankkonto etwas geändert haben.
 
 ## 7.5 Über-pünktliche Daueraufträge
 
@@ -481,6 +501,8 @@ Die **Zahlungsübersicht** ist das Kontrollblatt. Sie vergleicht für jede Kombi
 
 Der Monat kommt immer aus Spalte I des Blattes **Bankkonto**. Das Bankkonto ist die maßgebliche Quelle. Wenn in der Zahlungsübersicht ein Monat nicht stimmt, ändern Sie ihn nicht hier, sondern auf dem Blatt **Bankkonto**.
 
+Damit das auch dann gilt, wenn Sie eine Periode ändern, während noch andere Zuordnungen offen sind, merkt sich das Programm bei jedem Aufbau den Stand des Bankkontos. Weicht er ab, sobald Sie die Zahlungsübersicht öffnen, wird sie zuerst neu aufgebaut. Das kann einen Moment dauern und geschieht ohne weitere Meldung.
+
 ### Spalte E Soll
 
 Hat eine Kategorie in der Tabelle **Zahlungstermine** einen festen Betrag, wird er hier eingesetzt und ist gesperrt. Bei Kategorien ohne festen Betrag bleibt die Zelle leer und hellgelb hinterlegt. Diese Zellen sind für Sie zum Ausfüllen gedacht.
@@ -489,7 +511,29 @@ Hat eine Kategorie in der Tabelle **Zahlungstermine** einen festen Betrag, wird 
 
 Normalerweise füllt das Programm diese Spalte aus den Buchungen des Blattes **Bankkonto**. Sie können den Wert überschreiben, wenn Sie einen Sonderfall abbilden müssen.
 
-## 8.2 Die Ampel in Spalte G
+### Wenn Sie das Blatt mit leeren Feldern verlassen
+
+Fehlen noch Beträge in Spalte E oder Spalte F und Sie wechseln auf ein anderes Blatt, meldet sich das Programm:
+
+> Zahlungsübersicht noch nicht vollständig
+
+Die Meldung nennt, wie viele Zeilen betroffen sind und wo die erste offene Stelle steht; danach springt der Cursor dorthin. Der Wechsel wird nicht verhindert, und der Hinweis erscheint erst wieder nach einer Änderung an der Übersicht.
+
+## 8.2 Die Sortierung
+
+Die Übersicht wird nach jedem Aufbau in dieser Reihenfolge sortiert: zuerst nach **Parzelle**, dann nach **Monat**, dann nach **Name**, zuletzt nach **Kategorie**.
+
+Der Monat wird dabei zeitlich sortiert, nicht alphabetisch. Sonst stünde April vor Januar.
+
+## 8.3 Ehrenmitglieder
+
+Ein Ehrenmitglied ist vom Mitgliedsbeitrag befreit. Es verschwindet deshalb aber nicht aus der Übersicht, sondern wird weiterhin geführt: mit Soll und Ist von 0,00, dem Status GRÜN und der Bemerkung
+
+> Ehrenmitglied vom Mitgliedsbeitrag befreit
+
+So sind alle Mitglieder vollständig aufgelistet, und Sie sehen auf einen Blick, dass hier kein Beitrag fehlt, sondern keiner geschuldet wird.
+
+## 8.4 Die Ampel in Spalte G
 
 | Farbe | Bedeutung |
 | --- | --- |
@@ -499,15 +543,19 @@ Normalerweise füllt das Programm diese Spalte aus den Buchungen des Blattes **B
 
 Ein grüner Status wird nur gesetzt, wenn er auch belegt ist: entweder durch einen Betrag aus dem Blatt **Bankkonto** oder durch eine ausdrücklich bestätigte Vorjahreszahlung. Eine frühere Eingabe ohne Beleg wird nicht mehr blind übernommen. In solchen Fällen erscheint in Spalte H der Hinweis "Frühere Angabe ohne Nachweis - Zahlung nicht belegt".
 
-## 8.3 Säumnisgebühren
+## 8.5 Säumnisgebühren
 
 Ist eine Zahlung verspätet und in der Tabelle **Zahlungstermine** eine Säumnisgebühr hinterlegt, wird das in der Bemerkung vermerkt. Mit der Schaltfläche "Säumnisgebühr quittieren" bestätigen Sie für die markierte Zeile, dass die Gebühr erhoben wurde.
 
-## 8.4 Guthaben
+## 8.6 Guthaben
 
 Zahlt ein Mitglied mehr als fällig, entsteht ein Guthaben. Es erscheint in Spalte I.
 
-Ein Guthaben gehört dem Mitglied, nicht der Kategorie. Es kann deshalb zwischen Kategorien verschoben oder aufgeteilt werden. Das Programm verrechnet ein Guthaben von sich aus mit späteren offenen Positionen desselben Mitglieds.
+Ein Guthaben gehört dem Mitglied, nicht der Kategorie. Es kann deshalb zwischen Kategorien verschoben oder aufgeteilt werden. Das gilt auch für die Betriebskostenabrechnung, die Pacht und die Endabrechnung.
+
+Bleibt eine Zahlung offen und ist Guthaben vorhanden, fragt das Programm, ob es verrechnet werden soll. Alle Vorschläge erscheinen dabei in **einem** Fenster, nicht nacheinander. Ihre Antwort wird gespeichert, auch ein Nein: Dieselbe Position wird kein zweites Mal vorgeschlagen.
+
+Deckt das Guthaben den offenen Betrag vollständig, entsteht **keine Säumnisgebühr**. Eine bereits vermerkte Gebühr wird in diesem Fall wieder entfernt. Nur wenn das Guthaben nicht ausreicht, bleibt die Gebühr bestehen.
 
 ### Abgleich mit der Auszahlung
 
@@ -515,13 +563,13 @@ Wird ein Guthaben ausgezahlt, muss die Auszahlung dem Guthaben entsprechen. Das 
 
 Weicht beides um mehr als einen Cent voneinander ab, erhalten Sie einen Hinweis und in Spalte H einen Vermerk. Prüfen Sie dann, ob die Auszahlung vollständig war und ob sie der richtigen Kategorie zugeordnet wurde.
 
-## 8.5 Eine gespeicherte Entscheidung zurücknehmen
+## 8.7 Eine gespeicherte Entscheidung zurücknehmen
 
 Einmal getroffene Entscheidungen, etwa die Bestätigung einer Vorjahreszahlung, werden dauerhaft gespeichert und bei jedem Neuaufbau der Übersicht wieder angewendet. Das ist gewollt, denn sonst müssten Sie dieselbe Frage immer wieder beantworten.
 
 Haben Sie sich vertan, lässt sich eine solche Entscheidung zurücknehmen. Markieren Sie die betroffenen Zeilen in der Zahlungsübersicht und rufen Sie die Funktion "Gespeicherte Entscheidung zurücknehmen" auf. Die gespeicherten Angaben werden gelöscht und die Übersicht neu berechnet.
 
-## 8.6 Austritt, Todesfall und Erbfall
+## 8.8 Austritt, Todesfall und Erbfall
 
 Ein Mitglied verschwindet nicht schlagartig aus der Zahlungsübersicht, sobald die Pacht endet. Das wäre unpraktisch, denn gerade dann sind oft noch Beträge offen.
 
@@ -564,6 +612,14 @@ Das Dashboard verdichtet die Zahlungsübersicht zu einer Matrix. Oben stehen Ken
 
 Das Dashboard enthält keine eigenen Eingabefelder. Es wird nach jedem Import und nach jeder Änderung an einer Kategorie oder Zuordnungsrolle neu aufgebaut. Alles, was Sie hier sehen, ändern Sie an der Quelle, also auf dem Blatt **Bankkonto** oder in der **Zahlungsübersicht**.
 
+Unter der Matrix folgen drei Tabellen:
+
+**Verzugsdetails** listen jede offene oder verspätete Position mit Mitglied, Parzelle, Monat, Kategorie und Betrag. Die letzte Spalte J trägt die Bemerkung. Lange Bemerkungen werden umbrochen, die Zeile wächst mit, und die farbige Markierung umfasst den gesamten Text.
+
+**Säumnisgebühren** zeigen, für welche Position eine Gebühr angefallen ist.
+
+**Guthaben** führt jedes bestehende Guthaben mit Parzelle, Mitglied, Monat, Kategorie, Soll, geleisteter Zahlung, ursprünglich entstandenem Guthaben und aktuellem Restguthaben. Die Tabelle gibt damit jederzeit den Stand aus Bankkonto und Zahlungsübersicht wieder: ob ein Guthaben aufgebraucht ist, ob ein Rest bleibt oder ob trotz verbrauchtem Guthaben noch Schulden offen sind. Unten steht die Summe aller Restguthaben.
+
 ---
 
 # 10 Die Vereinskasse
@@ -580,9 +636,21 @@ Die Kopfzeile steht in Zeile 26, die Buchungen beginnen in Zeile 27.
 | C | Beschreibung |
 | D | Name |
 | E | Betrag |
-| F | Interne Nummer |
+| F | Interne Nr. (KA) |
 
 Positive Beträge sind Einnahmen, negative Beträge sind Ausgaben. Der Kassenbestand wird oben im Blatt fortlaufend berechnet und beim Jahreswechsel als Anfangsbestand ins neue Jahr übernommen.
+
+## 10.1 Bargeld vom Konto in die Kasse
+
+Heben Sie Geld vom Vereinskonto ab, um die Barkasse aufzufüllen, dann ist das keine Ausgabe des Vereins. Das Geld wechselt nur den Ort. Deshalb bekommt eine solche Buchung **keine BK-Nummer**.
+
+Sobald die Buchung auf dem Blatt **Bankkonto** die Kategorie *Bargeldauszahlung* trägt, legt das Programm von selbst den passenden Eintrag in der Vereinskasse an und vergibt auf beiden Blättern **dieselbe KA-Nummer**. Diese eine Nummer ist der Querverweis: Wer die Abhebung auf dem Bankkonto sieht, findet unter derselben Nummer den Eingang in der Kasse.
+
+Die Beschreibung in der Vereinskasse lautet dann zum Beispiel:
+
+> Bargeldauszahlung an Vereinskasse vom 22.05.2024
+
+Die laufenden BK-Nummern der übrigen Ausgaben bleiben davon unberührt und zählen lückenlos weiter.
 
 ---
 
