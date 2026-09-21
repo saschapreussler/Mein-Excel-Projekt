@@ -1277,6 +1277,17 @@ Private Sub StelleVorjahrEntscheidungenWiederHer(ByVal wsUeb As Worksheet, _
         key = UebersichtEntscheidungsKey(wsUeb, r)
         If entscheidungen.exists(key) Then
             werte = entscheidungen(key)
+
+            ' Eine gespeicherte Entscheidung darf eine Zahlung nur dann wieder
+            ' auf GRÜN setzen, wenn sie auch belegt ist. Andernfalls würde eine
+            ' einmal getroffene Angabe bei jedem Neuaufbau erneut eine Zahlung
+            ' behaupten, die weder im Kontoauszug noch in den Vorjahresdaten
+            ' steht. Das frisch berechnete Ergebnis bleibt dann stehen.
+            If Not IstEntscheidungBelegt(wsUeb, r, werte) Then
+                Call VermerkeUnbelegteEntscheidung(wsUeb, r)
+                GoTo NaechsteEntscheidung
+            End If
+
             If InStr(1, CStr(werte(3)), "Mitbezahlt durch", vbTextCompare) > 0 Then
                 werte(3) = BereinigePartnerVorjahrHinweis(CStr(werte(3)))
             End If
@@ -1292,7 +1303,61 @@ Private Sub StelleVorjahrEntscheidungenWiederHer(ByVal wsUeb As Worksheet, _
                 wsUeb.Cells(r, UEB_COL_STATUS).Interior.color = AMPEL_GELB
             End If
         End If
+NaechsteEntscheidung:
     Next r
+End Sub
+
+' ===============================================================
+' Prüft, ob eine gespeicherte Entscheidung eine Zahlung belegen kann.
+'
+' Nur ein GRÜN behauptet eine erledigte Zahlung, alle anderen Status
+' bleiben unangetastet. Als Beleg gilt entweder eine ausdrücklich
+' erfragte Vorjahreszahlung, bei der Betrag und Datum abgefragt wurden,
+' oder ein Ist-Betrag, den der aktuelle Lauf selbst aus dem Bankkonto
+' ermittelt hat. Fehlt beides, stammt das GRÜN aus einer früheren
+' Eingabe ohne Nachweis.
+' ===============================================================
+Private Function IstEntscheidungBelegt(ByVal wsUeb As Worksheet, _
+                                       ByVal zeile As Long, _
+                                       ByVal werte As Variant) As Boolean
+    Dim gespeichertesIst As Double
+    Dim aktuellesIst As Double
+
+    Call InitStatus
+    IstEntscheidungBelegt = True
+
+    If StrComp(Trim$(CStr(werte(1))), m_STATUS_GRUEN, vbTextCompare) <> 0 Then Exit Function
+    If InStr(1, CStr(werte(3)), "Vorjahrzahlung", vbTextCompare) > 0 Then Exit Function
+
+    If IsNumeric(werte(0)) Then gespeichertesIst = CDbl(werte(0))
+    If gespeichertesIst <= 0.01 Then Exit Function
+
+    If IsNumeric(wsUeb.Cells(zeile, UEB_COL_IST).value) Then
+        aktuellesIst = CDbl(wsUeb.Cells(zeile, UEB_COL_IST).value)
+    End If
+    If aktuellesIst >= gespeichertesIst - 0.01 Then Exit Function
+
+    IstEntscheidungBelegt = False
+End Function
+
+' ===============================================================
+' Hängt an eine Zeile den Hinweis, dass eine frühere Angabe verworfen
+' wurde. So bleibt nachvollziehbar, warum die Zeile trotz einer einmal
+' getroffenen Entscheidung wieder offen ist.
+' ===============================================================
+Private Sub VermerkeUnbelegteEntscheidung(ByVal wsUeb As Worksheet, ByVal zeile As Long)
+    Dim HINWEIS As String
+    Dim bemerkung As String
+
+    HINWEIS = "Fr" & ChrW(252) & "here Angabe ohne Nachweis - Zahlung nicht belegt"
+    bemerkung = Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value))
+    If InStr(1, bemerkung, HINWEIS, vbTextCompare) > 0 Then Exit Sub
+
+    If bemerkung = "" Then
+        wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value = HINWEIS
+    Else
+        wsUeb.Cells(zeile, UEB_COL_BEMERKUNG).value = bemerkung & " | " & HINWEIS
+    End If
 End Sub
 
 Private Function BereinigePartnerVorjahrHinweis(ByVal bemerkung As String) As String
@@ -2453,6 +2518,112 @@ Public Sub SpeichereManuelleUebersichtEntscheidung(ByVal zeile As Long)
     Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
     On Error GoTo 0
     If Not wsUeb Is Nothing Then Call SpeichereVorjahrEntscheidung(wsUeb, zeile)
+End Sub
+
+' ===============================================================
+' Nimmt gespeicherte Entscheidungen für die markierten Zeilen zurück.
+'
+' Bestätigte Vorjahreszahlungen und manuell gesetzte Status werden
+' dauerhaft im Blatt Daten abgelegt und bei jedem Neuaufbau wieder
+' eingesetzt. War eine solche Angabe falsch, ließ sie sich bisher
+' nicht mehr entfernen. Diese Routine löscht den hinterlegten Eintrag
+' und baut die Übersicht anschließend neu auf.
+'
+' Aufruf über Entwicklertools, Makros. Vorher auf dem Blatt
+' Zahlungsübersicht die betroffenen Zeilen markieren.
+' ===============================================================
+Public Sub NimmGespeicherteEntscheidungZurueck()
+    Dim wsUeb As Worksheet
+    Dim wsDaten As Worksheet
+    Dim zelle As Range
+    Dim keys As Object
+    Dim key As String
+    Dim titel As String
+    Dim lastUeb As Long
+    Dim lastDaten As Long
+    Dim r As Long
+    Dim geloescht As Long
+    Dim liste As String
+
+    titel = "Gespeicherte Angabe zur" & ChrW(252) & "cknehmen"
+
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
+    On Error GoTo 0
+    If wsUeb Is Nothing Or wsDaten Is Nothing Then Exit Sub
+
+    If Not TypeOf Selection Is Range Or Not ActiveSheet Is wsUeb Then
+        MsgBox "Bitte zuerst auf dem Blatt " & WS_UEBERSICHT() & " die Zeilen markieren," & vbCrLf & _
+               "deren gespeicherte Angabe zur" & ChrW(252) & "ckgenommen werden soll.", _
+               vbExclamation, titel
+        Exit Sub
+    End If
+
+    lastUeb = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_PARZELLE).End(xlUp).Row
+    Set keys = CreateObject("Scripting.Dictionary")
+    keys.CompareMode = vbTextCompare
+
+    For Each zelle In Selection.Cells
+        r = zelle.Row
+        If r >= UEBERSICHT_START_ROW And r <= lastUeb Then
+            key = UebersichtEntscheidungsKey(wsUeb, r)
+            If key <> "" Then
+                If Not keys.exists(key) Then
+                    keys.Add key, True
+                    If keys.count <= 12 Then
+                        liste = liste & vbCrLf & "  " & _
+                                Trim$(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) & ", " & _
+                                Trim$(CStr(wsUeb.Cells(r, UEB_COL_KATEGORIE).value)) & ", " & _
+                                Trim$(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value))
+                    End If
+                End If
+            End If
+        End If
+    Next zelle
+
+    If keys.count = 0 Then
+        MsgBox "In der Markierung liegt keine Datenzeile der " & WS_UEBERSICHT() & ".", _
+               vbExclamation, titel
+        Exit Sub
+    End If
+    If keys.count > 12 Then liste = liste & vbCrLf & "  ... und weitere"
+
+    If MsgBox("Für folgende Positionen wird die gespeicherte Angabe gelöscht:" & vbCrLf & _
+              liste & vbCrLf & vbCrLf & _
+              "Die Zeilen werden danach wieder aus den tatsächlichen Buchungen" & vbCrLf & _
+              "berechnet. Fortfahren?", vbQuestion + vbYesNo, titel) <> vbYes Then Exit Sub
+
+    On Error Resume Next
+    wsDaten.Unprotect PASSWORD:=PASSWORD
+    On Error GoTo 0
+
+    lastDaten = wsDaten.Cells(wsDaten.Rows.count, VJ_MAN_COL_KEY).End(xlUp).Row
+    For r = lastDaten To VJ_MAN_START_ROW Step -1
+        If keys.exists(Trim$(CStr(wsDaten.Cells(r, VJ_MAN_COL_KEY).value))) Then
+            wsDaten.Range(wsDaten.Cells(r, VJ_MAN_COL_KEY), _
+                          wsDaten.Cells(r, VJ_MAN_COL_BEMERKUNG)).ClearContents
+            geloescht = geloescht + 1
+        End If
+    Next r
+
+    On Error Resume Next
+    wsDaten.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, AllowFiltering:=True
+    On Error GoTo 0
+
+    ' Die Bemerkung in der Übersicht selbst entfernen, sonst sammelt der
+    ' nächste Lauf dieselbe Entscheidung sofort wieder ein.
+    For Each zelle In Selection.Cells
+        r = zelle.Row
+        If r >= UEBERSICHT_START_ROW And r <= lastUeb Then
+            wsUeb.Cells(r, UEB_COL_BEMERKUNG).ClearContents
+        End If
+    Next zelle
+
+    Call GeneriereUebersicht
+
+    MsgBox "Zurückgenommen: " & geloescht & " gespeicherte Angabe(n)." & vbCrLf & _
+           "Die Zahlungsübersicht wurde neu berechnet.", vbInformation, titel
 End Sub
 
 Private Function UebersichtEntscheidungsKey(ByVal wsUeb As Worksheet, ByVal zeile As Long) As String
