@@ -3350,8 +3350,11 @@ Private Function PruefePartnerMitgliedsbeitrag( _
                     CStr(partner("EntityKey")), "Mitgliedsbeitrag", monat, jahr, _
                     partnerCount, partnerIst)
 
-                ' Nur genau eine passende Zahlung darf als Gemeinschaftszahlung gelten
-                If partnerCount = 1 And partnerIst >= sollProPerson * 2 - 0.01 Then
+                ' Entscheidend ist die Summe, nicht die Anzahl der Überweisungen.
+                ' Wer den Beitrag für den Partner mitzahlt, überweist ihn oft
+                ' getrennt vom eigenen. Ein eigener Zahlungseingang des
+                ' Mitglieds schließt diesen Zweig bereits beim Aufruf aus.
+                If partnerCount >= 1 And partnerIst >= sollProPerson * 2 - 0.01 Then
                     Dim partnerDatum As Date
                     partnerDatum = mod_Zahlungspruefung.HoleZahlungsdatumZP( _
                         CStr(partner("EntityKey")), "Mitgliedsbeitrag", monat, jahr)
@@ -3382,7 +3385,9 @@ Private Function PruefeMitbezahltePartnerDurchZahler( _
     PruefeMitbezahltePartnerDurchZahler = ""
     If meineEntityKey = "" Or sollProPerson <= 0 Then Exit Function
     Call mod_Zahlungspruefung.ZaehleZahlungenZP(meineEntityKey, "Mitgliedsbeitrag", monat, jahr, anzahl, eigenerBetrag)
-    If anzahl <> 1 Or eigenerBetrag < sollProPerson * 2 - 0.01 Then Exit Function
+    ' Auch hier zählt die Summe. Der Beitrag darf in mehreren Überweisungen
+    ' desselben Monats eingehen, entscheidend ist der doppelte Soll-Betrag.
+    If anzahl < 1 Or eigenerBetrag < sollProPerson * 2 - 0.01 Then Exit Function
     zahlDatum = mod_Zahlungspruefung.HoleZahlungsdatumZP(meineEntityKey, "Mitgliedsbeitrag", monat, jahr)
 
     For Each partner In mitglieder
