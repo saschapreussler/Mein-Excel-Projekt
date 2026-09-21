@@ -29,10 +29,11 @@ Private Const CLR_BTN_STROM As Long = 2896035    ' RGB(163, 48, 44)  - Strom, Ro
 Private Const CLR_BTN_WASSER As Long = 8210452   ' RGB(20, 72, 125)  - Wasser, Blau
 Private Const CLR_BTN_EINST As Long = 6182994    ' RGB(82, 88, 94)   - Einstellungen, Grau
 Private Const CLR_BTN_DATEN As Long = 1731734    ' RGB(150, 108, 26) - Daten, Bernstein
-' Das Symbol der Mitgliederkachel zeichnet Windows in einem Blauviolett. Ein
-' violetter Hintergrund liegt im selben Farbbereich, dadurch verschwimmt das
-' Symbol. Petrol steht farblich deutlich daneben und hebt es klar ab.
-Private Const CLR_BTN_MITGL As Long = 5787661    ' RGB(13, 80, 88)   - Mitglieder, Petrol
+' Windows zeichnet das Symbol der Mitgliederkachel als zwei dunkelviolette
+' Silhouetten. Auf einem dunklen Hintergrund geht es deshalb unter. Dieses
+' helle Petrol ist bewusst der hellste Ton, bei dem die weiße Kachelschrift
+' noch klar lesbar bleibt.
+Private Const CLR_BTN_MITGL As Long = 11181089   ' RGB(33, 156, 170) - Mitglieder, helles Petrol
 Private Const CLR_BTN_JAHR As Long = 3293053     ' RGB(125, 63, 50)  - Jahreswechsel, Terrakotta
 Private Const CLR_BTN_ANSICHT As Long = 5787206  ' RGB(70, 78, 88)   - Ansicht, Blaugrau
 Private Const CLR_BTN_SERIENBR As Long = 6903111 ' RGB(71, 85, 105)  - Serienbrief, Schiefer
