@@ -17,11 +17,22 @@ Private Const CLR_HERO_MED As Long = 4735033     ' RGB(41, 50, 72) - Hero-Banner
 Private Const CLR_ACCENT As Long = 14521384      ' RGB(40, 167, 221) - Akzent-Türkis
 Private Const CLR_KPI_BG As Long = 16119285      ' RGB(245, 246, 250) - KPI Hintergrund
 Private Const CLR_KPI_BORDER As Long = 14408667  ' RGB(219, 223, 219) - KPI Rahmen
-Private Const CLR_BTN_FINANCE As Long = 11948081 ' RGB(41, 128, 182) - Finanzen-Blau
-Private Const CLR_BTN_METER As Long = 7168108    ' RGB(108, 117, 109) - Zähler Grau-Grün
-Private Const CLR_BTN_ADMIN As Long = 6260068    ' RGB(100, 120, 95) - Verwaltung
-Private Const CLR_BTN_SERIENBR As Long = 5202271 ' RGB(95, 110, 79) - Gedämpftes Grün
-Private Const CLR_BTN_MITGL As Long = 5408340    ' RGB(52, 152, 82) - Mitglieder Grün
+' Kachelfarben nach Bedeutung.
+' Alle Werte sind bewusst dunkel gehalten: die Beschriftung ist weiss
+' und fett, und die Symbole sind farbige Emoji. Ein heller Hintergrund
+' würde beides schlucken. Ein leichtes Gelb für "Daten" ist deshalb als
+' kräftiges Bernstein umgesetzt, sonst wäre die Schrift nicht lesbar.
+' Die Long-Werte entsprechen RGB(r, g, b) = r + g * 256 + b * 65536.
+' Const erlaubt die Funktion RGB nicht, daher die ausgerechneten Zahlen.
+Private Const CLR_BTN_FINANCE As Long = 4808221  ' RGB(29, 94, 73)   - Finanzen, dunkles Grün
+Private Const CLR_BTN_STROM As Long = 2896035    ' RGB(163, 48, 44)  - Strom, Rot
+Private Const CLR_BTN_WASSER As Long = 8210452   ' RGB(20, 72, 125)  - Wasser, Blau
+Private Const CLR_BTN_EINST As Long = 6182994    ' RGB(82, 88, 94)   - Einstellungen, Grau
+Private Const CLR_BTN_DATEN As Long = 1731734    ' RGB(150, 108, 26) - Daten, Bernstein
+Private Const CLR_BTN_MITGL As Long = 9191516    ' RGB(92, 64, 140)  - Mitglieder, Violett
+Private Const CLR_BTN_JAHR As Long = 3293053     ' RGB(125, 63, 50)  - Jahreswechsel, Terrakotta
+Private Const CLR_BTN_ANSICHT As Long = 5787206  ' RGB(70, 78, 88)   - Ansicht, Blaugrau
+Private Const CLR_BTN_SERIENBR As Long = 6903111 ' RGB(71, 85, 105)  - Serienbrief, Schiefer
 Private Const CLR_WHITE As Long = 16777215
 Private Const CLR_DARK_TEXT As Long = 2500134     ' RGB(38, 50, 56)
 Private Const CLR_LIGHT_TEXT As Long = 12632256   ' RGB(192, 192, 192)
@@ -742,10 +753,24 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     Dim kachelW As Double, kachelH As Double
     Dim gapY As Double
     
-    col1Left = ws.Range("C15").Left
-    col2Left = ws.Range("F15").Left
-    col3Left = ws.Range("I15").Left
+    ' Die drei Kachelspalten gleichmäßig über das Raster verteilen.
+    ' Bisher hingen sie an den Zellen C, F und I. Spalte F ist aber nur
+    ' 25,5 Punkt breit, Spalte E dagegen 80,5. Dadurch entstanden
+    ' ungleiche Abstände von 80,5 und 25,5 Punkt und der ganze Block
+    ' wirkte nach links gekippt. Die Abstände werden deshalb gerechnet
+    ' und nicht mehr aus der Spaltenbreite abgeleitet.
+    Dim rasterLinks As Double
+    Dim rasterGesamt As Double
+    Dim spaltenLuecke As Double
+
     kachelW = ws.Range("C15:D15").Width
+    rasterLinks = ws.Range("C15").Left
+    rasterGesamt = ws.Range("K15").Left - rasterLinks
+    spaltenLuecke = (rasterGesamt - 3 * kachelW) / 2
+
+    col1Left = rasterLinks
+    col2Left = rasterLinks + kachelW + spaltenLuecke
+    col3Left = rasterLinks + 2 * (kachelW + spaltenLuecke)
     kachelH = 34
     gapY = ws.Rows("15").RowHeight
     
@@ -774,27 +799,27 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     Call ErstelleKachel(ws, "kachel_Strom", _
         ChrW(9889) & "   Strom", _
         col2Left, ws.Range("F16").Top + 4, kachelW, kachelH, _
-        CLR_BTN_METER, "'mod_Startseite.Startseite_Nav_Strom_Direct'")
+        CLR_BTN_STROM, "'mod_Startseite.Startseite_Nav_Strom_Direct'")
     
     Call ErstelleKachel(ws, "kachel_Wasser", _
         ChrW(55357) & ChrW(56487) & "   Wasser", _
         col2Left, ws.Range("F17").Top + 4, kachelW, kachelH, _
-        CLR_BTN_METER, "'mod_Startseite.Startseite_Nav_Wasser_Direct'")
+        CLR_BTN_WASSER, "'mod_Startseite.Startseite_Nav_Wasser_Direct'")
     
     ' --- Spalte 3: Admin ---
     Call ErstelleKachel(ws, "kachel_Einstellungen", _
         ChrW(9881) & ChrW(65039) & "   Einstellungen", _
-        col3Left, ws.Range("I15").Top + 4, kachelW, kachelH, _
-        CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Einstellungen'")
+        col3Left, ws.Range("I17").Top + 4, kachelW, kachelH, _
+        CLR_BTN_EINST, "'mod_Navigation.NavigiereZu_Einstellungen'")
     
     Call ErstelleKachel(ws, "kachel_Daten", _
-        ChrW(55357) & ChrW(56770) & ChrW(65039) & "   Daten", _
+        ChrW(55357) & ChrW(56772) & ChrW(65039) & "   Daten", _
         col3Left, ws.Range("I16").Top + 4, kachelW, kachelH, _
-        CLR_BTN_ADMIN, "'mod_Navigation.NavigiereZu_Daten'")
+        CLR_BTN_DATEN, "'mod_Navigation.NavigiereZu_Daten'")
     
     Call ErstelleKachel(ws, "kachel_Mitglieder", _
         ChrW(55357) & ChrW(56421) & "   Mitgliederverwaltung", _
-        col3Left, ws.Range("I17").Top + 4, kachelW, kachelH, _
+        col3Left, ws.Range("I15").Top + 4, kachelW, kachelH, _
         CLR_BTN_MITGL, "'mod_Navigation.ZeigeMitgliederverwaltung'")
     
     ' --- Zeile 4: Finanz-übersicht ---
@@ -816,14 +841,26 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
         .IndentLevel = 1
     End With
     
+    ' Die beiden Serienbrief-Kacheln mittig unter das dreispaltige
+    ' Raster setzen. Bisher standen sie linksbündig in Spalte 1 und 2
+    ' und liessen die dritte Spalte sichtbar leer stehen, was den
+    ' ganzen Block unsymmetrisch wirken liess.
+    Dim rasterBreite As Double
+    Dim spaltenAbstand As Double
+    Dim paarLinks As Double
+
+    rasterBreite = (col3Left + kachelW) - col1Left
+    spaltenAbstand = col2Left - (col1Left + kachelW)
+    paarLinks = col1Left + (rasterBreite - (2 * kachelW + spaltenAbstand)) / 2
+
     Call ErstelleKachel(ws, "kachel_Betriebskosten", _
         ChrW(55357) & ChrW(56516) & "   Betriebskostenabrechnung", _
-        col1Left, ws.Range("C21").Top + 4, kachelW, kachelH, _
+        paarLinks, ws.Range("C21").Top + 4, kachelW, kachelH, _
         CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Betriebskosten'")
     
     Call ErstelleKachel(ws, "kachel_Endabrechnung", _
         ChrW(55358) & ChrW(56830) & "   Endabrechnung", _
-        col2Left, ws.Range("F21").Top + 4, kachelW, kachelH, _
+        paarLinks + kachelW + spaltenAbstand, ws.Range("C21").Top + 4, kachelW, kachelH, _
         CLR_BTN_SERIENBR, "'mod_Navigation.ZeigeSerienbrief_Endabrechnung'")
     
     ' Punkt 13: Neues Kalenderjahr starten - direkt unter "Mitgliederverwaltung"
@@ -832,13 +869,13 @@ Private Sub ErstelleNavigationsKacheln(ByVal ws As Worksheet)
     Call ErstelleKachel(ws, "kachel_NeuesJahr", _
         ChrW(55357) & ChrW(56517) & "   Neues Kalenderjahr", _
         col3Left, ws.Range("I18").Top + 4, kachelW, kachelH, _
-        CLR_BTN_ADMIN, "'mod_Jahreswechsel.StarteNeuesJahr'")
+        CLR_BTN_JAHR, "'mod_Jahreswechsel.StarteNeuesJahr'")
 
     ' Normale Ansicht wiederherstellen (Menüband / Register einblenden) - Spalte 2, Zeile 18
     Call ErstelleKachel(ws, "kachel_NormaleAnsicht", _
         ChrW(55358) & ChrW(56991) & "   Normale Ansicht", _
         col2Left, ws.Range("F18").Top + 4, kachelW, kachelH, _
-        RGB(120, 90, 90), "'mod_Startseite.StelleNormaleAnsichtWiederHer'")
+        CLR_BTN_ANSICHT, "'mod_Startseite.StelleNormaleAnsichtWiederHer'")
 End Sub
 
 

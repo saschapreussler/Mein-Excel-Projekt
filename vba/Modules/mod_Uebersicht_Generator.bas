@@ -2885,6 +2885,28 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_GUTHABEN), _
                 wsUeb.Cells(endRow, UEB_COL_GUTHABEN)).NumberFormat = "#,##0.00 " & ChrW(8364)
     
+    ' Einheitliches Schriftbild aller Datenzeilen
+    ' -------------------------------------------
+    ' Der Neuaufbau löscht mit ClearContents nur die Inhalte, niemals
+    ' die Formate. Fettschrift, eine mittige Ausrichtung oder eine
+    ' erhöhte Zeilenhöhe blieben deshalb an einzelnen Zeilennummern
+    ' kleben und tauchten nach dem nächsten Aufbau an völlig fremden
+    ' Einträgen wieder auf. Alle Datenzeilen werden hier deshalb
+    ' bewusst auf einen einheitlichen Stand zurückgesetzt.
+    rngTable.Font.Bold = False
+    Err.Clear
+    rngTable.Font.Italic = False
+    Err.Clear
+    rngTable.WrapText = False
+    Err.Clear
+
+    ' Ausnahme Spalte B: bei einer Gemeinschaftsparzelle stehen dort
+    ' mehrere Namen, durch Zeilenumbruch getrennt. Ohne Umbruch wären
+    ' sie nicht lesbar.
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_MITGLIED), _
+                wsUeb.Cells(endRow, UEB_COL_MITGLIED)).WrapText = True
+    Err.Clear
+
     ' Ausrichtung
     wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_PARZELLE), _
                 wsUeb.Cells(endRow, UEB_COL_PARZELLE)).HorizontalAlignment = xlCenter
@@ -2900,9 +2922,35 @@ Private Sub FormatiereUebersicht(ByVal wsUeb As Worksheet, _
                 wsUeb.Cells(endRow, UEB_COL_STATUS)).HorizontalAlignment = xlCenter
     Err.Clear
 
-    
+    ' Die übrigen Spalten wurden bisher gar nicht ausgerichtet und
+    ' behielten damit jede alte Einstellung. Text links, Beträge rechts.
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_MITGLIED), _
+                wsUeb.Cells(endRow, UEB_COL_MITGLIED)).HorizontalAlignment = xlLeft
+    Err.Clear
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_KATEGORIE), _
+                wsUeb.Cells(endRow, UEB_COL_KATEGORIE)).HorizontalAlignment = xlLeft
+    Err.Clear
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_BEMERKUNG), _
+                wsUeb.Cells(endRow, UEB_COL_BEMERKUNG)).HorizontalAlignment = xlLeft
+    Err.Clear
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_SOLL), _
+                wsUeb.Cells(endRow, UEB_COL_SOLL)).HorizontalAlignment = xlRight
+    Err.Clear
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_IST), _
+                wsUeb.Cells(endRow, UEB_COL_IST)).HorizontalAlignment = xlRight
+    Err.Clear
+    wsUeb.Range(wsUeb.Cells(startRow, UEB_COL_GUTHABEN), _
+                wsUeb.Cells(endRow, UEB_COL_GUTHABEN)).HorizontalAlignment = xlRight
+    Err.Clear
+
     ' Vertikale Zentrierung
     rngTable.VerticalAlignment = xlCenter
+    Err.Clear
+
+    ' Zeilenhöhe zuletzt aus dem Inhalt ableiten. Damit verschwinden
+    ' die stehengebliebenen überhohen Zeilen, und nur Zeilen mit
+    ' mehreren Namen bleiben zweizeilig.
+    rngTable.Rows.AutoFit
     Err.Clear
     On Error GoTo 0
     
