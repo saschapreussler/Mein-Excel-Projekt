@@ -226,7 +226,14 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
             wsDash, matrixEndRow + 3, verzugListe, anzVerzug, verzugEndRow)
     End If
 
-    Call SchreibeSaeumnisgebuehrenUebersicht(wsDash, IIf(verzugEndRow > 0, verzugEndRow + 3, matrixEndRow + 3))
+    Dim saeumnisStartRow As Long
+    Dim saeumnisEndRow As Long
+    saeumnisStartRow = IIf(verzugEndRow > 0, verzugEndRow + 3, matrixEndRow + 3)
+    Call SchreibeSaeumnisgebuehrenUebersicht(wsDash, saeumnisStartRow, saeumnisEndRow)
+
+    ' --- 10a. Guthaben-Tabelle darunter ---
+    Call SchreibeGuthabenUebersicht(wsDash, _
+         IIf(saeumnisEndRow >= saeumnisStartRow, saeumnisEndRow + 3, saeumnisStartRow))
     
     ' --- 11. Cache freigeben ---
     Call mod_Zahlungspruefung.EntladeEinstellungenCacheZP
@@ -300,10 +307,17 @@ ErrorHandler:
     
 End Sub
 
-Private Sub SchreibeSaeumnisgebuehrenUebersicht(ByVal wsDash As Worksheet, ByVal startRow As Long)
+Private Sub SchreibeSaeumnisgebuehrenUebersicht(ByVal wsDash As Worksheet, _
+                                                ByVal startRow As Long, _
+                                                Optional ByRef endRow As Long = 0)
     Dim wsDaten As Worksheet
     Dim lastRow As Long, r As Long, outRow As Long
     Dim bezahlt As Boolean
+
+    ' Der Aufrufer haengt die Guthaben-Tabelle darunter. Ohne Inhalt
+    ' bleibt die Startzeile daher unveraendert stehen.
+    endRow = startRow - 1
+
     On Error Resume Next
     Set wsDaten = ThisWorkbook.Worksheets(WS_DATEN)
     On Error GoTo 0
@@ -332,6 +346,163 @@ Private Sub SchreibeSaeumnisgebuehrenUebersicht(ByVal wsDash As Worksheet, ByVal
             outRow = outRow + 1
         End If
     Next r
+
+    endRow = outRow - 1
+End Sub
+
+
+' ============================================================
+'  GUTHABEN-ÜBERSICHT
+' ------------------------------------------------------------
+'  Führt auf, aus welcher Zahlung ein Guthaben entstanden ist
+'  und wie viel davon noch übrig ist.
+'
+'  Quelle ist die Zahlungsübersicht. Damit steht hier genau der
+'  Stand, den der Nutzer dort sieht, auch nachdem Guthaben für
+'  eine offene Position verbraucht wurde.
+' ============================================================
+Private Sub SchreibeGuthabenUebersicht(ByVal wsDash As Worksheet, ByVal startRow As Long)
+
+    Const UEB_SP_PARZELLE As Long = 1
+    Const UEB_SP_MITGLIED As Long = 2
+    Const UEB_SP_MONAT As Long = 3
+    Const UEB_SP_KATEGORIE As Long = 4
+    Const UEB_SP_SOLL As Long = 5
+    Const UEB_SP_IST As Long = 6
+    Const UEB_SP_GUTHABEN As Long = 9
+    Const UEB_ERSTE_ZEILE As Long = 4
+    Const SPALTEN As Long = 8
+
+    Dim wsUeb As Worksheet
+    Dim letzteZeile As Long
+    Dim r As Long
+    Dim outRow As Long
+    Dim headerRow As Long
+    Dim anzahl As Long
+    Dim rest As Double
+    Dim ist As Double
+    Dim soll As Double
+    Dim entstanden As Double
+    Dim headers As Variant
+    Dim c As Long
+
+    On Error Resume Next
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    On Error GoTo 0
+    If wsUeb Is Nothing Then Exit Sub
+
+    letzteZeile = wsUeb.Cells(wsUeb.Rows.count, UEB_SP_PARZELLE).End(xlUp).Row
+    If letzteZeile < UEB_ERSTE_ZEILE Then Exit Sub
+
+    ' Erst zaehlen: Ohne Guthaben soll auch keine leere Tabelle stehen.
+    For r = UEB_ERSTE_ZEILE To letzteZeile
+        If mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_SP_GUTHABEN).value) > 0.004 Then
+            anzahl = anzahl + 1
+        End If
+    Next r
+    If anzahl = 0 Then Exit Sub
+
+    With wsDash.Range(wsDash.Cells(startRow, 1), wsDash.Cells(startRow, 10))
+        .Merge
+        .value = ChrW(9632) & " GUTHABEN " & ChrW(8212) & _
+                 " " & ChrW(220) & "BERZAHLUNGEN UND RESTBETR" & ChrW(196) & "GE (" & anzahl & ")"
+        .Font.Name = "Calibri"
+        .Font.Size = 13
+        .Font.Bold = True
+        .Font.color = m_CLR_KPI_GRUEN
+        .VerticalAlignment = xlCenter
+        .RowHeight = 28
+    End With
+
+    headerRow = startRow + 1
+    headers = Array("Parzelle", "Mitglied", "Monat", "Kategorie", _
+                    "Soll", "Geleistete Zahlung", "Guthaben entstanden", "Restguthaben")
+
+    For c = 0 To SPALTEN - 1
+        wsDash.Cells(headerRow, c + 1).value = headers(c)
+    Next c
+
+    With wsDash.Range(wsDash.Cells(headerRow, 1), wsDash.Cells(headerRow, SPALTEN))
+        .Font.Name = "Calibri"
+        .Font.Size = 10
+        .Font.Bold = True
+        .Font.color = RGB(255, 255, 255)
+        .Interior.color = m_CLR_KPI_GRUEN
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .RowHeight = 24
+        .Borders.LineStyle = xlContinuous
+        .Borders.color = RGB(255, 255, 255)
+        .Borders.Weight = xlThin
+    End With
+
+    outRow = headerRow + 1
+
+    For r = UEB_ERSTE_ZEILE To letzteZeile
+        rest = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_SP_GUTHABEN).value)
+        If rest > 0.004 Then
+            soll = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_SP_SOLL).value)
+            ist = mod_Zahlungspruefung.LeseGeldwertZP(wsUeb.Cells(r, UEB_SP_IST).value)
+            entstanden = ist - soll
+            If entstanden < rest Then entstanden = rest
+
+            wsDash.Cells(outRow, 1).value = wsUeb.Cells(r, UEB_SP_PARZELLE).value
+            wsDash.Cells(outRow, 2).value = wsUeb.Cells(r, UEB_SP_MITGLIED).value
+            wsDash.Cells(outRow, 2).WrapText = True
+            ' Als Text schreiben, sonst liest Excel "Januar 2024" als Datum
+            ' und zeigt "Jan 24" an.
+            wsDash.Cells(outRow, 3).NumberFormat = "@"
+            wsDash.Cells(outRow, 3).value = CStr(wsUeb.Cells(r, UEB_SP_MONAT).value)
+            wsDash.Cells(outRow, 4).value = wsUeb.Cells(r, UEB_SP_KATEGORIE).value
+            wsDash.Cells(outRow, 5).value = soll
+            wsDash.Cells(outRow, 6).value = ist
+            wsDash.Cells(outRow, 7).value = entstanden
+            wsDash.Cells(outRow, 8).value = rest
+
+            wsDash.Range(wsDash.Cells(outRow, 5), wsDash.Cells(outRow, 8)).NumberFormat = "#,##0.00"
+
+            With wsDash.Range(wsDash.Cells(outRow, 1), wsDash.Cells(outRow, SPALTEN))
+                .Font.Name = "Calibri"
+                .Font.Size = 9
+                .VerticalAlignment = xlCenter
+                .Borders.LineStyle = xlContinuous
+                .Borders.color = RGB(220, 220, 220)
+                .Borders.Weight = xlThin
+            End With
+
+            wsDash.Cells(outRow, 1).HorizontalAlignment = xlCenter
+            wsDash.Cells(outRow, 3).HorizontalAlignment = xlCenter
+
+            ' Ein bereits angebrochenes Guthaben wird hervorgehoben, damit
+            ' sichtbar ist, dass davon schon etwas verrechnet wurde.
+            If rest < entstanden - 0.004 Then
+                wsDash.Cells(outRow, 8).Interior.color = RGB(255, 235, 156)
+            Else
+                wsDash.Cells(outRow, 8).Interior.color = RGB(198, 239, 206)
+            End If
+            wsDash.Cells(outRow, 8).Font.Bold = True
+
+            outRow = outRow + 1
+        End If
+    Next r
+
+    wsDash.Cells(outRow, 4).value = "SUMME:"
+    wsDash.Cells(outRow, 4).Font.Bold = True
+    wsDash.Cells(outRow, 4).HorizontalAlignment = xlRight
+
+    wsDash.Cells(outRow, 8).Formula = "=SUM(" & wsDash.Cells(headerRow + 1, 8).Address & _
+                                      ":" & wsDash.Cells(outRow - 1, 8).Address & ")"
+    wsDash.Cells(outRow, 8).NumberFormat = "#,##0.00"
+    wsDash.Cells(outRow, 8).Font.Bold = True
+    wsDash.Cells(outRow, 8).Font.color = m_CLR_KPI_GRUEN
+
+    With wsDash.Range(wsDash.Cells(outRow, 1), wsDash.Cells(outRow, SPALTEN))
+        .Borders(xlEdgeTop).LineStyle = xlContinuous
+        .Borders(xlEdgeTop).Weight = xlMedium
+        .Borders(xlEdgeTop).color = m_CLR_KPI_GRUEN
+        .RowHeight = 22
+    End With
+
 End Sub
 
 

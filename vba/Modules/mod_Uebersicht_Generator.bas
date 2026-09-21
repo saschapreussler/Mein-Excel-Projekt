@@ -1327,13 +1327,19 @@ End Function
 ' benutzten Bereich angelegt und sofort wieder entfernt wird.
 ' ===============================================================
 Private Sub SortiereUebersichtNachParzelle(ByVal wsUeb As Worksheet, ByVal LetzteZeile As Long)
+
+    ' Spalte K, direkt rechts neben der Tabelle A bis I. Bewusst eine
+    ' feste Spalte und nicht der rechte Rand des benutzten Bereichs:
+    ' Sonst wanderte die Hilfsspalte mit jedem Lauf weiter nach rechts
+    ' und der Sortierbereich zöge fremde Spalten mit.
+    Const HILFSSPALTE As Long = 11
+
     Dim hilfsSpalte As Long
     Dim r As Long
 
     If LetzteZeile < UEBERSICHT_START_ROW Then Exit Sub
 
-    hilfsSpalte = wsUeb.UsedRange.Column + wsUeb.UsedRange.Columns.count
-    If hilfsSpalte <= UEB_COL_GUTHABEN + 1 Then hilfsSpalte = UEB_COL_GUTHABEN + 2
+    hilfsSpalte = HILFSSPALTE
 
     For r = UEBERSICHT_START_ROW To LetzteZeile
         wsUeb.Cells(r, hilfsSpalte).value = _
@@ -1411,8 +1417,12 @@ Private Function MonatsSortierwert(ByVal monatsText As String) As Long
 
     teile = Split(Trim$(monatsText), " ")
 
+    ' Sowohl der ausgeschriebene als auch der abgekürzte Monatsname wird
+    ' erkannt, damit eine von Hand eingetragene Zeile nicht stillschweigend
+    ' ans Ende sortiert wird.
     For i = 1 To 12
-        If StrComp(teile(0), MonthName(i), vbTextCompare) = 0 Then
+        If StrComp(teile(0), MonthName(i), vbTextCompare) = 0 Or _
+           StrComp(teile(0), MonthName(i, True), vbTextCompare) = 0 Then
             monatsNr = i
             Exit For
         End If
@@ -1422,6 +1432,7 @@ Private Function MonatsSortierwert(ByVal monatsText As String) As Long
     If UBound(teile) >= 1 Then
         If IsNumeric(teile(1)) Then jahrWert = CLng(teile(1))
     End If
+    If jahrWert > 0 And jahrWert < 100 Then jahrWert = jahrWert + 2000
 
     MonatsSortierwert = jahrWert * 100 + monatsNr
 End Function
