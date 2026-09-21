@@ -623,15 +623,19 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     End If
                 End If
                 
-                ' v4.4: Ehrenmitglied zahlt keinen Mitgliedsbeitrag
-                If InStr(UCase(mitgliedRole), "EHREN") > 0 Then
-                    If StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
-                        GoTo NextKat
-                    End If
-                End If
+                ' Ehrenmitglieder sind vom Mitgliedsbeitrag befreit. Die Zeile
+                ' wird trotzdem geführt: So stehen alle Mitglieder in der
+                ' Übersicht, und es ist auf den ersten Blick erkennbar, dass
+                ' hier nicht vergessen wurde zu zahlen, sondern eine Befreiung
+                ' vorliegt.
+                Dim istEhrenBefreit As Boolean
+                istEhrenBefreit = (InStr(UCase(mitgliedRole), "EHREN") > 0) And _
+                                  (StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0)
                 
                 ' Personen ohne eigenes Konto werden über die Partnerzahlung geprüft.
-                If entityKey = "" And StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                If istEhrenBefreit Then
+                    ergebnis = m_STATUS_GRUEN & "|Soll:0.00|Ist:0.00"
+                ElseIf entityKey = "" And StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                     ergebnis = "ROT|Soll:0.00|Ist:0.00"
                 Else
                     ergebnis = mod_Zahlungspruefung.PruefeZahlungen(entityKey, kategorie, monat, jahr)
@@ -663,13 +667,15 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
 
                 ' Ein Mitglied ohne eigenen EntityKey bleibt beitragspflichtig.
                 ' Der Sollbetrag stammt deshalb trotzdem aus Einstellungen.
-                If entityKey = "" And StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                If entityKey = "" And StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 _
+                   And Not istEhrenBefreit Then
                     soll = kategorien(k).SollBetrag
                 End If
 
                 ' Fallback für noch unvollständige EntityKey-Zuordnungen:
                 ' Bereits kategorisierte Zahlungen werden anhand des Kontonamens erkannt.
-                If ist = 0 And StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
+                If ist = 0 And Not istEhrenBefreit _
+                   And StrComp(kategorie, "Mitgliedsbeitrag", vbTextCompare) = 0 Then
                     Dim namensZahlung As Double
                     namensZahlung = mod_Zahlungspruefung.HoleZahlungNachMitgliedsnameZP( _
                         mitgliedName, kategorie, monat, jahr)
@@ -684,7 +690,7 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 
                 ' v4.0: Vorjahr-Zahlungen prüfen (Jan-März)
                 ' Dezember-Zahlung des Vorjahres die für diesen Monat gilt
-                If monat <= 3 And ist = 0 Then
+                If monat <= 3 And ist = 0 And Not istEhrenBefreit Then
                     Dim vjBetrag As Double
                     vjBetrag = mod_Uebersicht_Daten.HoleVorjahrZahlung(entityKey, kategorie, monat)
                     If vjBetrag > 0 Then
@@ -972,9 +978,16 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                 
                 ' v4.6/v5.4: Hinweis NUR für Januar ohne Vorjahr-Daten
                      If monat = 1 And ist = 0 And partnerInfo = "" And _
+                         Not istEhrenBefreit And _
                          Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
                     Call FuegeBemerkungHinzu(bemerkung, _
                          "Keine Vorjahr-Daten: Zahlung evtl. im Vorjahr (Okt-Dez) erfolgt")
+                End If
+
+                ' Der Grund für die leere Zeile gehört sichtbar in die Bemerkung.
+                If istEhrenBefreit Then
+                    Call FuegeBemerkungHinzu(bemerkung, _
+                         "Ehrenmitglied vom Mitgliedsbeitrag befreit")
                 End If
                 
                 wsUeb.Cells(rowIdx, UEB_COL_BEMERKUNG).value = bemerkung
