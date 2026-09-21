@@ -21,6 +21,10 @@ Option Explicit
 '     mod_Zahlungspruefung.SetzeMonatPeriode
 ' ===============================================================
 
+' Merker für den Hinweis beim Verlassen des Bankkontos. Der Hinweis
+' soll einmal erscheinen und nicht bei jedem Blattwechsel erneut.
+Private m_HinweisVerlassenGezeigt As Boolean
+
 
 ' ===============================================================
 ' 1. CSV-KONTOAUSZUG IMPORT
@@ -753,6 +757,67 @@ Private Sub ZeigeOffeneImportHinweise(ByVal wsBK As Worksheet, _
         Call mod_Uebersicht_Generator.FokussiereErsteOffeneZahlungspruefung
         On Error GoTo 0
     End If
+End Sub
+
+
+' ===============================================================
+' 1b5. Hinweis beim Verlassen des Blattes Bankkonto
+' ===============================================================
+' Der Nutzer darf das Blatt jederzeit verlassen, auch mit offenen
+' Angaben. Er soll es aber wissen, bevor er anderswo weiterarbeitet,
+' denn Zahlungsübersicht und Dashboard können ohne Kategorie und
+' Monat kein vollständiges Bild zeigen.
+'
+' Der Hinweis erscheint bewusst nur einmal. Erst eine Änderung am
+' Bankkonto stellt ihn über SetzeHinweisBeimVerlassenZurueck wieder
+' scharf. Sonst würde jeder Blattwechsel ein Fenster öffnen.
+' ===============================================================
+Public Sub SetzeHinweisBeimVerlassenZurueck()
+    m_HinweisVerlassenGezeigt = False
+End Sub
+
+
+Public Sub HinweisBeimVerlassenBankkonto()
+
+    Dim wsBK As Worksheet
+    Dim offeneZelle As Range
+    Dim meldung As String
+
+    On Error Resume Next
+
+    If m_HinweisVerlassenGezeigt Then Exit Sub
+
+    ' Läuft gerade ein Automatiklauf oder eine unsichtbare
+    ' Excel-Instanz, dann wäre ein Fenster nur im Weg.
+    If Not Application.Visible Then Exit Sub
+    If mod_Uebersicht_Generator.IsGenerating Then Exit Sub
+
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    If wsBK Is Nothing Then Exit Sub
+
+    If Not HatOffeneKategorieOderPeriode(wsBK) Then Exit Sub
+
+    Set offeneZelle = FindeErsteOffeneZuordnung(wsBK)
+
+    meldung = "Auf dem Blatt Bankkonto fehlen noch Angaben." & vbCrLf & vbCrLf & _
+              "Solange Kategorie (Spalte H) oder Monat/Periode (Spalte I) " & _
+              "offen sind, bleiben Zahlungsübersicht und Dashboard " & _
+              "unvollständig."
+
+    If Not offeneZelle Is Nothing Then
+        meldung = meldung & vbCrLf & vbCrLf & _
+                  "Die erste offene Stelle steht in Zeile " & offeneZelle.Row & "."
+    End If
+
+    meldung = meldung & vbCrLf & vbCrLf & _
+              "Sie können trotzdem auf ein anderes Blatt wechseln. " & _
+              "Dieser Hinweis erscheint erst wieder, wenn Sie am " & _
+              "Bankkonto etwas geändert haben."
+
+    m_HinweisVerlassenGezeigt = True
+
+    MsgBox meldung, vbInformation, "Bankkonto noch nicht vollständig"
+
 End Sub
 
 

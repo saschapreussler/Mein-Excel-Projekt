@@ -324,9 +324,28 @@ Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
     ElseIf StrComp(wsName, WS_BANKKONTO, vbTextCompare) = 0 Then
         On Error Resume Next
         Call mod_Startseite.AktualisiereKontostandKPI
+        ' Nach jeder Änderung am Bankkonto darf der Hinweis auf offene
+        ' Angaben wieder erscheinen.
+        Call mod_Banking_Data.SetzeHinweisBeimVerlassenZurueck
         On Error GoTo 0
     End If
     
+End Sub
+
+
+' ===============================================================
+' Beim Verlassen des Bankkontos auf offene Angaben hinweisen
+' ===============================================================
+' Der Wechsel wird nicht verhindert. SheetDeactivate kann ohnehin
+' nicht abgebrochen werden, und genau so ist es gewollt: Der Nutzer
+' soll informiert sein, aber nicht festgehalten werden.
+' ===============================================================
+Private Sub Workbook_SheetDeactivate(ByVal Sh As Object)
+    On Error Resume Next
+    If StrComp(Sh.Name, WS_BANKKONTO, vbTextCompare) = 0 Then
+        Call mod_Banking_Data.HinweisBeimVerlassenBankkonto
+    End If
+    On Error GoTo 0
 End Sub
 
 
