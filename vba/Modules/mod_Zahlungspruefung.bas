@@ -220,18 +220,26 @@ Public Function PruefeZahlungen(ByVal entityKey As String, _
 
             If Not monatPasstZP Then GoTo NextZahlRow
 
-            ' Betrag addieren (Spalte B = BK_COL_BETRAG)
+            ' Betrag addieren (Spalte B = BK_COL_BETRAG). Einnahmen stehen
+            ' positiv, Ausgaben negativ. Der Betrag wird vorzeichenrichtig
+            ' verrechnet, damit eine Rücklastschrift oder eine Auszahlung an
+            ' das Mitglied den Zahlungseingang wieder aufhebt, statt ihn wie
+            ' bisher als weitere Zahlung zu zählen.
+            zahlBetrag = 0
             If IsNumeric(m_BKWerte(zeileImCache, BK_COL_BETRAG)) Then
                 zahlBetrag = CDbl(m_BKWerte(zeileImCache, BK_COL_BETRAG))
-                ist = ist + Abs(zahlBetrag)
+                ist = ist + zahlBetrag
             End If
 
-            ' v3.2: Frühestes Zahlungsdatum merken
-            If Not hatZahlung Then
-                fruehestesZahlDatum = zahlDatum
-                hatZahlung = True
-            ElseIf zahlDatum < fruehestesZahlDatum Then
-                fruehestesZahlDatum = zahlDatum
+            ' v3.2: Frühestes Zahlungsdatum merken. Nur ein echter Eingang
+            ' gilt als Zahlung, eine Ausgabe setzt kein Zahlungsdatum.
+            If zahlBetrag > 0 Then
+                If Not hatZahlung Then
+                    fruehestesZahlDatum = zahlDatum
+                    hatZahlung = True
+                ElseIf zahlDatum < fruehestesZahlDatum Then
+                    fruehestesZahlDatum = zahlDatum
+                End If
             End If
 
 NextZahlRow:
@@ -432,8 +440,12 @@ Public Sub ZaehleZahlungenZP(ByVal entityKey As String, _
         If StrComp(ibanZeile, entityIBAN, vbTextCompare) <> 0 Then GoTo nextRow
         If StrComp(Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)), kategorie, vbTextCompare) <> 0 Then GoTo nextRow
 
-        anzahlTreffer = anzahlTreffer + 1
-        summeIst = summeIst + Abs(LeseGeldwertZP(wsBK.Cells(r, BK_COL_BETRAG).value))
+        ' Vorzeichenrichtig verrechnen: eine Ausgabe auf derselben IBAN und
+        ' Kategorie ist keine Zahlung des Mitglieds, sondern hebt eine auf.
+        Dim zeilenBetrag As Double
+        zeilenBetrag = LeseGeldwertZP(wsBK.Cells(r, BK_COL_BETRAG).value)
+        If zeilenBetrag > 0 Then anzahlTreffer = anzahlTreffer + 1
+        summeIst = summeIst + zeilenBetrag
 
 nextRow:
     Next r
@@ -517,8 +529,9 @@ Public Function HoleZahlungNachMitgliedsnameZP(ByVal mitgliedName As String, _
         Next nameTeil
 
         If passt Then
+            ' Vorzeichenrichtig, damit eine Rückzahlung den Eingang aufhebt.
             HoleZahlungNachMitgliedsnameZP = HoleZahlungNachMitgliedsnameZP + _
-                Abs(LeseGeldwertZP(wsBK.Cells(r, BK_COL_BETRAG).value))
+                LeseGeldwertZP(wsBK.Cells(r, BK_COL_BETRAG).value)
         End If
 NextNameZahlung:
     Next r
