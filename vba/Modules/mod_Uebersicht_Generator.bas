@@ -1750,6 +1750,7 @@ Private Sub EntferneAusgeglicheneEhemalige(ByVal wsUeb As Worksheet, _
     Dim soll As Double
     Dim ist As Double
     Dim guthaben As Double
+    Dim sollFehlt As Boolean
     Dim warGeschuetzt As Boolean
     Dim entfernt As Long
 
@@ -1771,6 +1772,8 @@ Private Sub EntferneAusgeglicheneEhemalige(ByVal wsUeb As Worksheet, _
                 soll = 0
                 ist = 0
                 guthaben = 0
+                sollFehlt = (Len(Trim$(CStr(wsUeb.Cells(r, UEB_COL_SOLL).value))) = 0)
+
                 If IsNumeric(wsUeb.Cells(r, UEB_COL_SOLL).value) Then
                     soll = CDbl(wsUeb.Cells(r, UEB_COL_SOLL).value)
                 End If
@@ -1781,7 +1784,13 @@ Private Sub EntferneAusgeglicheneEhemalige(ByVal wsUeb As Worksheet, _
                     guthaben = CDbl(wsUeb.Cells(r, UEB_COL_GUTHABEN).value)
                 End If
 
-                If soll - ist > 0.01 Or guthaben > 0.01 Then
+                ' Ein leeres Soll-Feld bedeutet nicht "nichts zu zahlen",
+                ' sondern "Betrag steht noch nicht fest". Genau das ist bei
+                ' Endabrechnung und Betriebskosten der Normalfall, solange
+                ' der Kassierer die Summe noch nicht eingetragen hat. Solche
+                ' Zeilen dürfen nicht verschwinden, sonst gäbe es keine
+                ' Stelle mehr, an der sich der Betrag eintragen lässt.
+                If sollFehlt Or soll - ist > 0.01 Or guthaben > 0.01 Then
                     offeneMitglieder(schluessel) = True
                 End If
 
