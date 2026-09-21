@@ -529,18 +529,22 @@ End Function
 ' Legt die beiden Bedienschaltflächen auf dem Blatt Bankkonto an.
 '
 ' Die Sonderzuordnung soll ohne Umweg über Entwicklerwerkzeuge oder
-' das Makrofenster erreichbar sein. Die Schaltflächen sitzen deshalb
-' rechts unterhalb des vorhandenen Bedienfelds und werden bei jedem
+' das Makrofenster erreichbar sein. Die Schaltflächen werden bei jedem
 ' Öffnen der Arbeitsmappe neu aufgebaut, damit sie nicht verloren
 ' gehen können. Das Blatt wird dafür kurz entsperrt und danach
 ' wieder mit denselben Rechten geschützt wie sonst auch.
+'
+' Sie sitzen bewusst im leeren Feld rechts neben dem Importprotokoll
+' (Spalten I bis K, oberhalb der Kennzahlen). Dort verdecken sie weder
+' die Kontoführungsangaben links noch die Auszugsangaben rechts.
 ' ===============================================================
 Public Sub ErstelleSonderzuordnungButtons(Optional ByVal wsBK As Worksheet = Nothing)
 
-    Const REIHE_OBEN As Single = 476
-    Const REIHE_HOEHE As Single = 30
+    Const REIHE_HOEHE As Single = 26
 
     Dim warGeschuetzt As Boolean
+    Dim ankerLinks As Single
+    Dim ankerOben As Single
 
     On Error GoTo Aufraeumen
 
@@ -552,14 +556,17 @@ Public Sub ErstelleSonderzuordnungButtons(Optional ByVal wsBK As Worksheet = Not
     warGeschuetzt = wsBK.ProtectContents
     If warGeschuetzt Then wsBK.Unprotect PASSWORD:=PASSWORD
 
+    ankerLinks = wsBK.Range("I2").Left
+    ankerOben = wsBK.Range("I2").Top
+
     Call ZeichneBedienschaltflaeche(wsBK, "btn_ZahlungZuordnen", _
          ChrW(8644) & "   Zahlung zuordnen", _
-         832, REIHE_OBEN, 166, REIHE_HOEHE, RGB(33, 156, 170), _
+         ankerLinks, ankerOben, 166, REIHE_HOEHE, RGB(33, 156, 170), _
          "'mod_Sonderzuordnung.OrdneBuchungEinemMitgliedZu'")
 
     Call ZeichneBedienschaltflaeche(wsBK, "btn_ZuordnungenZeigen", _
          "Zuordnungen", _
-         1004, REIHE_OBEN, 100, REIHE_HOEHE, RGB(82, 88, 94), _
+         ankerLinks + 172, ankerOben, 100, REIHE_HOEHE, RGB(82, 88, 94), _
          "'mod_Sonderzuordnung.ZeigeSonderzuordnungen'")
 
 Aufraeumen:

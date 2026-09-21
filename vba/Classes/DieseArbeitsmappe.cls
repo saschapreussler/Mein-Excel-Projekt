@@ -105,6 +105,11 @@ Private Sub Workbook_Open()
     End If
     On Error GoTo 0
 
+    ' Schaltfläche für den Testlauf auf dem Blatt Einstellungen.
+    On Error Resume Next
+    Call mod_Testdaten.ErstelleTestdatenButton
+    On Error GoTo 0
+
     ' v7.3 (alt): Aktiviere_BankkontoFilter wurde hier aufgerufen,
     '             aber StelleAutoFilterBereit weiter unten hat ihn
     '             wieder Überschrieben. -> Aufruf nach unten verschoben.
