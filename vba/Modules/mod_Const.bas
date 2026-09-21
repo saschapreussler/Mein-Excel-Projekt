@@ -238,6 +238,19 @@ Public Const SAEUMNIS_COL_BESTAETIGT_DURCH As Long = 97 ' CS
 Public Const SAEUMNIS_START_ROW As Long = 4
 Public Const SAEUMNIS_HEADER_ROW As Long = 3
 
+' Sonderzuordnung einzelner Buchungen zu einem anderen Mitglied.
+' Nötig, wenn ein Dritter zahlt: der Nachbar einer fremden Parzelle
+' oder im Erbfall ein Angehöriger des verstorbenen Mitglieds. Der
+' Buchungsschlüssel ist derselbe wie bei der Dublettenerkennung des
+' Imports, also Datum, Betrag, IBAN und Verwendungszweck.
+Public Const SZ_COL_KEY As Long = 98             ' CT - Buchungsschlüssel
+Public Const SZ_COL_ZIEL_KEY As Long = 99        ' CU - Ziel-Zuordnungsschlüssel
+Public Const SZ_COL_ZIEL_NAME As Long = 100      ' CV - Zielmitglied im Klartext
+Public Const SZ_COL_GRUND As Long = 101          ' CW - Begründung
+Public Const SZ_COL_ERFASST As Long = 102        ' CX - Erfassungsdatum
+Public Const SZ_START_ROW As Long = 4
+Public Const SZ_HEADER_ROW As Long = 3
+
 ' ===============================================================
 ' I. CSV-IMPORT (SPARKASSE)
 ' ===============================================================

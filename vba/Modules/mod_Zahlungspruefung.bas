@@ -437,6 +437,10 @@ Public Sub ZaehleZahlungenZP(ByVal entityKey As String, _
 
         Dim ibanZeile As String
         ibanZeile = Replace(Trim$(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", "")
+        ibanZeile = WirksameIBANZP(zahlDatum, _
+                                   wsBK.Cells(r, BK_COL_BETRAG).value, _
+                                   ibanZeile, _
+                                   wsBK.Cells(r, BK_COL_VERWENDUNGSZWECK).value)
         If StrComp(ibanZeile, entityIBAN, vbTextCompare) <> 0 Then GoTo nextRow
         If StrComp(Trim(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)), kategorie, vbTextCompare) <> 0 Then GoTo nextRow
 
@@ -560,12 +564,17 @@ Public Function HoleZahlungsdatumZP(ByVal entityKey As String, _
     If wsBK Is Nothing Then Exit Function
     lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
 
+    Dim ibanWirksam As String
     For r = BK_START_ROW To lastRow
         If IsDate(wsBK.Cells(r, BK_COL_DATUM).value) Then
             buchDatum = CDate(wsBK.Cells(r, BK_COL_DATUM).value)
+            ibanWirksam = WirksameIBANZP(buchDatum, _
+                                         wsBK.Cells(r, BK_COL_BETRAG).value, _
+                                         Replace(Trim$(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", ""), _
+                                         wsBK.Cells(r, BK_COL_VERWENDUNGSZWECK).value)
             If (Year(buchDatum) = jahr Or _
                 (monat = 1 And Month(buchDatum) = 12 And Year(buchDatum) = jahr - 1)) And _
-               StrComp(Replace(Trim$(CStr(wsBK.Cells(r, BK_COL_IBAN).value)), " ", ""), entityIBAN, vbTextCompare) = 0 And _
+               StrComp(ibanWirksam, entityIBAN, vbTextCompare) = 0 And _
                StrComp(Trim$(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)), kategorie, vbTextCompare) = 0 And _
                StrComp(Trim$(CStr(wsBK.Cells(r, BK_COL_MONAT_PERIODE).value)), MonthName(monat), vbTextCompare) = 0 Then
                 If HoleZahlungsdatumZP = 0 Or buchDatum < HoleZahlungsdatumZP Then HoleZahlungsdatumZP = buchDatum
@@ -764,6 +773,45 @@ End Sub
 ' Zeilen ohne IBAN oder ohne Kategorie werden nicht indexiert,
 ' weil sie ohnehin nie zu einer Abfrage passen könnten.
 ' ===============================================================
+' ===============================================================
+' Liefert die IBAN, unter der eine Buchung zu führen ist.
+'
+' Normalerweise ist das die IBAN des Zahlers. Hat der Nutzer die
+' Buchung per Sonderzuordnung einem anderen Mitglied zugewiesen,
+' etwa weil ein Nachbar oder im Erbfall ein Angehöriger gezahlt
+' hat, ist es die IBAN dieses Mitglieds. Die Umleitung greift
+' dadurch an einer einzigen Stelle, alle nachgelagerten Prüfungen
+' bleiben unverändert.
+' ===============================================================
+Private Function WirksameIBANZP(ByVal datum As Variant, _
+                                ByVal betrag As Variant, _
+                                ByVal iban As String, _
+                                ByVal zweck As Variant) As String
+
+    Dim schluessel As String
+    Dim zielKey As String
+    Dim zielIban As String
+
+    WirksameIBANZP = iban
+    If iban = "" Then Exit Function
+    If Not mod_Sonderzuordnung.HatSonderzuordnungen() Then Exit Function
+
+    schluessel = mod_Sonderzuordnung.BuchungsSchluessel(datum, betrag, iban, zweck)
+    If schluessel = "" Then Exit Function
+
+    zielKey = mod_Sonderzuordnung.ZielZuordnungsschluessel(schluessel)
+    If zielKey = "" Then Exit Function
+
+    If Not m_EntityIBANCacheGeladenZP Then Call LadeEntityIBANCacheZP
+    If m_EntityIBANCacheZP Is Nothing Then Exit Function
+    If Not m_EntityIBANCacheZP.exists(zielKey) Then Exit Function
+
+    zielIban = Replace(Trim$(CStr(m_EntityIBANCacheZP(zielKey))), " ", "")
+    If zielIban <> "" Then WirksameIBANZP = zielIban
+
+End Function
+
+
 Private Sub LadeBankkontoCacheZP()
 
     Dim wsBK As Worksheet
@@ -794,6 +842,14 @@ Private Sub LadeBankkontoCacheZP()
     For i = 1 To m_BKZeilen
         ibanWert = Replace(Trim(CStr(m_BKWerte(i, BK_COL_IBAN))), " ", "")
         katWert = Trim(CStr(m_BKWerte(i, BK_COL_KATEGORIE)))
+
+        ' Buchungen mit Sonderzuordnung laufen unter der IBAN des
+        ' Zielmitglieds. Sie verschwinden damit zugleich beim Zahler,
+        ' werden also nicht doppelt gezählt.
+        ibanWert = WirksameIBANZP(m_BKWerte(i, BK_COL_DATUM), _
+                                  m_BKWerte(i, BK_COL_BETRAG), _
+                                  ibanWert, _
+                                  m_BKWerte(i, BK_COL_VERWENDUNGSZWECK))
 
         If ibanWert <> "" And katWert <> "" Then
             schluessel = UCase(ibanWert) & "|" & UCase(katWert)
@@ -1019,6 +1075,7 @@ Public Sub EntladeEinstellungenCacheZP()
     
     Call EntladeEntityIBANCacheZP
     Call EntladeBankkontoCacheZP
+    Call mod_Sonderzuordnung.EntladeSonderzuordnungsCache
     
 End Sub
 
