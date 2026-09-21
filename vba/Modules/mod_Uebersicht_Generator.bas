@@ -1332,14 +1332,14 @@ Private Sub SortiereUebersichtNachParzelle(ByVal wsUeb As Worksheet, ByVal Letzt
     ' feste Spalte und nicht der rechte Rand des benutzten Bereichs:
     ' Sonst wanderte die Hilfsspalte mit jedem Lauf weiter nach rechts
     ' und der Sortierbereich zöge fremde Spalten mit.
-    Const HILFSSPALTE As Long = 11
+    Const SPALTE_K As Long = 11
 
     Dim hilfsSpalte As Long
     Dim r As Long
 
     If LetzteZeile < UEBERSICHT_START_ROW Then Exit Sub
 
-    hilfsSpalte = HILFSSPALTE
+    hilfsSpalte = SPALTE_K
 
     For r = UEBERSICHT_START_ROW To LetzteZeile
         wsUeb.Cells(r, hilfsSpalte).value = _

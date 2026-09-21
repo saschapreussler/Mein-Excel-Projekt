@@ -13,8 +13,12 @@ Option Explicit
 '   - "BK 01", "BK 02", ... für Ausgaben (Betrag < 0) je Jahr
 '   - "KA 01", "KA 02", ... für Vereinskassen-Einträge je Jahr
 '   - Bei Kategorie "Bargeldauszahlung":
-'        Bankkonto Spalte J = "BK 03 / KA 01"
-'        Vereinskasse Spalte F = "KA 01 / BK 03"
+'        Das Geld verlässt das Bankkonto nicht als Vereinsausgabe,
+'        es wechselt nur in die Vereinskasse. Die Buchung bekommt
+'        deshalb KEINE BK-Nummer, sondern auf beiden Blättern
+'        dieselbe KA-Nummer. Diese eine Nummer ist der Querverweis:
+'        Bankkonto Spalte J = "KA 01"
+'        Vereinskasse Spalte F = "KA 01"
 '
 ' Trigger:
 '   - Worksheet_Change auf Bankkonto Spalte H (Kategorie)
