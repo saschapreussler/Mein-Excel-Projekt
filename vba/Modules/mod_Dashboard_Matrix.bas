@@ -907,6 +907,7 @@ Public Sub SchreibeVerzugsdetail(ByVal ws As Worksheet, _
             ws.Cells(dRow, 8).NumberFormat = "#,##0.00"
             ws.Cells(dRow, 9).value = .tageVerzug
             ws.Cells(dRow, 10).value = .bemerkung
+            ws.Cells(dRow, 10).WrapText = True
         End With
         
         With ws.Range(ws.Cells(dRow, 1), ws.Cells(dRow, 10))
@@ -995,6 +996,43 @@ Public Sub SchreibeVerzugsdetail(ByVal ws As Worksheet, _
         endRow = dRow
     End If
     
+End Sub
+
+
+' ============================================================
+'  BEMERKUNGSSPALTE DER VERZUGSDETAILS AUSRICHTEN
+' ------------------------------------------------------------
+'  Muss nach PasseSpaltenAn laufen: Die Zeilenhöhe lässt sich erst
+'  berechnen, wenn die Spaltenbreite feststeht. Sonst rechnet Excel
+'  mit der alten Breite und schneidet den umgebrochenen Text ab,
+'  wodurch die Einfärbung der Zeile nur einen Teil der Bemerkung
+'  abdeckt.
+' ============================================================
+Public Sub RichteVerzugsBemerkungAus(ByVal ws As Worksheet, _
+                                     ByVal headerRow As Long, _
+                                     ByVal endRow As Long)
+
+    Dim r As Long
+    Dim mindestHoehe As Single
+
+    If headerRow <= 0 Or endRow <= headerRow Then Exit Sub
+
+    ws.Columns(10).ColumnWidth = 38
+
+    For r = headerRow + 1 To endRow
+        With ws.Cells(r, 10)
+            .WrapText = True
+            .HorizontalAlignment = xlLeft
+            .VerticalAlignment = xlCenter
+        End With
+        ws.Cells(r, 2).WrapText = True
+
+        mindestHoehe = ws.Rows(r).RowHeight
+        ws.Rows(r).AutoFit
+        If ws.Rows(r).RowHeight < mindestHoehe Then ws.Rows(r).RowHeight = mindestHoehe
+        If ws.Rows(r).RowHeight < 22 Then ws.Rows(r).RowHeight = 22
+    Next r
+
 End Sub
 
 

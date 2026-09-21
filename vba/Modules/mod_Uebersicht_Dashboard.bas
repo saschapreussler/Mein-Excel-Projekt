@@ -217,9 +217,11 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
     
     ' --- 10. Verzugsdetail ---
     Dim verzugEndRow As Long
+    Dim verzugHeaderRow As Long
     If anzVerzug > 0 Then
         ReDim Preserve verzugListe(0 To anzVerzug - 1)
         Call mod_Dashboard_Matrix.SortiereVerzug(verzugListe, anzVerzug)
+        verzugHeaderRow = matrixEndRow + 4
         Call mod_Dashboard_Matrix.SchreibeVerzugsdetail( _
             wsDash, matrixEndRow + 3, verzugListe, anzVerzug, verzugEndRow)
     End If
@@ -231,6 +233,12 @@ Public Sub GeneriereUebersichtNeu(Optional ByVal stummModus As Boolean = False)
     
     ' --- 12. Spaltenbreiten ---
     Call mod_Dashboard_Matrix.PasseSpaltenAn(wsDash, anzKat)
+
+    ' --- 12a. Bemerkungsspalte umbrechen (erst nach den Spaltenbreiten) ---
+    If anzVerzug > 0 Then
+        Call mod_Dashboard_Matrix.RichteVerzugsBemerkungAus( _
+            wsDash, verzugHeaderRow, verzugEndRow)
+    End If
     
     ' --- 12b. Home-Button setzen (Dashboard wird neu erstellt -> Button fehlt sonst) ---
     On Error Resume Next

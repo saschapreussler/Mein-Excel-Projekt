@@ -44,6 +44,13 @@ Private Sub Workbook_Open()
     On Error Resume Next
     Call mod_Uebersicht_Filter.ErstelleMonatsRegister
     On Error GoTo 0
+
+    ' Die Schaltfläche zum Quittieren der Säumnisgebühr sitzt neben dem
+    ' Monatsfilter und wird deshalb im selben Zug neu gesetzt.
+    On Error Resume Next
+    Call mod_Uebersicht_Generator.ErstelleSaeumnisBestaetigungsButton( _
+         ThisWorkbook.Worksheets(WS_UEBERSICHT()))
+    On Error GoTo 0
     
     ' v6.0: Einstellungen-Layout migrieren (einmalig)
     On Error Resume Next

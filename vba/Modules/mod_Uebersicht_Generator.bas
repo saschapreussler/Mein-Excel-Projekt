@@ -937,17 +937,18 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     bemerkung = teile(3)
                 End If
                 
-                ' Säumnis-Gebühr anhängen wenn Status ROT und Gebühr definiert
+                ' Säumnis-Gebühr anhängen wenn Status ROT und Gebühr definiert.
+                ' Die Zahlungsprüfung vermerkt die Gebühr bereits selbst, wenn
+                ' sie eine verspätete Zahlung erkannt hat. Stünde hier noch ein
+                ' zweiter Hinweis, läse der Nutzer denselben Sachverhalt zweimal.
                 If StrComp(status, "ROT", vbTextCompare) = 0 Then
                     If kategorien(k).saeumnisGebuehr > 0 Then
                         Dim saeumnisText As String
                         saeumnisText = "S" & ChrW(228) & "umnis-Geb" & ChrW(252) & "hr: " & _
                                        Format(kategorien(k).saeumnisGebuehr, "#,##0.00") & _
                                        " " & ChrW(8364)
-                        If bemerkung = "" Then
-                            bemerkung = saeumnisText
-                        Else
-                            bemerkung = bemerkung & " | " & saeumnisText
+                        If InStr(1, bemerkung, "S" & ChrW(228) & "umnis", vbTextCompare) = 0 Then
+                            Call FuegeBemerkungHinzu(bemerkung, saeumnisText)
                         End If
                     End If
                 End If
@@ -962,39 +963,18 @@ Public Sub GeneriereUebersicht(Optional ByVal jahr As Long = 0, _
                     Else
                         variabelHinweis = "Soll-Betrag variabel (bitte manuell eintragen)"
                     End If
-                    If bemerkung = "" Then
-                        bemerkung = variabelHinweis
-                    Else
-                        bemerkung = bemerkung & " | " & variabelHinweis
-                    End If
+                    Call FuegeBemerkungHinzu(bemerkung, variabelHinweis)
                 End If
                 
                 ' v4.4: Partner-Info anhängen wenn Mitgliedsbeitrag mitbezahlt
-                If partnerInfo <> "" Then
-                    If bemerkung = "" Then
-                        bemerkung = partnerInfo
-                    Else
-                        bemerkung = bemerkung & " | " & partnerInfo
-                    End If
-                End If
-                If zahlerPartnerInfo <> "" Then
-                    If bemerkung = "" Then
-                        bemerkung = zahlerPartnerInfo
-                    Else
-                        bemerkung = bemerkung & " | " & zahlerPartnerInfo
-                    End If
-                End If
+                Call FuegeBemerkungHinzu(bemerkung, partnerInfo)
+                Call FuegeBemerkungHinzu(bemerkung, zahlerPartnerInfo)
                 
                 ' v4.6/v5.4: Hinweis NUR für Januar ohne Vorjahr-Daten
                      If monat = 1 And ist = 0 And partnerInfo = "" And _
                          Not mod_Uebersicht_Daten.HatVorjahrDaten() Then
-                    Dim vjHinweis As String
-                    vjHinweis = "Keine Vorjahr-Daten: Zahlung evtl. im Vorjahr (Okt-Dez) erfolgt"
-                    If bemerkung = "" Then
-                        bemerkung = vjHinweis
-                    Else
-                        bemerkung = bemerkung & " | " & vjHinweis
-                    End If
+                    Call FuegeBemerkungHinzu(bemerkung, _
+                         "Keine Vorjahr-Daten: Zahlung evtl. im Vorjahr (Okt-Dez) erfolgt")
                 End If
                 
                 wsUeb.Cells(rowIdx, UEB_COL_BEMERKUNG).value = bemerkung
@@ -1133,13 +1113,46 @@ ErrorHandler:
     
 End Sub
 
-Private Sub ErstelleSaeumnisBestaetigungsButton(ByVal wsUeb As Worksheet)
+' ===============================================================
+' Setzt die Schaltfläche zum Quittieren der Säumnisgebühr rechts
+' neben den Monatsfilter.
+'
+' Der Abstand zum Dezember ist absichtlich größer als der Abstand
+' der Monate untereinander: Die Schaltfläche löst eine Buchung aus
+' und soll nicht wie eine weitere Filterkarte wirken.
+' ===============================================================
+Public Sub ErstelleSaeumnisBestaetigungsButton(ByVal wsUeb As Worksheet)
+
+    Const ABSTAND_ZUM_REGISTER As Single = 24
+
     Dim shp As Shape
+    Dim dezember As Shape
+    Dim posLinks As Single
+    Dim posOben As Single
+    Dim warGeschuetzt As Boolean
+
+    If wsUeb Is Nothing Then Exit Sub
+
+    ' Der Aufruf kommt sowohl aus dem Generator, der das Blatt bereits
+    ' entsperrt hat, als auch beim Öffnen der Mappe auf ein geschütztes
+    ' Blatt. Deshalb hier selbst dafür sorgen.
+    warGeschuetzt = wsUeb.ProtectContents
     On Error Resume Next
+    If warGeschuetzt Then wsUeb.Unprotect PASSWORD:=PASSWORD
     wsUeb.Shapes("btn_SaeumnisBestaetigen").Delete
+    Set dezember = wsUeb.Shapes("regMonat_12")
     On Error GoTo 0
+
+    If dezember Is Nothing Then
+        posLinks = wsUeb.Range("K1").Left
+        posOben = wsUeb.Range("K1").Top + 2
+    Else
+        posLinks = dezember.Left + dezember.Width + ABSTAND_ZUM_REGISTER
+        posOben = dezember.Top
+    End If
+
     Set shp = wsUeb.Shapes.AddShape(msoShapeRoundedRectangle, _
-        wsUeb.Range("K1").Left, wsUeb.Range("K1").Top + 2, 155, 22)
+        posLinks, posOben, 155, 22)
     With shp
         .Name = "btn_SaeumnisBestaetigen"
         .TextFrame2.TextRange.text = "Säumnisgebühr quittieren"
@@ -1153,6 +1166,13 @@ Private Sub ErstelleSaeumnisBestaetigungsButton(ByVal wsUeb As Worksheet)
         .OnAction = "'mod_Uebersicht_Generator.BestaetigeSaeumnisgebuehrAktuelleZeile'"
         .Placement = xlFreeFloating
     End With
+
+    On Error Resume Next
+    If warGeschuetzt Then
+        wsUeb.Protect PASSWORD:=PASSWORD, UserInterfaceOnly:=True, _
+                      AllowFiltering:=True, AllowSorting:=True
+    End If
+    On Error GoTo 0
 End Sub
 
 Private Sub VerarbeiteSpaeteNachzahlungen(ByVal wsUeb As Worksheet, ByVal LetzteZeile As Long)
@@ -1285,22 +1305,113 @@ Private Function HoleSaeumnisTextFuerKategorie(ByVal kategorie As String) As Str
     End If
 End Function
 
+' ===============================================================
+' Sortiert die Übersicht nach Parzelle, Monat, Name und Kategorie.
+'
+' Die Monatsspalte enthält Klartext wie "Januar 2024". Alphabetisch
+' sortiert stünde April vor Januar. Die Reihenfolge entsteht deshalb
+' über eine Hilfsspalte mit Jahr und Monatszahl, die rechts neben dem
+' benutzten Bereich angelegt und sofort wieder entfernt wird.
+' ===============================================================
 Private Sub SortiereUebersichtNachParzelle(ByVal wsUeb As Worksheet, ByVal LetzteZeile As Long)
+    Dim hilfsSpalte As Long
+    Dim r As Long
+
     If LetzteZeile < UEBERSICHT_START_ROW Then Exit Sub
+
+    hilfsSpalte = wsUeb.UsedRange.Column + wsUeb.UsedRange.Columns.count
+    If hilfsSpalte <= UEB_COL_GUTHABEN + 1 Then hilfsSpalte = UEB_COL_GUTHABEN + 2
+
+    For r = UEBERSICHT_START_ROW To LetzteZeile
+        wsUeb.Cells(r, hilfsSpalte).value = _
+            MonatsSortierwert(CStr(wsUeb.Cells(r, UEB_COL_MONAT).value))
+    Next r
 
     With wsUeb.Sort
         .SortFields.Clear
         .SortFields.Add key:=wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_PARZELLE), _
                                         wsUeb.Cells(LetzteZeile, UEB_COL_PARZELLE)), _
                         SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortTextAsNumbers
+        .SortFields.Add key:=wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, hilfsSpalte), _
+                                        wsUeb.Cells(LetzteZeile, hilfsSpalte)), _
+                        SortOn:=xlSortOnValues, Order:=xlAscending
+        .SortFields.Add key:=wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_MITGLIED), _
+                                        wsUeb.Cells(LetzteZeile, UEB_COL_MITGLIED)), _
+                        SortOn:=xlSortOnValues, Order:=xlAscending
+        .SortFields.Add key:=wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_KATEGORIE), _
+                                        wsUeb.Cells(LetzteZeile, UEB_COL_KATEGORIE)), _
+                        SortOn:=xlSortOnValues, Order:=xlAscending
         .SetRange wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, UEB_COL_PARZELLE), _
-                              wsUeb.Cells(LetzteZeile, UEB_COL_GUTHABEN))
+                              wsUeb.Cells(LetzteZeile, hilfsSpalte))
         .Header = xlNo
         .MatchCase = False
         .Orientation = xlTopToBottom
         .Apply
+        .SortFields.Clear
     End With
+
+    wsUeb.Range(wsUeb.Cells(UEBERSICHT_START_ROW, hilfsSpalte), _
+                wsUeb.Cells(LetzteZeile, hilfsSpalte)).Clear
 End Sub
+
+
+' ===============================================================
+' Hängt einen Hinweis an die Bemerkung an, ohne ihn zu doppeln.
+'
+' Die Bemerkung entsteht in mehreren Schritten: Die Zahlungsprüfung
+' liefert einen Teil, der Generator ergänzt weitere, und bei einer
+' Nacharbeit kommt derselbe Hinweis leicht ein zweites Mal hinzu.
+' ===============================================================
+Private Sub FuegeBemerkungHinzu(ByRef bemerkung As String, ByVal zusatz As String)
+    Dim teile() As String
+    Dim i As Long
+
+    zusatz = Trim$(zusatz)
+    If zusatz = "" Then Exit Sub
+
+    If Trim$(bemerkung) = "" Then
+        bemerkung = zusatz
+        Exit Sub
+    End If
+
+    teile = Split(bemerkung, " | ")
+    For i = LBound(teile) To UBound(teile)
+        If StrComp(Trim$(teile(i)), zusatz, vbTextCompare) = 0 Then Exit Sub
+    Next i
+
+    bemerkung = bemerkung & " | " & zusatz
+End Sub
+
+
+' ===============================================================
+' Wandelt "Januar 2024" in 202401 um, damit chronologisch sortiert
+' werden kann. Nicht lesbare Angaben wandern ans Ende.
+' ===============================================================
+Private Function MonatsSortierwert(ByVal monatsText As String) As Long
+    Dim teile() As String
+    Dim monatsNr As Long
+    Dim jahrWert As Long
+    Dim i As Long
+
+    MonatsSortierwert = 999999
+    If Trim$(monatsText) = "" Then Exit Function
+
+    teile = Split(Trim$(monatsText), " ")
+
+    For i = 1 To 12
+        If StrComp(teile(0), MonthName(i), vbTextCompare) = 0 Then
+            monatsNr = i
+            Exit For
+        End If
+    Next i
+    If monatsNr = 0 Then Exit Function
+
+    If UBound(teile) >= 1 Then
+        If IsNumeric(teile(1)) Then jahrWert = CLng(teile(1))
+    End If
+
+    MonatsSortierwert = jahrWert * 100 + monatsNr
+End Function
 
 Private Function SammleVorjahrEntscheidungen(ByVal wsUeb As Worksheet) As Object
     Dim dict As Object

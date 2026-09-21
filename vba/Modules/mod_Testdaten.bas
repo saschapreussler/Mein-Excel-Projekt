@@ -294,6 +294,13 @@ End Sub
 ' Funktion loescht Daten und soll nicht versehentlich getroffen
 ' werden. Das Blatt Einstellungen ist der Ort, an dem ohnehin nur
 ' bewusst gearbeitet wird.
+'
+' Es wird keine einzige Zelle beschrieben. Spalte B des Blattes ist
+' die Eingabespalte der Kategorietabelle und haengt an der
+' Duplikatspruefung im Worksheet_Change. Ein Beschriftungstext dort
+' loest diese Pruefung aus und blockiert die Mappe mit einem Dialog.
+' Der Erklaerungstext steht deshalb im Alternativtext der Form und
+' erscheint als Hinweis, wenn der Zeiger darauf ruht.
 ' ===============================================================
 Public Sub ErstelleTestdatenButton(Optional ByVal wsEinst As Worksheet = Nothing)
 
@@ -317,17 +324,14 @@ Public Sub ErstelleTestdatenButton(Optional ByVal wsEinst As Worksheet = Nothing
     wsEinst.Shapes("btn_Testlauf").Delete
     On Error GoTo Aufraeumen
 
-    wsEinst.Cells(32, 2).value = "Testbetrieb"
-    wsEinst.Cells(32, 2).Font.Bold = True
-    wsEinst.Cells(33, 2).value = "Setzt Buchungen und Auswertungen zur" & ChrW(252) & _
-                                 "ck. Mitglieder, Kategorien, Zahlungstermine und " & _
-                                 "Z" & ChrW(228) & "hlerst" & ChrW(228) & "nde bleiben erhalten."
-    wsEinst.Cells(33, 2).Font.Italic = True
-
     Set shp = wsEinst.Shapes.AddShape(msoShapeRoundedRectangle, _
               anker.Left, anker.Top + 2, 210, 26)
     With shp
         .Name = "btn_Testlauf"
+        .AlternativeText = "Testlauf vorbereiten: Setzt Buchungen und " & _
+              "Auswertungen zur" & ChrW(252) & "ck. Mitglieder, Kategorien, " & _
+              "Zahlungstermine und Z" & ChrW(228) & "hlerst" & ChrW(228) & _
+              "nde bleiben erhalten."
         .TextFrame2.TextRange.text = ChrW(9888) & "   Testlauf vorbereiten"
         .TextFrame2.TextRange.Font.Size = 9
         .TextFrame2.TextRange.Font.Bold = msoTrue
