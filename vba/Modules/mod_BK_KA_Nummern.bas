@@ -117,7 +117,12 @@ Public Sub NeuberechneAlleBKNummern(Optional ByVal wsBK As Worksheet = Nothing)
             dat = CDate(wsBK.Cells(r, BK_COL_DATUM).value)
             If Year(dat) = abrJahr Then
                 If IsNumeric(wsBK.Cells(r, BK_COL_BETRAG).value) Then
-                    If CDbl(wsBK.Cells(r, BK_COL_BETRAG).value) < 0 Then
+                    ' Eine Bargeldabhebung ist keine Vereinsausgabe, sondern
+                    ' ein Übertrag in die Vereinskasse. Sie bekommt daher
+                    ' keine BK-Nummer, sondern weiter unten nur die KA-Nummer.
+                    If CDbl(wsBK.Cells(r, BK_COL_BETRAG).value) < 0 And _
+                       StrComp(Trim$(CStr(wsBK.Cells(r, BK_COL_KATEGORIE).value)), _
+                               KAT_BARGELDAUSZAHLUNG, vbTextCompare) <> 0 Then
                         sortIdx(cnt) = r
                         sortDat(cnt) = dat
                         cnt = cnt + 1
@@ -210,18 +215,11 @@ Private Sub SyncBargeldauszahlungenZuVK(ByVal wsBK As Worksheet, _
         bkBetrag = CDbl(wsBK.Cells(r, BK_COL_BETRAG).value)
         If bkBetrag >= 0 Then GoTo NextBK
         
-        Dim bkNrStr As String
-        bkNrStr = CStr(wsBK.Cells(r, BK_COL_INTERNE_NR).value)
-        ' Falls der Eintrag noch keine BK-Nr hat, überspringen (kommt in nächstem Lauf)
-        If LenB(bkNrStr) = 0 Then GoTo NextBK
-        ' Nur den BK-Teil verwenden (BK 03 / KA xx -> BK 03)
-        Dim p As Long
-        p = InStr(1, bkNrStr, "/")
-        If p > 0 Then bkNrStr = Trim(Left$(bkNrStr, p - 1))
-        
         ' Prüfen ob VK-Eintrag bereits existiert (Datum + Betrag positiv)
         Dim gefunden As Boolean
+        Dim gefundenZeile As Long
         gefunden = False
+        gefundenZeile = 0
         For v = VK_START_ROW To lastVK
             If IsDate(wsVK.Cells(v, VK_COL_DATUM).value) Then
                 If CDate(wsVK.Cells(v, VK_COL_DATUM).value) = bkDatum Then
@@ -231,8 +229,10 @@ Private Sub SyncBargeldauszahlungenZuVK(ByVal wsBK As Worksheet, _
                             Dim besch As String
                             besch = LCase$(CStr(wsVK.Cells(v, VK_COL_BESCHREIBUNG).value))
                             If InStr(besch, LCase$(KAT_BARGELDAUSZAHLUNG)) > 0 Or _
-                               InStr(LCase$(CStr(wsVK.Cells(v, VK_COL_INTERNE_NR).value)), "bk ") > 0 Then
+                               InStr(LCase$(CStr(wsVK.Cells(v, VK_COL_INTERNE_NR).value)), "bk ") > 0 Or _
+                               InStr(LCase$(CStr(wsVK.Cells(v, VK_COL_INTERNE_NR).value)), "ka ") > 0 Then
                                 gefunden = True
+                                gefundenZeile = v
                                 Exit For
                             End If
                         End If
@@ -241,11 +241,21 @@ Private Sub SyncBargeldauszahlungenZuVK(ByVal wsBK As Worksheet, _
             End If
         Next v
         
-        If Not gefunden Then
+        If gefunden Then
+            ' Altbestand: Die Beschreibung nannte eine BK-Nummer, die es
+            ' für Bargeldabhebungen nicht mehr gibt. Sie würde ins Leere
+            ' verweisen und wird deshalb auf den heutigen Wortlaut gebracht.
+            If InStr(1, CStr(wsVK.Cells(gefundenZeile, VK_COL_BESCHREIBUNG).value), _
+                     "BK ", vbTextCompare) > 0 Then
+                wsVK.Cells(gefundenZeile, VK_COL_BESCHREIBUNG).value = _
+                    "Bargeldauszahlung an Vereinskasse vom " & Format(bkDatum, "DD.MM.YYYY")
+            End If
+        Else
             lastVK = lastVK + 1
             wsVK.Cells(lastVK, VK_COL_DATUM).value = bkDatum
             wsVK.Cells(lastVK, VK_COL_DATUM).NumberFormat = "DD.MM.YYYY"
-            wsVK.Cells(lastVK, VK_COL_BESCHREIBUNG).value = KAT_BARGELDAUSZAHLUNG & " (" & bkNrStr & ")"
+            wsVK.Cells(lastVK, VK_COL_BESCHREIBUNG).value = _
+                "Bargeldauszahlung an Vereinskasse vom " & Format(bkDatum, "DD.MM.YYYY")
             wsVK.Cells(lastVK, VK_COL_NAME).value = "Bankkonto"
             wsVK.Cells(lastVK, VK_COL_BETRAG).value = Abs(bkBetrag)
             wsVK.Cells(lastVK, VK_COL_BETRAG).NumberFormat = "#,##0.00 " & ChrW(8364)
@@ -326,8 +336,6 @@ Private Sub NumeriereVKEintraege(ByVal wsBK As Worksheet, _
         vRow = sortIdx(i)
         
         ' Korrespondierende BK-Zeile suchen (Bargeldauszahlung gleiches Datum + Betrag)
-        Dim bkNrStr As String
-        bkNrStr = ""
         Dim bkRowMatch As Long
         bkRowMatch = 0
         
@@ -346,15 +354,6 @@ Private Sub NumeriereVKEintraege(ByVal wsBK As Worksheet, _
                     If StrComp(CStr(wsBK.Cells(b, BK_COL_KATEGORIE).value), KAT_BARGELDAUSZAHLUNG, vbTextCompare) = 0 Then
                         If IsNumeric(wsBK.Cells(b, BK_COL_BETRAG).value) Then
                             If Abs(Abs(CDbl(wsBK.Cells(b, BK_COL_BETRAG).value)) - vBetrag) < 0.005 Then
-                                Dim raw As String
-                                raw = CStr(wsBK.Cells(b, BK_COL_INTERNE_NR).value)
-                                Dim slashPos As Long
-                                slashPos = InStr(1, raw, "/")
-                                If slashPos > 0 Then
-                                    bkNrStr = Trim(Left$(raw, slashPos - 1))
-                                Else
-                                    bkNrStr = Trim(raw)
-                                End If
                                 bkRowMatch = b
                                 Exit For
                             End If
@@ -364,13 +363,12 @@ Private Sub NumeriereVKEintraege(ByVal wsBK As Worksheet, _
             End If
         Next b
         
-        If LenB(bkNrStr) > 0 Then
-            wsVK.Cells(vRow, VK_COL_INTERNE_NR).value = kaStr & " / " & bkNrStr
-            If bkRowMatch > 0 Then
-                wsBK.Cells(bkRowMatch, BK_COL_INTERNE_NR).value = bkNrStr & " / " & kaStr
-            End If
-        Else
-            wsVK.Cells(vRow, VK_COL_INTERNE_NR).value = kaStr
+        ' Dieselbe KA-Nummer steht auf beiden Blättern. Sie allein stellt
+        ' den Bezug her: Wer die Abhebung auf dem Bankkonto sieht, findet
+        ' unter derselben Nummer den Eingang in der Vereinskasse.
+        wsVK.Cells(vRow, VK_COL_INTERNE_NR).value = kaStr
+        If bkRowMatch > 0 Then
+            wsBK.Cells(bkRowMatch, BK_COL_INTERNE_NR).value = kaStr
         End If
     Next i
 End Sub

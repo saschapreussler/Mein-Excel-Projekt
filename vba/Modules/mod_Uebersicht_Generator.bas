@@ -82,7 +82,9 @@ Option Explicit
 ' ===============================================================
 ' KONSTANTEN
 ' ===============================================================
-Private Const UEBERSICHT_START_ROW As Long = 4
+' Öffentlich, weil auch der Testlauf in mod_Testdaten die erste
+' Datenzeile der Übersicht kennen muss.
+Public Const UEBERSICHT_START_ROW As Long = 4
 Private Const UEBERSICHT_HEADER_ROW As Long = 3
 
 ' Spalten im Übersichtsblatt
