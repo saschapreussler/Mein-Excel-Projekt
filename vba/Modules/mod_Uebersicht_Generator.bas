@@ -116,6 +116,13 @@ Private m_StatusInitialisiert As Boolean
 ' v4.5b: Reentrancy-Schutz (verhindert doppelten Aufruf)
 Private m_IsGenerating As Boolean
 
+' Name der CustomProperty, in der der Stand des Bankkontos liegt.
+' Daran erkennt der Blattwechsel, ob die Übersicht veraltet ist.
+Private Const STEMPEL_NAME As String = "BankkontoStand"
+
+' Merker für den Hinweis auf fehlende Soll- und Ist-Beträge.
+Private m_HinweisUebersichtGezeigt As Boolean
+
 
 ' ===============================================================
 ' Type für eine dynamische Kategorie aus Einstellungen
@@ -1082,6 +1089,10 @@ NextMitglied:
     ' Deshalb wird hier entschieden, welche ausgeschiedenen Mitglieder
     ' vollständig ausgeglichen sind und aus der Übersicht verschwinden.
     Call EntferneAusgeglicheneEhemalige(wsUeb, rowIdx - 1, ehemaligeSchluessel)
+
+    ' Stand des Bankkontos festhalten. Daran erkennt der Blattwechsel
+    ' später, ob die Übersicht noch zum Bankkonto passt.
+    Call MerkeBankkontoStand(wsUeb)
     
     ' Die Vorjahr-Hinweisprüfung wird gezielt beim Blattwechsel auf
     ' die Zahlungsübersicht gestartet (nicht direkt während Generierung).
@@ -3146,6 +3157,224 @@ Private Function UebersichtEntscheidungsKey(ByVal wsUeb As Worksheet, ByVal zeil
                               Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_MONAT).value)) & "|" & _
                               Trim$(CStr(wsUeb.Cells(zeile, UEB_COL_KATEGORIE).value))
 End Function
+
+' ===============================================================
+' Abgleich Übersicht gegen Bankkonto
+' ===============================================================
+' Die Monatsspalte C der Übersicht wird aus dem Bankkonto abgeleitet;
+' maßgeblich ist dort Spalte I (Monat/Periode). Ändert der Nutzer
+' eine Periode, während noch andere Zuordnungen offen sind, dann
+' unterbleibt die sofortige Neuberechnung — die Übersicht zeigt dann
+' einen veralteten Monat.
+'
+' Deshalb wird bei jeder Generierung ein Kennwert des Bankkontos
+' hinterlegt. Weicht er beim Blattwechsel ab, wird die Übersicht neu
+' aufgebaut. Der Kennwert liegt in einer CustomProperty des Blattes
+' und belegt keine Zelle.
+' ===============================================================
+Public Function BankkontoStand() As String
+
+    Dim wsBK As Worksheet
+    Dim werte As Variant
+    Dim lastRow As Long
+    Dim r As Long
+    Dim summe As Double
+    Dim zeichen As Double
+    Dim anzahl As Long
+    Dim text As String
+
+    On Error GoTo Fertig
+
+    Set wsBK = ThisWorkbook.Worksheets(WS_BANKKONTO)
+    If wsBK Is Nothing Then Exit Function
+
+    lastRow = wsBK.Cells(wsBK.Rows.count, BK_COL_DATUM).End(xlUp).Row
+    If lastRow < BK_START_ROW Then
+        BankkontoStand = "leer"
+        Exit Function
+    End If
+
+    ' In einem Zug lesen. Zellweiser Zugriff wäre bei mehreren hundert
+    ' Zeilen bei jedem Blattwechsel spürbar langsam.
+    werte = wsBK.Range(wsBK.Cells(BK_START_ROW, BK_COL_DATUM), _
+                       wsBK.Cells(lastRow, BK_COL_MONAT_PERIODE)).value
+
+    For r = 1 To UBound(werte, 1)
+        text = Trim$(CStr(werte(r, BK_COL_KATEGORIE - BK_COL_DATUM + 1)) & "|" & _
+                     CStr(werte(r, BK_COL_MONAT_PERIODE - BK_COL_DATUM + 1)))
+        If text <> "|" Then
+            anzahl = anzahl + 1
+            ' Positionsabhängige Quersumme: Ein vertauschter Monat
+            ' ändert den Wert, eine reine Umsortierung ebenfalls.
+            zeichen = 0
+            Dim p As Long
+            For p = 1 To Len(text)
+                zeichen = zeichen + AscW(Mid$(text, p, 1)) * p
+            Next p
+            summe = summe + zeichen * r
+        End If
+    Next r
+
+    BankkontoStand = CStr(anzahl) & ":" & Format$(summe, "0")
+
+Fertig:
+End Function
+
+
+Private Sub MerkeBankkontoStand(ByVal wsUeb As Worksheet)
+
+    Dim cp As CustomProperty
+    Dim wert As String
+
+    On Error Resume Next
+
+    If wsUeb Is Nothing Then Exit Sub
+    wert = BankkontoStand()
+    If wert = "" Then Exit Sub
+
+    For Each cp In wsUeb.CustomProperties
+        If StrComp(cp.Name, STEMPEL_NAME, vbTextCompare) = 0 Then
+            cp.value = wert
+            Exit Sub
+        End If
+    Next cp
+
+    wsUeb.CustomProperties.Add Name:=STEMPEL_NAME, value:=wert
+
+End Sub
+
+
+' True, wenn die Übersicht nicht mehr zum Bankkonto passt.
+Public Function UebersichtIstVeraltet() As Boolean
+
+    Dim wsUeb As Worksheet
+    Dim cp As CustomProperty
+    Dim gemerkt As String
+
+    On Error GoTo Fertig
+
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    If wsUeb Is Nothing Then Exit Function
+
+    For Each cp In wsUeb.CustomProperties
+        If StrComp(cp.Name, STEMPEL_NAME, vbTextCompare) = 0 Then
+            gemerkt = CStr(cp.value)
+            Exit For
+        End If
+    Next cp
+
+    ' Ohne hinterlegten Stand wurde noch nie generiert. Dann greift
+    ' die übrige Startlogik, hier soll nichts erzwungen werden.
+    If gemerkt = "" Then Exit Function
+
+    UebersichtIstVeraltet = (gemerkt <> BankkontoStand())
+
+Fertig:
+End Function
+
+
+' Baut die Übersicht neu auf, falls sie dem Bankkonto hinterherhinkt.
+Public Sub AktualisiereUebersichtFallsVeraltet()
+
+    On Error Resume Next
+
+    If m_IsGenerating Then Exit Sub
+    If Not UebersichtIstVeraltet() Then Exit Sub
+
+    Call GeneriereUebersicht(stummModus:=True)
+
+End Sub
+
+
+' ===============================================================
+' Hinweis beim Verlassen der Zahlungsübersicht
+' ===============================================================
+' Manche Zeilen kann das Programm nicht allein füllen: Bei der
+' Betriebskostenabrechnung oder der Endabrechnung steht der
+' Soll-Betrag (Spalte E) nicht in den Zahlungsterminen, und eine
+' Zahlung aus dem Vorjahr trägt der Nutzer im Ist (Spalte F) nach.
+'
+' Bleiben solche Zellen leer, fehlt der Auswertung die Grundlage.
+' Der Hinweis erscheint wie beim Bankkonto einmal und hält den
+' Nutzer nicht auf.
+' ===============================================================
+Public Sub SetzeHinweisUebersichtZurueck()
+    m_HinweisUebersichtGezeigt = False
+End Sub
+
+
+Public Sub HinweisBeimVerlassenUebersicht()
+
+    Dim wsUeb As Worksheet
+    Dim lastRow As Long
+    Dim r As Long
+    Dim ersteZeile As Long
+    Dim ersteSpalte As Long
+    Dim anzahlOhneSoll As Long
+    Dim anzahlOhneIst As Long
+    Dim meldung As String
+
+    On Error Resume Next
+
+    If m_HinweisUebersichtGezeigt Then Exit Sub
+    If Not Application.Visible Then Exit Sub
+    If m_IsGenerating Then Exit Sub
+
+    Set wsUeb = ThisWorkbook.Worksheets(WS_UEBERSICHT())
+    If wsUeb Is Nothing Then Exit Sub
+
+    lastRow = wsUeb.Cells(wsUeb.Rows.count, UEB_COL_MITGLIED).End(xlUp).Row
+    If lastRow < UEBERSICHT_START_ROW Then Exit Sub
+
+    For r = UEBERSICHT_START_ROW To lastRow
+        If Trim$(CStr(wsUeb.Cells(r, UEB_COL_MITGLIED).value)) <> "" Then
+
+            If Trim$(CStr(wsUeb.Cells(r, UEB_COL_SOLL).value)) = "" Then
+                anzahlOhneSoll = anzahlOhneSoll + 1
+                If ersteZeile = 0 Then
+                    ersteZeile = r
+                    ersteSpalte = UEB_COL_SOLL
+                End If
+            ElseIf Trim$(CStr(wsUeb.Cells(r, UEB_COL_IST).value)) = "" Then
+                anzahlOhneIst = anzahlOhneIst + 1
+                If ersteZeile = 0 Then
+                    ersteZeile = r
+                    ersteSpalte = UEB_COL_IST
+                End If
+            End If
+
+        End If
+    Next r
+
+    If ersteZeile = 0 Then Exit Sub
+
+    meldung = "Auf der Zahlungs" & ChrW(252) & "bersicht fehlen noch Eintr" & _
+              ChrW(228) & "ge." & vbCrLf & vbCrLf
+
+    If anzahlOhneSoll > 0 Then
+        meldung = meldung & anzahlOhneSoll & " Zeile(n) ohne Soll-Betrag in Spalte E." & vbCrLf
+    End If
+    If anzahlOhneIst > 0 Then
+        meldung = meldung & anzahlOhneIst & " Zeile(n) ohne Ist-Betrag in Spalte F." & vbCrLf
+    End If
+
+    meldung = meldung & vbCrLf & _
+              "Die erste offene Stelle steht in Zeile " & ersteZeile & "." & vbCrLf & vbCrLf & _
+              "Sie k" & ChrW(246) & "nnen trotzdem auf ein anderes Blatt wechseln. " & _
+              "Dieser Hinweis erscheint erst wieder nach einer " & ChrW(196) & _
+              "nderung an der " & ChrW(220) & "bersicht."
+
+    m_HinweisUebersichtGezeigt = True
+
+    MsgBox meldung, vbInformation, "Zahlungs" & ChrW(252) & "bersicht noch nicht vollst" & ChrW(228) & "ndig"
+
+    On Error Resume Next
+    wsUeb.Activate
+    wsUeb.Cells(ersteZeile, ersteSpalte).Select
+    On Error GoTo 0
+
+End Sub
+
 
 Public Function HatOffeneZahlungspruefungen() As Boolean
     Dim wsUeb As Worksheet

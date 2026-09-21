@@ -207,6 +207,10 @@ Private Sub Workbook_SheetActivate(ByVal Sh As Object)
             vollbild = True
         Case WS_UEBERSICHT()
             On Error Resume Next
+            ' Maßgeblich ist das Bankkonto. Hinkt die Übersicht dem
+            ' Stand dort hinterher, wird sie vor der Anzeige neu
+            ' aufgebaut, damit Spalte C zur Spalte I des Bankkontos passt.
+            Call mod_Uebersicht_Generator.AktualisiereUebersichtFallsVeraltet
             Call mod_Uebersicht_Generator.RepariereStatusDropdown
             On Error GoTo 0
         Case "Dashboard Mitgliederzahlungen"
@@ -320,6 +324,9 @@ Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
         On Error Resume Next
         Call mod_Uebersicht_Dashboard.GeneriereUebersichtNeu(stummModus:=True)
         Call mod_Uebersicht_Generator.WendePersistierteVorjahrEntscheidungenAn
+        ' Nach einer Änderung darf der Hinweis auf fehlende Soll- und
+        ' Ist-Beträge wieder erscheinen.
+        Call mod_Uebersicht_Generator.SetzeHinweisUebersichtZurueck
         On Error GoTo 0
     ElseIf StrComp(wsName, WS_BANKKONTO, vbTextCompare) = 0 Then
         On Error Resume Next
@@ -344,6 +351,8 @@ Private Sub Workbook_SheetDeactivate(ByVal Sh As Object)
     On Error Resume Next
     If StrComp(Sh.Name, WS_BANKKONTO, vbTextCompare) = 0 Then
         Call mod_Banking_Data.HinweisBeimVerlassenBankkonto
+    ElseIf StrComp(Sh.Name, WS_UEBERSICHT(), vbTextCompare) = 0 Then
+        Call mod_Uebersicht_Generator.HinweisBeimVerlassenUebersicht
     End If
     On Error GoTo 0
 End Sub
